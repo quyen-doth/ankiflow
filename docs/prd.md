@@ -109,6 +109,8 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 
 ## 4. 🏗️ Kiến trúc hệ thống
 
+/api/audio/* gồm 3 endpoints: /generate (TTS only), /store (AnkiConnect only), / (combined, backward-compatible).
+
 ```
 ┌─────────────────────────────────────────────────┐
 │                   MacBook                        │
@@ -1247,6 +1249,10 @@ const result = await model.generateContent({
 
 ### 11.3 Google Cloud TTS
 
+// Quan trọng: Tách generate và store thành 2 bước độc lập.
+// Xem /api/audio/generate và /api/audio/store.
+// Route /api/audio vẫn giữ cho backward-compatible.
+
 ```typescript
 import textToSpeech from "@google-cloud/text-to-speech";
 
@@ -1431,6 +1437,8 @@ ANKI_CONNECT_URL=http://localhost:8765
 | Firestore offline | Thấp | Cache local, sync sau |
 | Trùng từ đã tạo | Trung bình | Kiểm tra trong Firestore trước khi tạo |
 | Lỗi font CJK trên Anki mobile | Trung bình | Dùng Google Fonts (Noto Sans SC/JP) với fallback chain |
+| Google TTS rate limit / lãng phí quota | Đã giảm thiểu | Tách route generate/store — có thể retry store mà không tốn TTS quota |
+
 
 ---
 

@@ -114,7 +114,9 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | **GET** | `/api/anki/decks` | Fetch danh sách deck từ Anki |
 | **POST** | `/api/anki/create` | Đẩy notes vào Anki & Lưu Entry log vào Firestore |
 | **POST** | `/api/generate` | AI (Gemini) sinh nội dung flashcard (ví dụ, giải nghĩa, collocations...) |
-| **POST** | `/api/audio` | Render Text-to-Speech (Google Cloud) & Lưu file trực tiếp vào Anki |
+| POST | /api/audio | TTS + store vào Anki (combined, backward-compatible) |
+| POST | /api/audio/generate | Chỉ render TTS → trả về base64 |
+| POST | /api/audio/store | Chỉ store base64 vào Anki media folder |
 | **GET** | `/api/image` | Tìm kiếm ảnh minh hoạ trên Unsplash |
 | **GET, POST** | `/api/history` | Truy xuất danh sách / Thêm mới Entry lịch sử tạo card |
 | **GET, PUT, DEL** | `/api/history/[id]` | Đọc chi tiết, cập nhật, xóa 1 Entry lịch sử |
