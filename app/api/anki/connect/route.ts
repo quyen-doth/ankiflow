@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { ankiConnect } from '@/lib/anki-connect';
+import { flashcardService } from '@/lib/flashcard-service';
 
 export async function GET() {
   try {
-    const isConnected = await ankiConnect.checkConnection();
+    const isConnected = await (await flashcardService.ping()).connected;
     
     if (isConnected) {
       return NextResponse.json({

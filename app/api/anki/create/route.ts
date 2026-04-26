@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ankiConnect } from '@/lib/anki-connect';
+import { flashcardService } from '@/lib/flashcard-service';
 import { getAdminDb } from '@/lib/firebase-admin';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Tạo notes trong Anki
-    const noteIds = await ankiConnect.addNotes(notes);
+    const noteIds = await flashcardService.addNotes(notes);
 
     // 2. Lưu vào Firestore nếu có entryData
     let entryId = null;
