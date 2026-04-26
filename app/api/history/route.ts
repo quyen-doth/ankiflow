@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 
-export async function GET(request: Request) {
+async function GET_handler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get('limit') || '50';
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: NextRequest) {
   try {
     const body = await request.json();
     const db = getAdminDb();
@@ -64,3 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+
+export const GET = withAuthGuard(GET_handler);
+
+export const POST = withAuthGuard(POST_handler);

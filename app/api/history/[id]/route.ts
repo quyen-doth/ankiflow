@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { withAuthGuard } from '@/lib/auth-guard';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 
-export async function GET(
-  request: Request,
+async function GET_handler(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -21,8 +22,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
+async function PUT_handler(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -44,8 +45,8 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
+async function DELETE_handler(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -58,3 +59,9 @@ export async function DELETE(
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+
+export const GET = withAuthGuard(GET_handler);
+
+export const PUT = withAuthGuard(PUT_handler);
+
+export const DELETE = withAuthGuard(DELETE_handler);

@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { withAuthGuard } from '@/lib/auth-guard';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 
-export async function GET() {
+async function GET_handler(request: NextRequest) {
   try {
     const db = getAdminDb();
     const snapshot = await db.collection('topics').orderBy('name', 'asc').get();
@@ -13,7 +14,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POST_handler(request: NextRequest) {
   try {
     const body = await request.json();
     const db = getAdminDb();
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function PUT_handler(request: NextRequest) {
   try {
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -39,7 +40,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+async function DELETE_handler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -52,3 +53,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+
+export const GET = withAuthGuard(GET_handler);
+
+export const POST = withAuthGuard(POST_handler);
+
+export const PUT = withAuthGuard(PUT_handler);
+
+export const DELETE = withAuthGuard(DELETE_handler);
