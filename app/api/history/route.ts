@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { LOCAL_USER_ID } from '@/lib/constants';
 
 async function GET_handler(request: NextRequest) {
   try {
@@ -11,6 +12,12 @@ async function GET_handler(request: NextRequest) {
 
     const db = getAdminDb();
     let query: FirebaseFirestore.Query = db.collection('entries');
+
+    // Firestore Composite Index cần tạo khi chuyển multi-user (Phase 3):
+    // Collection: entries
+    // Fields: user_id ASC, created_at DESC
+    // Fields: user_id ASC, form_type ASC, created_at DESC
+    query = query.where('user_id', '==', LOCAL_USER_ID); // TODO Phase 3: dùng UID thực
 
     if (formType) {
       query = query.where('form_type', '==', formType);
@@ -52,6 +59,7 @@ async function POST_handler(request: NextRequest) {
     
     const newEntry = {
       ...body,
+      user_id: LOCAL_USER_ID, // TODO Phase 3: lấy từ Firebase Auth session
       created_at: new Date(),
       updated_at: new Date(),
     };

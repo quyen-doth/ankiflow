@@ -41,6 +41,7 @@ export enum LanguageType {
  */
 export interface Entry {
   id?: string; // Document ID trong Firestore
+  user_id: string; // Phase 1: 'local-user'. Phase 3: Firebase Auth UID
 
   // Thông tin phân loại
   category_id: string | null;

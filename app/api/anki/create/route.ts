@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { flashcardService } from '@/lib/flashcard-service';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { LOCAL_USER_ID } from '@/lib/constants';
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       
       const newEntry = {
         ...entryData,
+        user_id: LOCAL_USER_ID, // TODO Phase 3: lấy từ Firebase Auth session
         anki_note_ids: validNoteIds,
         created_at: new Date(), // Firebase Admin sẽ tự động convert Date sang Timestamp
         updated_at: new Date(),

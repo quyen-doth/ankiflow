@@ -88,6 +88,8 @@ Vì AnkiFlow là một web app **local-first** được thiết kế chạy trê
 | `/api/history/*` | `x-api-secret` header | ✅ Đã bảo vệ. TODO: Firebase Auth ở Phase 3 |
 | `/api/admin/*` | `x-api-secret` header | ✅ Đã bảo vệ. TODO: RBAC ở Phase 3 |
 
+**Data isolation:** Mọi Firestore query trên collection `entries` đều filter theo `user_id`. Phase 1 dùng constant `local-user`. Phase 3: thay bằng UID từ Firebase Auth token — không cần migration data vì field đã có sẵn.
+
 ---
 
 ## 4. ⚙️ Environment Variables (Biến môi trường)
