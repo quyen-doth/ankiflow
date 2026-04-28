@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { LOCAL_USER_ID } from '@/lib/constants';
+import { withAuthGuard } from '@/lib/auth-guard';
 
 async function GET_handler(request: NextRequest) {
   try {

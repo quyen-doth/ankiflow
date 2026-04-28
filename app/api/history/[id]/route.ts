@@ -4,9 +4,10 @@ import { getAdminDb } from '@/lib/firebase-admin';
 
 async function GET_handler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const db = getAdminDb();
     const docRef = db.collection('entries').doc(id);
@@ -24,9 +25,10 @@ async function GET_handler(
 
 async function PUT_handler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const body = await request.json();
     const db = getAdminDb();
@@ -47,9 +49,10 @@ async function PUT_handler(
 
 async function DELETE_handler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: any
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const db = getAdminDb();
     await db.collection('entries').doc(id).delete();
