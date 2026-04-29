@@ -18,13 +18,13 @@ export const generateAudio = async (text: string, language: LanguageType | strin
   let languageCode = "en-US";
   let voiceName = "en-US-Wavenet-F";
 
-  if (language === LanguageType.CHINESE || language === 'zh' || language === 'chinese') {
+  if (language === LanguageType.CHINESE) {
     languageCode = "zh-CN";
     voiceName = "zh-CN-Wavenet-A";
-  } else if (language === LanguageType.JAPANESE || language === 'ja' || language === 'japanese') {
+  } else if (language === LanguageType.JAPANESE) {
     languageCode = "ja-JP";
     voiceName = "ja-JP-Wavenet-A";
-  } else if (language === LanguageType.ENGLISH || language === 'en' || language === 'english') {
+  } else if (language === LanguageType.ENGLISH) {
     languageCode = "en-US";
     voiceName = "en-US-Wavenet-F";
   }

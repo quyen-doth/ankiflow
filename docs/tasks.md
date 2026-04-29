@@ -376,52 +376,52 @@
 
 ### 2.2 Create Page — Form nhập liệu
 
-- [ ] **Tạo `components/create/CategorySelector.tsx`**
+- [x] **Tạo `components/create/CategorySelector.tsx`**
   - Dùng `Select` từ 2.0 (`FormField.tsx`)
   - Dropdown lấy từ Firestore `categories`, filter theo `form_type` hiện tại
   - Session-persistent theo PRD Section 7 (Language form: lưu session)
   - Dùng ở: Create (Language form, IT form)
 
-- [ ] **Tạo `components/create/LanguageSelector.tsx`**
+- [x] **Tạo `components/create/LanguageSelector.tsx`**
   - 3 options: English / Chinese / Japanese với icon cờ
   - Dùng `Badge` từ 2.0 (variant `language`) để hiển thị option đang chọn
   - Session-persistent (PRD Section 7: Language form lưu "Ngôn ngữ")
 
-- [ ] **Tạo `components/create/DeckSelector.tsx`**
+- [x] **Tạo `components/create/DeckSelector.tsx`**
   - Dùng `Select` từ 2.0 (`FormField.tsx`)
   - Dropdown từ Firestore `decks`, auto-detect `form_type` khi chọn
   - Session-persistent (tất cả form types)
 
-- [ ] **Tạo `components/create/CardTypeSelector.tsx`**
+- [x] **Tạo `components/create/CardTypeSelector.tsx`**
   - Dùng `Toggle` / checkbox pattern từ 2.0
   - Checkbox list từ Firestore `card_types`, filter theo form_type + language
   - "Chọn tất cả" / "Bỏ chọn tất cả" — dùng `Button` variant `ghost` từ 2.0
   - Session-persistent (Language form: lưu "Card Types")
 
-- [ ] **Tạo `components/create/TopicSelector.tsx`**
+- [x] **Tạo `components/create/TopicSelector.tsx`**
   - Dùng `Badge` từ 2.0 (variant `active` khi chọn, `neutral` khi chưa)
   - Checkbox list từ Firestore `topics`, chỉ hiện trong form IT
   - Session-persistent (IT form: lưu "Chủ đề")
 
-- [ ] **Tạo `components/create/LanguageForm.tsx`**
+- [x] **Tạo `components/create/LanguageForm.tsx`**
   - Dùng `Input`, `Textarea`, `FieldWrapper` từ `FormField.tsx` (2.0)
   - Thứ tự fields: Ngôn ngữ → Deck → Category → Tags → Từ vựng → Ghi chú
   - Tags: dùng `TagInput` từ 2.0
   - Session-persistent fields: Ngôn ngữ, Deck, Category, Tags, Card Types
   - Reset sau khi tạo thành công: Từ vựng, Ghi chú
 
-- [ ] **Tạo `components/create/ITForm.tsx`**
+- [x] **Tạo `components/create/ITForm.tsx`**
   - Dùng `Input`, `Textarea`, `FieldWrapper` từ `FormField.tsx` (2.0)
   - Fields: Deck → Topics → Difficulty → Thuật ngữ → Định nghĩa → Keywords
   - Session-persistent: Deck, Topics, Difficulty
   - Reset sau khi tạo: Thuật ngữ, Định nghĩa, Keywords
 
-- [ ] **Tạo `components/create/GeneralForm.tsx`**
+- [x] **Tạo `components/create/GeneralForm.tsx`**
   - Dùng `Input`, `Textarea` từ `FormField.tsx` (2.0)
   - Fields: Deck → Tiêu đề → Nội dung → Tags
   - Session-persistent: Deck
 
-- [ ] **Tạo `app/create/page.tsx`**
+- [x] **Tạo `app/create/page.tsx`**
   - Dùng `LoadingOverlay` từ 2.0 khi generating (3 bước: Gemini → TTS → Unsplash)
   - Dùng `PageHeader` từ 2.1 với breadcrumb
   - Chọn Deck → auto detect form → render form tương ứng
@@ -430,45 +430,45 @@
 
 ### 2.3 Create Page — Form nhập liệu
 
-- [ ] **Tạo `components/create/CategorySelector.tsx`** 🆕 (Redesign)
+- [x] **Tạo `components/create/CategorySelector.tsx`** 🆕 (Redesign)
   - **Dropdown** lấy từ Firestore `categories` collection
   - Filter theo `form_type` hiện tại
   - Lưu session
 
-- [ ] **Tạo `components/create/LanguageSelector.tsx`**
+- [x] **Tạo `components/create/LanguageSelector.tsx`**
   - 3 options với icons/flags
   - Lưu session
 
-- [ ] **Tạo `components/create/DeckSelector.tsx`**
+- [x] **Tạo `components/create/DeckSelector.tsx`**
   - Dropdown từ Firestore `decks` collection
   - **Auto-detect form type** khi chọn deck (từ `DeckConfig.form_type`)
   - Lưu session
 
-- [ ] **Tạo `components/create/CardTypeSelector.tsx`**
+- [x] **Tạo `components/create/CardTypeSelector.tsx`**
   - **Checkbox list từ Firestore `card_types`**
   - Filter theo form_type + language
   - "Chọn tất cả" / "Bỏ chọn tất cả"
   - Lưu session
 
-- [ ] **Tạo `components/create/TopicSelector.tsx`** 🆕
+- [x] **Tạo `components/create/TopicSelector.tsx`** 🆕
   - **Checkbox list từ Firestore `topics`**
   - Chỉ hiện trong form IT
   - Lưu session
 
-- [ ] **Tạo `components/create/LanguageForm.tsx`**
+- [x] **Tạo `components/create/LanguageForm.tsx`**
   - Thứ tự fields: **Ngôn ngữ → Deck → Category → Tags → Từ vựng → Ghi chú**
   - Session persistence cho fields cố định
   - Chỉ reset: Từ vựng + Ghi chú sau khi tạo thành công
 
-- [ ] **Tạo `components/create/ITForm.tsx`**
+- [x] **Tạo `components/create/ITForm.tsx`**
   - Fields: Deck → **Topics (checkbox)** → Difficulty → Thuật ngữ → Định nghĩa → Keywords
   - Session: Deck, Topics, Difficulty
 
-- [ ] **Tạo `components/create/GeneralForm.tsx`**
+- [x] **Tạo `components/create/GeneralForm.tsx`**
   - Fields: Deck → Tiêu đề → Nội dung → Tags
   - Session: Deck
 
-- [ ] **Tạo `app/create/page.tsx`**
+- [x] **Tạo `app/create/page.tsx`**
   - Chọn content type hoặc chọn Deck → auto form
   - Progress indicator khi generating
   - Chuyển `/preview` sau khi xong

@@ -19,19 +19,18 @@ export interface FirestoreTimestamp {
  * Loại form nội dung (Content Type)
  */
 export enum FormType {
-  LANGUAGE = 'language',
-  IT = 'it',
-  GENERAL = 'general',
-  CUSTOM = 'custom',
+  LANGUAGE = 'form_language',
+  IT = 'form_it',
+  GENERAL = 'form_general',
 }
 
 /**
  * Ngôn ngữ được hỗ trợ
  */
 export enum LanguageType {
-  ENGLISH = 'english',
-  CHINESE = 'chinese',
-  JAPANESE = 'japanese',
+  ENGLISH = 'en',
+  CHINESE = 'zh',
+  JAPANESE = 'ja',
 }
 
 // ─── Collection: entries ──────────────────────────────

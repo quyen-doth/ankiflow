@@ -6,3 +6,37 @@
 export const LOCAL_USER_ID = 'local-user' as const
 
 export const DEFAULT_STATUS = 'draft' as const
+
+// ─── Form Type Mapping ───────────────────────────────────────────────────────
+import { FormType, LanguageType } from '@/types'
+
+/**
+ * Nhãn UI (dùng cho state, props) → FormType enum (dùng cho Firestore query)
+ * Dùng hàm này thay vì hardcode map trong từng component.
+ */
+export const UI_FORM_TYPE_MAP: Record<'Language' | 'IT' | 'General', FormType> = {
+  Language: FormType.LANGUAGE,
+  IT: FormType.IT,
+  General: FormType.GENERAL,
+}
+
+/**
+ * FormType enum → nhãn UI (reverse lookup)
+ */
+export const DB_FORM_TYPE_TO_UI: Record<FormType, 'Language' | 'IT' | 'General'> = {
+  [FormType.LANGUAGE]: 'Language',
+  [FormType.IT]: 'IT',
+  [FormType.GENERAL]: 'General',
+}
+
+// ─── Language Options ────────────────────────────────────────────────────────
+
+/**
+ * Danh sách ngôn ngữ hỗ trợ — nguồn duy nhất cho LanguageSelector.
+ * Dùng LanguageType enum để đảm bảo khớp với Firestore.
+ */
+export const LANGUAGE_OPTIONS: { id: LanguageType; name: string; flag: string }[] = [
+  { id: LanguageType.ENGLISH, name: 'English', flag: '🇺🇸' },
+  { id: LanguageType.JAPANESE, name: 'Japanese', flag: '🇯🇵' },
+  { id: LanguageType.CHINESE, name: 'Chinese', flag: '🇨🇳' },
+]
