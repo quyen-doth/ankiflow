@@ -355,7 +355,7 @@
 
 ### 2.1 Layout & Navigation
 
-- [ ] **Tạo `components/layout/NavigationSidebar.tsx`** (thay thế `Sidebar.tsx`)
+- [x] **Tạo `components/layout/NavigationSidebar.tsx`** (thay thế `Sidebar.tsx`)
   - Container: `w-64 h-screen bg-surface-low border-r border-outline-var fixed left-0 top-0 z-30`
   - Logo area: dùng `AnkiFlowLogo` từ 2.0
   - Nav links: Dashboard `/dashboard`, Create `/create`, History `/history`, Admin `/admin`, Settings `/settings`
@@ -363,13 +363,13 @@
   - Nav item active: `bg-primary/10 text-primary font-bold rounded-md` ← **KHÔNG dùng `bg-primary text-white`**
   - Bottom: `ConnectedBadge` từ 2.0 (polling Anki mỗi 30s)
 
-- [ ] **Tạo `components/layout/PageHeader.tsx`** (thay thế `Header.tsx`)
+- [x] **Tạo `components/layout/PageHeader.tsx`** (thay thế `Header.tsx`)
   - Breadcrumb separator: `›` (ký tự `›`) — **KHÔNG dùng `>` hay `/`**
   - Props: `title`, `crumbs[]`, `description`, `actions`
   - Title: `font-serif text-headline-md text-on-surface`
   - Dùng trên mọi page
 
-- [ ] **Cập nhật `app/layout.tsx`**
+- [x] **Cập nhật `app/layout.tsx`**
   - Font setup: `Newsreader` (variable `--font-serif`) + `Nunito Sans` (variable `--font-sans`)
   - body: `bg-app-bg font-sans text-on-surface antialiased` (token: `#faf6f0`)
   - Layout: `NavigationSidebar` (w-64 fixed) + `main` (ml-64 flex-1 px-8 py-8)
