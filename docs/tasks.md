@@ -254,29 +254,179 @@
 
 ## PHASE 2 — UI Components
 
+### 2.0 UI Foundation (Shared Components) 🆕
+
+> ⚠️ **Làm trước tất cả** — Các màn hình 2.1–2.7 phụ thuộc vào section này.  
+> Tham chiếu: `ankiflow/docs/design/COMPONENT.md` cho props & variants đầy đủ.
+
+#### UI Primitives
+
+- [x] **Tạo `components/ui/Button.tsx`**
+  - Variants: `primary` | `secondary` | `ghost` | `destructive`
+  - Size: `sm` | `md` | `lg`
+  - Props: `loading`, `leftIcon`, `rightIcon`
+  - (token: `bg-primary`, `bg-primary/10`, `border-outline-var`, `bg-error-container`)
+  - Dùng ở: Create, Preview, Admin, Settings, History
+
+- [x] **Tạo `components/ui/FormField.tsx`** (Input + Textarea + Select)
+  - `Input`: nền `bg-surface-container`, focus ring `ring-primary/30`
+  - `Textarea`: tương tự Input, `resize-none`
+  - `Select`: nền `bg-white border-outline-var`, icon ChevronDown
+  - `FieldWrapper`: bọc label + error message
+  - Dùng ở: Create (mọi form), Admin (CRUD modal), Settings
+
+- [x] **Tạo `components/ui/Badge.tsx`**
+  - Variants: `neutral` | `active` | `inactive` | `pending` | `ai` | `language` | `level`
+  - Prop `onRemove` → hiển thị nút × (dùng cho tag removable)
+  - (token: `bg-surface-high`, `bg-primary/10`, `bg-error-container`, `bg-tertiary-fixed`)
+  - Dùng ở: History (trạng thái), Admin (is_active), Create (tags)
+
+- [x] **Tạo `components/ui/Toggle.tsx`**
+  - Props: `checked`, `onChange`, `label`, `description`, `disabled`
+  - Nền toggle: `bg-outline-var` → checked: `bg-primary`
+  - Dùng ở: Admin (is_active, is_default), Settings
+
+#### Feedback Components
+
+- [x] **Tạo `components/ui/Modal.tsx`**
+  - Props: `open`, `onClose`, `title`, `description`, `size` (`sm`|`md`|`lg`)
+  - Header tonal: `bg-surface-container rounded-t-xl`
+  - Backdrop: `bg-on-surface/30 backdrop-blur-sm`
+  - Close on Escape + click outside
+  - Dùng ở: Admin (thêm/sửa record), Create (confirm), Preview (confirm tạo)
+
+- [x] **Tạo `components/ui/LoadingOverlay.tsx`**
+  - Dùng `StepIndicator` + `ProgressBar` + `FlowTip` bên trong
+  - Props: `open`, `steps[]`, `progress`, `flowTip`, `statusText`
+  - Dùng ở: Create (sau khi nhấn "Tạo nháp" — hiện 3 bước: Gemini → TTS → Unsplash)
+
+- [x] **Tạo `components/ui/StepIndicator.tsx`**
+  - Status: `completed` | `active` | `pending`
+  - completed → icon Check màu `bg-primary text-white`
+  - active → border `border-2 border-primary`
+  - Dùng ở: LoadingOverlay
+
+- [x] **Tạo `components/ui/ProgressBar.tsx`**
+  - Size: `sm` (1.5px) | `md` (2.5px)
+  - Nền `bg-surface-high`, fill `bg-primary`
+  - Dùng ở: LoadingOverlay, Dashboard
+
+#### Data Display
+
+- [x] **Tạo `components/ui/DataTable.tsx`**
+  - Props: `data[]`, `columns[]`, `onRowClick`, `keyField`, `emptyMessage`
+  - Column config: `key`, `header`, `width`, `align`, `render` (custom cell)
+  - Header row: `border-b border-outline-var/50`, label `text-label-sm uppercase`
+  - Row hover: `hover:bg-surface-container/50`
+  - Dùng ở: History (HistoryTable), Admin (tất cả Manager)
+
+- [x] **Tạo `components/ui/FilterBar.tsx`**
+  - Search input: `rounded-full bg-white border-outline-var pl-9` + icon Search
+  - Active filter badges (dùng `Badge` variant `active` + onRemove)
+  - Button "Clear all" màu `text-on-surface-var hover:text-error`
+  - Dùng ở: History, Admin
+
+#### Branding & Navigation
+
+- [x] **Tạo `components/ui/AnkiFlowLogo.tsx`**
+  - Icon Sparkles trên nền `bg-primary rounded-full`
+  - Text: "AnkiFlow" font-serif + tagline "COGNITIVE SANCTUARY" bất biến
+  - Size: `sm` | `md`
+  - Dùng ở: NavigationSidebar
+
+- [x] **Tạo `components/ui/ConnectedBadge.tsx`**
+  - Props: `connected`, `label`
+  - Dot: `bg-primary` (connected) | `bg-outline` (disconnected)
+  - Container: `bg-surface-high rounded-lg`
+  - Dùng ở: NavigationSidebar (bottom)
+
+#### Utility
+
+- [x] **Tạo `components/ui/FlowTip.tsx`**
+  - Nền `bg-tertiary-fixed/30 border-tertiary-fixed/60`
+  - Icon Lightbulb màu `text-tertiary`
+  - Chỉ dùng cho AI tip / Flow Tip — không dùng cho mục đích khác (token: `--tertiary`)
+  - Dùng ở: LoadingOverlay, Create (hint cho user)
+
+- [x] **Tạo `lib/utils.ts`** — helper `cn()` (clsx + tailwind-merge)
+  - Bắt buộc trước khi viết bất kỳ component nào
+
+---
+
 ### 2.1 Layout & Navigation
 
-- [ ] **Tạo `components/layout/Sidebar.tsx`**
-  - Links: Dashboard, Tạo mới, Lịch sử, **Quản lý (Admin)**, Cài đặt
-  - Active state indicator
+- [ ] **Tạo `components/layout/NavigationSidebar.tsx`** (thay thế `Sidebar.tsx`)
+  - Container: `w-64 h-screen bg-surface-low border-r border-outline-var fixed left-0 top-0 z-30`
+  - Logo area: dùng `AnkiFlowLogo` từ 2.0
+  - Nav links: Dashboard `/dashboard`, Create `/create`, History `/history`, Admin `/admin`, Settings `/settings`
+  - Nav item default: `text-on-surface-var hover:bg-primary/5 rounded-md`
+  - Nav item active: `bg-primary/10 text-primary font-bold rounded-md` ← **KHÔNG dùng `bg-primary text-white`**
+  - Bottom: `ConnectedBadge` từ 2.0 (polling Anki mỗi 30s)
 
-- [ ] **Tạo `components/layout/Header.tsx`**
-  - Tiêu đề trang hiện tại
-  - Nút "Tạo card mới" shortcut
-
-- [ ] **Tạo `components/layout/StatusBar.tsx`**
-  - 🟢 Anki kết nối / 🔴 Chưa kết nối
-  - Auto-refresh 30s
+- [ ] **Tạo `components/layout/PageHeader.tsx`** (thay thế `Header.tsx`)
+  - Breadcrumb separator: `›` (ký tự `›`) — **KHÔNG dùng `>` hay `/`**
+  - Props: `title`, `crumbs[]`, `description`, `actions`
+  - Title: `font-serif text-headline-md text-on-surface`
+  - Dùng trên mọi page
 
 - [ ] **Cập nhật `app/layout.tsx`**
-  - Sidebar + Header wrapper
+  - Font setup: `Newsreader` (variable `--font-serif`) + `Nunito Sans` (variable `--font-sans`)
+  - body: `bg-app-bg font-sans text-on-surface antialiased` (token: `#faf6f0`)
+  - Layout: `NavigationSidebar` (w-64 fixed) + `main` (ml-64 flex-1 px-8 py-8)
 
-### 2.2 Dashboard Page
+### 2.2 Create Page — Form nhập liệu
 
-- [ ] **Tạo `app/page.tsx`**
-  - Widgets thống kê
-  - 10 từ gần đây
-  - Quick action: nút "Tạo mới"
+- [ ] **Tạo `components/create/CategorySelector.tsx`**
+  - Dùng `Select` từ 2.0 (`FormField.tsx`)
+  - Dropdown lấy từ Firestore `categories`, filter theo `form_type` hiện tại
+  - Session-persistent theo PRD Section 7 (Language form: lưu session)
+  - Dùng ở: Create (Language form, IT form)
+
+- [ ] **Tạo `components/create/LanguageSelector.tsx`**
+  - 3 options: English / Chinese / Japanese với icon cờ
+  - Dùng `Badge` từ 2.0 (variant `language`) để hiển thị option đang chọn
+  - Session-persistent (PRD Section 7: Language form lưu "Ngôn ngữ")
+
+- [ ] **Tạo `components/create/DeckSelector.tsx`**
+  - Dùng `Select` từ 2.0 (`FormField.tsx`)
+  - Dropdown từ Firestore `decks`, auto-detect `form_type` khi chọn
+  - Session-persistent (tất cả form types)
+
+- [ ] **Tạo `components/create/CardTypeSelector.tsx`**
+  - Dùng `Toggle` / checkbox pattern từ 2.0
+  - Checkbox list từ Firestore `card_types`, filter theo form_type + language
+  - "Chọn tất cả" / "Bỏ chọn tất cả" — dùng `Button` variant `ghost` từ 2.0
+  - Session-persistent (Language form: lưu "Card Types")
+
+- [ ] **Tạo `components/create/TopicSelector.tsx`**
+  - Dùng `Badge` từ 2.0 (variant `active` khi chọn, `neutral` khi chưa)
+  - Checkbox list từ Firestore `topics`, chỉ hiện trong form IT
+  - Session-persistent (IT form: lưu "Chủ đề")
+
+- [ ] **Tạo `components/create/LanguageForm.tsx`**
+  - Dùng `Input`, `Textarea`, `FieldWrapper` từ `FormField.tsx` (2.0)
+  - Thứ tự fields: Ngôn ngữ → Deck → Category → Tags → Từ vựng → Ghi chú
+  - Tags: dùng `TagInput` từ 2.0
+  - Session-persistent fields: Ngôn ngữ, Deck, Category, Tags, Card Types
+  - Reset sau khi tạo thành công: Từ vựng, Ghi chú
+
+- [ ] **Tạo `components/create/ITForm.tsx`**
+  - Dùng `Input`, `Textarea`, `FieldWrapper` từ `FormField.tsx` (2.0)
+  - Fields: Deck → Topics → Difficulty → Thuật ngữ → Định nghĩa → Keywords
+  - Session-persistent: Deck, Topics, Difficulty
+  - Reset sau khi tạo: Thuật ngữ, Định nghĩa, Keywords
+
+- [ ] **Tạo `components/create/GeneralForm.tsx`**
+  - Dùng `Input`, `Textarea` từ `FormField.tsx` (2.0)
+  - Fields: Deck → Tiêu đề → Nội dung → Tags
+  - Session-persistent: Deck
+
+- [ ] **Tạo `app/create/page.tsx`**
+  - Dùng `LoadingOverlay` từ 2.0 khi generating (3 bước: Gemini → TTS → Unsplash)
+  - Dùng `PageHeader` từ 2.1 với breadcrumb
+  - Chọn Deck → auto detect form → render form tương ứng
+  - Sau khi xong → chuyển `/preview`
+  - Sau khi tạo thành công → quay về, chỉ reset content fields
 
 ### 2.3 Create Page — Form nhập liệu
 
@@ -324,80 +474,139 @@
   - Chuyển `/preview` sau khi xong
   - **Sau khi tạo thành công → quay về form, chỉ reset content fields**
 
-### 2.4 Preview Page
+### 2.3 Preview Page
 
 - [ ] **Tạo `components/preview/EditableField.tsx`**
-  - Click to edit, save/cancel
+  - Click to edit inline, nút Save / Cancel
+  - Dùng `Input` hoặc `Textarea` từ 2.0 khi ở edit mode
+  - Focus ring: `ring-2 ring-primary/30`
 
-- [ ] **Tạo `components/preview/CollocationEditor.tsx`** 🆕
-  - Hiển thị list collocations
-  - Thêm/sửa/xoá từng mục
-  - Drag to reorder
+- [ ] **Tạo `components/preview/CollocationEditor.tsx`**
+  - Hiển thị list collocations dạng badge có thể xóa — dùng `Badge` variant `neutral` + `onRemove` từ 2.0
+  - Thêm mục mới bằng `Input` từ 2.0
+  - Drag to reorder: dùng `@dnd-kit/core` (đề xuất) — `DndContext` + `SortableContext`
+  - Dùng ở: Preview page (cột collocations)
 
 - [ ] **Tạo `components/preview/ImageSelector.tsx`**
-  - Grid 5 ảnh Unsplash
-  - Chọn / Tìm lại / Bỏ qua
+  - Grid 5 ảnh Unsplash (2-col grid)
+  - Ảnh được chọn: `ring-2 ring-primary`
+  - Nút "Tìm lại" — dùng `Button` variant `ghost` từ 2.0
+  - Dùng ở: Preview page
 
 - [ ] **Tạo `components/preview/AudioPlayer.tsx`**
-  - Play/stop, Tạo lại
+  - Nút Play/Stop + nút "Tạo lại" — dùng `Button` từ 2.0
+  - Dùng ở: Preview page
 
 - [ ] **Tạo `components/preview/CardPreview.tsx`**
-  - CSS 3D flip card
-  - Front/Back preview
+  - Dùng component `CardPreview` từ COMPONENT.md (`src/components/features/card/CardPreview.tsx`)
+  - Tabs: `front-back` | `back-front` | `sentence`
+  - Front card: `bg-white rounded-xl shadow-card`
+  - Back card: `bg-surface-low rounded-xl`
+  - Content mapping theo `card_type` (word_to_meaning, audio_to_word, fill_in_blank...)
 
 - [ ] **Tạo `components/preview/CardList.tsx`**
-  - Grid tất cả card types
-  - Checkbox bỏ bớt card type
+  - Grid tất cả card types (2-col)
+  - Checkbox bỏ bớt card type — dùng `Badge` + Toggle từ 2.0
+  - Dùng ở: Preview page
 
 - [ ] **Tạo `app/preview/page.tsx`**
+  - Layout 8:4 grid (`col-span-8` content + `col-span-4` card preview)
+  - Dùng `PageHeader` từ 2.1, `Button` variant `primary` từ 2.0 ("Xác nhận & Tạo")
+  - Dùng `Modal` từ 2.0 để confirm trước khi tạo
   - Section: Info + Collocations + Image + Audio + Card preview
-  - Nút "Xác nhận & Tạo"
 
-### 2.5 History Page
-
-- [ ] **Tạo `components/history/FilterBar.tsx`**
-  - Filter: Category (dropdown từ DB), Language, Deck, Date range
-  - Search: từ/nghĩa
+### 2.4 History Page
 
 - [ ] **Tạo `components/history/HistoryTable.tsx`**
-  - Columns + pagination
+  - **Dùng `DataTable` từ 2.0** — không tạo lại table logic
+  - Columns: Từ vựng, Nghĩa, Ngôn ngữ/Form, Deck, Trạng thái, Ngày tạo, Actions
+  - Trạng thái dùng `Badge` từ 2.0 (variant `active`/`inactive`/`pending`)
+  - Actions: xem chi tiết, xoá — dùng `Button` từ 2.0
+
+- [ ] **Sử dụng `FilterBar` từ 2.0** trong History page
+  - Filters: Category, Language, Deck, Date range
+  - Search: từ/nghĩa — placeholder "Tìm từ vựng..."
+  - Không tạo `components/history/FilterBar.tsx` riêng — reuse từ `components/ui/FilterBar.tsx`
+
+- [ ] **Tạo `components/history/WordDetailCard.tsx`**
+  - Dùng component `WordDetailCard` từ COMPONENT.md
+  - Hiển thị: word, reading, meaning, level badge, status badge, nút play audio
+  - Border left accent: `border-l-4 border-l-primary`
 
 - [ ] **Tạo `app/history/page.tsx`**
+  - Dùng `PageHeader` từ 2.1, `FilterBar` + `DataTable` từ 2.0
 
 - [ ] **Tạo `app/history/[id]/page.tsx`**
+  - Dùng `WordDetailCard` + `CardPreview` từ 2.3
+  - Layout 8:4 grid
 
-### 2.6 Admin Page 🆕
+### 2.5 Admin Page
 
 - [ ] **Tạo `app/admin/page.tsx`**
   - Tab navigation: Categories | Card Types | Topics | Decks | Content Types
+  - Dùng `PageHeader` từ 2.1 với `actions` slot cho nút "Thêm mới"
 
 - [ ] **Tạo `components/admin/CategoryManager.tsx`**
-  - Table: Tên, Form type, Thứ tự, Trạng thái, Actions
-  - Modal: Thêm mới / Sửa
+  - **Dùng `DataTable` từ 2.0** — không tạo table logic mới
+  - Columns: Tên, Form type, Thứ tự, Trạng thái (`Badge` active/inactive), Actions
+  - Thêm/Sửa: dùng `Modal` từ 2.0 + form bên trong dùng `Input`, `Select` từ `FormField.tsx`
+  - Xoá: dùng `Button` variant `destructive` từ 2.0 + confirmation trong `Modal`
 
 - [ ] **Tạo `components/admin/CardTypeManager.tsx`**
-  - Table: Code, Tên, Form type, Language, Mặc định, Actions
-  - Toggle: is_default, is_active
+  - **Dùng `DataTable` từ 2.0**
+  - Columns: Code, Tên, Form type, Language, Mặc định, Trạng thái, Actions
+  - Toggle is_default / is_active: dùng `Toggle` từ 2.0
 
 - [ ] **Tạo `components/admin/TopicManager.tsx`**
-  - Table: Tên, Thứ tự, Actions
-  - CRUD đơn giản
+  - **Dùng `DataTable` từ 2.0**
+  - Columns: Tên, Thứ tự, Trạng thái, Actions
+  - CRUD: dùng `Modal` + `Input` từ 2.0
 
 - [ ] **Tạo `components/admin/DeckManager.tsx`**
-  - Table: Anki name, Display name, Form type, Language, Actions
-  - **Form thiết lập mapping:** default card types, default category
+  - **Dùng `DataTable` từ 2.0**
+  - Columns: Anki name, Display name, Form type, Language, Actions
+  - Form thiết lập mapping (default card types, default category): dùng `Modal` + `Select` từ 2.0
 
 - [ ] **Tạo `components/admin/ContentTypeManager.tsx`**
-  - Xem cấu hình form hiện có
-  - Chỉnh sửa: fields, thứ tự, required, session persistent
-  - (Phase 2+): Thêm content type mới
+  - **Dùng `DataTable` từ 2.0** để liệt kê fields
+  - Xem + sửa cấu hình form (fields, thứ tự, required, session_persistent)
+  - Mỗi field toggle: dùng `Toggle` từ 2.0
+
+### 2.6 Dashboard
+
+- [ ] **Tạo `components/ui/StatCard.tsx`**
+  - Dùng component `StatCard` từ COMPONENT.md
+  - Props: `label`, `value`, `unit`, `trend`, `trendPositive`
+  - Grid 4 cột: `grid grid-cols-4 gap-4` (token: `shadow-card`, `bg-white`)
+  - Dùng ở: Dashboard (Total Vocabulary, Total Cards, Created Today, Success Rate)
+
+- [ ] **Tạo `components/history/EntryListItem.tsx`** (reuse từ History)
+  - Hiển thị 1 dòng entry: word, meaning, deck, date, badge status
+  - Dùng `Badge` từ 2.0
+  - Dùng ở: Dashboard (10 từ gần đây) + History
+
+- [ ] **Tạo `app/dashboard/page.tsx`** (hoặc `app/page.tsx`)
+  - Greeting: `font-serif text-display text-on-surface` (Newsreader, 36px)
+  - StatCard grid 4 cột
+  - Danh sách 10 từ gần đây (reuse `EntryListItem`)
+  - Quick action: `Button` variant `primary` "Tạo card mới" → `/create`
+
+---
 
 ### 2.7 Settings Page
 
 - [ ] **Tạo `app/settings/page.tsx`**
-  - Trạng thái API connections
-  - AnkiConnect URL config
-  - Gemini model selection
+  - Dùng `PageHeader` từ 2.1
+  - Dùng `IntegrationCard` (`src/components/features/settings/IntegrationCard.tsx`) cho từng API connection
+  - AnkiConnect URL: dùng `Input` từ 2.0 — persist vào Firestore `settings.anki_connect_url`
+  - Gemini model selection: dùng `Select` từ 2.0 — persist vào `settings.gemini_model`
+  - Toggle unsplash_enabled: persist vào `settings.unsplash_enabled`
+  - Toggle tts_enabled: persist vào `settings.tts_enabled`
+  - **Fields persist vào Firestore `settings` collection:**
+    - `anki_connect_url` (string)
+    - `gemini_model` (string)
+    - `unsplash_enabled` (boolean)
+    - `tts_enabled` (boolean)
 
 ---
 
@@ -492,10 +701,10 @@
 |---|---|---|---|
 | Phase 0 — Setup | 24 | 0 | 0% |
 | Phase 1 — Backend | 28 | 0 | 0% |
-| Phase 2 — Frontend | 36 | 0 | 0% |
+| Phase 2 — Frontend (2.0 Foundation: 14, 2.1–2.7 Screens: 44) | **58** | 0 | 0% |
 | Phase 3 — Integration | 14 | 0 | 0% |
 | Phase 4 — Testing | 18 | 0 | 0% |
-| **Tổng** | **~120** | **0** | **0%** |
+| **Tổng** | **~142** | **0** | **0%** |
 
 ---
 

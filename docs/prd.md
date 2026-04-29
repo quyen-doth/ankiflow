@@ -415,57 +415,288 @@ interface SessionState {
 
 ## 8. 🎨 Admin UI — Design System & Component Architecture
 
-### 8.1 Design System (Light Mode)
+### 8.1 Design System
 
-- **Phong cách:** Light mode, "Precision Clarity" — editorial, premium, tối giản.
-- **Quy tắc "No-Line":** KHÔNG dùng border 1px cứng để phân tách section → chỉ dùng tonal shift (thay đổi màu nền).
-- **Màu sắc (Tonal Architecture):**
-  - `background`: `#f7f9fb` (Nền trang chính)
-  - `surface-container`: `#eceef0` (Nền sidebar, hover area)
-  - `surface-container-low`: `#f2f4f6` (Fixed sidebar background)
-  - `surface-container-lowest`: `#ffffff` (Card nội bộ, input fields)
-  - `primary`: `#0061a4` (CTA chính, link, icon highlight)
-  - `secondary`: `#515f74` (Text phụ, metadata)
-  - `on_surface`: `#191c1e` (Text chính)
-  - `on_surface_variant`: `#404752` (Text phụ, muted)
-- **Typography:** Inter cho tất cả (Headline, Body, Label).
-- **Elevation:** Ambient shadow (blur 24-40px, 4-8% opacity) hoặc Glassmorphism (80% opacity + blur 12px) cho các floating elements.
+**Triết lý thiết kế:** "Calm Productivity" — giao diện giảm cognitive load để người dùng tập trung vào nội dung. Phong cách Corporate Modern với Tactile Warmth; tông giấy ấm, typography humanist. Tagline bất biến: **COGNITIVE SANCTUARY**.
 
-### 8.2 Kiến trúc Component UI (Atomic Design)
+**Quy tắc "No-Line":** KHÔNG dùng `border 1px` cứng để phân tách section → chỉ dùng tonal shift (thay đổi màu nền/surface).
 
-Để đảm bảo tính nhất quán và dễ maintain, UI được chia thành các components tái sử dụng:
+#### Bảng Color Tokens
 
-- **Atoms (Thành phần cơ bản):**
-  - `Button`: Primary, Secondary, Ghost, Icon.
-  - `Input`: TextField, TextArea, Checkbox.
-  - `Badge/Chip`: Thể hiện status, level, word type (Pill shape 9999px).
-  - `Avatar`: Hiển thị user profile.
-- **Molecules (Thành phần ghép nối):**
-  - `StatCard`: Hiển thị thống kê trên Dashboard (gồm icon, số liệu, text).
-  - `FormField`: Label + Input + Error message.
-  - `ApiStatusCard`: Hiển thị trạng thái kết nối API.
-  - `EntryListItem`: Dòng hiển thị từ vựng trong danh sách.
-- **Organisms (Thành phần phức hợp):**
-  - `Sidebar`: Chứa logo, navigation links, user profile.
-  - `PreviewPanel`: Vùng hiển thị review card và metadata trước khi tạo.
-  - `HistoryTable`: Bảng danh sách lịch sử có phân trang và filter.
-  - `AdminPanelTabs`: Tabs quản lý category, deck, card types.
-- **Layouts:**
-  - `MainLayout`: Sidebar cố định (280px) + Content area scroll mượt.
+| Token | Hex | Tailwind key | Dùng cho |
+|---|---|---|---|
+| `primary` | `#316342` | `primary` | CTA chính, active state, icon nhấn mạnh |
+| `primary-container` | `#4a7c59` | `primary-container` | Hover của primary button |
+| `on-primary` | `#ffffff` | — | Text trên nền primary |
+| `on-primary-container` | `#e1ffe5` | `primary-text` | Text nhạt trên primary-container |
+| `secondary` | `#655d52` | `secondary` | Supporting UI, grounding elements |
+| `secondary-container` | `#e9ded0` | `secondary-container` | Tonal fills nhạt |
+| `tertiary` | `#6d5622` | `tertiary` | Flow Tips, AI highlights, Ochre accent |
+| `tertiary-container` | `#886e38` | `tertiary-container` | Background cho AI badges |
+| `tertiary-fixed` | `#ffdea0` | `tertiary-fixed` | Light fill cho AI badges |
+| `on-tertiary-fixed` | `#261a00` | `on-tertiary-fixed` | Text trên tertiary-fixed |
+| `background` | `#faf6f0` | `app-bg` | **Nền page chính — cream ấm** |
+| `surface` | `#ffffff` | — | Card, modal, elevated surface |
+| `surface-container-low` | `#f1f4f1` | `surface-low` | Sidebar background |
+| `surface-container` | `#ecefeb` | `surface-container` | Hover state nhạt, input background |
+| `surface-container-high` | `#e6e9e6` | `surface-high` | Category chips, disabled states |
+| `on-surface` | `#181c1b` | `on-surface` | Text chính |
+| `on-surface-variant` | `#414942` | `on-surface-var` | Text phụ, icon |
+| `outline` | `#717971` | `outline` | Border mặc định |
+| `outline-variant` | `#c1c9bf` | `outline-var` | Border nhạt, divider |
+| `error` | `#ba1a1a` | `error` | Lỗi, destructive action |
+| `error-container` | `#ffdad6` | `error-container` | Background cảnh báo lỗi |
+| `inverse-surface` | `#2d312f` | `inverse-surface` | Dark card (AI taxonomy footer) |
+
+#### Bảng Typography Scale
+
+| Cấp | Font | Font-size | Font-weight | Line-height | Dùng cho |
+|---|---|---|---|---|---|
+| `display` | Newsreader (serif) | 36px | 700 | 1.2 | Greeting, hero title Dashboard |
+| `headline-md` | Newsreader (serif) | 24px | 600 | 1.3 | Page title (PageHeader) |
+| `headline-sm` | Newsreader (serif) | 18px | 600 | 1.4 | Card title, Modal title, section heading |
+| `body-md` | Nunito Sans | 14px | 400 | 1.5 | Mọi paragraph, description, table cell |
+| `label-lg` | Nunito Sans | 14px | 700 | 1 | Button text, nav active item |
+| `label-sm` | Nunito Sans | 10px | 600 | 1 | Badge text, chip uppercase, field label |
+
+> **Quy tắc font pairing:** Headline = Newsreader serif (`font-serif`). UI text = Nunito Sans (`font-sans`, default). KHÔNG trộn lẫn.
+
+#### Spacing Scale
+
+| Token | Value | Tailwind | Dùng cho |
+|---|---|---|---|
+| `xs` | 4px | `p-1 / gap-1` | Internal icon padding, tight chip |
+| `sm` | 8px | `p-2 / gap-2` | Gap icon-text trong button |
+| `md` | 16px | `p-4 / gap-4` | Card internal padding (compact) |
+| `lg` | 24px | `p-6 / gap-6` | Card standard padding, section gap |
+| `xl` | 32px | `p-8 / gap-8` | Page margin, section spacing |
+
+#### Border Radius Tokens
+
+| Context | Radius | Tailwind | Ví dụ |
+|---|---|---|---|
+| Card, container, panel | 16px | `rounded-lg` | Mọi card |
+| Modal, large dialog | 20px | `rounded-xl` | Dialog box |
+| Navigation active item | 12px | `rounded-md` | Nav pill |
+| Input, small button | 8px | `rounded` | TextField, inline button |
+| Badge, chip, tag, search bar | 9999px | `rounded-full` | Status chip, search |
+
+#### Shadow / Elevation
+
+| Level | Surface | Shadow | Dùng cho |
+|---|---|---|---|
+| 0 — Base | `bg-app-bg` (#faf6f0) | Không có | Page background |
+| 1 — Card | `bg-white` | `shadow-card` (0 4px 20px rgba(46,50,48,0.06)) | Tất cả card, panel |
+| 2 — Modal | `bg-white` | `shadow-modal` (0 20px 50px rgba(46,50,48,0.12)) + backdrop blur | Dialog, modal focus |
+| Dark — Inverse | `bg-inverse-surface` | Không có | AI feature banner, dark callout |
+
+---
+
+### 8.2 Kiến trúc Component UI
+
+**Vị trí file:** `src/components/ui/` (shared) · `src/components/layout/` (layout) · `src/components/features/` (feature-specific)
+
+**Naming convention:** PascalCase cho component file và export. `cn()` helper từ `lib/utils.ts` (clsx + tailwind-merge). Icon từ `lucide-react`. Client component (`'use client'`) chỉ khi có state/event/browser API.
+
+#### Atomic Design Hierarchy
+
+| Tầng | Mô tả | Ví dụ |
+|---|---|---|
+| **Atoms** | Thành phần cơ bản, không thể chia nhỏ hơn | Button, Badge, Input, Toggle |
+| **Molecules** | Ghép 2+ atoms thành 1 đơn vị chức năng | StatCard, FormField (label + input + error), FilterBar |
+| **Organisms** | Thành phần phức hợp, có logic riêng | NavigationSidebar, DataTable, Modal, LoadingOverlay |
+| **Templates / Layouts** | Khung page, không chứa data cụ thể | app/layout.tsx (Sidebar + Main), PageHeader |
+
+#### Bảng Component Library
+
+| Component | Tầng | File path | Mô tả ngắn |
+|---|---|---|---|
+| `AnkiFlowLogo` | Atom | `components/ui/AnkiFlowLogo.tsx` | Brand mark với tagline "COGNITIVE SANCTUARY" |
+| `Button` | Atom | `components/ui/Button.tsx` | 4 variants: primary/secondary/ghost/destructive |
+| `Badge` | Atom | `components/ui/Badge.tsx` | 7 variants: neutral/active/inactive/pending/ai/language/level |
+| `Toggle` | Atom | `components/ui/Toggle.tsx` | Switch on/off với label và description |
+| `ProgressBar` | Atom | `components/ui/ProgressBar.tsx` | Thanh tiến trình 2 kích thước (sm/md) |
+| `AIBadge` | Atom | `components/ui/AIBadge.tsx` | Badge AI với icon Sparkles, nền tertiary-fixed |
+| `ConnectedBadge` | Atom | `components/ui/ConnectedBadge.tsx` | Trạng thái kết nối Anki ở bottom sidebar |
+| `FormField` | Molecule | `components/ui/FormField.tsx` | Input + Textarea + Select + FieldWrapper |
+| `TagInput` | Molecule | `components/ui/TagInput.tsx` | Input nhập tag với badge removable |
+| `StatCard` | Molecule | `components/ui/StatCard.tsx` | Thẻ thống kê: label + số + trend |
+| `FlowTip` | Molecule | `components/ui/FlowTip.tsx` | AI tip/callout với icon Lightbulb, nền tertiary |
+| `StepIndicator` | Molecule | `components/ui/StepIndicator.tsx` | Danh sách bước có trạng thái completed/active/pending |
+| `Card` | Molecule | `components/ui/Card.tsx` | Container card với 4 variants |
+| `FilterBar` | Organism | `components/ui/FilterBar.tsx` | Search input + active filter badges + clear all |
+| `DataTable` | Organism | `components/ui/DataTable.tsx` | Bảng dữ liệu với custom column render |
+| `Modal` | Organism | `components/ui/Modal.tsx` | Dialog với tonal header, Escape close, backdrop |
+| `LoadingOverlay` | Organism | `components/ui/LoadingOverlay.tsx` | Màn hình loading với steps + progress + flow tip |
+| `NavigationSidebar` | Organism | `components/layout/NavigationSidebar.tsx` | Sidebar fixed 256px với nav items + ConnectedBadge |
+| `PageHeader` | Template | `components/layout/PageHeader.tsx` | Header với breadcrumb `›`, title serif, actions slot |
+| `CardPreview` | Organism | `components/features/card/CardPreview.tsx` | Preview card 3 tabs: word→meaning/meaning→word/sentence |
+| `WordDetailCard` | Organism | `components/features/history/WordDetailCard.tsx` | Card chi tiết từ vựng với border-left primary |
+| `IntegrationCard` | Organism | `components/features/settings/IntegrationCard.tsx` | Card trạng thái API integration |
+
+---
 
 ### 8.3 Danh sách màn hình & Luồng tương tác
 
-| Màn hình | Route | Mô tả |
-|---|---|---|
-| Dashboard | `/` | Thống kê, activity gần đây |
-| Tạo card mới | `/create` | Form nhập liệu chính |
-| Preview & Review | `/preview` | Xem trước card trước khi tạo |
-| Lịch sử | `/history` | Danh sách entries đã tạo |
-| Chi tiết entry | `/history/[id]` | Xem chi tiết 1 entry |
-| **Quản lý nội dung** | **`/admin`** | **CRUD categories, topics, card types, content types, decks** |
-| Cài đặt | `/settings` | API keys, cấu hình hệ thống |
+| Màn hình | Route | Primary Components | Shared Components Used |
+|---|---|---|---|
+| Dashboard | `/dashboard` | `StatCard` (×4), `EntryListItem` | `PageHeader`, `Button`, `Badge` |
+| Tạo card mới | `/create` | Form components (Language/IT/General) | `FormField`, `Select`, `Badge`, `Button`, `LoadingOverlay`, `PageHeader` |
+| Preview & Review | `/preview` | `CardPreview`, `CollocationEditor`, `ImageSelector`, `AudioPlayer` | `Button`, `Badge`, `Modal`, `Input`, `PageHeader` |
+| Lịch sử | `/history` | `HistoryTable` (dùng `DataTable`), `WordDetailCard` | `FilterBar`, `DataTable`, `Badge`, `Button`, `PageHeader` |
+| Chi tiết entry | `/history/[id]` | `WordDetailCard`, `CardPreview` | `Badge`, `Button`, `PageHeader` |
+| Quản lý (Admin) | `/admin` | `CategoryManager`, `CardTypeManager`, `TopicManager`, `DeckManager`, `ContentTypeManager` | `DataTable`, `Modal`, `FormField`, `Toggle`, `Badge`, `Button`, `PageHeader` |
+| Cài đặt | `/settings` | `IntegrationCard` (×4) | `FormField`, `Toggle`, `Button`, `PageHeader` |
+| Layout (Root) | `app/layout.tsx` | `NavigationSidebar` | `AnkiFlowLogo`, `ConnectedBadge` |
 
-(Chi tiết luồng tương tác các trang xem thêm ở phiên bản trước - áp dụng thiết kế Light Mode và Tonal Architecture)
+---
+
+### 8.4 Screen-to-Component Mapping
+
+### Dashboard — `/dashboard`
+
+**Shared components:**
+- `PageHeader` — hiển thị greeting "Control Center" bằng font-serif display
+- `Button` variant `primary` — Quick action "Tạo card mới" → `/create`
+- `Badge` — hiển thị language/status trên mỗi entry gần đây
+- `ProgressBar` — (tùy chọn) hiển thị tiến độ học hàng tuần
+
+**Screen-specific components:**
+- `StatCard` (`components/ui/StatCard.tsx`) — grid 4 cột: Total Vocabulary, Total Cards, Created Today, Success Rate
+- `EntryListItem` (`components/history/EntryListItem.tsx`) — dòng 1 entry trong danh sách 10 từ gần đây
+
+**State cần manage:**
+- `stats`: `{ totalVocab: number; totalCards: number; todayCount: number }` — fetch từ Firestore
+- `recentEntries`: `Entry[]` — 10 entries mới nhất
+
+---
+
+### Tạo card mới — `/create`
+
+**Shared components:**
+- `LoadingOverlay` — hiện khi đang generate (3 steps: Gemini → TTS → Unsplash)
+- `PageHeader` — breadcrumb: Home › Create Card › [Form type]
+- `Button` variant `primary` — "Tạo nháp"
+- `FormField` (Input/Textarea/Select) — tất cả form fields
+- `Badge` variant `language` — hiển thị ngôn ngữ đang chọn
+- `FlowTip` — gợi ý AI cho user
+
+**Screen-specific components:**
+- `DeckSelector` (`components/create/DeckSelector.tsx`) — dùng `Select` từ FormField
+- `CategorySelector` (`components/create/CategorySelector.tsx`) — dùng `Select` từ FormField
+- `LanguageSelector` (`components/create/LanguageSelector.tsx`) — 3 options với Badge
+- `CardTypeSelector` (`components/create/CardTypeSelector.tsx`) — checkbox list + Toggle
+- `TopicSelector` (`components/create/TopicSelector.tsx`) — chỉ form IT, Badge active/neutral
+- `LanguageForm` / `ITForm` / `GeneralForm` — form tương ứng từng content type
+
+**State cần manage:**
+- `formType`: `FormType` — detect từ deck hoặc chọn thủ công
+- `sessionState`: `SessionState` — load từ localStorage, auto-save on change
+- `isGenerating`: `boolean` — điều khiển LoadingOverlay
+- `generationSteps`: `Step[]` — trạng thái từng bước generate
+
+---
+
+### Preview & Review — `/preview`
+
+**Shared components:**
+- `PageHeader` — breadcrumb: Home › Create Card › Preview
+- `Button` variant `primary` — "Xác nhận & Tạo"
+- `Button` variant `ghost` — "Quay lại", "Tìm lại ảnh"
+- `Modal` — confirm trước khi tạo Anki notes
+- `Badge` — level, word type
+
+**Screen-specific components:**
+- `EditableField` (`components/preview/EditableField.tsx`) — click-to-edit với Input/Textarea
+- `CollocationEditor` (`components/preview/CollocationEditor.tsx`) — dùng `Badge` + `@dnd-kit/core`
+- `ImageSelector` (`components/preview/ImageSelector.tsx`) — grid 5 ảnh, selected ring-primary
+- `AudioPlayer` (`components/preview/AudioPlayer.tsx`) — play/stop/regenerate
+- `CardPreview` (`components/features/card/CardPreview.tsx`) — 3 tab front/back preview
+- `CardList` (`components/preview/CardList.tsx`) — grid card types với Toggle
+
+**State cần manage:**
+- `previewData`: `Entry` — dữ liệu được generate từ Create page
+- `selectedImage`: `UnsplashImage | null`
+- `selectedCardTypes`: `string[]` — các card type đã chọn
+- `confirmModalOpen`: `boolean`
+
+---
+
+### Lịch sử — `/history`
+
+**Shared components:**
+- `PageHeader` — title "Lịch sử từ vựng"
+- `DataTable` — bảng chính (KHÔNG tạo table mới)
+- `FilterBar` — search + filter + active filter badges
+- `Badge` — trạng thái entry (active/inactive/pending)
+- `Button` — actions trong mỗi row
+
+**Screen-specific components:**
+- `HistoryTable` (`components/history/HistoryTable.tsx`) — wrapper `DataTable` với columns cụ thể
+- `WordDetailCard` (`components/features/history/WordDetailCard.tsx`) — trang chi tiết `/history/[id]`
+
+**State cần manage:**
+- `entries`: `Entry[]` — danh sách từ Firestore (có pagination)
+- `searchQuery`: `string`
+- `activeFilters`: `ActiveFilter[]` — category, language, deck, date range
+- `currentPage`: `number`
+
+---
+
+### Quản lý (Admin) — `/admin`
+
+**Shared components:**
+- `PageHeader` — title "Control Center" với `actions` = nút "Thêm mới"
+- `DataTable` — tất cả Manager component dùng chung (KHÔNG duplicate table logic)
+- `Modal` — form Thêm/Sửa record
+- `FormField` (Input/Select) — bên trong Modal
+- `Toggle` — is_active, is_default switches
+- `Badge` — trạng thái active/inactive
+- `Button` variant `primary` — "Lưu", `ghost` — "Hủy", `destructive` — "Xóa"
+
+**Screen-specific components:**
+- `CategoryManager` (`components/admin/CategoryManager.tsx`)
+- `CardTypeManager` (`components/admin/CardTypeManager.tsx`)
+- `TopicManager` (`components/admin/TopicManager.tsx`)
+- `DeckManager` (`components/admin/DeckManager.tsx`)
+- `ContentTypeManager` (`components/admin/ContentTypeManager.tsx`)
+
+**State cần manage:**
+- `activeTab`: `'categories' | 'card-types' | 'topics' | 'decks' | 'content-types'`
+- `modalOpen`: `boolean`
+- `editingRecord`: `Category | CardTypeConfig | Topic | DeckConfig | null`
+- `isLoading`: `boolean` — CRUD operations
+
+---
+
+### Cài đặt — `/settings`
+
+**Shared components:**
+- `PageHeader` — title "Settings" với description
+- `FormField` (Input) — AnkiConnect URL
+- `FormField` (Select) — Gemini model
+- `Toggle` — unsplash_enabled, tts_enabled
+- `Button` variant `primary` — "Lưu thay đổi"
+- `Button` variant `ghost` — "Test connection"
+
+**Screen-specific components:**
+- `IntegrationCard` (`components/features/settings/IntegrationCard.tsx`) — hiển thị từng API: AnkiConnect, Gemini, Google TTS, Unsplash
+
+**State cần manage:**
+- `settings`: `Settings` — load từ Firestore `settings` collection
+- `connectionStatus`: `Record<string, 'active' | 'inactive' | 'pending'>`
+- `isSaving`: `boolean`
+
+---
+
+### Layout (Root) — `app/layout.tsx`
+
+**Shared components:**
+- `NavigationSidebar` — sidebar fixed w-64, bao gồm `AnkiFlowLogo` + nav items + `ConnectedBadge`
+- `ConnectedBadge` — bottom sidebar, polling AnkiConnect mỗi 30s
+
+**State cần manage:**
+- `ankiConnected`: `boolean` — global state, poll từ `/api/anki/connect`
 
 ## 9. 🃏 Anki Card Templates — Thiết kế mới
 
