@@ -476,40 +476,40 @@
 
 ### 2.3 Preview Page
 
-- [ ] **Tạo `components/preview/EditableField.tsx`**
+- [x] **Tạo `components/preview/EditableField.tsx`**
   - Click to edit inline, nút Save / Cancel
   - Dùng `Input` hoặc `Textarea` từ 2.0 khi ở edit mode
   - Focus ring: `ring-2 ring-primary/30`
 
-- [ ] **Tạo `components/preview/CollocationEditor.tsx`**
+- [x] **Tạo `components/preview/CollocationEditor.tsx`**
   - Hiển thị list collocations dạng badge có thể xóa — dùng `Badge` variant `neutral` + `onRemove` từ 2.0
   - Thêm mục mới bằng `Input` từ 2.0
   - Drag to reorder: dùng `@dnd-kit/core` (đề xuất) — `DndContext` + `SortableContext`
   - Dùng ở: Preview page (cột collocations)
 
-- [ ] **Tạo `components/preview/ImageSelector.tsx`**
+- [x] **Tạo `components/preview/ImageSelector.tsx`**
   - Grid 5 ảnh Unsplash (2-col grid)
   - Ảnh được chọn: `ring-2 ring-primary`
   - Nút "Tìm lại" — dùng `Button` variant `ghost` từ 2.0
   - Dùng ở: Preview page
 
-- [ ] **Tạo `components/preview/AudioPlayer.tsx`**
+- [x] **Tạo `components/preview/AudioPlayer.tsx`**
   - Nút Play/Stop + nút "Tạo lại" — dùng `Button` từ 2.0
   - Dùng ở: Preview page
 
-- [ ] **Tạo `components/preview/CardPreview.tsx`**
+- [x] **Tạo `components/preview/CardPreview.tsx`**
   - Dùng component `CardPreview` từ COMPONENT.md (`src/components/features/card/CardPreview.tsx`)
   - Tabs: `front-back` | `back-front` | `sentence`
   - Front card: `bg-white rounded-xl shadow-card`
   - Back card: `bg-surface-low rounded-xl`
   - Content mapping theo `card_type` (word_to_meaning, audio_to_word, fill_in_blank...)
 
-- [ ] **Tạo `components/preview/CardList.tsx`**
+- [x] **Tạo `components/preview/CardList.tsx`**
   - Grid tất cả card types (2-col)
   - Checkbox bỏ bớt card type — dùng `Badge` + Toggle từ 2.0
   - Dùng ở: Preview page
 
-- [ ] **Tạo `app/preview/page.tsx`**
+- [x] **Tạo `app/preview/page.tsx`**
   - Layout 8:4 grid (`col-span-8` content + `col-span-4` card preview)
   - Dùng `PageHeader` từ 2.1, `Button` variant `primary` từ 2.0 ("Xác nhận & Tạo")
   - Dùng `Modal` từ 2.0 để confirm trước khi tạo
