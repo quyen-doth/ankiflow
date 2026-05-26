@@ -13,7 +13,6 @@ interface TopicSelectorProps {
   onChange: (ids: string[]) => void
 }
 
-// Chỉ dùng trong IT form — fetch topics với form_type = FormType.IT
 export function TopicSelector({ selectedIds, onChange }: TopicSelectorProps) {
   const [topics, setTopics] = useState<Pick<Topic, 'id' | 'name' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)

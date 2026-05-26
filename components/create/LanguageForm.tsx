@@ -2,30 +2,37 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Textarea, FieldWrapper } from '@/components/ui/FormField'
+import { Textarea, FieldWrapper } from '@/components/ui/FormField'
 import { TagInput } from '@/components/ui/TagInput'
 import { LanguageSelector } from './LanguageSelector'
 import { CategorySelector } from './CategorySelector'
 import { CardTypeSelector } from './CardTypeSelector'
+import { DeckSelector } from './DeckSelector'
 import { Button } from '@/components/ui/Button'
 import { useSession } from '@/hooks/useSession'
 import { FormType, LanguageType } from '@/types'
+import { Sparkles } from 'lucide-react'
 
-export function LanguageForm() {
+interface LanguageFormProps {
+  onGenerateStart?: () => void
+}
+
+export function LanguageForm({ onGenerateStart }: LanguageFormProps) {
   const router = useRouter()
   const { session, updateSession, resetContent, isLoaded } = useSession(FormType.LANGUAGE)
 
   const [vocabulary, setVocabulary] = useState('')
   const [notes, setNotes] = useState('')
 
-  // Ép kiểu an toàn — session.language đã được lưu dưới dạng LanguageType enum
   const language = (session?.language as LanguageType) || LanguageType.ENGLISH
+  const deckId = session?.deckId || ''
   const category = session?.categoryId || ''
   const tags = session?.tags || []
   const cardTypes = session?.cardTypeIds || []
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    onGenerateStart?.()
     resetContent()
     setVocabulary('')
     setNotes('')
@@ -35,50 +42,118 @@ export function LanguageForm() {
   if (!isLoaded) return null
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-2xl">
-      <LanguageSelector
-        value={language}
-        onChange={(v) => updateSession({ language: v })}
-      />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-0">
 
-      <CategorySelector
-        formType="Language"
-        value={category}
-        onChange={(v) => updateSession({ categoryId: v })}
-      />
+      {/* ── Row 1: Language + Deck + Category (3 cột) ── */}
+      <div className="grid grid-cols-3 gap-6 mb-6">
 
-      <FieldWrapper label="Tags">
-        <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
-      </FieldWrapper>
+        <LanguageSelector value={language} onChange={(v) => updateSession({ language: v })} />
 
-      <CardTypeSelector
-        formType="Language"
-        language={language}
-        selectedIds={cardTypes}
-        onChange={(v) => updateSession({ cardTypeIds: v })}
-      />
+        <DeckSelector
+          value={deckId}
+          onChange={(id) => updateSession({ deckId: id })}
+        />
 
-      <div className="border-t border-outline-var/30 pt-6 mt-2">
-        <FieldWrapper label="Vocabulary">
-          <Input
-            placeholder="Enter vocabulary..."
-            value={vocabulary}
-            onChange={(e) => setVocabulary(e.target.value)}
-          />
+        <CategorySelector
+          formType="Language"
+          value={category}
+          onChange={(v) => updateSession({ categoryId: v })}
+        />
+
+      </div>
+
+      {/* ── Tags ── */}
+      <div className="mb-2">
+        <FieldWrapper 
+          label="TAGS"
+          className="text-xs text-gray-400 tracking-wider font-normal"
+        >
+          <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
         </FieldWrapper>
       </div>
 
-      <FieldWrapper label="Notes">
+      {/* ── Divider: CORE CONTENT ── */}
+      <div className="relative flex items-center gap-3 my-8">
+        <div className="flex-1 border-t border-gray-200" />
+        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">
+          Core Content
+        </span>
+        <div className="flex-1 border-t border-gray-200" />
+      </div>
+
+      {/* ── Vocabulary Item ── */}
+      <div className="mb-6">
+        <label className="text-xs uppercase text-gray-400 tracking-wider font-bold block mb-2">
+          Vocabulary Item
+        </label>
+        <input
+          type="text"
+          value={vocabulary}
+          onChange={(e) => setVocabulary(e.target.value)}
+          placeholder=""
+          className="w-full bg-[#F6F4EF] hover:bg-[#EFECE5] transition-colors border-none rounded-2xl px-5 py-4 text-xl font-bold text-gray-800 placeholder:text-gray-300 placeholder:font-bold focus:outline-none focus:ring-0 appearance-none shadow-none"
+        />
+      </div>
+
+      {/* ── Contextual Note ── */}
+      <div className="mb-6">
+        <label className="text-xs uppercase text-gray-400 tracking-wider font-bold block mb-2">
+          Contextual Note
+        </label>
         <Textarea
-          placeholder="Context, sentence, or grammar notes..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          rows={4}
+          placeholder=""
+          rows={3}
+          className="w-full bg-[#F6F4EF] hover:bg-[#EFECE5] transition-colors border-none rounded-2xl px-5 py-4 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 resize-none appearance-none shadow-none"
         />
-      </FieldWrapper>
+      </div>
 
+      {/* ── Divider: CARD GENERATION OPTIONS ── */}
+      <div className="relative flex items-center gap-3 my-8">
+        <div className="flex-1 border-t border-gray-200" />
+        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">
+          Card Generation Options
+        </span>
+        <div className="flex-1 border-t border-gray-200" />
+      </div>
+
+      {/* ── Card Type Selector ── */}
+      <div className="mb-10">
+        <CardTypeSelector
+          formType="Language"
+          language={language}
+          selectedIds={cardTypes}
+          onChange={(v) => updateSession({ cardTypeIds: v })}
+        />
+      </div>
+
+      {/* ── Smart Enrichment Banner ── */}
+      <div className="bg-[#FAF8F5] border border-[#EBE6DD] border-l-[6px] border-l-[#8C7A61] rounded-2xl p-6 flex items-center gap-5 mb-8 shadow-sm">
+        <div className="w-12 h-12 rounded-full bg-[#8C7A61] flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <p className="text-base font-bold text-[#8C7A61] leading-none mb-2">
+            Smart Enrichment Active
+          </p>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Our AI will automatically fetch <strong className="text-gray-900 font-bold">native audio samples</strong>,{' '}
+            <strong className="text-gray-900 font-bold">stroke order diagrams</strong>, and{' '}
+            <strong className="text-gray-900 font-bold">3 context sentences</strong> based on your input.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Generate Button ── */}
       <div className="flex justify-end mt-4">
-        <Button type="submit" variant="primary">Generate Draft</Button>
+        <Button
+          type="submit"
+          disabled={!vocabulary.trim()}
+          className="bg-[#1B4D3E] hover:bg-[#14392e] text-white px-10 py-4 text-base font-bold rounded-[1.5rem] shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Generate
+        </Button>
       </div>
     </form>
   )

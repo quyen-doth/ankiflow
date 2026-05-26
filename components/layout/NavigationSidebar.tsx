@@ -2,7 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, PlusCircle, History, Shield, Settings } from 'lucide-react'
+import {
+  LayoutDashboard,
+  PlusCircle,
+  History,
+  Shield,
+  Settings,
+} from 'lucide-react'
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo'
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge'
 import { cn } from '@/lib/utils'
@@ -19,14 +25,13 @@ export function NavigationSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 h-screen bg-surface-low border-r border-outline-var flex flex-col py-4 px-3 fixed left-0 top-0 z-30">
-      {/* Logo */}
-      <div className="px-2 py-2 mb-6">
+    <aside className="w-64 h-screen bg-white flex flex-col py-6 fixed left-0 top-0 z-30 border-r border-gray-100">
+      <div className="pl-8 pr-4 py-2 mb-10">
         <AnkiFlowLogo />
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 flex flex-col gap-0.5">
+      <nav className="flex-1 flex flex-col gap-2">
         {navItems.map(({ label, href, icon: Icon }) => {
           const isActive = pathname === href || pathname?.startsWith(href + '/')
           return (
@@ -34,21 +39,26 @@ export function NavigationSidebar() {
               key={href}
               href={href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors duration-150',
+                'relative flex items-center gap-4 py-3 pl-8 pr-6 text-sm transition-all duration-200 mr-6 rounded-r-full',
                 isActive
-                  ? 'bg-primary/10 text-primary font-bold'
-                  : 'text-on-surface-var font-normal hover:bg-primary/5'
+                  ? 'border border-[#316342] border-l-0 text-[#316342] font-bold bg-white'
+                  : 'border border-transparent border-l-0 text-gray-500 font-medium hover:bg-gray-50 hover:text-gray-900'
               )}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
+              <Icon className={cn(
+                'w-5 h-5 flex-shrink-0 transition-colors',
+                isActive ? 'text-[#316342]' : 'text-gray-400'
+              )} />
+              <span className="tracking-wide">{label}</span>
             </Link>
           )
         })}
       </nav>
 
-      {/* Bottom: Connected badge */}
-      <ConnectedBadge />
+      {/* Bottom: ConnectedBadge */}
+      <div className="mt-auto pl-8 pr-6 pb-2">
+        <ConnectedBadge />
+      </div>
     </aside>
   )
 }

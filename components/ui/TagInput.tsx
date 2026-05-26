@@ -47,7 +47,7 @@ export function TagInput({ tags, onChange, placeholder = '+ Add Tag', maxTags = 
           onKeyDown={handleKeyDown}
           onBlur={() => addTag(inputValue)}
           placeholder={placeholder}
-          className="text-sm text-on-surface-var placeholder:text-on-surface-var/60 border border-dashed border-outline-var rounded-full px-3 py-0.5 focus:outline-none focus:border-primary min-w-20 bg-transparent"
+          className="text-sm text-on-surface-var placeholder:text-on-surface-var/60 border border-dashed border-outline-var rounded-full px-3 py-2 focus:outline-none focus:border-primary min-w-20 bg-transparent"
         />
       )}
     </div>

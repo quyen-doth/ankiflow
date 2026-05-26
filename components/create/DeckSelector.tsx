@@ -11,10 +11,14 @@ type UIFormType = 'Language' | 'IT' | 'General'
 
 interface DeckSelectorProps {
   value: string
-  onChange: (deckId: string, formType: UIFormType) => void
+  /** onChangeFull: nhận cả deckId + formType (dùng trong page cần auto-detect form) */
+  onChange?: (deckId: string, formType: UIFormType) => void
+  /** onChangeId: chỉ nhận deckId (dùng trong form đã biết formType) */
+  onChangeId?: (deckId: string) => void
+  label?: string
 }
 
-export function DeckSelector({ value, onChange }: DeckSelectorProps) {
+export function DeckSelector({ value, onChange, onChangeId, label = 'ANKI DECK' }: DeckSelectorProps) {
   const [decks, setDecks] = useState<Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -37,18 +41,22 @@ export function DeckSelector({ value, onChange }: DeckSelectorProps) {
   }, [])
 
   return (
-    <FieldWrapper label="Target Deck">
+    <FieldWrapper 
+      label={label}
+      className="text-xs uppercase text-gray-400 tracking-wider font-bold"
+    >
       <Select
         value={value}
         onChange={(e) => {
           const selectedDeck = decks.find(d => d.id === e.target.value)
           if (selectedDeck) {
-            // Dùng DB_FORM_TYPE_TO_UI để chuyển Firestore enum → UI label
             const uiFormType = DB_FORM_TYPE_TO_UI[selectedDeck.form_type]
-            onChange(selectedDeck.id, uiFormType)
+            onChange?.(selectedDeck.id, uiFormType)
+            onChangeId?.(selectedDeck.id)
           }
         }}
         disabled={loading}
+        className="w-full bg-[#F6F4EF] hover:bg-[#EFECE5] transition-colors border-none rounded-4xl px-4 py-3 text-sm text-gray-800 focus:ring-0 cursor-pointer appearance-none"
       >
         <option value="" disabled>{loading ? 'Loading...' : 'Select a deck...'}</option>
         {decks.map(deck => (

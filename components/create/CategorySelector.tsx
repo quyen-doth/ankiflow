@@ -49,8 +49,16 @@ export function CategorySelector({ formType, value, onChange }: CategorySelector
   }, [formType])
 
   return (
-    <FieldWrapper label="Category">
-      <Select value={value} onChange={(e) => onChange(e.target.value)} disabled={!formType || loading}>
+    <FieldWrapper 
+      label="CATEGORY" 
+      className="text-xs uppercase text-gray-400 tracking-wider font-bold"
+    >
+      <Select 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)} 
+        disabled={!formType || loading}
+        className="w-full bg-[#F6F4EF] hover:bg-[#EFECE5] transition-colors border-none rounded-4xl px-4 py-3 text-sm text-gray-800 focus:ring-0 cursor-pointer appearance-none"
+      >
         <option value="" disabled>{loading ? 'Loading...' : 'Select category...'}</option>
         {categories.map(cat => (
           <option key={cat.id} value={cat.id}>{cat.name}</option>
