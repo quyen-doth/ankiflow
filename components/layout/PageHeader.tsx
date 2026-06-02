@@ -16,12 +16,13 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, crumbs, description, actions, className }: PageHeaderProps) {
+  const displayTitle = title ?? crumbs?.[crumbs.length - 1]?.label
+
   return (
     <header className={cn('mb-8', className)}>
       {/* Breadcrumb */}
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex items-center text-sm font-medium text-gray-600" aria-label="Breadcrumb">
-          {/* Home icon link */}
+        <nav className="flex items-center text-sm font-medium text-gray-600 mb-3" aria-label="Breadcrumb">
           <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors flex items-center">
             <Home className="w-4 h-4" />
           </Link>
@@ -45,6 +46,27 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
             </span>
           ))}
         </nav>
+      )}
+
+      {/* Title row — chỉ hiện khi có title hoặc actions */}
+      {(displayTitle || description || actions) && (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            {displayTitle && (
+              <h1 className="font-serif text-headline-md text-on-surface leading-tight">
+                {displayTitle}
+              </h1>
+            )}
+            {description && (
+              <p className="text-body-md text-on-surface-var mt-1.5">{description}</p>
+            )}
+          </div>
+          {actions && (
+            <div className="flex items-center gap-3 flex-shrink-0 pt-1">
+              {actions}
+            </div>
+          )}
+        </div>
       )}
     </header>
   )

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { LanguageForm } from '@/components/create/LanguageForm'
 import { ITForm } from '@/components/create/ITForm'
@@ -10,7 +9,7 @@ import { LoadingOverlay } from '@/components/ui/LoadingOverlay'
 import { cn } from '@/lib/utils'
 import { Languages, Terminal, BookOpen, SlidersHorizontal, Check } from 'lucide-react'
 
-// ─── Content Type Selector ─────────────────────────────────────────────────
+// ─── Content Type ────────────────────────────────────────────────────────────
 type ContentType = 'Language' | 'IT' | 'General' | 'Custom'
 
 const CONTENT_TYPES: {
@@ -25,7 +24,22 @@ const CONTENT_TYPES: {
   { id: 'Custom',   label: 'Custom',    icon: SlidersHorizontal, disabled: true },
 ]
 
-// ─── Step Badge ─────────────────────────────────────────────────────────────
+// ─── Step types cho Loading Overlay ─────────────────────────────────────────
+type StepStatus = 'completed' | 'active' | 'pending'
+
+interface LoadingStep {
+  label: string
+  description?: string
+  status: StepStatus
+}
+
+const INITIAL_STEPS: LoadingStep[] = [
+  { label: 'Calling Gemini AI', status: 'active' },
+  { label: 'Generating audio (TTS)', status: 'pending' },
+  { label: 'Finding images (Unsplash)', status: 'pending' },
+]
+
+// ─── Step Badge ──────────────────────────────────────────────────────────────
 function StepBadge({ number, label }: { number: number; label: string }) {
   return (
     <div className="flex items-center gap-4 mb-6">
@@ -37,13 +51,34 @@ function StepBadge({ number, label }: { number: number; label: string }) {
   )
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function CreatePage() {
-  const router = useRouter()
   const [formType, setFormType] = useState<ContentType>('Language')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS)
+  const [progress, setProgress] = useState(0)
 
   const activeType = CONTENT_TYPES.find(t => t.id === formType)
+
+  /** Callback nhận từ form — cập nhật step trong LoadingOverlay */
+  const handleStepUpdate = useCallback((stepIndex: number, status: StepStatus) => {
+    setLoadingSteps(prev => prev.map((s, i) => (i === stepIndex ? { ...s, status } : s)))
+    // Tính progress: mỗi step hoàn thành = 33%
+    const completedSteps = stepIndex + (status === 'completed' ? 1 : 0)
+    setProgress(Math.round((completedSteps / INITIAL_STEPS.length) * 100))
+  }, [])
+
+  /** Bắt đầu loading — gọi từ form ngay khi submit */
+  const handleGenerateStart = useCallback(() => {
+    setIsGenerating(true)
+    setLoadingSteps(INITIAL_STEPS)
+    setProgress(0)
+  }, [])
+
+  /** Kết thúc loading (lỗi hoặc navigate) */
+  const handleGenerateEnd = useCallback(() => {
+    setIsGenerating(false)
+  }, [])
 
   return (
     <>
@@ -82,7 +117,6 @@ export default function CreatePage() {
                       <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
                     </span>
                   )}
-                  {/* Vòng tròn bọc Icon */}
                   <div className={cn(
                     'w-14 h-14 rounded-full flex items-center justify-center transition-colors',
                     isActive ? 'bg-[#316342]/10' : 'bg-black/5'
@@ -105,28 +139,37 @@ export default function CreatePage() {
 
           <div className="mt-6">
             {formType === 'Language' && (
-              <LanguageForm onGenerateStart={() => setIsGenerating(true)} />
+              <LanguageForm
+                onGenerateStart={handleGenerateStart}
+                onStepUpdate={handleStepUpdate}
+                onGenerateEnd={handleGenerateEnd}
+              />
             )}
             {formType === 'IT' && (
-              <ITForm onGenerateStart={() => setIsGenerating(true)} />
+              <ITForm
+                onGenerateStart={handleGenerateStart}
+                onStepUpdate={handleStepUpdate}
+                onGenerateEnd={handleGenerateEnd}
+              />
             )}
             {formType === 'General' && (
-              <GeneralForm onGenerateStart={() => setIsGenerating(true)} />
+              <GeneralForm
+                onGenerateStart={handleGenerateStart}
+                onStepUpdate={handleStepUpdate}
+                onGenerateEnd={handleGenerateEnd}
+              />
             )}
           </div>
         </section>
       </div>
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay — hiển thị tiến trình generate thực tế */}
       <LoadingOverlay
         open={isGenerating}
         title="Generating Cognitive Asset"
-        steps={[
-          { label: 'Calling Gemini AI', status: 'active' },
-          { label: 'Generating audio (TTS)', status: 'pending' },
-          { label: 'Finding images (Unsplash)', status: 'pending' },
-        ]}
-        progress={33}
+        steps={loadingSteps}
+        progress={progress}
+        flowTip="Tip: Câu ví dụ ngắn gọn giúp não ghi nhớ nhanh hơn 3–5 lần so với định nghĩa dài."
       />
     </>
   )

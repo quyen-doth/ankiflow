@@ -11,18 +11,26 @@ import { DeckSelector } from './DeckSelector'
 import { Button } from '@/components/ui/Button'
 import { useSession } from '@/hooks/useSession'
 import { FormType, LanguageType } from '@/types'
+import { savePendingEntry } from '@/lib/pendingEntry'
 import { Sparkles } from 'lucide-react'
+
+type StepStatus = 'completed' | 'active' | 'pending'
 
 interface LanguageFormProps {
   onGenerateStart?: () => void
+  /** Callback cập nhật từng bước trong LoadingOverlay của trang cha */
+  onStepUpdate?: (stepIndex: number, status: StepStatus) => void
+  /** Callback khi kết thúc (lỗi) — để ẩn overlay */
+  onGenerateEnd?: () => void
 }
 
-export function LanguageForm({ onGenerateStart }: LanguageFormProps) {
+export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: LanguageFormProps) {
   const router = useRouter()
   const { session, updateSession, resetContent, isLoaded } = useSession(FormType.LANGUAGE)
 
   const [vocabulary, setVocabulary] = useState('')
   const [notes, setNotes] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const language = (session?.language as LanguageType) || LanguageType.ENGLISH
   const deckId = session?.deckId || ''
@@ -30,13 +38,74 @@ export function LanguageForm({ onGenerateStart }: LanguageFormProps) {
   const tags = session?.tags || []
   const cardTypes = session?.cardTypeIds || []
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+
+    // 1. Thông báo bắt đầu → hiện LoadingOverlay
     onGenerateStart?.()
-    resetContent()
-    setVocabulary('')
-    setNotes('')
-    router.push('/preview')
+
+    try {
+      // ─── Step 0: Gọi Gemini AI ─────────────────────────────────────────────
+      onStepUpdate?.(0, 'active')
+
+      const generateRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          word: vocabulary,
+          form_type: FormType.LANGUAGE,
+          language,
+          note: notes || undefined,
+        }),
+      })
+
+      if (!generateRes.ok) {
+        const errData = await generateRes.json()
+        throw new Error(errData.error || 'Lỗi khi gọi Gemini API')
+      }
+
+      const { content: generatedContent } = await generateRes.json()
+      onStepUpdate?.(0, 'completed')
+
+      // ─── Step 1: TTS (chạy background, không blocking) ────────────────────
+      onStepUpdate?.(1, 'active')
+      // TODO: gọi /api/audio khi đã có cấu hình TTS
+      // Hiện tại mark completed sau 500ms để UX mượt
+      await new Promise(r => setTimeout(r, 500))
+      onStepUpdate?.(1, 'completed')
+
+      // ─── Step 2: Unsplash images ───────────────────────────────────────────
+      onStepUpdate?.(2, 'active')
+      // TODO: gọi /api/image khi đã có Unsplash API key
+      await new Promise(r => setTimeout(r, 400))
+      onStepUpdate?.(2, 'completed')
+
+      // ─── Lưu kết quả vào localStorage ──────────────────────────────────────
+      savePendingEntry({
+        generatedContent,
+        formType: FormType.LANGUAGE,
+        language,
+        deckId,
+        categoryId: category,
+        cardTypeIds: cardTypes,
+        tags,
+        savedAt: new Date().toISOString(),
+      })
+
+      // ─── Reset content fields (giữ session selectors) ──────────────────────
+      resetContent()
+      setVocabulary('')
+      setNotes('')
+
+      // ─── Navigate sang Preview ─────────────────────────────────────────────
+      router.push('/preview')
+
+    } catch (err) {
+      console.error('Lỗi generate:', err)
+      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.')
+      onGenerateEnd?.() // Ẩn loading overlay khi lỗi
+    }
   }
 
   if (!isLoaded) return null
@@ -46,25 +115,21 @@ export function LanguageForm({ onGenerateStart }: LanguageFormProps) {
 
       {/* ── Row 1: Language + Deck + Category (3 cột) ── */}
       <div className="grid grid-cols-3 gap-6 mb-6">
-
         <LanguageSelector value={language} onChange={(v) => updateSession({ language: v })} />
-
         <DeckSelector
           value={deckId}
           onChange={(id) => updateSession({ deckId: id })}
         />
-
         <CategorySelector
           formType="Language"
           value={category}
           onChange={(v) => updateSession({ categoryId: v })}
         />
-
       </div>
 
       {/* ── Tags ── */}
       <div className="mb-2">
-        <FieldWrapper 
+        <FieldWrapper
           label="TAGS"
           className="text-xs text-gray-400 tracking-wider font-normal"
         >
@@ -144,6 +209,13 @@ export function LanguageForm({ onGenerateStart }: LanguageFormProps) {
           </p>
         </div>
       </div>
+
+      {/* ── Error message ── */}
+      {error && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          ⚠️ {error}
+        </div>
+      )}
 
       {/* ── Generate Button ── */}
       <div className="flex justify-end mt-4">

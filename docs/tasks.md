@@ -517,26 +517,26 @@
 
 ### 2.4 History Page
 
-- [ ] **Tạo `components/history/HistoryTable.tsx`**
+- [x] **Tạo `components/history/HistoryTable.tsx`**
   - **Dùng `DataTable` từ 2.0** — không tạo lại table logic
   - Columns: Từ vựng, Nghĩa, Ngôn ngữ/Form, Deck, Trạng thái, Ngày tạo, Actions
   - Trạng thái dùng `Badge` từ 2.0 (variant `active`/`inactive`/`pending`)
   - Actions: xem chi tiết, xoá — dùng `Button` từ 2.0
 
-- [ ] **Sử dụng `FilterBar` từ 2.0** trong History page
+- [x] **Sử dụng `FilterBar` từ 2.0** trong History page
   - Filters: Category, Language, Deck, Date range
   - Search: từ/nghĩa — placeholder "Tìm từ vựng..."
   - Không tạo `components/history/FilterBar.tsx` riêng — reuse từ `components/ui/FilterBar.tsx`
 
-- [ ] **Tạo `components/history/WordDetailCard.tsx`**
+- [x] **Tạo `components/history/WordDetailCard.tsx`**
   - Dùng component `WordDetailCard` từ COMPONENT.md
   - Hiển thị: word, reading, meaning, level badge, status badge, nút play audio
   - Border left accent: `border-l-4 border-l-primary`
 
-- [ ] **Tạo `app/history/page.tsx`**
+- [x] **Tạo `app/history/page.tsx`**
   - Dùng `PageHeader` từ 2.1, `FilterBar` + `DataTable` từ 2.0
 
-- [ ] **Tạo `app/history/[id]/page.tsx`**
+- [x] **Tạo `app/history/[id]/page.tsx`**
   - Dùng `WordDetailCard` + `CardPreview` từ 2.3
   - Layout 8:4 grid
 
