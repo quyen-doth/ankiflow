@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Input, Textarea, FieldWrapper, Select } from '@/components/ui/FormField'
 import { TopicSelector } from './TopicSelector'
 import { DeckSelector } from './DeckSelector'
+import { SmartEnrichmentBanner } from './SmartEnrichmentBanner'
+import { SectionDivider } from './SectionDivider'
+import { ErrorMessage } from '@/components/ui/ErrorMessage'
 import { Button } from '@/components/ui/Button'
 import { useSession } from '@/hooks/useSession'
 import { FormType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
-import { Sparkles } from 'lucide-react'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -37,11 +39,9 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
     onGenerateStart?.()
 
     try {
-      // ─── Step 0: Gọi Gemini AI ─────────────────────────────────────────────
       onStepUpdate?.(0, 'active')
 
       const generateRes = await fetch('/api/generate', {
@@ -64,17 +64,14 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
       const { content: generatedContent } = await generateRes.json()
       onStepUpdate?.(0, 'completed')
 
-      // ─── Step 1: TTS (placeholder) ─────────────────────────────────────────
       onStepUpdate?.(1, 'active')
       await new Promise(r => setTimeout(r, 400))
       onStepUpdate?.(1, 'completed')
 
-      // ─── Step 2: Images (placeholder) ─────────────────────────────────────
       onStepUpdate?.(2, 'active')
       await new Promise(r => setTimeout(r, 300))
       onStepUpdate?.(2, 'completed')
 
-      // ─── Lưu kết quả ──────────────────────────────────────────────────────
       savePendingEntry({
         generatedContent,
         formType: FormType.IT,
@@ -89,7 +86,6 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
       setTerm('')
       setDefinition('')
       setKeywords('')
-
       router.push('/preview')
 
     } catch (err) {
@@ -104,12 +100,8 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-0">
 
-      {/* ── Row 1: Deck + Topics + Difficulty (3 cột) ── */}
       <div className="grid grid-cols-3 gap-4 mb-5">
-        <DeckSelector
-          value={deckId}
-          onChangeId={(id) => updateSession({ deckId: id })}
-        />
+        <DeckSelector value={deckId} onChangeId={(id) => updateSession({ deckId: id })} />
         <TopicSelector selectedIds={topics} onChange={(v) => updateSession({ topicIds: v })} />
         <FieldWrapper label="Difficulty">
           <Select value={difficulty} onChange={(e) => updateSession({ difficulty: e.target.value })}>
@@ -120,16 +112,8 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
         </FieldWrapper>
       </div>
 
-      {/* ── Divider: CORE CONTENT ── */}
-      <div className="relative flex items-center gap-3 my-8">
-        <div className="flex-1 border-t border-outline-var" />
-        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">
-          Core Content
-        </span>
-        <div className="flex-1 border-t border-outline-var" />
-      </div>
+      <SectionDivider label="Core Content" />
 
-      {/* ── Technical Term ── */}
       <div className="mb-4">
         <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Technical Term
@@ -143,7 +127,6 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
         />
       </div>
 
-      {/* ── Definition (ghi chú — không phải definition từ AI) ── */}
       <div className="mb-4">
         <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Your Definition (optional)
@@ -157,7 +140,6 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
         />
       </div>
 
-      {/* ── Keywords ── */}
       <div className="mb-5">
         <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Keywords (comma separated)
@@ -169,27 +151,14 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
         />
       </div>
 
-      {/* ── Smart Enrichment Banner ── */}
-      <div className="bg-tertiary-fixed/30 border border-tertiary-fixed border-l-[4px] border-l-tertiary rounded-xl p-5 flex items-start gap-4 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-tertiary mb-1">Smart Enrichment Active</p>
-          <p className="text-sm text-on-surface-var leading-relaxed">
-            Our AI will automatically generate <strong className="text-on-surface font-bold">analogies</strong>,{' '}
-            <strong className="text-on-surface font-bold">code examples</strong>, and{' '}
-            <strong className="text-on-surface font-bold">related concepts</strong> based on your input.
-          </p>
-        </div>
-      </div>
+      <SmartEnrichmentBanner>
+        Our AI will automatically generate{' '}
+        <strong className="text-on-surface font-bold">analogies</strong>,{' '}
+        <strong className="text-on-surface font-bold">code examples</strong>, and{' '}
+        <strong className="text-on-surface font-bold">related concepts</strong> based on your input.
+      </SmartEnrichmentBanner>
 
-      {/* ── Error message ── */}
-      {error && (
-        <div className="mb-4 px-4 py-3 bg-error-container border border-error/30 rounded-xl text-sm text-on-error">
-          ⚠️ {error}
-        </div>
-      )}
+      <ErrorMessage message={error} />
 
       <div className="flex justify-end">
         <Button

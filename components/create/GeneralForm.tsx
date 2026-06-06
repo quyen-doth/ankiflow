@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Textarea, FieldWrapper } from '@/components/ui/FormField'
 import { TagInput } from '@/components/ui/TagInput'
 import { DeckSelector } from './DeckSelector'
+import { SmartEnrichmentBanner } from './SmartEnrichmentBanner'
+import { SectionDivider } from './SectionDivider'
+import { ErrorMessage } from '@/components/ui/ErrorMessage'
 import { Button } from '@/components/ui/Button'
 import { useSession } from '@/hooks/useSession'
 import { FormType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
-import { Sparkles } from 'lucide-react'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -34,12 +36,9 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-
     onGenerateStart?.()
 
     try {
-      // General form không có AI generate — dữ liệu do user nhập thủ công
-      // Chỉ chạy qua các steps để UX nhất quán
       onStepUpdate?.(0, 'active')
       await new Promise(r => setTimeout(r, 300))
       onStepUpdate?.(0, 'completed')
@@ -52,11 +51,10 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
       await new Promise(r => setTimeout(r, 200))
       onStepUpdate?.(2, 'completed')
 
-      // ─── Tạo entry thủ công từ input ───────────────────────────────────────
       const generatedContent = {
         title,
         content,
-        word: title, // dùng title như word để CardPreview render được
+        word: title,
         meaning_vi: content,
       }
 
@@ -73,7 +71,6 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
       resetContent()
       setTitle('')
       setContent('')
-
       router.push('/preview')
 
     } catch (err) {
@@ -88,27 +85,15 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-0">
 
-      {/* ── Deck & Tags (2 cột) ── */}
       <div className="grid grid-cols-2 gap-4 mb-5">
-        <DeckSelector
-          value={deckId}
-          onChangeId={(id) => updateSession({ deckId: id })}
-        />
+        <DeckSelector value={deckId} onChangeId={(id) => updateSession({ deckId: id })} />
         <FieldWrapper label="Tags">
           <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
         </FieldWrapper>
       </div>
 
-      {/* ── Divider: CORE CONTENT ── */}
-      <div className="relative flex items-center gap-3 my-8">
-        <div className="flex-1 border-t border-outline-var" />
-        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">
-          Core Content
-        </span>
-        <div className="flex-1 border-t border-outline-var" />
-      </div>
+      <SectionDivider label="Core Content" />
 
-      {/* ── Card Title ── */}
       <div className="mb-4">
         <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Card Title
@@ -122,7 +107,6 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
         />
       </div>
 
-      {/* ── Content ── */}
       <div className="mb-5">
         <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Content
@@ -136,26 +120,13 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
         />
       </div>
 
-      {/* ── Smart Enrichment Banner ── */}
-      <div className="bg-tertiary-fixed/30 border border-tertiary-fixed border-l-[4px] border-l-tertiary rounded-xl p-5 flex items-start gap-4 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-tertiary mb-1">Smart Enrichment Active</p>
-          <p className="text-sm text-on-surface-var leading-relaxed">
-            Our AI will automatically <strong className="text-on-surface font-bold">format content</strong> and{' '}
-            <strong className="text-on-surface font-bold">suggest relevant tags</strong> based on your input.
-          </p>
-        </div>
-      </div>
+      <SmartEnrichmentBanner>
+        Our AI will automatically{' '}
+        <strong className="text-on-surface font-bold">format content</strong> and{' '}
+        <strong className="text-on-surface font-bold">suggest relevant tags</strong> based on your input.
+      </SmartEnrichmentBanner>
 
-      {/* ── Error message ── */}
-      {error && (
-        <div className="mb-4 px-4 py-3 bg-error-container border border-error/30 rounded-xl text-sm text-on-error">
-          ⚠️ {error}
-        </div>
-      )}
+      <ErrorMessage message={error} />
 
       <div className="flex justify-end">
         <Button
