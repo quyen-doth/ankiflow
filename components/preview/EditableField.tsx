@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Input } from '@/components/ui/FormField'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
@@ -18,15 +17,11 @@ export function EditableField({ value, onSave, multiline = false, className, pla
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
-  useEffect(() => {
+  const handleStartEdit = () => {
     setDraft(value)
-  }, [value])
-
-  useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus()
-    }
-  }, [isEditing])
+    setIsEditing(true)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
 
   const handleSave = () => {
     onSave(draft)
@@ -76,7 +71,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
 
   return (
     <span
-      onClick={() => setIsEditing(true)}
+      onClick={handleStartEdit}
       className={cn(
         'cursor-pointer rounded-md px-1 -mx-1 transition-colors hover:bg-primary/5 border border-transparent hover:border-primary/20',
         !value && 'text-on-surface-var italic',

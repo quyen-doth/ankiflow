@@ -20,7 +20,7 @@ export interface GenerateOptions {
   topics?: string[];
 }
 
-export const generateCardContent = async (options: GenerateOptions, retries = 2): Promise<any> => {
+export const generateCardContent = async (options: GenerateOptions, retries = 2): Promise<Record<string, unknown>> => {
   try {
     let prompt = "";
     
@@ -54,7 +54,7 @@ export const generateCardContent = async (options: GenerateOptions, retries = 2)
     try {
       const parsedData = JSON.parse(responseText);
       return parsedData;
-    } catch (parseError) {
+    } catch {
       console.error("Failed to parse Gemini JSON response:", responseText);
       throw new Error("Invalid JSON format from Gemini");
     }

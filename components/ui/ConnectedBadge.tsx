@@ -9,22 +9,18 @@ interface ConnectedBadgeProps {
 }
 
 export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps) {
-  const [connected, setConnected] = useState(propConnected ?? false)
+  const [polledConnected, setPolledConnected] = useState(false)
+  const connected = propConnected !== undefined ? propConnected : polledConnected
 
   useEffect(() => {
-    // Nếu prop được truyền cứng thì không cần poll
-    if (propConnected !== undefined) {
-      setConnected(propConnected)
-      return
-    }
+    if (propConnected !== undefined) return
 
-    // Poll AnkiConnect mỗi 30s
     async function checkAnki() {
       try {
         const res = await fetch('/api/anki/status', { cache: 'no-store' })
-        setConnected(res.ok)
+        setPolledConnected(res.ok)
       } catch {
-        setConnected(false)
+        setPolledConnected(false)
       }
     }
 

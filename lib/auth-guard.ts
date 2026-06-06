@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-type RouteHandler = (req: NextRequest, ctx: any) => Promise<NextResponse>
+type RouteContext = { params: Promise<Record<string, string>> }
+type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<NextResponse>
 
 export function withAuthGuard(handler: RouteHandler): RouteHandler {
   return async (req, ctx) => {

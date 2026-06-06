@@ -12,7 +12,7 @@ export class AnkiConnectProvider implements IFlashcardService {
     this.url = ankiConnectUrl;
   }
 
-  private async invoke<T>(action: string, params: Record<string, any> = {}): Promise<T> {
+  private async invoke<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
     try {
       const response = await fetch(this.url, {
         method: 'POST',
@@ -43,7 +43,7 @@ export class AnkiConnectProvider implements IFlashcardService {
     try {
       const version = await this.invoke<number>('version');
       return { connected: version === 6, version };
-    } catch (error) {
+    } catch {
       return { connected: false };
     }
   }

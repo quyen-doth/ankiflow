@@ -9,11 +9,12 @@ export function useSession(formType: FormType) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const initialSession = loadSession(formType);
-    if (initialSession) {
-      setSessionState(initialSession);
+    async function load() {
+      const data = loadSession(formType);
+      setSessionState(data);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
+    void load();
   }, [formType]);
 
   const updateSession = useCallback((data: Partial<SessionState>) => {

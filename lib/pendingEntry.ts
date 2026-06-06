@@ -4,7 +4,6 @@
  * Dữ liệu được lưu vào localStorage và xóa sau khi Preview page đã đọc.
  */
 
-import type { Entry } from '@/types'
 import { FormType, LanguageType } from '@/types'
 
 const STORAGE_KEY = 'ankiflow_pending_result'

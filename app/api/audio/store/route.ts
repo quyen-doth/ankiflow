@@ -1,22 +1,21 @@
-import { NextResponse } from 'next/server';
-import { storeAudioInAnki } from '@/lib/audio-service';
+import { apiSuccess, apiError, catchError } from '@/lib/api-response'
+import { storeAudioInAnki } from '@/lib/audio-service'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { base64, filename } = body;
+    const body = await request.json()
+    const { base64, filename } = body
 
     if (!base64 || !filename) {
-      return NextResponse.json({ error: 'Missing base64 or filename' }, { status: 400 });
+      return apiError('Missing base64 or filename', 400)
     }
 
-    const storedFilename = await storeAudioInAnki(filename, base64);
-
-    return NextResponse.json({ success: true, filename: storedFilename });
+    const storedFilename = await storeAudioInAnki(filename, base64)
+    return apiSuccess({ success: true, filename: storedFilename })
   } catch (error) {
-    console.error('Audio Store Error:', error);
-    const message = (error as Error).message;
-    const status = message.includes('fetch failed') ? 503 : 500;
-    return NextResponse.json({ error: message }, { status });
+    console.error('Audio Store Error:', error)
+    // Dùng 503 cho lỗi kết nối AnkiConnect (TypeError: fetch failed)
+    const status = error instanceof TypeError ? 503 : 500
+    return catchError(error, status)
   }
 }
