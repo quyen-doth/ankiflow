@@ -20,7 +20,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       key: 'word',
       header: 'Từ vựng',
       render: (_: unknown, row: Entry) => (
-        <span className="font-serif font-bold text-lg text-gray-900">
+        <span className="font-serif font-bold text-lg text-on-surface">
           {row.word || row.term || row.title || '—'}
         </span>
       ),
@@ -29,7 +29,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       key: 'meaning',
       header: 'Nghĩa',
       render: (_: unknown, row: Entry) => (
-        <span className="text-gray-600">
+        <span className="text-on-surface-var">
           {row.meaning_vi || row.definition || row.content || '—'}
         </span>
       ),
@@ -42,7 +42,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
         if (row.form_type === 'form_language') label = row.language || 'Language'
         if (row.form_type === 'form_it') label = 'IT & Dev'
         return (
-          <Badge className="bg-[#EFECE5] text-gray-700 font-medium px-3 py-1">
+          <Badge className="bg-surface-high text-on-surface-var font-medium px-3 py-1">
             {label}
           </Badge>
         )
@@ -52,7 +52,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       key: 'anki_deck',
       header: 'Deck',
       render: (_: unknown, row: Entry) => (
-        <span className="text-gray-800 font-medium">
+        <span className="text-on-surface font-medium">
           {row.anki_deck || '—'}
         </span>
       ),
@@ -63,7 +63,10 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       render: (_: unknown, row: Entry) => {
         const isSynced = row.status === 'synced'
         return (
-          <Badge className={isSynced ? 'bg-[#E3F2E8] text-[#1B4D3E]' : 'bg-[#FFF3CD] text-[#856404]'}>
+          <Badge className={isSynced
+            ? 'bg-primary/10 text-primary'
+            : 'bg-tertiary-fixed text-on-tertiary-fixed'
+          }>
             {isSynced ? 'Đã đồng bộ' : 'Chờ đồng bộ'}
           </Badge>
         )
@@ -74,8 +77,8 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       header: 'Ngày tạo',
       render: (_: unknown, row: Entry) => {
         if (!row.created_at) return '—'
-        const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as any).seconds * 1000)
-        return <span className="text-gray-500 text-sm">{date.toLocaleDateString('vi-VN')}</span>
+        const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as { seconds: number }).seconds * 1000)
+        return <span className="text-on-surface-var text-sm">{date.toLocaleDateString('vi-VN')}</span>
       },
     },
     {
@@ -90,7 +93,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
               e.stopPropagation()
               router.push(`/history/${row.id}`)
             }}
-            className="p-2 h-auto text-gray-500 hover:text-[#316342] hover:bg-[#F6F4EF] rounded-full"
+            className="p-2 h-auto text-on-surface-var hover:text-primary hover:bg-primary/10 rounded-full"
             title="Xem chi tiết"
           >
             <Eye className="w-4 h-4" />
@@ -101,7 +104,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
               e.stopPropagation()
               onDelete?.(row.id as string)
             }}
-            className="p-2 h-auto text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full"
+            className="p-2 h-auto text-on-surface-var hover:text-error hover:bg-error-container rounded-full"
             title="Xóa"
           >
             <Trash2 className="w-4 h-4" />
@@ -112,7 +115,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
   ]
 
   return (
-    <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-card border border-outline-var/40 overflow-hidden">
       <DataTable
         data={data}
         columns={columns}

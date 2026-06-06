@@ -43,10 +43,10 @@ const INITIAL_STEPS: LoadingStep[] = [
 function StepBadge({ number, label }: { number: number; label: string }) {
   return (
     <div className="flex items-center gap-4 mb-6">
-      <span className="w-8 h-8 rounded-full bg-[#F6F4EF] text-[#316342] text-lg font-bold flex items-center justify-center flex-shrink-0">
+      <span className="w-8 h-8 rounded-full bg-primary/10 text-primary text-base font-bold flex items-center justify-center flex-shrink-0">
         {number}
       </span>
-      <h2 className="text-xl font-bold text-[#316342]">{label}</h2>
+      <h2 className="text-xl font-bold text-primary">{label}</h2>
     </div>
   )
 }
@@ -105,23 +105,23 @@ export default function CreatePage() {
                   disabled={disabled}
                   onClick={() => !disabled && setFormType(id)}
                   className={cn(
-                    'relative flex flex-col items-center justify-center gap-4 py-8 px-4 rounded-[1.5rem] border-2 transition-all duration-200 outline-none',
+                    'relative flex flex-col items-center justify-center gap-4 py-8 px-4 rounded-xl border-2 transition-all duration-200 outline-none',
                     isActive
-                      ? 'border-[#316342] bg-white text-[#316342] shadow-sm'
-                      : 'border-transparent bg-[#F6F4EF] text-gray-700 hover:bg-[#EFECE5]',
+                      ? 'border-primary bg-white text-primary shadow-card'
+                      : 'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
                     disabled && 'opacity-40 cursor-not-allowed'
                   )}
                 >
                   {isActive && (
-                    <span className="absolute top-4 right-4 w-6 h-6 rounded-full bg-[#316342] flex items-center justify-center shadow-sm">
+                    <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
                       <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
                     </span>
                   )}
                   <div className={cn(
                     'w-14 h-14 rounded-full flex items-center justify-center transition-colors',
-                    isActive ? 'bg-[#316342]/10' : 'bg-black/5'
+                    isActive ? 'bg-primary/10' : 'bg-on-surface/5'
                   )}>
-                    <Icon className={cn('w-6 h-6', isActive ? 'text-[#316342]' : 'text-gray-600')} />
+                    <Icon className={cn('w-6 h-6', isActive ? 'text-primary' : 'text-on-surface-var')} />
                   </div>
                   <span className="text-base font-bold">{label}</span>
                 </button>

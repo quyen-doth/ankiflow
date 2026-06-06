@@ -22,8 +22,8 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
     <header className={cn('mb-8', className)}>
       {/* Breadcrumb */}
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex items-center text-sm font-medium text-gray-600 mb-3" aria-label="Breadcrumb">
-          <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors flex items-center">
+        <nav className="flex items-center text-sm font-medium text-on-surface-var mb-3" aria-label="Breadcrumb">
+          <Link href="/dashboard" className="text-on-surface-var hover:text-gray-900 transition-colors flex items-center">
             <Home className="w-4 h-4" />
           </Link>
 
@@ -31,14 +31,14 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
             <span key={crumb.label} className="flex items-center">
               <span className="text-gray-400 mx-2.5 font-normal">›</span>
               {crumb.href && i < crumbs.length - 1 ? (
-                <Link href={crumb.href} className="text-gray-600 hover:text-gray-900 transition-colors">
+                <Link href={crumb.href} className="text-on-surface-var hover:text-gray-900 transition-colors">
                   {crumb.label}
                 </Link>
               ) : (
                 <span className={cn(
                   i === crumbs.length - 1
-                    ? 'text-[#316342] font-bold'
-                    : 'text-gray-600'
+                    ? 'text-primary font-bold'
+                    : 'text-on-surface-var'
                 )}>
                   {crumb.label}
                 </span>

@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { Toggle } from '@/components/ui/Toggle'
 import { Button } from '@/components/ui/Button'
-import { FieldWrapper } from '@/components/ui/FormField'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import type { CardTypeConfig, LanguageType } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
@@ -36,7 +35,6 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
         let data = snapshot.docs
           .map(doc => ({ id: doc.id, ...(doc.data() as Pick<CardTypeConfig, 'name' | 'description' | 'language' | 'sort_order'>) }))
 
-        // Filter theo ngôn ngữ nếu là Language form
         if (formType === 'Language' && language) {
           data = data.filter(ct => !ct.language || ct.language === language)
         }
@@ -44,7 +42,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
         data.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
         setCardTypes(data)
       } catch (error) {
-        console.error("Error fetching card types", error)
+        console.error('Error fetching card types', error)
       } finally {
         setLoading(false)
       }
@@ -52,35 +50,67 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
     fetchCardTypes()
   }, [formType, language])
 
-  const handleToggle = (id: string, checked: boolean) => {
-    onChange(checked ? [...selectedIds, id] : selectedIds.filter(v => v !== id))
+  const handleToggle = (id: string) => {
+    onChange(selectedIds.includes(id)
+      ? selectedIds.filter(v => v !== id)
+      : [...selectedIds, id]
+    )
   }
 
   const selectAll = () => onChange(cardTypes.map(ct => ct.id))
   const clearAll = () => onChange([])
 
   return (
-    <FieldWrapper label="Generated Card Types">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-xs text-on-surface-var">
-          {loading ? 'Loading card types...' : 'Select formats to generate'}
-        </span>
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold">
+          {loading ? 'Loading card types...' : 'Generated Card Types'}
+        </label>
         <div className="flex gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={selectAll} disabled={loading}>Select All</Button>
           <Button type="button" variant="ghost" size="sm" onClick={clearAll} disabled={loading}>Clear</Button>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
-        {cardTypes.map(ct => (
-          <Toggle
-            key={ct.id}
-            label={ct.name}
-            description={ct.description}
-            checked={selectedIds.includes(ct.id)}
-            onChange={(checked) => handleToggle(ct.id, checked)}
-          />
-        ))}
-      </div>
-    </FieldWrapper>
+
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-16 rounded-xl bg-surface-container animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {cardTypes.map(ct => {
+            const isChecked = selectedIds.includes(ct.id)
+            return (
+              <label
+                key={ct.id}
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-xl cursor-pointer border transition-all duration-150',
+                  isChecked
+                    ? 'border-primary/50 bg-primary/5'
+                    : 'border-transparent bg-surface-container hover:bg-surface-high'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => handleToggle(ct.id)}
+                  className="w-4 h-4 rounded border-outline-var text-primary focus:ring-primary/30 flex-shrink-0"
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-bold text-on-surface truncate">{ct.name}</span>
+                  {ct.description && (
+                    <span className="text-[10px] text-on-surface-var uppercase font-semibold tracking-wide truncate">
+                      {ct.description}
+                    </span>
+                  )}
+                </div>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

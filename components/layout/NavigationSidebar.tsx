@@ -25,13 +25,13 @@ export function NavigationSidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 h-screen bg-white flex flex-col py-6 fixed left-0 top-0 z-30 border-r border-gray-100">
-      <div className="pl-8 pr-4 py-2 mb-10">
+    <aside className="w-64 h-screen bg-surface-low flex flex-col py-6 fixed left-0 top-0 z-30 border-r border-outline-var">
+      <div className="px-4 py-2 mb-10">
         <AnkiFlowLogo />
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 flex flex-col gap-2">
+      <nav className="flex-1 flex flex-col gap-1 px-3">
         {navItems.map(({ label, href, icon: Icon }) => {
           const isActive = pathname === href || pathname?.startsWith(href + '/')
           return (
@@ -39,24 +39,24 @@ export function NavigationSidebar() {
               key={href}
               href={href}
               className={cn(
-                'relative flex items-center gap-4 py-3 pl-8 pr-6 text-sm transition-all duration-200 mr-6 rounded-r-full',
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors duration-150',
                 isActive
-                  ? 'border border-[#316342] border-l-0 text-[#316342] font-bold bg-white'
-                  : 'border border-transparent border-l-0 text-gray-500 font-medium hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary/10 text-primary font-bold'
+                  : 'text-on-surface-var font-medium hover:bg-primary/5 hover:text-on-surface'
               )}
             >
               <Icon className={cn(
-                'w-5 h-5 flex-shrink-0 transition-colors',
-                isActive ? 'text-[#316342]' : 'text-gray-400'
+                'w-5 h-5 flex-shrink-0',
+                isActive ? 'text-primary' : 'text-on-surface-var'
               )} />
-              <span className="tracking-wide">{label}</span>
+              <span>{label}</span>
             </Link>
           )
         })}
       </nav>
 
       {/* Bottom: ConnectedBadge */}
-      <div className="mt-auto pl-8 pr-6 pb-2">
+      <div className="mt-auto px-3 pb-2">
         <ConnectedBadge />
       </div>
     </aside>

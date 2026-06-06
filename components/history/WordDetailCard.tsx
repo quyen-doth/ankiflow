@@ -16,20 +16,23 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
   const isSynced = entry.status === 'synced'
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 border-l-[6px] border-l-[#316342] p-6 lg:p-8">
+    <div className="bg-white rounded-xl shadow-card border border-outline-var/40 border-l-[4px] border-l-primary p-6 lg:p-8">
       {/* Header: Status & Level */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2">
-          <Badge className={isSynced ? 'bg-[#E3F2E8] text-[#1B4D3E]' : 'bg-[#FFF3CD] text-[#856404]'}>
+          <Badge className={isSynced
+            ? 'bg-primary/10 text-primary'
+            : 'bg-tertiary-fixed text-on-tertiary-fixed'
+          }>
             {isSynced ? 'Đã đồng bộ' : 'Chờ đồng bộ'}
           </Badge>
           {entry.level && (
-            <Badge className="bg-[#F6F4EF] text-gray-700">
+            <Badge className="bg-surface-high text-on-surface-var">
               {entry.level}
             </Badge>
           )}
         </div>
-        <span className="text-sm text-gray-400 font-medium">
+        <span className="text-sm text-on-surface-var font-medium">
           Deck: {entry.anki_deck || '—'}
         </span>
       </div>
@@ -37,18 +40,18 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
       {/* Main Content */}
       <div className="flex flex-col gap-2 mb-8">
         {reading && (
-          <span className="text-gray-500 font-medium tracking-wide">
+          <span className="text-on-surface-var font-medium tracking-wide">
             {reading}
           </span>
         )}
         <div className="flex items-center gap-4">
-          <h1 className="text-4xl lg:text-5xl font-serif font-bold text-gray-900">
+          <h1 className="text-4xl lg:text-5xl font-serif font-bold text-on-surface">
             {word}
           </h1>
           {entry.audio_url && (
             <Button
               variant="ghost"
-              className="p-3 rounded-full bg-[#F6F4EF] text-[#316342] hover:bg-[#EFECE5]"
+              className="p-3 rounded-full bg-surface-container text-primary hover:bg-surface-high"
               onClick={() => {
                 const audio = new Audio(entry.audio_url)
                 audio.play()
@@ -59,36 +62,36 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
             </Button>
           )}
         </div>
-        <p className="text-xl text-gray-700 mt-2">
+        <p className="text-xl text-on-surface-var mt-2">
           {meaning}
         </p>
       </div>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-outline-var">
         {entry.word_type && (
           <div>
-            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Loại từ</span>
-            <span className="text-gray-800">{entry.word_type}</span>
+            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-1">Loại từ</span>
+            <span className="text-on-surface">{entry.word_type}</span>
           </div>
         )}
         {entry.example_sentence && (
           <div className="md:col-span-2">
-            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ví dụ</span>
-            <div className="bg-[#FAF8F5] p-4 rounded-xl">
-              <p className="text-gray-900 font-medium mb-1">{entry.example_sentence}</p>
+            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-2">Ví dụ</span>
+            <div className="bg-surface-container p-4 rounded-xl">
+              <p className="text-on-surface font-medium mb-1">{entry.example_sentence}</p>
               {entry.example_translation && (
-                <p className="text-gray-600 text-sm">{entry.example_translation}</p>
+                <p className="text-on-surface-var text-sm">{entry.example_translation}</p>
               )}
             </div>
           </div>
         )}
         {entry.collocations && entry.collocations.length > 0 && (
           <div className="md:col-span-2">
-            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Collocations</span>
+            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-2">Collocations</span>
             <div className="flex flex-wrap gap-2">
               {entry.collocations.map((col, idx) => (
-                <Badge key={idx} className="bg-white border border-gray-200 text-gray-700 px-3 py-1.5">
+                <Badge key={idx} className="bg-white border border-outline-var text-on-surface-var px-3 py-1.5">
                   {col}
                 </Badge>
               ))}
