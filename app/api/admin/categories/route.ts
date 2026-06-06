@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withTimestamps } from '@/lib/firestore-helpers'
 import { apiSuccess, apiError, catchError } from '@/lib/api-response'
+import { parseBody, CategoryPostSchema, CategoryPutSchema } from '@/lib/validation'
 
 async function GET_handler(request: NextRequest) {
   try {
@@ -24,10 +25,12 @@ async function GET_handler(request: NextRequest) {
 
 async function POST_handler(request: NextRequest) {
   try {
-    const body = await request.json()
+    const parsed = parseBody(CategoryPostSchema, await request.json())
+    if (!parsed.ok) return parsed.response
+
     const db = getAdminDb()
     const docRef = await db.collection('categories').add(
-      withTimestamps({ ...body, is_active: body.is_active ?? true }, true)
+      withTimestamps({ ...parsed.data, is_active: parsed.data.is_active ?? true }, true)
     )
     return apiSuccess({ success: true, id: docRef.id }, 201)
   } catch (error) {
@@ -37,9 +40,10 @@ async function POST_handler(request: NextRequest) {
 
 async function PUT_handler(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { id, ...updateData } = body
-    if (!id) return apiError('Missing id', 400)
+    const parsed = parseBody(CategoryPutSchema, await request.json())
+    if (!parsed.ok) return parsed.response
+
+    const { id, ...updateData } = parsed.data
     const db = getAdminDb()
     await db.collection('categories').doc(id).update(withTimestamps(updateData, false))
     return apiSuccess({ success: true, id })

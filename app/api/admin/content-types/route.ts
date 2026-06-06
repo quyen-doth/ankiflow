@@ -2,7 +2,8 @@ import { withAuthGuard } from '@/lib/auth-guard'
 import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withTimestamps } from '@/lib/firestore-helpers'
-import { apiSuccess, apiError, catchError } from '@/lib/api-response'
+import { apiSuccess, catchError } from '@/lib/api-response'
+import { parseBody, ContentTypePutSchema } from '@/lib/validation'
 
 async function GET_handler() {
   try {
@@ -17,9 +18,10 @@ async function GET_handler() {
 
 async function PUT_handler(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { id, fields } = body
-    if (!id || !fields) return apiError('Missing id or fields', 400)
+    const parsed = parseBody(ContentTypePutSchema, await request.json())
+    if (!parsed.ok) return parsed.response
+
+    const { id, fields } = parsed.data
     const db = getAdminDb()
     await db.collection('content_types').doc(id).update(
       withTimestamps({ fields }, false)
