@@ -2,7 +2,7 @@
 # ✅ Task List — AnkiFlow Project
 
 **Dự án:** AnkiFlow — Personal Flashcard Automation  
-**Cập nhật lần cuối:** 2026-04-18 (v1.1 — đã bổ sung feedback)
+**Cập nhật lần cuối:** 2026-06-07 (v1.2 — đã hoàn thành Design Refactor, xem mục cuối file)
 
 ---
 
@@ -517,96 +517,89 @@
 
 ### 2.4 History Page
 
-- [ ] **Tạo `components/history/HistoryTable.tsx`**
+- [x] **Tạo `components/history/HistoryTable.tsx`**
   - **Dùng `DataTable` từ 2.0** — không tạo lại table logic
   - Columns: Từ vựng, Nghĩa, Ngôn ngữ/Form, Deck, Trạng thái, Ngày tạo, Actions
   - Trạng thái dùng `Badge` từ 2.0 (variant `active`/`inactive`/`pending`)
   - Actions: xem chi tiết, xoá — dùng `Button` từ 2.0
 
-- [ ] **Sử dụng `FilterBar` từ 2.0** trong History page
+- [x] **Sử dụng `FilterBar` từ 2.0** trong History page
   - Filters: Category, Language, Deck, Date range
-  - Search: từ/nghĩa — placeholder "Tìm từ vựng..."
+  - Search: placeholder tiếng Anh "Search vocabulary, meaning..."
   - Không tạo `components/history/FilterBar.tsx` riêng — reuse từ `components/ui/FilterBar.tsx`
 
-- [ ] **Tạo `components/history/WordDetailCard.tsx`**
-  - Dùng component `WordDetailCard` từ COMPONENT.md
-  - Hiển thị: word, reading, meaning, level badge, status badge, nút play audio
-  - Border left accent: `border-l-4 border-l-primary`
+- [x] **Tạo `components/history/WordDetailCard.tsx`**
+  - Hiển thị: word, reading, meaning, level badge, sync-status badge, nút play audio
+  - Border left accent: `border-l-[4px] border-l-primary`
+  - Spec đầy đủ: `docs/design/COMPONENT.md` mục 23
 
-- [ ] **Tạo `app/history/page.tsx`**
+- [x] **Tạo `app/history/page.tsx`**
   - Dùng `PageHeader` từ 2.1, `FilterBar` + `DataTable` từ 2.0
 
-- [ ] **Tạo `app/history/[id]/page.tsx`**
-  - Dùng `WordDetailCard` + `CardPreview` từ 2.3
-  - Layout 8:4 grid
+- [x] **Tạo `app/history/[id]/page.tsx`** 🆕 (trang mới — Design Refactor 2026-06)
+  - Dùng `WordDetailCard` + `CardPreview`
+  - Layout 8:4 grid (`lg:grid-cols-12`, content `col-span-8` + preview sticky `col-span-4`)
 
-### 2.5 Admin Page
+### 2.5 Admin Page 🆕 (trang mới — Design Refactor 2026-06)
 
-- [ ] **Tạo `app/admin/page.tsx`**
-  - Tab navigation: Categories | Card Types | Topics | Decks | Content Types
-  - Dùng `PageHeader` từ 2.1 với `actions` slot cho nút "Thêm mới"
+- [x] **Tạo `app/admin/page.tsx`**
+  - Tab navigation (`Tabs` từ 2.0, `flex-wrap` bắt buộc): Categories | Card Types | Topics | Decks | Content Types
+  - Dùng `PageHeader` từ 2.1 với `actions` slot cho nút "Add new"
 
-- [ ] **Tạo `components/admin/CategoryManager.tsx`**
+- [x] **Tạo `components/admin/CategoryManager.tsx`**
   - **Dùng `DataTable` từ 2.0** — không tạo table logic mới
-  - Columns: Tên, Form type, Thứ tự, Trạng thái (`Badge` active/inactive), Actions
+  - Columns: Name, Form type, Order, Status (`Badge` active/inactive), Actions
   - Thêm/Sửa: dùng `Modal` từ 2.0 + form bên trong dùng `Input`, `Select` từ `FormField.tsx`
   - Xoá: dùng `Button` variant `destructive` từ 2.0 + confirmation trong `Modal`
 
-- [ ] **Tạo `components/admin/CardTypeManager.tsx`**
+- [x] **Tạo `components/admin/CardTypeManager.tsx`**
   - **Dùng `DataTable` từ 2.0**
-  - Columns: Code, Tên, Form type, Language, Mặc định, Trạng thái, Actions
+  - Columns: Code, Name, Form type, Language, Default, Status, Actions
   - Toggle is_default / is_active: dùng `Toggle` từ 2.0
 
-- [ ] **Tạo `components/admin/TopicManager.tsx`**
+- [x] **Tạo `components/admin/TopicManager.tsx`**
   - **Dùng `DataTable` từ 2.0**
-  - Columns: Tên, Thứ tự, Trạng thái, Actions
+  - Columns: Name, Order, Status, Actions
   - CRUD: dùng `Modal` + `Input` từ 2.0
 
-- [ ] **Tạo `components/admin/DeckManager.tsx`**
+- [x] **Tạo `components/admin/DeckManager.tsx`**
   - **Dùng `DataTable` từ 2.0**
   - Columns: Anki name, Display name, Form type, Language, Actions
   - Form thiết lập mapping (default card types, default category): dùng `Modal` + `Select` từ 2.0
 
-- [ ] **Tạo `components/admin/ContentTypeManager.tsx`**
+- [x] **Tạo `components/admin/ContentTypeManager.tsx`**
   - **Dùng `DataTable` từ 2.0** để liệt kê fields
   - Xem + sửa cấu hình form (fields, thứ tự, required, session_persistent)
   - Mỗi field toggle: dùng `Toggle` từ 2.0
+  - Form dài: bọc trong `max-h-[60vh] overflow-y-auto` bên trong `Modal`
 
-### 2.6 Dashboard
+### 2.6 Dashboard 🆕 (trang mới — Design Refactor 2026-06)
 
-- [ ] **Tạo `components/ui/StatCard.tsx`**
-  - Dùng component `StatCard` từ COMPONENT.md
-  - Props: `label`, `value`, `unit`, `trend`, `trendPositive`
-  - Grid 4 cột: `grid grid-cols-4 gap-4` (token: `shadow-card`, `bg-white`)
-  - Dùng ở: Dashboard (Total Vocabulary, Total Cards, Created Today, Success Rate)
+- [x] **Tạo `components/ui/StatCard.tsx`**
+  - Props: `label`, `value`, `delta`, `icon` (đã đổi so với spec gốc `unit`/`trend`/`trendPositive` — xem COMPONENT.md mục 7)
+  - Grid responsive: `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4`
+  - `items-start` + `flex-shrink-0` trên icon để tránh đè lên nhãn 2 dòng
+  - Dùng ở: Dashboard (Total Vocabulary, Synced to Anki, Created Today, Success Rate)
 
-- [ ] **Tạo `components/history/EntryListItem.tsx`** (reuse từ History)
-  - Hiển thị 1 dòng entry: word, meaning, deck, date, badge status
-  - Dùng `Badge` từ 2.0
-  - Dùng ở: Dashboard (10 từ gần đây) + History
-
-- [ ] **Tạo `app/dashboard/page.tsx`** (hoặc `app/page.tsx`)
-  - Greeting: `font-serif text-display text-on-surface` (Newsreader, 36px)
-  - StatCard grid 4 cột
-  - Danh sách 10 từ gần đây (reuse `EntryListItem`)
-  - Quick action: `Button` variant `primary` "Tạo card mới" → `/create`
+- [x] **Tạo `app/dashboard/page.tsx`**
+  - Greeting: `font-serif text-display text-on-surface`
+  - StatCard grid responsive
+  - Danh sách entry gần đây (link sang `/history/[id]`)
+  - Language breakdown (progress bar) + 1 AI suggestion card (`FlowTip`)
+  - Quick action: `Button` variant `primary` "Create a card" → `/create`
 
 ---
 
-### 2.7 Settings Page
+### 2.7 Settings Page 🆕 (trang mới — Design Refactor 2026-06)
 
-- [ ] **Tạo `app/settings/page.tsx`**
+- [x] **Tạo `app/settings/page.tsx`**
   - Dùng `PageHeader` từ 2.1
-  - Dùng `IntegrationCard` (`src/components/features/settings/IntegrationCard.tsx`) cho từng API connection
+  - Integration status card cho từng API connection (Anki / Gemini / TTS / Unsplash) — dùng `ConnectedBadge` pattern + `Badge`
   - AnkiConnect URL: dùng `Input` từ 2.0 — persist vào Firestore `settings.anki_connect_url`
   - Gemini model selection: dùng `Select` từ 2.0 — persist vào `settings.gemini_model`
-  - Toggle unsplash_enabled: persist vào `settings.unsplash_enabled`
-  - Toggle tts_enabled: persist vào `settings.tts_enabled`
-  - **Fields persist vào Firestore `settings` collection:**
-    - `anki_connect_url` (string)
-    - `gemini_model` (string)
-    - `unsplash_enabled` (boolean)
-    - `tts_enabled` (boolean)
+  - Toggle unsplash_enabled / tts_enabled: dùng `Toggle` từ 2.0
+  - Truy cập Firestore qua **Firebase Client SDK trực tiếp** (quyết định kiến trúc của Design Refactor — không qua `/api/admin/*`)
+  - **`settings` là singleton — chỉ update document hiện có, không tạo mới** (đúng theo CLAUDE.md)
 
 ---
 
@@ -750,3 +743,28 @@ TUẦN 6: Phase 4 + Phase 2 còn lại
   ├── 4.2 Testing
   └── 4.3 Docs
 ```
+
+---
+
+## ✅ PHASE 5 — Design Refactor (hoàn thành 2026-06)
+
+> Phạm vi: toàn bộ UI (trang hiện có + trang mới). Kế hoạch chi tiết: `flashcard/plans/design-refactor-plan-2026-06-07.md`. Không đổi business logic / enum / khóa dữ liệu Firestore.
+
+- [x] **Phase 1 — Design system foundation**: hợp nhất token màu/font/radius/shadow trong `app/globals.css` (`@theme`, Tailwind v4), thêm `--color-on-primary`, `<html lang="en">`
+- [x] **Phase 2 — Chuẩn hoá shared UI primitives**: `Button` (thêm size `xl`), `Badge`, `Card`, `StatCard`, `Tabs`, `EmptyState`, `FormField`, `Modal`, `PageHeader`, `FilterBar`, `DataTable` — xoá hardcode `text-gray-*`, `focus:ring-0`, thống nhất `rounded-*` theo phân cấp (full/lg/xl/md)
+- [x] **Phase 3 — Refactor trang hiện có**: Create, Preview, History — chuyển toàn bộ copy sang tiếng Anh, áp design system mới
+- [x] **Phase 4 — Build trang mới**: Dashboard (`/dashboard`), History Detail (`/history/[id]`), Settings (`/settings`), Admin (`/admin`) — xem mục 2.4–2.7
+- [x] **Phase 5 — Polish**: a11y (focus-visible ring bắt buộc), **responsive mobile** (xem dưới), motion tiết chế (`transition 150ms`, `active:scale-[0.98]`), dọn dead code
+- [x] **Phase 6 — Cập nhật tài liệu**: `docs/design/DESIGN.md` (rewrite v3.0), `docs/design/COMPONENT.md` (rewrite), `docs/tasks.md` (mục này), `CLAUDE.md` (bảng Key Directories)
+
+### 🆕 Bổ sung quan trọng phát sinh trong quá trình refactor
+
+- [x] **Responsive mobile cho `NavigationSidebar`** — sidebar cố định 256px gây vỡ layout nghiêm trọng ở viewport 390px (nội dung bị bóp còn ~134px). Đã viết lại thành: top bar `md:hidden` + drawer trượt (`-translate-x-full` ↔ `translate-x-0`) + backdrop, đóng drawer khi đổi route bằng pattern "adjust state during render" (KHÔNG dùng `useEffect` — tránh lỗi lint `react-hooks/set-state-in-effect`). Xem `docs/design/COMPONENT.md` mục 5 và `DESIGN.md` mục Responsive.
+- [x] **Thống nhất UI copy 100% tiếng Anh** — rà soát toàn bộ `app/`, `components/`, `hooks/` bằng regex Unicode (dấu tiếng Việt), sửa các chuỗi hiển thị cho người dùng còn sót (vd. `hooks/usePreviewEntry.ts`, `hooks/useAnkiExport.ts`). Giữ nguyên: enum/data keys, dữ liệu người dùng nhập, prompt Gemini trong `lib/prompts/*.ts`.
+- [x] **Sửa lỗi `ConnectedBadge` gọi endpoint không tồn tại** — `/api/anki/status` (404 lặp lại mỗi 30s) → đổi sang `/api/anki/connect` (endpoint thật, đã verify trả 200/503 đúng theo trạng thái Anki).
+- [x] **Phát hiện & fix bug collision token `--spacing-*`** — định nghĩa `--spacing-sm: 8px` trong `@theme` đè lên scale kích thước có sẵn của Tailwind, khiến `max-w-sm`/`w-sm` resolve sai (`8px` thay vì `24rem`). Đã xoá block `--spacing-*` khỏi `globals.css`. Ghi lại làm "lesson learned" trong `DESIGN.md`.
+
+### Lưu ý cho người đọc sau
+
+- `2.4–2.7` ở trên đã đánh dấu hoàn thành nhưng KHÔNG theo đúng thứ tự/giả định ban đầu trong checklist gốc (vd. `StatCard` dùng prop `delta`/`icon` thay vì `unit`/`trend`/`trendPositive`; `Card` là wrapper đơn giản, không có `variant`/`header`). **Tham chiếu `docs/design/COMPONENT.md` (đã rewrite, phản ánh đúng code hiện tại) thay vì các mô tả props trong checklist này khi cần spec chính xác.**
+- Quyết định kiến trúc: trang **Settings dùng Firebase Client SDK trực tiếp** để đọc/ghi `settings` (không qua `/api/admin/*`) — xem ghi chú trong mục 2.7.

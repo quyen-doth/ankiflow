@@ -29,7 +29,7 @@ export function StepIndicator({ steps, className }: StepIndicatorProps) {
             {step.status === 'completed' ? (
               <Check className="w-4 h-4" />
             ) : (
-              <span className="text-xs font-bold">{i + 1}</span>
+              <span className="text-label-sm font-bold">{i + 1}</span>
             )}
           </div>
 
@@ -43,7 +43,7 @@ export function StepIndicator({ steps, className }: StepIndicatorProps) {
             </p>
             {step.description && (
               <p className={cn(
-                'text-xs mt-0.5',
+                'text-label-sm mt-0.5',
                 step.status === 'active' ? 'text-on-surface-var italic' : 'text-on-surface-var/50'
               )}>
                 {step.description}

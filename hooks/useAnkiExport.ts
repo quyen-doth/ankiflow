@@ -36,14 +36,14 @@ export function useAnkiExport({ entry, selectedCardTypeIds }: AnkiExportOptions)
 
       if (!res.ok) {
         const err = await res.json()
-        console.error('Lỗi export Anki:', err)
-        alert(`Export thất bại: ${err.error || 'Unknown error'}`)
+        console.error('Anki export failed:', err)
+        alert(`Export failed: ${err.error || 'Unknown error'}`)
       } else {
         router.push('/create')
       }
     } catch (err) {
-      console.error('Lỗi kết nối Anki:', err)
-      alert('Không thể kết nối AnkiConnect. Hãy kiểm tra Anki đang mở.')
+      console.error('Anki connection error:', err)
+      alert('Could not connect to AnkiConnect. Please make sure Anki is open.')
     } finally {
       setIsExporting(false)
     }

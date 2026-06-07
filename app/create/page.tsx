@@ -113,7 +113,7 @@ export default function CreatePage() {
                   )}
                 >
                   {isActive && (
-                    <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                    <span className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-card">
                       <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
                     </span>
                   )}
@@ -131,7 +131,7 @@ export default function CreatePage() {
         </section>
 
         {/* Step 2 — Configure Form */}
-        <section className="bg-white rounded-[2rem] shadow-sm p-8 lg:p-10">
+        <section className="bg-white rounded-xl shadow-card p-8 lg:p-10">
           <StepBadge
             number={2}
             label={`Configure ${activeType?.label ?? formType} Card`}
@@ -169,7 +169,7 @@ export default function CreatePage() {
         title="Generating Cognitive Asset"
         steps={loadingSteps}
         progress={progress}
-        flowTip="Tip: Câu ví dụ ngắn gọn giúp não ghi nhớ nhanh hơn 3–5 lần so với định nghĩa dài."
+        flowTip="Tip: Short example sentences help your brain retain words 3-5x faster than long definitions."
       />
     </>
   )

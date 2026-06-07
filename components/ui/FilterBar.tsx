@@ -40,7 +40,7 @@ export function FilterBar({
             placeholder={searchPlaceholder}
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-white border border-outline-var rounded-full pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="w-full bg-white border border-outline-var rounded-full pl-9 pr-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           />
         </div>
 
@@ -65,7 +65,7 @@ export function FilterBar({
               {f.label}
             </Badge>
           ))}
-          <button onClick={onClearAll} className="text-xs text-on-surface-var hover:text-error underline transition-colors">
+          <button onClick={onClearAll} className="text-label-sm text-on-surface-var hover:text-error underline transition-colors">
             Clear all
           </button>
         </div>

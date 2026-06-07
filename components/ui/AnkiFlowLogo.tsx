@@ -21,7 +21,7 @@ export function AnkiFlowLogo({ href = '/dashboard', className, size = 'md' }: An
         <p className={cn('font-serif font-bold text-primary leading-none', size === 'md' ? 'text-lg' : 'text-base')}>
           AnkiFlow
         </p>
-        <p className="text-[9px] font-semibold tracking-[0.12em] text-on-surface-var uppercase leading-none mt-0.5">
+        <p className="text-label-sm font-semibold tracking-[0.12em] text-on-surface-var uppercase leading-none mt-0.5">
           Cognitive Sanctuary
         </p>
       </div>

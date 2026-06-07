@@ -58,7 +58,7 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
 
       if (!generateRes.ok) {
         const errData = await generateRes.json()
-        throw new Error(errData.error || 'Lỗi khi gọi Gemini API')
+        throw new Error(errData.error || 'Failed to call Gemini API')
       }
 
       const { content: generatedContent } = await generateRes.json()
@@ -89,8 +89,8 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
       router.push('/preview')
 
     } catch (err) {
-      console.error('Lỗi generate IT:', err)
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.')
+      console.error('IT generate error:', err)
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       onGenerateEnd?.()
     }
   }
@@ -115,7 +115,7 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
       <SectionDivider label="Core Content" />
 
       <div className="mb-4">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Technical Term
         </label>
         <input
@@ -123,25 +123,25 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder="E.g., Event Loop, Closure..."
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-xl font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 appearance-none shadow-none"
+          className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
         />
       </div>
 
       <div className="mb-4">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Your Definition (optional)
         </label>
         <Textarea
-          placeholder="Định nghĩa theo cách hiểu của bạn..."
+          placeholder="Describe it in your own words..."
           value={definition}
           onChange={(e) => setDefinition(e.target.value)}
           rows={3}
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 resize-none appearance-none shadow-none"
+          className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
         />
       </div>
 
       <div className="mb-5">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Keywords (comma separated)
         </label>
         <Input
@@ -161,11 +161,7 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: ITFormP
       <ErrorMessage message={error} />
 
       <div className="flex justify-end">
-        <Button
-          type="submit"
-          disabled={!term.trim()}
-          className="bg-primary hover:bg-primary-container text-white px-10 py-4 text-base font-bold rounded-full shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button type="submit" size="xl" disabled={!term.trim()} className="shadow-card">
           Generate
         </Button>
       </div>

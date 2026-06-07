@@ -64,7 +64,7 @@ export function ImageSelector({ images, selectedId, onSelect, onRefetch, loading
       )}
 
       {selectedId && (
-        <p className="text-xs text-on-surface-var">
+        <p className="text-label-sm text-on-surface-var">
           Photo from{' '}
           <a
             href={`https://unsplash.com/?utm_source=ankiflow&utm_medium=referral`}

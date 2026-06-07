@@ -74,8 +74,8 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
       router.push('/preview')
 
     } catch (err) {
-      console.error('Lỗi General form:', err)
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.')
+      console.error('General form error:', err)
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       onGenerateEnd?.()
     }
   }
@@ -95,7 +95,7 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
       <SectionDivider label="Core Content" />
 
       <div className="mb-4">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Card Title
         </label>
         <input
@@ -103,12 +103,12 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Front side..."
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-xl font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 appearance-none shadow-none"
+          className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
         />
       </div>
 
       <div className="mb-5">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Content
         </label>
         <Textarea
@@ -116,7 +116,7 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={5}
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 resize-none appearance-none shadow-none"
+          className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
         />
       </div>
 
@@ -129,11 +129,7 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: Ge
       <ErrorMessage message={error} />
 
       <div className="flex justify-end">
-        <Button
-          type="submit"
-          disabled={!title.trim()}
-          className="bg-primary hover:bg-primary-container text-white px-10 py-4 text-base font-bold rounded-full shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button type="submit" size="xl" disabled={!title.trim()} className="shadow-card">
           Generate
         </Button>
       </div>

@@ -60,7 +60,7 @@ export function LoadingOverlay({
 
         {/* Status text */}
         {statusText && (
-          <p className="text-center text-xs text-on-surface-var/60 italic">{statusText}</p>
+          <p className="text-center text-label-sm text-on-surface-var/60 italic">{statusText}</p>
         )}
       </div>
     </div>

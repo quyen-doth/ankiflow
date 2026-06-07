@@ -18,7 +18,7 @@ interface DeckSelectorProps {
   label?: string
 }
 
-export function DeckSelector({ value, onChange, onChangeId, label = 'ANKI DECK' }: DeckSelectorProps) {
+export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' }: DeckSelectorProps) {
   const [decks, setDecks] = useState<Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,9 +41,9 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'ANKI DECK' 
   }, [])
 
   return (
-    <FieldWrapper 
+    <FieldWrapper
       label={label}
-      className="text-xs uppercase text-on-surface-var tracking-wider font-bold"
+      className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
     >
       <Select
         value={value}
@@ -56,7 +56,7 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'ANKI DECK' 
           }
         }}
         disabled={loading}
-        className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:ring-0 cursor-pointer appearance-none"
+        className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer appearance-none"
       >
         <option value="" disabled>{loading ? 'Loading...' : 'Select a deck...'}</option>
         {decks.map(deck => (

@@ -52,12 +52,19 @@ Browser UI → Next.js API Routes → External Services
 | Path | Purpose |
 |---|---|
 | `app/api/` | API routes — all server logic lives here |
+| `app/dashboard/` | Dashboard — stats overview, recent entries, quick actions |
 | `app/create/` | Create card page (form selection + input) |
 | `app/preview/` | Preview generated card, edit, export to Anki |
 | `app/history/` | History log of created entries |
+| `app/history/[id]/` | History detail — full entry view, recreate/delete |
+| `app/settings/` | Settings — integration status, AnkiConnect URL, Gemini model, feature toggles |
+| `app/admin/` | Admin — CRUD for categories, card types, topics, decks, content types |
 | `components/create/` | Form components per content type |
 | `components/preview/` | Card preview + edit components |
-| `components/ui/` | Shared UI primitives (Button, Modal, etc.) |
+| `components/history/` | History table, word detail card |
+| `components/admin/` | Admin manager components per resource (CategoryManager, etc.) |
+| `components/layout/` | Navigation sidebar, page header |
+| `components/ui/` | Shared UI primitives (Button, Modal, Card, DataTable, etc.) |
 | `lib/` | Shared utilities: firebase, gemini, session, TTS, Unsplash |
 | `lib/prompts/` | Per-language Gemini prompt builders |
 | `lib/flashcard-service/` | AnkiConnect provider abstraction |

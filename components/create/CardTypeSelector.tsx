@@ -63,7 +63,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold">
           {loading ? 'Loading card types...' : 'Generated Card Types'}
         </label>
         <div className="flex gap-2">
@@ -96,12 +96,12 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => handleToggle(ct.id)}
-                  className="w-4 h-4 rounded border-outline-var text-primary focus:ring-primary/30 flex-shrink-0"
+                  className="w-4 h-4 rounded border-outline-var text-primary focus-visible:ring-2 focus-visible:ring-primary/40 flex-shrink-0"
                 />
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm font-bold text-on-surface truncate">{ct.name}</span>
                   {ct.description && (
-                    <span className="text-[10px] text-on-surface-var uppercase font-semibold tracking-wide truncate">
+                    <span className="text-label-sm text-on-surface-var uppercase font-semibold tracking-wide truncate">
                       {ct.description}
                     </span>
                   )}

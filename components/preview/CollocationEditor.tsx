@@ -89,7 +89,7 @@ export function CollocationEditor({ items, onChange }: CollocationEditorProps) {
         onKeyDown={handleKeyDown}
         onBlur={addItem}
         placeholder="Type and press Enter to add..."
-        className="w-full text-sm bg-surface-low border border-outline-var rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 text-on-surface placeholder:text-on-surface-var/60"
+        className="w-full text-sm bg-surface-low border border-outline-var rounded-lg px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 text-on-surface placeholder:text-on-surface-var/60"
       />
     </FieldWrapper>
   )

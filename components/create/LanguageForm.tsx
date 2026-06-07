@@ -59,7 +59,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
 
       if (!generateRes.ok) {
         const errData = await generateRes.json()
-        throw new Error(errData.error || 'Lỗi khi gọi Gemini API')
+        throw new Error(errData.error || 'Failed to call Gemini API')
       }
 
       const { content: generatedContent } = await generateRes.json()
@@ -90,8 +90,8 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
       router.push('/preview')
 
     } catch (err) {
-      console.error('Lỗi generate:', err)
-      setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi. Vui lòng thử lại.')
+      console.error('Generate error:', err)
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       onGenerateEnd?.()
     }
   }
@@ -108,7 +108,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
       </div>
 
       <div className="mb-2">
-        <FieldWrapper label="TAGS" className="text-xs text-gray-400 tracking-wider font-normal">
+        <FieldWrapper label="Tags">
           <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
         </FieldWrapper>
       </div>
@@ -116,26 +116,26 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
       <SectionDivider label="Core Content" />
 
       <div className="mb-6">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Vocabulary Item
         </label>
         <input
           type="text"
           value={vocabulary}
           onChange={(e) => setVocabulary(e.target.value)}
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-xl font-bold text-gray-800 placeholder:text-gray-300 placeholder:font-bold focus:outline-none focus:ring-0 appearance-none shadow-none"
+          className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
         />
       </div>
 
       <div className="mb-6">
-        <label className="text-xs uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
           Contextual Note
         </label>
         <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border-none rounded-2xl px-5 py-4 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-0 resize-none appearance-none shadow-none"
+          className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
         />
       </div>
 
@@ -160,11 +160,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
       <ErrorMessage message={error} />
 
       <div className="flex justify-end mt-4">
-        <Button
-          type="submit"
-          disabled={!vocabulary.trim()}
-          className="bg-primary hover:bg-primary-container text-white px-10 py-4 text-base font-bold rounded-full shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button type="submit" size="xl" disabled={!vocabulary.trim()} className="shadow-card">
           Generate
         </Button>
       </div>

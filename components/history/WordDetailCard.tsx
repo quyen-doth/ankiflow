@@ -24,7 +24,7 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
             ? 'bg-primary/10 text-primary'
             : 'bg-tertiary-fixed text-on-tertiary-fixed'
           }>
-            {isSynced ? 'Đã đồng bộ' : 'Chờ đồng bộ'}
+            {isSynced ? 'Synced' : 'Pending sync'}
           </Badge>
           {entry.level && (
             <Badge className="bg-surface-high text-on-surface-var">
@@ -56,7 +56,7 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
                 const audio = new Audio(entry.audio_url)
                 audio.play()
               }}
-              title="Phát âm thanh"
+              title="Play audio"
             >
               <Volume2 className="w-5 h-5" />
             </Button>
@@ -71,13 +71,13 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-outline-var">
         {entry.word_type && (
           <div>
-            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-1">Loại từ</span>
+            <span className="block text-label-sm font-bold text-on-surface-var uppercase tracking-wider mb-1">Word Type</span>
             <span className="text-on-surface">{entry.word_type}</span>
           </div>
         )}
         {entry.example_sentence && (
           <div className="md:col-span-2">
-            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-2">Ví dụ</span>
+            <span className="block text-label-sm font-bold text-on-surface-var uppercase tracking-wider mb-2">Example</span>
             <div className="bg-surface-container p-4 rounded-xl">
               <p className="text-on-surface font-medium mb-1">{entry.example_sentence}</p>
               {entry.example_translation && (
@@ -88,7 +88,7 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
         )}
         {entry.collocations && entry.collocations.length > 0 && (
           <div className="md:col-span-2">
-            <span className="block text-xs font-bold text-on-surface-var uppercase tracking-wider mb-2">Collocations</span>
+            <span className="block text-label-sm font-bold text-on-surface-var uppercase tracking-wider mb-2">Collocations</span>
             <div className="flex flex-wrap gap-2">
               {entry.collocations.map((col, idx) => (
                 <Badge key={idx} className="bg-white border border-outline-var text-on-surface-var px-3 py-1.5">

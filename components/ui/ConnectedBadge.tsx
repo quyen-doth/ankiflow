@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { MonitorCheck, MonitorX } from 'lucide-react'
 
 interface ConnectedBadgeProps {
-  /** Override trạng thái kết nối — nếu không truyền, sẽ polling Anki mỗi 30s */
+  /** Override the connection status — if omitted, polls Anki every 30s */
   connected?: boolean
 }
 
@@ -17,7 +17,7 @@ export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps
 
     async function checkAnki() {
       try {
-        const res = await fetch('/api/anki/status', { cache: 'no-store' })
+        const res = await fetch('/api/anki/connect', { cache: 'no-store' })
         setPolledConnected(res.ok)
       } catch {
         setPolledConnected(false)
@@ -40,8 +40,7 @@ export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps
         : <MonitorX className="w-3.5 h-3.5 text-on-surface-var flex-shrink-0" />
       }
 
-      {/* Label uppercase như screenshot */}
-      <span className="text-[10px] font-semibold tracking-wide uppercase text-on-surface-var truncate">
+      <span className="text-label-sm font-semibold tracking-wide uppercase text-on-surface-var truncate">
         {connected ? 'Connected to Anki' : 'Anki offline'}
       </span>
     </div>

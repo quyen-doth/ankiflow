@@ -16,7 +16,7 @@ export function ProgressBar({ value, label, showPercent = false, size = 'md', cl
       {(label || showPercent) && (
         <div className="flex justify-between items-center mb-1.5">
           {label && <span className="text-label-sm uppercase tracking-wide text-on-surface-var">{label}</span>}
-          {showPercent && <span className="text-xs font-semibold text-primary">{clampedValue}%</span>}
+          {showPercent && <span className="text-label-sm font-semibold text-primary">{clampedValue}%</span>}
         </div>
       )}
       <div className={cn('bg-surface-high rounded-full overflow-hidden', size === 'md' ? 'h-2.5' : 'h-1.5')}>

@@ -29,13 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="vi"
+      lang="en"
       className={`${newsreader.variable} ${nunitoSans.variable} h-full antialiased`}
     >
       <body className="bg-app-bg font-sans text-on-surface min-h-full flex">
         <NavigationSidebar />
-        {/* Main: offset sidebar width */}
-        <main className="ml-64 flex-1 min-h-screen px-8 py-8 max-w-[calc(100vw-256px)]">
+        {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
+        <main className="flex-1 min-h-screen pt-16 px-4 py-6 md:ml-64 md:pt-8 md:px-8 md:py-8 md:max-w-[calc(100vw-256px)]">
           {children}
         </main>
       </body>

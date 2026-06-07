@@ -23,15 +23,15 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
       {/* Breadcrumb */}
       {crumbs && crumbs.length > 0 && (
         <nav className="flex items-center text-sm font-medium text-on-surface-var mb-3" aria-label="Breadcrumb">
-          <Link href="/dashboard" className="text-on-surface-var hover:text-gray-900 transition-colors flex items-center">
+          <Link href="/dashboard" className="text-on-surface-var hover:text-on-surface transition-colors flex items-center">
             <Home className="w-4 h-4" />
           </Link>
 
           {crumbs.map((crumb, i) => (
             <span key={crumb.label} className="flex items-center">
-              <span className="text-gray-400 mx-2.5 font-normal">›</span>
+              <span className="text-on-surface-var/50 mx-2.5 font-normal">›</span>
               {crumb.href && i < crumbs.length - 1 ? (
-                <Link href={crumb.href} className="text-on-surface-var hover:text-gray-900 transition-colors">
+                <Link href={crumb.href} className="text-on-surface-var hover:text-on-surface transition-colors">
                   {crumb.label}
                 </Link>
               ) : (

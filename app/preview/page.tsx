@@ -39,7 +39,7 @@ export default function PreviewPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto mb-4" />
-          <p className="text-sm text-on-surface-var">Đang tải dữ liệu...</p>
+          <p className="text-sm text-on-surface-var">Loading data...</p>
         </div>
       </div>
     )
@@ -49,10 +49,10 @@ export default function PreviewPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
-          <p className="text-lg font-semibold text-on-surface mb-2">⚠️ Không tìm thấy dữ liệu</p>
+          <p className="text-lg font-semibold text-on-surface mb-2">⚠️ Data not found</p>
           <p className="text-sm text-on-surface-var mb-6">{error}</p>
           <Button variant="primary" onClick={() => router.push('/create')}>
-            Quay lại Create
+            Back to Create
           </Button>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function PreviewPage() {
             <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">Main Info</h2>
             <div className="flex flex-col gap-4">
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Word / Term</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Word / Term</p>
                 <EditableField
                   value={entry.word || entry.term || entry.title || ''}
                   onSave={(v) => updateField('word', v)}
@@ -93,7 +93,7 @@ export default function PreviewPage() {
                 />
               </div>
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Reading / Phonetics</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Reading / Phonetics</p>
                 <EditableField
                   value={entry.hiragana || entry.pinyin || entry.ipa || ''}
                   onSave={(v) => updateField('hiragana', v)}
@@ -101,7 +101,7 @@ export default function PreviewPage() {
                 />
               </div>
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Meaning (Vietnamese)</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Meaning (Vietnamese)</p>
                 <EditableField
                   value={entry.meaning_vi || entry.definition || ''}
                   onSave={(v) => updateField('meaning_vi', v)}
@@ -109,7 +109,7 @@ export default function PreviewPage() {
                 />
               </div>
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Word Type</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Word Type</p>
                 <EditableField
                   value={entry.word_type || ''}
                   onSave={(v) => updateField('word_type', v)}
@@ -118,7 +118,7 @@ export default function PreviewPage() {
                 />
               </div>
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Example Sentence</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Example Sentence</p>
                 <EditableField
                   value={entry.example_sentence || ''}
                   onSave={(v) => updateField('example_sentence', v)}
@@ -127,7 +127,7 @@ export default function PreviewPage() {
                 />
               </div>
               <div>
-                <p className="text-xs text-on-surface-var mb-1">Translation</p>
+                <p className="text-label-sm text-on-surface-var mb-1">Translation</p>
                 <EditableField
                   value={entry.example_translation || ''}
                   onSave={(v) => updateField('example_translation', v)}

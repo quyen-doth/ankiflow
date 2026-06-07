@@ -33,7 +33,7 @@ export function usePreviewEntry(): PreviewEntryState {
       const pending = loadPendingEntry()
 
       if (!pending) {
-        setError('Không tìm thấy dữ liệu. Vui lòng quay lại trang Create và Generate lại.')
+        setError('No data found. Please go back to Create and generate again.')
         setIsLoading(false)
         return
       }

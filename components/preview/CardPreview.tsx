@@ -33,9 +33,9 @@ export function CardPreview({ entry }: CardPreviewProps) {
             type="button"
             onClick={() => { setActiveTab(tab.id); setFlipped(false) }}
             className={cn(
-              'flex-1 text-xs font-medium py-1.5 rounded-md transition-colors',
+              'flex-1 text-label-sm font-medium py-1.5 rounded-md transition-colors',
               activeTab === tab.id
-                ? 'bg-white text-primary shadow-sm'
+                ? 'bg-white text-primary shadow-card'
                 : 'text-on-surface-var hover:text-on-surface'
             )}
           >
@@ -53,7 +53,7 @@ export function CardPreview({ entry }: CardPreviewProps) {
         {!flipped ? (
           // Front card
           <div className="bg-white rounded-xl shadow-card border border-outline-var/30 p-6 min-h-36 flex flex-col items-center justify-center gap-2">
-            <p className="text-xs text-on-surface-var uppercase tracking-wider mb-1">Front</p>
+            <p className="text-label-sm text-on-surface-var uppercase tracking-wider mb-1">Front</p>
             <p className="text-2xl font-serif text-on-surface text-center">{front.primary || '—'}</p>
             {front.secondary && (
               <p className="text-sm text-on-surface-var text-center">{front.secondary}</p>
@@ -62,7 +62,7 @@ export function CardPreview({ entry }: CardPreviewProps) {
         ) : (
           // Back card
           <div className="bg-surface-low rounded-xl border border-outline-var/30 p-6 min-h-36 flex flex-col items-center justify-center gap-2">
-            <p className="text-xs text-on-surface-var uppercase tracking-wider mb-1">Back</p>
+            <p className="text-label-sm text-on-surface-var uppercase tracking-wider mb-1">Back</p>
             <p className="text-xl font-semibold text-on-surface text-center">{back.primary || '—'}</p>
             {back.secondary && (
               <p className="text-sm text-on-surface-var text-center">{back.secondary}</p>
@@ -70,7 +70,7 @@ export function CardPreview({ entry }: CardPreviewProps) {
           </div>
         )}
       </div>
-      <p className="text-xs text-center text-on-surface-var">Click card to flip</p>
+      <p className="text-label-sm text-center text-on-surface-var">Click card to flip</p>
     </div>
   )
 }

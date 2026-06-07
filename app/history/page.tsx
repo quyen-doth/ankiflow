@@ -48,15 +48,15 @@ export default function HistoryPage() {
         crumbs={[
           { label: 'History', href: '/history' }
         ]}
-        title="Lịch sử tạo thẻ"
-        description="Quản lý và xem lại các thẻ Anki đã tạo"
+        title="Card History"
+        description="Review and manage the cards you've created"
       />
 
       <div className="max-w-6xl mx-auto w-full pb-12 flex flex-col gap-6">
         {/* Filter Bar */}
-        <div className="bg-white rounded-[2rem] p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-6 shadow-card">
           <FilterBar
-            searchPlaceholder="Tìm kiếm từ vựng, ý nghĩa..."
+            searchPlaceholder="Search vocabulary, meaning..."
             searchValue={searchTerm}
             onSearchChange={setSearchTerm}
             // Thêm activeFilters, onFilterClick, etc. sau nếu cần

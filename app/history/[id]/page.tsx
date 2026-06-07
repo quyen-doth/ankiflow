@@ -26,10 +26,10 @@ export default function HistoryDetailPage() {
         if (docSnap.exists()) {
           setEntry({ id: docSnap.id, ...docSnap.data() } as Entry)
         } else {
-          console.error('Không tìm thấy dữ liệu!')
+          console.error('Entry not found')
         }
       } catch (error) {
-        console.error('Lỗi khi fetch entry detail:', error)
+        console.error('Failed to fetch entry detail:', error)
       } finally {
         setLoading(false)
       }
@@ -50,14 +50,14 @@ export default function HistoryDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-xl font-bold text-gray-900 mb-2">Không tìm thấy thẻ</p>
-          <p className="text-gray-500">Thẻ này có thể đã bị xóa hoặc không tồn tại.</p>
+          <p className="text-xl font-bold text-on-surface mb-2">Card not found</p>
+          <p className="text-on-surface-var">This card may have been deleted or doesn&apos;t exist.</p>
         </div>
       </div>
     )
   }
 
-  const wordLabel = entry.word || entry.term || entry.title || 'Chi tiết thẻ'
+  const wordLabel = entry.word || entry.term || entry.title || 'Card details'
 
   return (
     <>
@@ -78,8 +78,8 @@ export default function HistoryDetailPage() {
         {/* Cột phải (4): Preview */}
         <div className="lg:col-span-4">
           <div className="sticky top-8 flex flex-col gap-4">
-            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 lg:p-8">
-              <h2 className="text-xs uppercase text-gray-400 font-bold tracking-wider mb-6">
+            <div className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6 lg:p-8">
+              <h2 className="text-label-sm uppercase text-on-surface-var font-bold tracking-wider mb-6">
                 Card Preview
               </h2>
               <CardPreview entry={entry} />

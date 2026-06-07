@@ -18,7 +18,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
   const columns = [
     {
       key: 'word',
-      header: 'Từ vựng',
+      header: 'Word',
       render: (_: unknown, row: Entry) => (
         <span className="font-serif font-bold text-lg text-on-surface">
           {row.word || row.term || row.title || '—'}
@@ -27,7 +27,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
     },
     {
       key: 'meaning',
-      header: 'Nghĩa',
+      header: 'Meaning',
       render: (_: unknown, row: Entry) => (
         <span className="text-on-surface-var">
           {row.meaning_vi || row.definition || row.content || '—'}
@@ -36,7 +36,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
     },
     {
       key: 'type',
-      header: 'Phân loại',
+      header: 'Category',
       render: (_: unknown, row: Entry) => {
         let label = 'General'
         if (row.form_type === 'form_language') label = row.language || 'Language'
@@ -59,7 +59,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
     },
     {
       key: 'status',
-      header: 'Trạng thái',
+      header: 'Status',
       render: (_: unknown, row: Entry) => {
         const isSynced = row.status === 'synced'
         return (
@@ -67,18 +67,18 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
             ? 'bg-primary/10 text-primary'
             : 'bg-tertiary-fixed text-on-tertiary-fixed'
           }>
-            {isSynced ? 'Đã đồng bộ' : 'Chờ đồng bộ'}
+            {isSynced ? 'Synced' : 'Pending sync'}
           </Badge>
         )
       },
     },
     {
       key: 'created_at',
-      header: 'Ngày tạo',
+      header: 'Created',
       render: (_: unknown, row: Entry) => {
         if (!row.created_at) return '—'
         const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as { seconds: number }).seconds * 1000)
-        return <span className="text-on-surface-var text-sm">{date.toLocaleDateString('vi-VN')}</span>
+        return <span className="text-on-surface-var text-sm">{date.toLocaleDateString('en-US')}</span>
       },
     },
     {
@@ -94,7 +94,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
               router.push(`/history/${row.id}`)
             }}
             className="p-2 h-auto text-on-surface-var hover:text-primary hover:bg-primary/10 rounded-full"
-            title="Xem chi tiết"
+            title="View details"
           >
             <Eye className="w-4 h-4" />
           </Button>
@@ -105,7 +105,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
               onDelete?.(row.id as string)
             }}
             className="p-2 h-auto text-on-surface-var hover:text-error hover:bg-error-container rounded-full"
-            title="Xóa"
+            title="Delete"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -121,7 +121,7 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
         columns={columns}
         keyField="id"
         onRowClick={(row) => router.push(`/history/${row.id}`)}
-        emptyMessage="Chưa có từ vựng nào được tạo."
+        emptyMessage="No vocabulary cards created yet."
       />
     </div>
   )

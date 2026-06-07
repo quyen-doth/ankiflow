@@ -21,7 +21,7 @@ export function FieldWrapper({ label, error, className, children }: FieldWrapper
         </label>
       )}
       {children}
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-label-sm text-error">{error}</p>}
     </div>
   )
 }
@@ -35,9 +35,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ error, classNam
   <input
     ref={ref}
     className={cn(
-      'w-full bg-surface-container rounded px-4 py-3',
+      'w-full bg-surface-container rounded-lg px-4 py-3',
       'text-body-md text-on-surface placeholder:text-on-surface-var/50',
-      'border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/30',
+      'border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
       'transition-shadow duration-150',
       error && 'ring-2 ring-error/50',
       className
@@ -56,9 +56,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ error,
   <textarea
     ref={ref}
     className={cn(
-      'w-full bg-surface-container rounded px-4 py-3 resize-none',
+      'w-full bg-surface-container rounded-lg px-4 py-3 resize-none',
       'text-body-md text-on-surface placeholder:text-on-surface-var/50',
-      'border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/30',
+      'border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
       'transition-shadow duration-150',
       error && 'ring-2 ring-error/50',
       className
@@ -78,9 +78,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ error, class
     <select
       ref={ref}
       className={cn(
-        'w-full bg-white border border-outline-var rounded px-4 py-2.5 appearance-none',
-        'text-body-md text-on-surface',
-        'focus:outline-none focus:ring-2 focus:ring-primary/30',
+        'w-full bg-surface-container border border-transparent rounded-lg px-4 py-3 appearance-none',
+        'text-body-md text-on-surface cursor-pointer',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         error && 'border-error ring-2 ring-error/30',
         className
       )}
