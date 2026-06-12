@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Textarea, FieldWrapper } from '@/components/ui/FormField'
 import { TagInput } from '@/components/ui/TagInput'
@@ -9,9 +9,8 @@ import { CategorySelector } from './CategorySelector'
 import { CardTypeSelector } from './CardTypeSelector'
 import { DeckSelector } from './DeckSelector'
 import { SmartEnrichmentBanner } from './SmartEnrichmentBanner'
-import { SectionDivider } from './SectionDivider'
+import { ColumnLabel } from './ColumnLabel'
 import { ErrorMessage } from '@/components/ui/ErrorMessage'
-import { Button } from '@/components/ui/Button'
 import { useSession } from '@/hooks/useSession'
 import { FormType, LanguageType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
@@ -22,9 +21,11 @@ interface LanguageFormProps {
   onGenerateStart?: () => void
   onStepUpdate?: (stepIndex: number, status: StepStatus) => void
   onGenerateEnd?: () => void
+  onValidityChange?: (canSubmit: boolean) => void
+  formId?: string
 }
 
-export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: LanguageFormProps) {
+export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onValidityChange, formId }: LanguageFormProps) {
   const router = useRouter()
   const { session, updateSession, resetContent, isLoaded } = useSession(FormType.LANGUAGE)
 
@@ -37,6 +38,10 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
   const category = session?.categoryId || ''
   const tags = session?.tags || []
   const cardTypes = session?.cardTypeIds || []
+
+  useEffect(() => {
+    onValidityChange?.(vocabulary.trim().length > 0)
+  }, [vocabulary, onValidityChange])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,70 +104,72 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd }: L
   if (!isLoaded) return null
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-0">
+    <form id={formId} onSubmit={handleSubmit} className="grid lg:grid-cols-12 gap-6">
 
-      <div className="grid grid-cols-3 gap-6 mb-6">
-        <LanguageSelector value={language} onChange={(v) => updateSession({ language: v })} />
-        <DeckSelector value={deckId} onChange={(id) => updateSession({ deckId: id })} />
-        <CategorySelector formType="Language" value={category} onChange={(v) => updateSession({ categoryId: v })} />
+      {/* Left — Core Content (focal) */}
+      <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+        <ColumnLabel label="Core Content" />
+
+        <div className="mb-5">
+          <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+            Vocabulary Item
+          </label>
+          <input
+            type="text"
+            value={vocabulary}
+            onChange={(e) => setVocabulary(e.target.value)}
+            className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
+          />
+        </div>
+
+        <div className="mb-5">
+          <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+            Contextual Note
+          </label>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
+          />
+        </div>
+
+        <SmartEnrichmentBanner>
+          Our AI will automatically fetch{' '}
+          <strong className="text-on-surface font-bold">native audio samples</strong>,{' '}
+          <strong className="text-on-surface font-bold">stroke order diagrams</strong>, and{' '}
+          <strong className="text-on-surface font-bold">3 context sentences</strong> based on your input.
+        </SmartEnrichmentBanner>
+
+        <ErrorMessage message={error} />
       </div>
 
-      <div className="mb-2">
-        <FieldWrapper label="Tags">
-          <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
-        </FieldWrapper>
-      </div>
+      {/* Right — Configuration */}
+      <div className="lg:col-span-5 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+        <ColumnLabel label="Configuration" />
 
-      <SectionDivider label="Core Content" />
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <LanguageSelector value={language} onChange={(v) => updateSession({ language: v })} />
+          <DeckSelector value={deckId} onChange={(id) => updateSession({ deckId: id })} />
+          <div className="col-span-2">
+            <CategorySelector formType="Language" value={category} onChange={(v) => updateSession({ categoryId: v })} />
+          </div>
+        </div>
 
-      <div className="mb-6">
-        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
-          Vocabulary Item
-        </label>
-        <input
-          type="text"
-          value={vocabulary}
-          onChange={(e) => setVocabulary(e.target.value)}
-          className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
-        />
-      </div>
+        <div className="mb-6">
+          <FieldWrapper label="Tags">
+            <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
+          </FieldWrapper>
+        </div>
 
-      <div className="mb-6">
-        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
-          Contextual Note
-        </label>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
-        />
-      </div>
-
-      <SectionDivider label="Card Generation Options" />
-
-      <div className="mb-10">
-        <CardTypeSelector
-          formType="Language"
-          language={language}
-          selectedIds={cardTypes}
-          onChange={(v) => updateSession({ cardTypeIds: v })}
-        />
-      </div>
-
-      <SmartEnrichmentBanner>
-        Our AI will automatically fetch{' '}
-        <strong className="text-on-surface font-bold">native audio samples</strong>,{' '}
-        <strong className="text-on-surface font-bold">stroke order diagrams</strong>, and{' '}
-        <strong className="text-on-surface font-bold">3 context sentences</strong> based on your input.
-      </SmartEnrichmentBanner>
-
-      <ErrorMessage message={error} />
-
-      <div className="flex justify-end mt-4">
-        <Button type="submit" size="xl" disabled={!vocabulary.trim()} className="shadow-card">
-          Generate
-        </Button>
+        <div className="flex-1 overflow-y-auto pr-1">
+          <CardTypeSelector
+            formType="Language"
+            language={language}
+            selectedIds={cardTypes}
+            onChange={(v) => updateSession({ cardTypeIds: v })}
+          />
+        </div>
       </div>
     </form>
   )

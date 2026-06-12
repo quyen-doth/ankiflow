@@ -34,7 +34,7 @@ yarn-error.log*
 .env*
 !.env.example
 
-# Firebase service account key (bí mật — không commit)
+# Firebase service account key
 gcp-service-account.json
 
 # vercel

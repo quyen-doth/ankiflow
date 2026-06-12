@@ -1,0 +1,26 @@
+{
+    "hooks": {
+        "Stop": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash $HOME/.claude/scripts/notify.sh \"✅ Claude Code\" \"Task completed\""
+                    }
+                ]
+            }
+        ],
+        "PermissionRequest": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash $HOME/.claude/scripts/notify.sh \"🔔 Claude Code\" \"Need approval\""
+                    }
+                ]
+            }
+        ]
+    }
+}
