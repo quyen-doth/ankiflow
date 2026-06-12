@@ -11,15 +11,21 @@
                 ]
             }
         ],
-        "PermissionRequest": [
+        "Notification": [
             {
-                "matcher": "",
+                "matcher": "permission_prompt",
                 "hooks": [
                     {
                         "type": "command",
                         "command": "bash $HOME/.claude/scripts/notify.sh \"🔔 Claude Code\" \"Need approval\""
                     }
                 ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Read",
+                "hooks": [{ "type": "command", "command": "node .claude/hooks/read_hook.js" }]
             }
         ]
     }
