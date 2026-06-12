@@ -2,6 +2,7 @@
 
 import { useState, type KeyboardEvent } from 'react'
 import { Badge } from './Badge'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface TagInputProps {
   tags: string[]
@@ -33,7 +34,10 @@ export function TagInput({ tags, onChange, placeholder = '+ Add Tag', maxTags = 
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className="flex flex-wrap items-center gap-2"
+      {...verifyAttrs({ unit: 'TagInput', count: tags.length, max: maxTags })}
+    >
       {tags.map((tag) => (
         <Badge key={tag} variant="neutral" onRemove={() => removeTag(tag)}>
           {tag}

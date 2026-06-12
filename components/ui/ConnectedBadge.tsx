@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { MonitorCheck, MonitorX } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface ConnectedBadgeProps {
   /** Override the connection status — if omitted, polls Anki every 30s */
@@ -30,7 +31,10 @@ export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps
   }, [propConnected])
 
   return (
-    <div className="mx-1 mb-1 flex items-center gap-2.5 px-3 py-2.5 bg-surface-high rounded-lg">
+    <div
+      className="mx-1 mb-1 flex items-center gap-2.5 px-3 py-2.5 bg-surface-high rounded-lg"
+      {...verifyAttrs({ unit: 'ConnectedBadge', connected })}
+    >
       {/* Status dot */}
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${connected ? 'bg-primary' : 'bg-outline'}`} />
 

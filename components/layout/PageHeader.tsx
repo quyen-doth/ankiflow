@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface Crumb {
   label: string
@@ -19,7 +20,10 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
   const displayTitle = title ?? crumbs?.[crumbs.length - 1]?.label
 
   return (
-    <header className={cn('mb-8', className)}>
+    <header
+      className={cn('mb-8', className)}
+      {...verifyAttrs({ unit: 'PageHeader', crumbs: crumbs?.length ?? 0 })}
+    >
       {/* Breadcrumb */}
       {crumbs && crumbs.length > 0 && (
         <nav className="flex items-center text-sm font-medium text-on-surface-var mb-3" aria-label="Breadcrumb">

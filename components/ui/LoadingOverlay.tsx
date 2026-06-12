@@ -4,6 +4,7 @@ import { Brain } from 'lucide-react'
 import { StepIndicator } from './StepIndicator'
 import { ProgressBar } from './ProgressBar'
 import { FlowTip } from './FlowTip'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface LoadingStep {
   label: string
@@ -36,6 +37,7 @@ export function LoadingOverlay({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(24,28,27,0.3)', backdropFilter: 'blur(4px)' }}
+      {...verifyAttrs({ unit: 'LoadingOverlay', open, progress })}
     >
       <div className="bg-white rounded-xl shadow-modal w-full max-w-md p-8 flex flex-col gap-6">
         {/* Header */}

@@ -1,5 +1,7 @@
 'use client'
 
+import { verifyAttrs } from '@/verify/core/contract'
+
 interface ToggleProps {
   checked: boolean
   onChange: (checked: boolean) => void
@@ -10,7 +12,10 @@ interface ToggleProps {
 
 export function Toggle({ checked, onChange, label, description, disabled }: ToggleProps) {
   return (
-    <div className="flex items-center justify-between py-4 px-5 bg-white rounded-lg border border-outline-var/40">
+    <div
+      className="flex items-center justify-between py-4 px-5 bg-white rounded-lg border border-outline-var/40"
+      {...verifyAttrs({ unit: 'Toggle', checked, disabled: !!disabled })}
+    >
       <div className="flex-1 mr-4">
         <p className="text-sm font-semibold text-on-surface">{label}</p>
         {description && <p className="text-label-sm text-on-surface-var mt-0.5">{description}</p>}
@@ -18,6 +23,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: Togg
       <button
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`

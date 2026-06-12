@@ -768,3 +768,41 @@ TUẦN 6: Phase 4 + Phase 2 còn lại
 
 - `2.4–2.7` ở trên đã đánh dấu hoàn thành nhưng KHÔNG theo đúng thứ tự/giả định ban đầu trong checklist gốc (vd. `StatCard` dùng prop `delta`/`icon` thay vì `unit`/`trend`/`trendPositive`; `Card` là wrapper đơn giản, không có `variant`/`header`). **Tham chiếu `docs/design/COMPONENT.md` (đã rewrite, phản ánh đúng code hiện tại) thay vì các mô tả props trong checklist này khi cần spec chính xác.**
 - Quyết định kiến trúc: trang **Settings dùng Firebase Client SDK trực tiếp** để đọc/ghi `settings` (không qua `/api/admin/*`) — xem ghi chú trong mục 2.7.
+
+---
+
+## 🧪 PHASE 6 — Runtime Verification Framework (bắt đầu 2026-06-12)
+
+> Port framework kiểm thử runtime từ [cwc-workshops phase-3-verify](https://github.com/anthropics/cwc-workshops/tree/main/how-we-claude-code/phase-3-verify). Hướng dẫn đầy đủ: `docs/VERIFICATION.md`. Lệnh: `npm run verify`. Dashboard dev: `/verify`.
+
+### 6.A — Framework port + pilot specs ✅ (hoàn thành 2026-06-12)
+
+- [x] Core framework: `verify/core/` (types, contract, registry, runner, schema-helpers — zod 4)
+- [x] 4 verifiers cắm rời: schema, invariants, dom-contract, a11y
+- [x] Harness: `window.__verify` handle, mock-fetch, firestore-stub (vitest-only), Dashboard, UnitPage
+- [x] App routes dev-only: `/verify` + `/verify/[unitId]/[fixtureId]` (production → 404)
+- [x] vitest + jsdom + matrix test (`npm run verify`); EXPECTED_FAIL: `Badge::probe-empty-label`, `Tabs::probe-active-not-in-list`
+- [x] 5 pilot specs: Badge, Button, ProgressBar, StepIndicator, Tabs (instrument `verifyAttrs`)
+- [x] Unit tests thuần: `lib/session.ts`, `lib/pendingEntry.ts`
+
+### 6.B — ui/ còn lại + layout (17 units)
+
+- [ ] AnkiFlowLogo, Card, EmptyState, ErrorMessage (allowsEmptyRender), FlowTip, StatCard
+- [ ] Toggle, TagInput, FilterBar, DataTable, Modal (allowsEmptyRender), LoadingOverlay
+- [ ] Input / Textarea / Select (form-field.verify.tsx)
+- [ ] PageHeader, ConnectedBadge (mocks.fetch), NavigationSidebar (mocks.pathname)
+
+### 6.C — create/ + preview/ + history/ (18 units)
+
+- [ ] Thuần props: SectionDivider, SmartEnrichmentBanner, LanguageSelector, EditableField, CollocationEditor, CardList, ImageSelector, CardPreview, AudioPlayer, HistoryTable, WordDetailCard
+- [ ] mocks.firestore: DeckSelector, CategorySelector, TopicSelector, CardTypeSelector
+- [ ] Full mocks: LanguageForm, ITForm, GeneralForm (submit → pendingEntry + router.push('/preview'))
+
+### 6.D — admin/ + feature spec (6 units)
+
+- [ ] CategoryManager, CardTypeManager, TopicManager, DeckManager, ContentTypeManager (mocks.firestore CRUD)
+- [ ] Feature spec `create-language-flow` (end-to-end create → preview handoff)
+
+### Future work
+
+- [ ] Hooks tests (useSession, usePreviewEntry, useAnkiExport) — cần renderHook tooling

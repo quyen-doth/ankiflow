@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface ProgressBarProps {
   value: number           // 0–100
@@ -12,7 +13,10 @@ export function ProgressBar({ value, label, showPercent = false, size = 'md', cl
   const clampedValue = Math.min(100, Math.max(0, value))
 
   return (
-    <div className={cn('w-full', className)}>
+    <div
+      className={cn('w-full', className)}
+      {...verifyAttrs({ unit: 'ProgressBar', value: clampedValue })}
+    >
       {(label || showPercent) && (
         <div className="flex justify-between items-center mb-1.5">
           {label && <span className="text-label-sm uppercase tracking-wide text-on-surface-var">{label}</span>}

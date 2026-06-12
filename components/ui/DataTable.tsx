@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface Column<T> {
   key: keyof T | string
@@ -28,7 +29,10 @@ export function DataTable<T extends object>({
   className,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
+    <div
+      className={cn('w-full overflow-x-auto', className)}
+      {...verifyAttrs({ unit: 'DataTable', rows: data.length, cols: columns.length })}
+    >
       <table className="w-full">
         <thead>
           <tr className="border-b border-outline-var/50">

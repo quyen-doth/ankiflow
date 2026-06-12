@@ -3,6 +3,7 @@
 import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 // Shared field wrapper with label
 interface FieldWrapperProps {
@@ -43,6 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ error, classNam
       className
     )}
     {...props}
+    {...verifyAttrs({ unit: 'Input', error: !!error })}
   />
 ))
 Input.displayName = 'Input'
@@ -64,6 +66,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ error,
       className
     )}
     {...props}
+    {...verifyAttrs({ unit: 'Textarea', error: !!error })}
   />
 ))
 Textarea.displayName = 'Textarea'
@@ -85,6 +88,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ error, class
         className
       )}
       {...props}
+      {...verifyAttrs({ unit: 'Select', error: !!error })}
     >
       {children}
     </select>

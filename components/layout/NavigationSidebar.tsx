@@ -15,6 +15,7 @@ import {
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo'
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 const navItems = [
   { label: 'Dashboard',   href: '/dashboard',   icon: LayoutDashboard },
@@ -91,6 +92,7 @@ export function NavigationSidebar() {
           'transition-transform duration-200 md:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
+        {...verifyAttrs({ unit: 'NavigationSidebar', pathname, mobileOpen })}
       >
         <div className="px-4 py-2 mb-10 flex items-center justify-between">
           <AnkiFlowLogo />

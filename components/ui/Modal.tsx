@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface ModalProps {
   open: boolean
@@ -35,6 +36,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(24, 28, 27, 0.4)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      {...verifyAttrs({ unit: 'Modal', open, size })}
     >
       <div className={cn('bg-white rounded-xl shadow-modal w-full flex flex-col', sizeClasses[size], className)}>
         {/* Header (tonal) */}
@@ -44,7 +46,11 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
               <h2 className="font-serif text-headline-sm text-on-surface">{title}</h2>
               {description && <p className="text-body-md text-on-surface-var mt-0.5">{description}</p>}
             </div>
-            <button onClick={onClose} className="text-on-surface-var hover:text-on-surface transition-colors ml-4 mt-0.5">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="text-on-surface-var hover:text-on-surface transition-colors ml-4 mt-0.5"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>

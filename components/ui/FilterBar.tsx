@@ -3,6 +3,7 @@
 import { Search, SlidersHorizontal } from 'lucide-react'
 import { Badge } from './Badge'
 import { Button } from './Button'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface ActiveFilter {
   key: string
@@ -30,7 +31,10 @@ export function FilterBar({
   onFilterClick,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="flex flex-col gap-3"
+      {...verifyAttrs({ unit: 'FilterBar', activeCount: activeFilters.length })}
+    >
       <div className="flex items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">

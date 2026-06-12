@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -16,7 +17,14 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ steps, className }: StepIndicatorProps) {
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div
+      className={cn('flex flex-col gap-3', className)}
+      {...verifyAttrs({
+        unit: 'StepIndicator',
+        count: steps.length,
+        completed: steps.filter(s => s.status === 'completed').length,
+      })}
+    >
       {steps.map((step, i) => (
         <div key={i} className="flex items-start gap-3">
           {/* Icon */}

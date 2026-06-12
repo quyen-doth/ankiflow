@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface Tab {
   id: string
@@ -16,7 +17,11 @@ interface TabsProps {
 
 export function Tabs({ tabs, activeTab, onChange, className }: TabsProps) {
   return (
-    <div className={cn('flex flex-wrap gap-1 bg-surface-low rounded-lg p-1', className)} role="tablist">
+    <div
+      className={cn('flex flex-wrap gap-1 bg-surface-low rounded-lg p-1', className)}
+      role="tablist"
+      {...verifyAttrs({ unit: 'Tabs', count: tabs.length, active: activeTab })}
+    >
       {tabs.map(tab => (
         <button
           key={tab.id}

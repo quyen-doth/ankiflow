@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface EmptyStateProps {
   icon?: React.ReactNode
@@ -10,7 +11,10 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center text-center py-12 px-6', className)}>
+    <div
+      className={cn('flex flex-col items-center justify-center text-center py-12 px-6', className)}
+      {...verifyAttrs({ unit: 'EmptyState', hasAction: !!action })}
+    >
       {icon && (
         <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-var mb-4">
           {icon}

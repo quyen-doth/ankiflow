@@ -3,6 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive'
@@ -50,6 +51,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
         className
       )}
       {...props}
+      {...verifyAttrs({ unit: 'Button', variant, size, loading, disabled: disabled || loading })}
     >
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin" />

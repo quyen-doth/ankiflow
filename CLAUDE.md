@@ -17,11 +17,15 @@ The app code lives in `ankiflow/`. The `anki_flow_design/` directory contains st
 All commands run from `ankiflow/`:
 
 ```bash
-npm run dev      # Start dev server at localhost:3000
-npm run build    # Production build
-npm run lint     # ESLint
-npm run seed     # Seed Firestore with initial data (tsx scripts/seed-firestore.ts)
+npm run dev           # Start dev server at localhost:3000
+npm run build         # Production build
+npm run lint          # ESLint
+npm run seed          # Seed Firestore with initial data (tsx scripts/seed-firestore.ts)
+npm run verify        # Runtime verification matrix + unit tests (vitest + jsdom)
+npm run verify:watch  # Verification in watch mode
 ```
+
+Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how to write specs.
 
 To seed Firestore: `cd ankiflow && npm run seed`
 
@@ -69,6 +73,7 @@ Browser UI → Next.js API Routes → External Services
 | `lib/prompts/` | Per-language Gemini prompt builders |
 | `lib/flashcard-service/` | AnkiConnect provider abstraction |
 | `types/index.ts` | All TypeScript types and enums |
+| `verify/` | Runtime verification framework (specs, verifiers, harness — see `docs/VERIFICATION.md`) |
 | `docs/` | Source-of-truth documentation |
 
 ### Data Flow: Create → Preview
@@ -156,6 +161,7 @@ Copy `.env.example` to `.env.local`:
 | `docs/DATABASE.md` | Writing Firestore queries or adding fields |
 | `docs/design/DESIGN.md` | Creating or modifying UI |
 | `docs/design/COMPONENT.md` | Before creating a new component |
+| `docs/VERIFICATION.md` | Writing or modifying verification specs (`verify/`) |
 
 ## Gotchas
 

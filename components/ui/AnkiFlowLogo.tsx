@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface AnkiFlowLogoProps {
   href?: string
@@ -10,7 +11,10 @@ interface AnkiFlowLogoProps {
 
 export function AnkiFlowLogo({ href = '/dashboard', className, size = 'md' }: AnkiFlowLogoProps) {
   const content = (
-    <div className={cn('flex items-center gap-2.5', className)}>
+    <div
+      className={cn('flex items-center gap-2.5', className)}
+      {...verifyAttrs({ unit: 'AnkiFlowLogo', size, linked: !!href })}
+    >
       <div className={cn(
         'flex items-center justify-center rounded-full bg-primary text-white flex-shrink-0',
         size === 'md' ? 'w-9 h-9' : 'w-7 h-7'

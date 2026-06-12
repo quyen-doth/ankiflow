@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 type BadgeVariant = 'neutral' | 'active' | 'inactive' | 'pending' | 'ai' | 'language' | 'level'
 
@@ -21,12 +22,15 @@ const variantStyles: Record<BadgeVariant, string> = {
 
 export function Badge({ variant = 'neutral', children, className, onRemove }: BadgeProps) {
   return (
-    <span className={cn(
-      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5',
-      'text-sm font-medium',
-      variantStyles[variant],
-      className
-    )}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5',
+        'text-sm font-medium',
+        variantStyles[variant],
+        className
+      )}
+      {...verifyAttrs({ unit: 'Badge', variant, removable: !!onRemove })}
+    >
       {children}
       {onRemove && (
         <button
