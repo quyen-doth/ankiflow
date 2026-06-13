@@ -65,7 +65,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onV
 
       if (!generateRes.ok) {
         const errData = await generateRes.json()
-        throw new Error(errData.error || 'Failed to call Gemini API')
+        throw new Error(errData.error || 'Failed to call Claude API')
       }
 
       const { content: generatedContent } = await generateRes.json()

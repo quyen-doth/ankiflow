@@ -35,7 +35,7 @@ interface LoadingStep {
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-  { label: 'Calling Gemini AI', status: 'active' },
+  { label: 'Calling Claude AI', status: 'active' },
   { label: 'Generating audio (TTS)', status: 'pending' },
   { label: 'Finding images (Unsplash)', status: 'pending' },
 ]

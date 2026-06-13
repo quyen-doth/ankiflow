@@ -14,10 +14,9 @@ import type { Settings } from '@/types'
 
 const SETTINGS_DOC_ID = 'default'
 
-const GEMINI_MODEL_OPTIONS = [
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+const CLAUDE_MODEL_OPTIONS = [
+  { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
+  { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
 ]
 
 interface IntegrationStatus {
@@ -157,8 +156,8 @@ export default function SettingsPage() {
               checking={checkingAnki}
             />
             <IntegrationCard
-              label="Gemini API"
-              description={`Model: ${settings.gemini_model}`}
+              label="Claude API"
+              description={`Model: ${settings.ai_model ?? 'claude-haiku-4-5'}`}
               icon={<Sparkles className="w-5 h-5" />}
               connected
               checking={false}
@@ -192,19 +191,27 @@ export default function SettingsPage() {
           </FieldWrapper>
         </Card>
 
-        {/* Gemini config */}
+        {/* AI config */}
         <Card>
           <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">AI Generation</h2>
-          <FieldWrapper label="Gemini Model">
+          <FieldWrapper label="Claude Model">
             <Select
-              value={settings.gemini_model}
-              onChange={(e) => updateField('gemini_model', e.target.value)}
+              value={settings.ai_model ?? 'claude-haiku-4-5'}
+              onChange={(e) => updateField('ai_model', e.target.value)}
             >
-              {GEMINI_MODEL_OPTIONS.map(m => (
+              {CLAUDE_MODEL_OPTIONS.map(m => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </Select>
           </FieldWrapper>
+          <div className="mt-3">
+            <Toggle
+              label="Enable web search"
+              description="Cho phép AI agent tra cứu web để kiểm chứng nghĩa/cách dùng (chậm và tốn phí hơn)"
+              checked={settings.web_search_enabled ?? false}
+              onChange={(v) => updateField('web_search_enabled', v)}
+            />
+          </div>
         </Card>
 
         {/* Preferences */}

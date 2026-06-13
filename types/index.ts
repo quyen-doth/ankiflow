@@ -201,7 +201,8 @@ export interface FormFieldConfig {
 export interface Settings {
   unsplash_enabled: boolean;
   tts_enabled: boolean;
-  gemini_model: string;
+  ai_model: string; // Model Claude dùng để sinh nội dung (vd claude-haiku-4-5)
+  web_search_enabled: boolean; // Cho phép AI agent dùng tool web_search
   anki_connect_url: string;
   allow_duplicate: boolean;
   auto_audio: boolean;

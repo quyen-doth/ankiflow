@@ -10,7 +10,7 @@ const STORAGE_KEY = 'ankiflow_pending_result'
 
 /** Cấu trúc dữ liệu pending — kết hợp kết quả AI và metadata từ session */
 export interface PendingEntry {
-  /** Kết quả từ Gemini API (partial Entry fields) */
+  /** Kết quả từ Claude AI agent (partial Entry fields) */
   generatedContent: Record<string, unknown>
 
   /** Metadata từ session của user */

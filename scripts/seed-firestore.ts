@@ -329,7 +329,8 @@ async function seedSettings() {
   await seedDoc('settings', 'default', {
     unsplash_enabled: true,
     tts_enabled: true,
-    gemini_model: 'gemini-2.0-flash',
+    ai_model: 'claude-haiku-4-5',
+    web_search_enabled: false,
     anki_connect_url: 'http://localhost:8765',
     allow_duplicate: false,
     auto_audio: true,
