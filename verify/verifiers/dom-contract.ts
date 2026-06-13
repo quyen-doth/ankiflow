@@ -6,12 +6,14 @@ export const domContractVerifier = registerVerifier({
   description: 'Kiểm tra unit phát contract data-verify-* và tự định danh đúng.',
   run({ unit, root, contract }): Check[] {
     if (Object.keys(contract).length === 0) {
-      // Unit được phép render null (Modal đóng...) và DOM thực sự rỗng → SKIP
+      // Unit được phép render null (Modal đóng...) và DOM thực sự rỗng → hợp lệ.
+      // Không dùng 'skip' ở đây: skip lan lên verdict SKIP, trong khi đây là
+      // kết quả đúng kỳ vọng — SKIP dành cho fixture không chạy được ở môi trường hiện tại.
       if (unit.allowsEmptyRender && root.children.length === 0) {
         return [{
           verifier: 'dom-contract',
-          status: 'skip',
-          label: 'DOM rỗng — unit khai báo allowsEmptyRender',
+          status: 'ok',
+          label: 'DOM rỗng hợp lệ — unit khai báo allowsEmptyRender',
         }]
       }
       return [{

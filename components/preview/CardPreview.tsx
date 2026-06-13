@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { Entry } from '@/types'
 
 type CardTab = 'word_to_meaning' | 'meaning_to_word' | 'sentence'
@@ -24,7 +25,7 @@ export function CardPreview({ entry }: CardPreviewProps) {
   const back = getBack(activeTab, entry)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" {...verifyAttrs({ unit: 'CardPreview', tab: activeTab, flipped })}>
       {/* Tabs */}
       <div className="flex gap-1 bg-surface-low rounded-lg p-1">
         {TABS.map(tab => (

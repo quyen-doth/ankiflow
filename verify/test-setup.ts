@@ -1,3 +1,4 @@
+import { createElement } from 'react'
 import { beforeEach, vi } from 'vitest'
 
 // --- Mock next/navigation cho toàn bộ test ---
@@ -22,6 +23,18 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
   notFound: () => {
     throw new Error('notFound() called')
+  },
+}))
+
+// --- Mock next/image → <img> thuần (jsdom không cần Next image optimizer) ---
+vi.mock('next/image', () => ({
+  default: (props: Record<string, unknown>) => {
+    const { src, alt, className } = props
+    return createElement('img', {
+      src: typeof src === 'string' ? src : '',
+      alt: typeof alt === 'string' ? alt : '',
+      className: typeof className === 'string' ? className : undefined,
+    })
   },
 }))
 

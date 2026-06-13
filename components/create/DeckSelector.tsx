@@ -5,6 +5,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { DB_FORM_TYPE_TO_UI } from '@/lib/constants'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { DeckConfig } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
@@ -44,8 +45,10 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' 
     <FieldWrapper
       label={label}
       className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
+      {...verifyAttrs({ unit: 'DeckSelector', count: decks.length, loading })}
     >
       <Select
+        aria-label={label}
         value={value}
         onChange={(e) => {
           const selectedDeck = decks.find(d => d.id === e.target.value)

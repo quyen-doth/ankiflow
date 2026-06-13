@@ -14,6 +14,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage'
 import { useSession } from '@/hooks/useSession'
 import { FormType, LanguageType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
+import { verifyAttrs } from '@/verify/core/contract'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -104,7 +105,12 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onV
   if (!isLoaded) return null
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="grid lg:grid-cols-12 gap-6">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="grid lg:grid-cols-12 gap-6"
+      {...verifyAttrs({ unit: 'LanguageForm', error: !!error, language })}
+    >
 
       {/* Left — Core Content (focal) */}
       <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
@@ -116,6 +122,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onV
           </label>
           <input
             type="text"
+            aria-label="Vocabulary Item"
             value={vocabulary}
             onChange={(e) => setVocabulary(e.target.value)}
             className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
@@ -127,6 +134,7 @@ export function LanguageForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onV
             Contextual Note
           </label>
           <Textarea
+            aria-label="Contextual Note"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}

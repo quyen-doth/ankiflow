@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Play, Square, RefreshCw, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface AudioPlayerProps {
   audioUrl: string | null
@@ -35,7 +36,10 @@ export function AudioPlayer({ audioUrl, onRegenerate, loading, label = 'Audio' }
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className="flex items-center gap-3"
+      {...verifyAttrs({ unit: 'AudioPlayer', playing: isPlaying, hasAudio: !!audioUrl, loading: !!loading })}
+    >
       <span className="text-sm font-medium text-on-surface flex items-center gap-1.5">
         <Volume2 className="w-4 h-4 text-on-surface-var" />
         {label}

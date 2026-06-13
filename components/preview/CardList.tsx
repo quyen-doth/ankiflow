@@ -2,6 +2,7 @@
 
 import { Toggle } from '@/components/ui/Toggle'
 import { FieldWrapper } from '@/components/ui/FormField'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface CardType {
   id: string
@@ -21,7 +22,10 @@ export function CardList({ cardTypes, selectedIds, onChange }: CardListProps) {
   }
 
   return (
-    <FieldWrapper label="Card Types to Generate">
+    <FieldWrapper
+      label="Card Types to Generate"
+      {...verifyAttrs({ unit: 'CardList', count: cardTypes.length, selected: selectedIds.length })}
+    >
       <div className="grid grid-cols-2 gap-2">
         {cardTypes.map(ct => (
           <Toggle

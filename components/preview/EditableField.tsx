@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface EditableFieldProps {
   value: string
@@ -40,10 +41,11 @@ export function EditableField({ value, onSave, multiline = false, className, pla
 
   if (isEditing) {
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" {...verifyAttrs({ unit: 'EditableField', editing: true })}>
         {multiline ? (
           <textarea
             ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+            aria-label="Edit value"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -54,6 +56,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
         ) : (
           <input
             ref={inputRef as React.RefObject<HTMLInputElement>}
+            aria-label="Edit value"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -72,6 +75,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
   return (
     <span
       onClick={handleStartEdit}
+      {...verifyAttrs({ unit: 'EditableField', editing: false, empty: !value })}
       className={cn(
         'cursor-pointer rounded-md px-1 -mx-1 transition-colors hover:bg-primary/5 border border-transparent hover:border-primary/20',
         !value && 'text-on-surface-var italic',

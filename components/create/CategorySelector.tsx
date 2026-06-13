@@ -5,6 +5,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { Category, FormType } from '@/types'
 
 // Nhận formType theo UI label — mapping sang Firestore enum trong nội bộ component
@@ -52,8 +53,10 @@ export function CategorySelector({ formType, value, onChange }: CategorySelector
     <FieldWrapper
       label="Category"
       className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
+      {...verifyAttrs({ unit: 'CategorySelector', count: categories.length, loading })}
     >
       <Select
+        aria-label="Category"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!formType || loading}

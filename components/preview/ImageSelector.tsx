@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { RefreshCw } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface UnsplashImage {
   id: string
@@ -22,7 +23,10 @@ interface ImageSelectorProps {
 
 export function ImageSelector({ images, selectedId, onSelect, onRefetch, loading }: ImageSelectorProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="flex flex-col gap-3"
+      {...verifyAttrs({ unit: 'ImageSelector', count: images.length, loading: !!loading, selected: selectedId })}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-on-surface">Illustration</span>
         <Button type="button" variant="ghost" size="sm" onClick={onRefetch} disabled={loading}>
@@ -43,6 +47,7 @@ export function ImageSelector({ images, selectedId, onSelect, onRefetch, loading
             <button
               key={img.id}
               type="button"
+              aria-label={`Select image: ${img.alt_description || img.id}`}
               onClick={() => onSelect(img)}
               className={cn(
                 'relative aspect-video rounded-lg overflow-hidden border-2 transition-all',

@@ -71,7 +71,7 @@ registerUnit<ComponentProps<typeof MyComponent>>({
 4. Chạy `npm run verify` — unit mới tự xuất hiện trong matrix.
 
 Lưu ý:
-- Component render `null` có điều kiện (Modal đóng…) → khai báo `allowsEmptyRender: true` để dom-contract verifier SKIP thay vì FAIL.
+- Component render `null` có điều kiện (Modal đóng…) → khai báo `allowsEmptyRender: true` để dom-contract verifier chấm **ok** (DOM rỗng hợp lệ) thay vì FAIL. SKIP chỉ dành cho fixture không chạy được ở môi trường hiện tại (vd firestore trên browser).
 - Spy cho callback: dùng counter module-scope, **reset trong `act`** (fixtures chạy nhiều lần — dashboard, vitest).
 
 ## Mocks extension (khác bản gốc)
@@ -124,7 +124,7 @@ vitest.config.ts
 ## Coverage hiện tại & roadmap
 
 - **Phase A (xong)** — framework + pilots: Badge, Button, ProgressBar, StepIndicator, Tabs + unit tests cho `lib/session.ts`, `lib/pendingEntry.ts`.
-- **Phase B** — ui/ còn lại + layout (17 units): AnkiFlowLogo, Card, EmptyState, ErrorMessage, FlowTip, StatCard, Toggle, TagInput, FilterBar, DataTable, Modal, LoadingOverlay, Input/Textarea/Select, PageHeader, ConnectedBadge (mock fetch), NavigationSidebar (mock pathname).
-- **Phase C** — create/ + preview/ + history/ (18 units): selectors dùng `mocks.firestore`; LanguageForm/ITForm/GeneralForm dùng full mocks (firestore + fetch /api/generate + router + localStorage); CardPreview chú ý gotcha "optional language fields".
+- **Phase B (xong)** — ui/ còn lại + layout (17 units): AnkiFlowLogo, Card, EmptyState, ErrorMessage, FlowTip, StatCard, Toggle, TagInput, FilterBar, DataTable, Modal, LoadingOverlay, Input/Textarea/Select, PageHeader, ConnectedBadge (mock fetch), NavigationSidebar (mock pathname).
+- **Phase C (xong)** — create/ + preview/ + history/ (18 units): selectors dùng `mocks.firestore`; LanguageForm/ITForm/GeneralForm dùng full mocks (firestore + fetch /api/generate + router + localStorage); CardPreview/WordDetailCard có probe cho gotcha "optional language fields". `next/image` được mock thành `<img>` trong `verify/test-setup.ts`.
 - **Phase D** — admin/ managers (5 units, mocks.firestore CRUD) + feature spec `create-language-flow`.
 - **Future work** — hooks (useSession, usePreviewEntry, useAnkiExport) cần renderHook tooling; verify trên production build (đòi hỏi bỏ production-gate của verifyAttrs).

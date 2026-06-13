@@ -5,6 +5,7 @@ import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Eye, Trash2 } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { Entry } from '@/types'
 
 interface HistoryTableProps {
@@ -115,7 +116,10 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
   ]
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-outline-var/40 overflow-hidden">
+    <div
+      className="bg-white rounded-xl shadow-card border border-outline-var/40 overflow-hidden"
+      {...verifyAttrs({ unit: 'HistoryTable', rows: data.length })}
+    >
       <DataTable
         data={data}
         columns={columns}

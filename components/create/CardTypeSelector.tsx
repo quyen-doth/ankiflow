@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/Button'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { CardTypeConfig, LanguageType } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
@@ -61,7 +62,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
   const clearAll = () => onChange([])
 
   return (
-    <div>
+    <div {...verifyAttrs({ unit: 'CardTypeSelector', count: cardTypes.length, selected: selectedIds.length, loading })}>
       <div className="flex justify-between items-center mb-3">
         <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold">
           {loading ? 'Loading card types...' : 'Generated Card Types'}

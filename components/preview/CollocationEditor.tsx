@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Badge } from '@/components/ui/Badge'
 import { FieldWrapper } from '@/components/ui/FormField'
+import { verifyAttrs } from '@/verify/core/contract'
 
 // Component con mỗi item có thể kéo thả
 function SortableBadge({ id, label, onRemove }: { id: string; label: string; onRemove: () => void }) {
@@ -72,7 +73,7 @@ export function CollocationEditor({ items, onChange }: CollocationEditorProps) {
   const removeItem = (item: string) => onChange(items.filter(i => i !== item))
 
   return (
-    <FieldWrapper label="Collocations">
+    <FieldWrapper label="Collocations" {...verifyAttrs({ unit: 'CollocationEditor', count: items.length })}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={horizontalListSortingStrategy}>
           <div className="flex flex-wrap gap-2 mb-3 min-h-8">

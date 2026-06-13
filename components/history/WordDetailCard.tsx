@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Volume2 } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { Entry } from '@/types'
 
 interface WordDetailCardProps {
@@ -16,7 +17,10 @@ export function WordDetailCard({ entry }: WordDetailCardProps) {
   const isSynced = entry.status === 'synced'
 
   return (
-    <div className="bg-white rounded-xl shadow-card border border-outline-var/40 border-l-[4px] border-l-primary p-6 lg:p-8">
+    <div
+      className="bg-white rounded-xl shadow-card border border-outline-var/40 border-l-[4px] border-l-primary p-6 lg:p-8"
+      {...verifyAttrs({ unit: 'WordDetailCard', synced: isSynced, hasAudio: !!entry.audio_url })}
+    >
       {/* Header: Status & Level */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2">

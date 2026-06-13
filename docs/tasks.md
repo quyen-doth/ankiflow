@@ -285,18 +285,18 @@ BƯỚC 3 — Phần còn thiếu nhỏ (tuỳ chọn, làm nếu còn thời gi
 - [x] 5 pilot specs: Badge, Button, ProgressBar, StepIndicator, Tabs (instrument `verifyAttrs`)
 - [x] Unit tests thuần: `lib/session.ts`, `lib/pendingEntry.ts`
 
-### 6.B — ui/ còn lại + layout (17 units)
+### 6.B — ui/ còn lại + layout (17 units) ✅ (hoàn thành 2026-06-12)
 
-- [ ] AnkiFlowLogo, Card, EmptyState, ErrorMessage (allowsEmptyRender), FlowTip, StatCard
-- [ ] Toggle, TagInput, FilterBar, DataTable, Modal (allowsEmptyRender), LoadingOverlay
-- [ ] Input / Textarea / Select (form-field.verify.tsx)
-- [ ] PageHeader, ConnectedBadge (mocks.fetch), NavigationSidebar (mocks.pathname)
+- [x] AnkiFlowLogo, Card, EmptyState, ErrorMessage (allowsEmptyRender), FlowTip, StatCard
+- [x] Toggle, TagInput, FilterBar, DataTable, Modal (allowsEmptyRender), LoadingOverlay
+- [x] Input / Textarea / Select (form-field.verify.tsx)
+- [x] PageHeader, ConnectedBadge (mocks.fetch), NavigationSidebar (mocks.pathname)
 
-### 6.C — create/ + preview/ + history/ (18 units)
+### 6.C — create/ + preview/ + history/ (18 units) ✅ (hoàn thành 2026-06-13)
 
-- [ ] Thuần props: SectionDivider, SmartEnrichmentBanner, LanguageSelector, EditableField, CollocationEditor, CardList, ImageSelector, CardPreview, AudioPlayer, HistoryTable, WordDetailCard
-- [ ] mocks.firestore: DeckSelector, CategorySelector, TopicSelector, CardTypeSelector
-- [ ] Full mocks: LanguageForm, ITForm, GeneralForm (submit → pendingEntry + router.push('/preview'))
+- [x] Thuần props: SectionDivider, SmartEnrichmentBanner, LanguageSelector, EditableField, CollocationEditor, CardList, ImageSelector, CardPreview, AudioPlayer, HistoryTable, WordDetailCard
+- [x] mocks.firestore: DeckSelector, CategorySelector, TopicSelector, CardTypeSelector
+- [x] Full mocks: LanguageForm, ITForm, GeneralForm (submit → pendingEntry + router.push('/preview'))
 
 ### 6.D — admin/ + feature spec (6 units)
 

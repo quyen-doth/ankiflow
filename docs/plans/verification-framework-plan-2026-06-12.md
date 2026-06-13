@@ -19,13 +19,13 @@ Khác biệt môi trường phải xử lý khi port:
 | Components thuần props | Nhiều component fetch Firestore client/fetch API khi mount | **Mocks extension** (mục 4) |
 
 Quyết định đã chốt với user:
-1. Triển khai **Phase A trước**, nghiệm thu rồi mới B→C→D.
+1. Triển khai **Phase A, B trước**, nghiệm thu rồi mới C→D.
 2. Instrument mọi component có spec bằng `verifyAttrs()` — trả `{}` khi `NODE_ENV=production` (HTML production sạch).
 3. Được phép sửa docs: `docs/VERIFICATION.md`, `docs/tasks.md`, `CLAUDE.md`.
 
 Out of scope: ReplayPage / recorder / Playwright video của bản gốc; hooks tests (cần renderHook tooling — future work).
 
-## 2. Kiến trúc đã triển khai (Phase A — hoàn thành 2026-06-12)
+## 2. Kiến trúc đã triển khai (Phase B — hoàn thành 2026-06-12)
 
 ```
 verify/
@@ -98,7 +98,7 @@ Runner: install trước mount → restore trong `finally` (kể cả keepMounte
 
 Kết quả: `npm run verify` 44/44 ✅ · lint ✅ · build ✅ · dev `/verify` 200 ✅ · production `/verify` 404 + HTML không có `data-verify-*` ✅.
 
-## 6. Phase B — ui/ còn lại + layout (17 units)
+## 6. Phase B — ✅ hoàn thành & nghiệm thu 2026-06-12
 
 Mỗi dòng: contract keys → fixtures (P = probe) → invariants chính.
 
@@ -125,7 +125,14 @@ Mỗi dòng: contract keys → fixtures (P = probe) → invariants chính.
 
 Ghi chú: Input/Textarea/Select (+FieldWrapper) đăng ký từ một file `form-field.verify.tsx`. Fixtures phải khớp props thật trong code — kiểm tra component trước khi viết, bảng trên là định hướng.
 
-## 7. Phase C — create/ + preview/ + history/ (18 units)
+## 7. Phase C — ✅ hoàn thành 2026-06-13 — create/ + preview/ + history/ (18 units)
+
+> Kết quả: 18 specs + instrument xong, `npm run verify` 232/232 ✅ · lint ✅ · build ✅.
+> Điều chỉnh so với kế hoạch:
+> - `EXPECTED_FAIL` mới: chỉ `SectionDivider::probe-empty-label` (Input/Textarea unlabeled đã có từ Phase B; probe form rỗng đổi thành kiểm tra `onValidityChange(false)` vì form không tự validate — nút submit do page disable).
+> - `FieldWrapper` nhận rest props để selector spread `verifyAttrs` vào root; thêm `aria-label` cho các Select/input nội bộ (sửa a11y thật).
+> - `verify/test-setup.ts` mock `next/image` → `<img>` thuần (ImageSelector).
+> - Sửa `dom-contract`: DOM rỗng + `allowsEmptyRender` chấm `ok` thay vì `skip` (skip lan lên verdict SKIP làm fail matrix — lộ ra khi cài lại node_modules; SKIP nay chỉ dành cho fixture không chạy được ở môi trường hiện tại).
 
 **Thuần props:** SectionDivider (P empty-label EF nếu hợp lý), SmartEnrichmentBanner, LanguageSelector (option theo enum `LanguageType` — không hardcode), EditableField (act-enter-edit-save/cancel), CollocationEditor (act-add/remove), CardList (act-toggle), ImageSelector (a11y alt; act-select/refetch), CardPreview (**P minimal-entry** — gotcha "optional language fields": pinyin/hiragana/ipa chỉ render khi có), AudioPlayer (Audio stub trong test-setup; act-play → stub nhận url; null-url không crash), HistoryTable (status dùng enum; act-delete), WordDetailCard (P minimal-entry).
 

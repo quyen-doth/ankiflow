@@ -21,6 +21,8 @@ const EXPECTED_FAIL = new Set([
   'DataTable::probe-empty-columns',
   'Input::probe-unlabeled',
   'Textarea::probe-unlabeled',
+  // Phase C
+  'SectionDivider::probe-empty-label',
 ])
 
 describe('verification matrix', () => {

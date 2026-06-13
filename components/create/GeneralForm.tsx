@@ -11,6 +11,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage'
 import { useSession } from '@/hooks/useSession'
 import { FormType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
+import { verifyAttrs } from '@/verify/core/contract'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -88,7 +89,12 @@ export function GeneralForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onVa
   if (!isLoaded) return null
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="grid lg:grid-cols-12 gap-6">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="grid lg:grid-cols-12 gap-6"
+      {...verifyAttrs({ unit: 'GeneralForm', error: !!error })}
+    >
 
       {/* Left — Core Content (focal) */}
       <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">

@@ -5,6 +5,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Badge } from '@/components/ui/Badge'
 import { FieldWrapper } from '@/components/ui/FormField'
+import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Topic } from '@/types'
 
@@ -47,7 +48,10 @@ export function TopicSelector({ selectedIds, onChange }: TopicSelectorProps) {
   }
 
   return (
-    <FieldWrapper label="Topics">
+    <FieldWrapper
+      label="Topics"
+      {...verifyAttrs({ unit: 'TopicSelector', count: topics.length, selected: selectedIds.length, loading })}
+    >
       {loading ? (
         <span className="text-sm text-on-surface-var">Loading topics...</span>
       ) : (

@@ -54,7 +54,7 @@ registerUnit<EmptyStateProps>({
     {
       id: 'action-iff-provided',
       description: 'Action slot render khi và chỉ khi có props.action',
-      check: ({ root, props, contract }) => {
+      check: ({ props, contract }) => {
         const expected = props.action != null
         if (contract.hasaction !== String(expected)) {
           return `contract.hasaction="${contract.hasaction}", expected=${expected}`

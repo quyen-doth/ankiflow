@@ -1,21 +1,21 @@
 'use client'
 
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
+import { forwardRef, type HTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
 
 // Shared field wrapper with label
-interface FieldWrapperProps {
+interface FieldWrapperProps extends HTMLAttributes<HTMLDivElement> {
   label?: string
   error?: string
   className?: string
   children: React.ReactNode
 }
 
-export function FieldWrapper({ label, error, className, children }: FieldWrapperProps) {
+export function FieldWrapper({ label, error, className, children, ...rest }: FieldWrapperProps) {
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
+    <div className={cn('flex flex-col gap-1.5', className)} {...rest}>
       {label && (
         <label className="text-label-sm uppercase tracking-wide text-on-surface-var">
           {label}

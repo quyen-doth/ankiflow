@@ -11,6 +11,7 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage'
 import { useSession } from '@/hooks/useSession'
 import { FormType } from '@/types'
 import { savePendingEntry } from '@/lib/pendingEntry'
+import { verifyAttrs } from '@/verify/core/contract'
 
 type StepStatus = 'completed' | 'active' | 'pending'
 
@@ -103,7 +104,12 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onValidit
   if (!isLoaded) return null
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="grid lg:grid-cols-12 gap-6">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="grid lg:grid-cols-12 gap-6"
+      {...verifyAttrs({ unit: 'ITForm', error: !!error })}
+    >
 
       {/* Left — Core Content (focal) */}
       <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
@@ -153,7 +159,7 @@ export function ITForm({ onGenerateStart, onStepUpdate, onGenerateEnd, onValidit
           <DeckSelector value={deckId} onChangeId={(id) => updateSession({ deckId: id })} />
           <TopicSelector selectedIds={topics} onChange={(v) => updateSession({ topicIds: v })} />
           <FieldWrapper label="Difficulty">
-            <Select value={difficulty} onChange={(e) => updateSession({ difficulty: e.target.value })}>
+            <Select aria-label="Difficulty" value={difficulty} onChange={(e) => updateSession({ difficulty: e.target.value })}>
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
               <option value="advanced">Advanced</option>

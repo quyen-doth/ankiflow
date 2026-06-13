@@ -11,7 +11,9 @@ export function verifyAttrs(
   const out: Record<string, string> = {}
   for (const [key, value] of Object.entries(attrs)) {
     if (value === null || value === undefined) continue
-    out[`${VERIFY_PREFIX}${key}`] = String(value)
+    // Lowercase: HTML attribute vốn case-insensitive; key camelCase gây warning
+    // "React does not recognize the prop" trong dev
+    out[`${VERIFY_PREFIX}${key.toLowerCase()}`] = String(value)
   }
   return out
 }
