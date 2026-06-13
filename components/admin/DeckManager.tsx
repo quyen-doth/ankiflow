@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import { FormType, LanguageType } from '@/types'
 import type { DeckConfig } from '@/types'
 
@@ -176,7 +177,7 @@ export function DeckManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: DeckConfig) => (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+        <Button variant="ghost" size="sm" aria-label={`Edit deck ${row.display_name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
           <Pencil className="w-3.5 h-3.5" />
         </Button>
       ),
@@ -184,7 +185,7 @@ export function DeckManager() {
   ]
 
   return (
-    <Card>
+    <Card {...verifyAttrs({ unit: 'DeckManager', rows: decks.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-label-lg font-semibold text-on-surface-var">Decks</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
@@ -218,6 +219,7 @@ export function DeckManager() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrapper label="Form Type">
               <Select
+                aria-label="Form Type"
                 value={draft.form_type}
                 onChange={(e) => setDraft(d => ({ ...d, form_type: e.target.value as FormType }))}
               >
@@ -228,6 +230,7 @@ export function DeckManager() {
             </FieldWrapper>
             <FieldWrapper label="Language">
               <Select
+                aria-label="Language"
                 value={draft.language}
                 onChange={(e) => setDraft(d => ({ ...d, language: e.target.value as LanguageType | typeof NO_LANGUAGE }))}
               >
@@ -241,6 +244,7 @@ export function DeckManager() {
           <FieldWrapper label="Sort Order">
             <Input
               type="number"
+              aria-label="Sort Order"
               value={draft.sort_order}
               onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))}
             />

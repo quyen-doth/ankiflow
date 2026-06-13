@@ -298,10 +298,12 @@ BƯỚC 3 — Phần còn thiếu nhỏ (tuỳ chọn, làm nếu còn thời gi
 - [x] mocks.firestore: DeckSelector, CategorySelector, TopicSelector, CardTypeSelector
 - [x] Full mocks: LanguageForm, ITForm, GeneralForm (submit → pendingEntry + router.push('/preview'))
 
-### 6.D — admin/ + feature spec (6 units)
+### 6.D — admin/ + feature spec (6 units) ✅ (hoàn thành 2026-06-13)
 
-- [ ] CategoryManager, CardTypeManager, TopicManager, DeckManager, ContentTypeManager (mocks.firestore CRUD)
-- [ ] Feature spec `create-language-flow` (end-to-end create → preview handoff)
+- [x] CategoryManager, CardTypeManager, TopicManager, DeckManager, ContentTypeManager (mocks.firestore CRUD)
+- [x] Feature spec `create-language-flow` (end-to-end create → preview handoff)
+
+> Kết quả PHASE 6 hoàn tất: `npm run verify` **269/269** ✅ · lint ✅ · build ✅ · `/admin` dev 200, production HTML không chứa `data-verify-*`.
 
 ### Future work
 

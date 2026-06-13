@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Topic } from '@/types'
 
@@ -120,7 +121,7 @@ export function TopicManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: Topic) => (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+        <Button variant="ghost" size="sm" aria-label={`Edit topic ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
           <Pencil className="w-3.5 h-3.5" />
         </Button>
       ),
@@ -128,7 +129,7 @@ export function TopicManager() {
   ]
 
   return (
-    <Card>
+    <Card {...verifyAttrs({ unit: 'TopicManager', rows: topics.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-label-lg font-semibold text-on-surface-var">Topics</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
@@ -151,6 +152,7 @@ export function TopicManager() {
           <FieldWrapper label="Sort Order">
             <Input
               type="number"
+              aria-label="Sort Order"
               value={draft.sort_order}
               onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))}
             />

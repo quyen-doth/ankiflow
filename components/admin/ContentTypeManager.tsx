@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper } from '@/components/ui/FormField'
 import { Pencil } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { ContentType, FormFieldConfig } from '@/types'
 
@@ -111,7 +112,7 @@ export function ContentTypeManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: ContentType) => (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+        <Button variant="ghost" size="sm" aria-label={`Edit fields ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
           <Pencil className="w-3.5 h-3.5" />
         </Button>
       ),
@@ -119,7 +120,7 @@ export function ContentTypeManager() {
   ]
 
   return (
-    <Card>
+    <Card {...verifyAttrs({ unit: 'ContentTypeManager', rows: contentTypes.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-label-lg font-semibold text-on-surface-var">Content Types</h2>
       </div>
@@ -153,11 +154,12 @@ export function ContentTypeManager() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FieldWrapper label="Label">
-                  <Input value={field.label} onChange={(e) => updateField(index, 'label', e.target.value)} />
+                  <Input aria-label={`Label for ${field.field_key}`} value={field.label} onChange={(e) => updateField(index, 'label', e.target.value)} />
                 </FieldWrapper>
                 <FieldWrapper label="Sort Order">
                   <Input
                     type="number"
+                    aria-label={`Sort order for ${field.field_key}`}
                     value={field.sort_order}
                     onChange={(e) => updateField(index, 'sort_order', Number(e.target.value))}
                   />

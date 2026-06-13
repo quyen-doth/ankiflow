@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Category } from '@/types'
 
@@ -145,6 +146,7 @@ export function CategoryManager() {
         <Button
           variant="ghost"
           size="sm"
+          aria-label={`Edit category ${row.name}`}
           onClick={(e) => { e.stopPropagation(); openEdit(row) }}
           className="p-2 h-auto rounded-full"
         >
@@ -155,7 +157,7 @@ export function CategoryManager() {
   ]
 
   return (
-    <Card>
+    <Card {...verifyAttrs({ unit: 'CategoryManager', rows: categories.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-label-lg font-semibold text-on-surface-var">Categories</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
@@ -182,6 +184,7 @@ export function CategoryManager() {
           </FieldWrapper>
           <FieldWrapper label="Form Type">
             <Select
+              aria-label="Form Type"
               value={draft.form_type}
               onChange={(e) => setDraft(d => ({ ...d, form_type: e.target.value as FormType }))}
             >
@@ -193,6 +196,7 @@ export function CategoryManager() {
           <FieldWrapper label="Sort Order">
             <Input
               type="number"
+              aria-label="Sort Order"
               value={draft.sort_order}
               onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))}
             />

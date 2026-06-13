@@ -1,16 +1,18 @@
+import type { HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
 
-interface CardProps {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode
   className?: string
 }
 
-export function Card({ children, className }: CardProps) {
+export function Card({ children, className, ...rest }: CardProps) {
   return (
     <div
       className={cn('bg-white rounded-xl shadow-card border border-outline-var/40 p-6', className)}
       {...verifyAttrs({ unit: 'Card' })}
+      {...rest}
     >
       {children}
     </div>

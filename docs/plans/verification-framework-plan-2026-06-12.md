@@ -140,7 +140,15 @@ Ghi chú: Input/Textarea/Select (+FieldWrapper) đăng ký từ một file `form
 
 **Full mocks (firestore + fetch /api/generate + router + localStorage):** LanguageForm, ITForm, GeneralForm — fixtures: initial; filled; act-submit-success (mock 200 → assert `ankiflow_pending_result` lưu đúng + `router.push('/preview')` qua `__verifyNav.calls`); act-submit-api-error (mock 500 → lỗi hiển thị, không redirect, localStorage sạch); P empty-required-field (validation chặn submit).
 
-## 8. Phase D — admin/ + feature spec (6 units)
+## 8. Phase D — ✅ hoàn thành 2026-06-13 — admin/ + feature spec (6 units)
+
+> Kết quả: 6 units (5 manager + feature `create-language-flow`), `npm run verify` **269/269** ✅ · lint ✅ · build ✅ · production HTML `/admin` sạch `data-verify-*`.
+> Điều chỉnh so với kế hoạch:
+> - `Card` forward rest props (`HTMLAttributes`) để manager spread `verifyAttrs` vào root mà không thêm DOM node — contract đè `unit:'Card'` thành tên manager. Helper chung: `verify/specs/manager-helpers.ts` (truy cập firestore store, click theo text, set field theo label, đọc số row/trạng thái modal).
+> - ContentTypeManager chỉ có edit (không Add, status là Badge không phải toggle) → fixtures: loaded/empty/open-edit/edit-save/probe-empty-fields.
+> - Instrument kèm sửa a11y thật: thêm `aria-label` cho nút edit (icon Pencil) và các Select/Input number trong modal của cả 5 manager (a11y verifier bắt được khi mở modal).
+> - Sửa flaky `Modal::act-escape` (lộ ra khi suite lớn hơn): chờ passive effect gắn listener `keydown` trước khi dispatch Escape. Không có probe nào là EXPECTED_FAIL ở Phase D (các probe đều là edge case render an toàn).
+> - `verifyAttrs()` lowercase mọi key contract (sửa khi phát hiện warning `data-verify-mobileOpen` React không nhận diện camelCase prop trên DOM).
 
 5 managers (CategoryManager, CardTypeManager, TopicManager, DeckManager, ContentTypeManager): mocks.firestore; fixtures: loaded / empty / act-open-create-modal / act-create (điền modal → save → stub store nhận doc, bảng re-render) / act-toggle-active / P seed-thiếu-field-optional. Invariants: số row khớp store; modal mở/đóng; addDoc/updateDoc nhận giá trị enum đúng.
 

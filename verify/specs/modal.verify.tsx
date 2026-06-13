@@ -71,6 +71,9 @@ registerUnit<ModalProps>({
       props: { open: true, onClose: recordClose, title: 'Confirm', children: 'Body' },
       act: async ctx => {
         closeSpy.count = 0
+        // Chờ passive effect của Modal gắn listener keydown lên document trước khi
+        // nhấn Escape — nếu dispatch quá sớm, listener chưa attach → flaky.
+        await ctx.wait(16)
         document.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
         )
