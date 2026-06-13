@@ -24,8 +24,13 @@
         ],
         "PreToolUse": [
             {
-                "matcher": "Read",
-                "hooks": [{ "type": "command", "command": "node .claude/hooks/read_hook.js" }]
+                "matcher": "Read|Edit|Write|Bash|Grep",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "node ~/.claude/hooks/block-env.mjs"
+                    }
+                ]
             }
         ]
     }
