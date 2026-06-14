@@ -35,7 +35,7 @@ To seed Firestore: `cd ankiflow && npm run seed`
 - **Next.js 16** (App Router) — TypeScript strict mode
 - **Firestore** (Firebase Admin SDK on server, Firebase client SDK on browser)
 - **Tailwind CSS v4**
-- **Gemini API** (`gemini-2.0-flash`) — AI content generation
+- **Claude API** (`claude-haiku-4-5`, via `@anthropic-ai/sdk`) — tool-based AI agent for content generation
 - **Google Cloud TTS** — audio generation
 - **Unsplash API** — vocabulary images
 - **AnkiConnect** — local HTTP API at `localhost:8765` (requires Anki Desktop open)
@@ -46,7 +46,7 @@ To seed Firestore: `cd ankiflow && npm run seed`
 Browser UI → Next.js API Routes → External Services
                                    ├── Firestore (Admin SDK)
                                    ├── AnkiConnect (localhost:8765)
-                                   ├── Gemini API
+                                   ├── Claude API (Anthropic)
                                    ├── Google TTS
                                    └── Unsplash
 ```
@@ -61,7 +61,7 @@ Browser UI → Next.js API Routes → External Services
 | `app/preview/` | Preview generated card, edit, export to Anki |
 | `app/history/` | History log of created entries |
 | `app/history/[id]/` | History detail — full entry view, recreate/delete |
-| `app/settings/` | Settings — integration status, AnkiConnect URL, Gemini model, feature toggles |
+| `app/settings/` | Settings — integration status, AnkiConnect URL, Claude model, feature toggles |
 | `app/admin/` | Admin — CRUD for categories, card types, topics, decks, content types |
 | `components/create/` | Form components per content type |
 | `components/preview/` | Card preview + edit components |
@@ -69,8 +69,9 @@ Browser UI → Next.js API Routes → External Services
 | `components/admin/` | Admin manager components per resource (CategoryManager, etc.) |
 | `components/layout/` | Navigation sidebar, page header |
 | `components/ui/` | Shared UI primitives (Button, Modal, Card, DataTable, etc.) |
-| `lib/` | Shared utilities: firebase, gemini, session, TTS, Unsplash |
-| `lib/prompts/` | Per-language Gemini prompt builders |
+| `lib/` | Shared utilities: firebase, session, TTS, Unsplash |
+| `lib/ai-agent/` | Claude AI agent — provider, card schemas (zod), tool orchestration |
+| `lib/prompts/` | Per-language system prompts for the AI agent |
 | `lib/flashcard-service/` | AnkiConnect provider abstraction |
 | `types/index.ts` | All TypeScript types and enums |
 | `verify/` | Runtime verification framework (specs, verifiers, harness — see `docs/VERIFICATION.md`) |
@@ -79,7 +80,7 @@ Browser UI → Next.js API Routes → External Services
 ### Data Flow: Create → Preview
 
 1. User fills `app/create/page.tsx` form
-2. On submit, calls `POST /api/generate` → Gemini enriches content
+2. On submit, calls `POST /api/generate` → Claude AI agent enriches content
 3. Result saved to `localStorage` via `lib/pendingEntry.ts` (`ankiflow_pending_result`)
 4. Browser redirects to `app/preview/page.tsx`, which reads and clears pending entry
 5. User edits card, selects image/audio, then exports via `POST /api/anki/create`
@@ -138,7 +139,7 @@ Copy `.env.example` to `.env.local`:
 |---|---|
 | `FIREBASE_ADMIN_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY` | GCP service account |
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase Console → Project Settings |
-| `GEMINI_API_KEY` | Google AI Studio |
+| `ANTHROPIC_API_KEY` | Anthropic Console (Claude API) |
 | `GOOGLE_TTS_API_KEY` | Google Cloud Console |
 | `UNSPLASH_ACCESS_KEY` | Unsplash Developers |
 | `ANKI_CONNECT_URL` | Default: `http://localhost:8765` |
@@ -167,7 +168,7 @@ Copy `.env.example` to `.env.local`:
 
 - **AnkiConnect is local** — only works when Anki Desktop is open. All AnkiConnect calls need explicit error handling for the disconnected case.
 - **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`, etc. only exist when `language` matches. Never assume these fields have values.
-- **`form_type` drives everything** — it determines which form renders, which Gemini prompt runs, and which Firestore data loads. Mismatched `form_type` causes silent wrong behavior.
+- **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Mismatched `form_type` causes silent wrong behavior.
 - **No JOIN in Firestore** — related documents must be fetched with `Promise.all()`, never sequentially in a loop.
 - **Actions requiring user confirmation before execution:** writing/deleting Firestore documents, calling AnkiConnect (creates/deletes Anki notes), deleting codebase files, updating any file under `docs/`.
 

@@ -26,15 +26,15 @@
 
 ## ✨ 主な機能
 
-| 機能 | 説明 |
-|---|---|
-| 🤖 **AI による自動補完** | 単語を入力すると Gemini が意味・例文・発音・関連語などを生成 |
-| 🖼️ **画像・音声の自動付与** | Unsplash で関連画像、Google Cloud TTS でネイティブ音声を取得 |
-| 👀 **プレビュー & 編集** | エクスポート前にカード内容をその場で確認・修正 |
-| 📤 **Anki へのエクスポート** | AnkiConnect 経由で複数のカードタイプを一括生成 |
-| 🗂️ **履歴管理** | 作成済みカードの一覧・詳細表示・再作成・削除 |
-| ⚙️ **管理画面（CMS）** | カテゴリ・カードタイプ・デッキ・トピックなどの設定データを CRUD で管理 |
-| 💾 **セッション永続化** | デッキ・言語・タグなどの設定を `localStorage` に保持し、次回入力を高速化 |
+| 機能                         | 説明                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| 🤖 **AI による自動補完**     | 単語を入力すると Gemini が意味・例文・発音・関連語などを生成             |
+| 🖼️ **画像・音声の自動付与**  | Unsplash で関連画像、Google Cloud TTS でネイティブ音声を取得             |
+| 👀 **プレビュー & 編集**     | エクスポート前にカード内容をその場で確認・修正                           |
+| 📤 **Anki へのエクスポート** | AnkiConnect 経由で複数のカードタイプを一括生成                           |
+| 🗂️ **履歴管理**              | 作成済みカードの一覧・詳細表示・再作成・削除                             |
+| ⚙️ **管理画面（CMS）**       | カテゴリ・カードタイプ・デッキ・トピックなどの設定データを CRUD で管理   |
+| 💾 **セッション永続化**      | デッキ・言語・タグなどの設定を `localStorage` に保持し、次回入力を高速化 |
 
 ## 🖼️ スクリーンショット
 
@@ -55,17 +55,17 @@ docs/screenshots/
 
 ## 🛠️ 技術スタック
 
-| 領域 | 採用技術 | 選定理由 |
-|---|---|---|
-| フレームワーク | **Next.js 16**（App Router） | サーバーコンポーネントと API ルートを単一コードベースで管理 |
-| 言語 | **TypeScript**（strict モード） | `any` を排し、型でドメインの整合性を担保 |
-| データベース | **Cloud Firestore** | サーバーは Admin SDK、ブラウザは Client SDK を使い分け |
-| スタイリング | **Tailwind CSS v4** | デザイントークンに基づく一貫した UI |
-| AI 生成 | **Google Gemini API** | 語彙コンテンツのエンリッチ |
-| 音声 / 画像 | **Google Cloud TTS / Unsplash API** | ネイティブ発音・関連画像の取得 |
-| 暗記アプリ連携 | **AnkiConnect**（`localhost:8765`） | ローカル HTTP API でカードを直接生成 |
-| バリデーション | **zod 4** | API 入出力・フォームのスキーマ検証 |
-| テスト | **Vitest + jsdom** | 自作のランタイム検証基盤を駆動（後述） |
+| 領域           | 採用技術                            | 選定理由                                                    |
+| -------------- | ----------------------------------- | ----------------------------------------------------------- |
+| フレームワーク | **Next.js 16**（App Router）        | サーバーコンポーネントと API ルートを単一コードベースで管理 |
+| 言語           | **TypeScript**（strict モード）     | `any` を排し、型でドメインの整合性を担保                    |
+| データベース   | **Cloud Firestore**                 | サーバーは Admin SDK、ブラウザは Client SDK を使い分け      |
+| スタイリング   | **Tailwind CSS v4**                 | デザイントークンに基づく一貫した UI                         |
+| AI 生成        | **Google Gemini API**               | 語彙コンテンツのエンリッチ                                  |
+| 音声 / 画像    | **Google Cloud TTS / Unsplash API** | ネイティブ発音・関連画像の取得                              |
+| 暗記アプリ連携 | **AnkiConnect**（`localhost:8765`） | ローカル HTTP API でカードを直接生成                        |
+| バリデーション | **zod 4**                           | API 入出力・フォームのスキーマ検証                          |
+| テスト         | **Vitest + jsdom**                  | 自作のランタイム検証基盤を駆動（後述）                      |
 
 ## 🏗️ システム構成
 
@@ -174,13 +174,13 @@ npm run dev
 
 主な環境変数:
 
-| 変数 | 取得元 |
-|---|---|
-| `FIREBASE_ADMIN_*` / `NEXT_PUBLIC_FIREBASE_*` | Firebase Console |
-| `GEMINI_API_KEY` | Google AI Studio |
-| `GOOGLE_TTS_API_KEY` | Google Cloud Console |
-| `UNSPLASH_ACCESS_KEY` | Unsplash Developers |
-| `API_SECRET` | 管理系 API の認証用ランダム文字列 |
+| 変数                                          | 取得元                            |
+| --------------------------------------------- | --------------------------------- |
+| `FIREBASE_ADMIN_*` / `NEXT_PUBLIC_FIREBASE_*` | Firebase Console                  |
+| `GEMINI_API_KEY`                              | Google AI Studio                  |
+| `GOOGLE_TTS_API_KEY`                          | Google Cloud Console              |
+| `UNSPLASH_ACCESS_KEY`                         | Unsplash Developers               |
+| `API_SECRET`                                  | 管理系 API の認証用ランダム文字列 |
 
 ## 🗺️ 今後の展望
 

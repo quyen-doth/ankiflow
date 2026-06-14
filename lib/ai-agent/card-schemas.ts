@@ -114,7 +114,7 @@ function makeSpec(
 
 /**
  * Chọn schema + prompt + user message đúng theo form_type/language.
- * Throw với combo không hỗ trợ (giữ nguyên hành vi như Gemini cũ).
+ * Throw với combo không hỗ trợ (giữ nguyên hành vi cũ).
  */
 export function resolveCardSpec(input: GenerateCardInput): CardSpec {
   if (input.form_type === FormType.LANGUAGE && input.word && input.language) {

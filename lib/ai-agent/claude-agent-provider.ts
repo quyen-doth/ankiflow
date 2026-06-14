@@ -35,7 +35,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       const raw = this.webSearchEnabled
         ? await this.runWithSearch(spec)
         : await this.runForced(spec)
-      // Validate output đúng schema (điều mà bản Gemini cũ thiếu).
+      // Validate output đúng schema (provider cũ không validate).
       return spec.schema.parse(raw) as Record<string, unknown>
     } catch (error) {
       if (retries > 0) {

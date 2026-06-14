@@ -632,7 +632,7 @@ Icon tròn: `completed` → `bg-primary text-white` + `<Check>`; `active` → vi
 **Usage:**
 ```tsx
 <StepIndicator steps={[
-  { label: 'Calling Gemini AI...', status: 'completed' },
+  { label: 'Calling Claude AI...', status: 'completed' },
   { label: 'Generating audio pronunciation...', description: 'Synthesizing natural speech...', status: 'active' },
   { label: 'Finding images...', status: 'pending' },
 ]} />

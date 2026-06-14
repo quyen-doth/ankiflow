@@ -38,7 +38,7 @@ last_updated: 2026-06
 - **Ngoại lệ — KHÔNG đổi:**
   - Giá trị enum / khóa dữ liệu Firestore (`form_language`, `status`, field keys…) — đó là contract logic, không phải copy.
   - Nội dung do người dùng nhập hoặc dữ liệu thực thể (tên category, tên deck…) — đó là dữ liệu, không phải UI chrome.
-  - Prompt gửi cho Gemini trong `lib/prompts/*.ts` — không hiển thị cho người dùng.
+  - System prompt gửi cho Claude trong `lib/prompts/*.ts` — không hiển thị cho người dùng.
 
 ---
 

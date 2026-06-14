@@ -190,7 +190,8 @@ Single document — lưu config toàn cục của app.
 | `id` | string (PK) | Document ID |
 | `unsplash_enabled` | boolean | Bật/tắt tích hợp Unsplash |
 | `tts_enabled` | boolean | Bật/tắt Text-to-Speech |
-| `gemini_model` | string | Model Gemini đang dùng |
+| `ai_model` | string | Model Claude đang dùng (vd `claude-haiku-4-5`) |
+| `web_search_enabled` | boolean | Cho phép AI agent dùng tool web_search |
 | `anki_connect_url` | string | URL AnkiConnect local |
 | `allow_duplicate` | boolean | Cho phép tạo entry trùng |
 | `auto_audio` | boolean | Tự động tạo audio |

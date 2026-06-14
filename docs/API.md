@@ -1,6 +1,6 @@
 # 📚 API Reference — AnkiFlow Backend
 
-Tài liệu này cung cấp đặc tả chi tiết về các backend API routes được sử dụng trong dự án AnkiFlow. Hệ thống được xây dựng trên Next.js App Router, đóng vai trò làm trung gian kết nối giữa Client (React UI) và các External Services (Firestore, AnkiConnect, Gemini, Google TTS, Unsplash).
+Tài liệu này cung cấp đặc tả chi tiết về các backend API routes được sử dụng trong dự án AnkiFlow. Hệ thống được xây dựng trên Next.js App Router, đóng vai trò làm trung gian kết nối giữa Client (React UI) và các External Services (Firestore, AnkiConnect, Claude, Google TTS, Unsplash).
 
 ---
 
@@ -20,7 +20,7 @@ graph TD
     
     subgraph "External Services"
         AnkiConnect[AnkiConnect plugin localhost:8765]
-        Gemini[Google Gemini API]
+        Claude[Anthropic Claude API]
         TTS[Google Cloud TTS]
         Unsplash[Unsplash API]
         Firestore[(Firebase Firestore)]
@@ -35,7 +35,7 @@ graph TD
     AnkiAPI <-->|Local HTTP POST| AnkiConnect
     AnkiAPI -->|Admin SDK| Firestore
     
-    GenAPI <-->|SDK| Gemini
+    GenAPI <-->|SDK| Claude
     
     MediaAPI <-->|SDK| TTS
     MediaAPI <-->|HTTP GET| Unsplash
@@ -98,7 +98,7 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 
 | Biến môi trường | Dịch vụ tương ứng | Routes sử dụng |
 |---|---|---|
-| `GEMINI_API_KEY` | Google Gemini API | `/api/generate` |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API | `/api/generate` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud Service Account (TTS) | `/api/audio` |
 | `UNSPLASH_ACCESS_KEY` | Unsplash Developer API | `/api/image` |
 | `ANKI_CONNECT_URL` | Cổng HTTP của AnkiConnect | `/api/anki/*` , `/api/audio` |
@@ -115,7 +115,7 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | **GET** | `/api/anki/connect` | Kiểm tra kết nối với Anki Desktop |
 | **GET** | `/api/anki/decks` | Fetch danh sách deck từ Anki |
 | **POST** | `/api/anki/create` | Đẩy notes vào Anki & Lưu Entry log vào Firestore |
-| **POST** | `/api/generate` | AI (Gemini) sinh nội dung flashcard (ví dụ, giải nghĩa, collocations...) |
+| **POST** | `/api/generate` | AI (Claude agent) sinh nội dung flashcard (ví dụ, giải nghĩa, collocations...) |
 | POST | /api/audio | TTS + store vào Anki (combined, backward-compatible) |
 | POST | /api/audio/generate | Chỉ render TTS → trả về base64 |
 | POST | /api/audio/store | Chỉ store base64 vào Anki media folder |
@@ -176,7 +176,7 @@ Thêm note mới vào Anki. Sau khi Anki Connect báo tạo thành công, tiến
 ### 6.2 AI Generation
 
 #### `POST /api/generate`
-Gọi Google Gemini để sinh thông tin từ vựng hoặc IT vocabulary. Trả về JSON structure đã được map sẵn.
+Gọi Claude (AI agent, tool-based) để sinh thông tin từ vựng hoặc IT vocabulary. Model bị ép gọi tool `submit_card` nên output luôn đúng schema (validate bằng zod). Model lấy từ `settings.ai_model` (mặc định `claude-haiku-4-5`). Trả về JSON structure đã được map sẵn.
 
 *   **Body Params:**
     ```ts

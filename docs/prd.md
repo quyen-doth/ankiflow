@@ -71,7 +71,7 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 [5] Nhập: Từ vựng "书" ← THAO TÁC CHÍNH, các field khác đã lưu sẵn
     ↓
 [6] Nhấn "Tạo nháp" → Hệ thống gọi:
-    ├── Gemini API → sinh nghĩa VN, Pinyin, Hán Việt, ví dụ câu, collocations, từ loại, cấp độ HSK
+    ├── Claude AI agent → sinh nghĩa VN, Pinyin, Hán Việt, ví dụ câu, collocations, từ loại, cấp độ HSK
     ├── Google TTS → tạo audio file (lưu vào Anki media folder)
     └── Unsplash API → tìm ảnh minh họa (lưu URL)
     ↓
@@ -127,7 +127,7 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
           │
           ▼ External APIs
 ┌─────────────────────────────────────────────────┐
-│  Gemini 2.0 Flash  → Sinh nội dung card         │
+│  Claude Haiku 4.5  → Sinh nội dung card         │
 │  Google Cloud TTS  → Tạo audio phát âm          │
 │  Unsplash API      → Tìm ảnh minh họa           │
 │  Firebase Firestore→ Lưu lịch sử + config data  │
@@ -150,7 +150,7 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 | **Styling** | Tailwind CSS | 3+ | Rapid UI development |
 | **Backend** | Next.js API Routes | - | Serverless, đơn giản |
 | **Database** | Firebase Firestore | - | Free tier rộng, real-time |
-| **AI** | Google Gemini 2.0 Flash | - | Free tier, multimodal |
+| **AI** | Anthropic Claude Haiku 4.5 | via `@anthropic-ai/sdk` | Tool-use, structured output |
 | **TTS** | Google Cloud TTS | - | Free 1M ký tự/tháng |
 | **Images** | Unsplash API | v1 | Free, ảnh chất lượng cao |
 | **Anki** | AnkiConnect | 6+ | Plugin local, API đầy đủ |
@@ -355,7 +355,8 @@ interface FormFieldConfig {
 interface Settings {
   unsplash_enabled: boolean;
   tts_enabled: boolean;
-  gemini_model: string;
+  ai_model: string;          // Model Claude (vd claude-haiku-4-5)
+  web_search_enabled: boolean; // Cho phép AI agent dùng tool web_search
   anki_connect_url: string;  // Mặc định: http://localhost:8765
 }
 ```
@@ -574,7 +575,7 @@ interface SessionState {
 ### Tạo card mới — `/create`
 
 **Shared components:**
-- `LoadingOverlay` — hiện khi đang generate (3 steps: Gemini → TTS → Unsplash)
+- `LoadingOverlay` — hiện khi đang generate (3 steps: Claude → TTS → Unsplash)
 - `PageHeader` — breadcrumb: Home › Create Card › [Form type]
 - `Button` variant `primary` — "Tạo nháp"
 - `FormField` (Input/Textarea/Select) — tất cả form fields
@@ -674,13 +675,13 @@ interface SessionState {
 **Shared components:**
 - `PageHeader` — title "Settings" với description
 - `FormField` (Input) — AnkiConnect URL
-- `FormField` (Select) — Gemini model
+- `FormField` (Select) — Claude model
 - `Toggle` — unsplash_enabled, tts_enabled
 - `Button` variant `primary` — "Lưu thay đổi"
 - `Button` variant `ghost` — "Test connection"
 
 **Screen-specific components:**
-- `IntegrationCard` (`components/features/settings/IntegrationCard.tsx`) — hiển thị từng API: AnkiConnect, Gemini, Google TTS, Unsplash
+- `IntegrationCard` (`components/features/settings/IntegrationCard.tsx`) — hiển thị từng API: AnkiConnect, Claude, Google TTS, Unsplash
 
 **State cần manage:**
 - `settings`: `Settings` — load từ Firestore `settings` collection
@@ -1461,21 +1462,26 @@ POST http://localhost:8765
 }
 ```
 
-### 11.2 Gemini API
+### 11.2 Claude API (AI Agent)
 
 ```typescript
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const result = await model.generateContent({
-  contents: [{ role: "user", parts: [{ text: prompt }] }],
-  generationConfig: {
-    responseMimeType: "application/json",
-    temperature: 0.3,
-  }
+// AI agent: ép model gọi tool `submit_card` → structured output đúng schema
+const res = await client.messages.create({
+  model: "claude-haiku-4-5", // lấy từ settings.ai_model
+  max_tokens: 4096,
+  temperature: 0.3,
+  system: systemPrompt,
+  tools: [{ name: "submit_card", description, input_schema: cardInputSchema }],
+  tool_choice: { type: "tool", name: "submit_card" },
+  messages: [{ role: "user", content: userMessage }],
 });
+
+const toolUse = res.content.find((b) => b.type === "tool_use");
+const content = cardSchema.parse(toolUse.input); // validate bằng zod
 ```
 
 ### 11.3 Google Cloud TTS
@@ -1530,7 +1536,7 @@ ankiflow/
 │   ├── settings/
 │   │   └── page.tsx              # Settings
 │   └── api/
-│       ├── generate/route.ts     # Gọi Gemini API
+│       ├── generate/route.ts     # Gọi Claude API (AI agent)
 │       ├── audio/route.ts        # Gọi Google TTS
 │       ├── image/route.ts        # Gọi Unsplash API
 │       ├── anki/
@@ -1579,7 +1585,7 @@ ankiflow/
 │
 ├── lib/
 │   ├── firebase.ts
-│   ├── gemini.ts
+│   ├── ai-agent/                # MỚI: Claude AI agent (provider + schemas)
 │   ├── tts.ts
 │   ├── unsplash.ts
 │   ├── anki-connect.ts
@@ -1624,8 +1630,8 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 
-# Google AI
-GEMINI_API_KEY=
+# Anthropic Claude
+ANTHROPIC_API_KEY=
 
 # Google Cloud TTS
 GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account.json
@@ -1645,13 +1651,13 @@ ANKI_CONNECT_URL=http://localhost:8765
 |---|---|---|---|
 | **Firebase Firestore** | 1GB storage, 50K reads/ngày, 20K writes/ngày | ~300MB (300K cards + config) | $0 |
 | **Firebase Storage** | 5GB | Gần như không dùng | $0 |
-| **Gemini 2.0 Flash** | 15 RPM, 1M tokens/ngày | ~1-5 calls/lần tạo | $0 |
+| **Claude Haiku 4.5** | Trả phí (~$1/$5 per 1M tokens in/out) | ~1 call/thẻ (~1-2K tokens) | ~vài cent / 100 thẻ |
 | **Google Cloud TTS** | 1M ký tự/tháng (WaveNet) | ~100-500 ký tự/card | $0 |
 | **Unsplash API** | 50 requests/giờ (Demo) | 1 request/card | $0 |
 | **AnkiConnect** | Miễn phí, open-source | - | $0 |
 | **AnkiWeb sync** | Miễn phí | - | $0 |
 | **Hosting** | Localhost | - | $0 |
-| **Tổng** | | | **$0/tháng** ✅ |
+| **Tổng** | | | **~$0/tháng + phí Claude theo token (rất nhỏ)** |
 
 > **Lưu ý:** Nếu số card vượt 400K+, chi phí Firestore storage có thể phát sinh ~$0.07-$0.18/tháng.
 
@@ -1662,7 +1668,7 @@ ANKI_CONNECT_URL=http://localhost:8765
 | Rủi ro | Mức độ | Giải pháp |
 |---|---|---|
 | AnkiConnect không phản hồi | Cao | Hiển thị hướng dẫn bật Anki, retry mechanism |
-| Gemini trả về JSON lỗi format | Trung bình | Validation + fallback prompt |
+| Claude trả output sai schema | Thấp | Tool `submit_card` ép schema + validate zod + retry |
 | Unsplash không tìm được ảnh phù hợp | Trung bình | Cho phép nhập từ khóa khác, bỏ qua ảnh |
 | Google TTS rate limit | Thấp | Queue, retry với delay |
 | Firestore offline | Thấp | Cache local, sync sau |
@@ -1682,7 +1688,7 @@ ANKI_CONNECT_URL=http://localhost:8765
 - [ ] Admin page: CRUD categories, topics, card types, decks
 - [ ] Create form + Session persistence
 - [ ] Preview & Review + Confirm
-- [ ] Tích hợp Gemini API (với collocations)
+- [ ] Tích hợp Claude API — AI agent tool-based (với collocations)
 - [ ] Tích hợp Google TTS
 - [ ] Tích hợp Unsplash
 - [ ] Tích hợp AnkiConnect
