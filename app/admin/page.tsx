@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Tabs } from '@/components/ui/Tabs'
 import { CategoryManager } from '@/components/admin/CategoryManager'
@@ -17,8 +18,12 @@ const TABS = [
   { id: 'content-types', label: 'Content Types' },
 ]
 
+const TAB_IDS = TABS.map(t => t.id)
+
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState('categories')
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(TAB_IDS.includes(initialTab ?? '') ? initialTab! : 'categories')
 
   return (
     <>

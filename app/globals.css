@@ -39,29 +39,29 @@
   --font-sans:  var(--font-sans), sans-serif;
 
   /* ── Font Sizes ── */
-  --font-size-display:     36px;
-  --line-height-display:   1.2;
-  --font-weight-display:   700;
+  --text-display:              36px;
+  --text-display--line-height: 1.2;
+  --text-display--font-weight: 700;
 
-  --font-size-headline-md: 24px;
-  --line-height-headline-md: 1.3;
-  --font-weight-headline-md: 600;
+  --text-headline-md:              24px;
+  --text-headline-md--line-height: 1.3;
+  --text-headline-md--font-weight: 600;
 
-  --font-size-headline-sm: 18px;
-  --line-height-headline-sm: 1.4;
-  --font-weight-headline-sm: 600;
+  --text-headline-sm:              18px;
+  --text-headline-sm--line-height: 1.4;
+  --text-headline-sm--font-weight: 600;
 
-  --font-size-body-md:     14px;
-  --line-height-body-md:   1.5;
-  --font-weight-body-md:   400;
+  --text-body-md:              14px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--font-weight: 400;
 
-  --font-size-label-lg:    14px;
-  --line-height-label-lg:  1;
-  --font-weight-label-lg:  700;
+  --text-label-lg:              14px;
+  --text-label-lg--line-height: 1;
+  --text-label-lg--font-weight: 700;
 
-  --font-size-label-sm:    10px;
-  --line-height-label-sm:  1;
-  --font-weight-label-sm:  600;
+  --text-label-sm:              10px;
+  --text-label-sm--line-height: 1;
+  --text-label-sm--font-weight: 600;
 
   /* ── Border Radius ── */
   --radius-sm:   0.25rem;

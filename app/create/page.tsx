@@ -18,12 +18,12 @@ const CONTENT_TYPES: {
   id: ContentType
   label: string
   icon: React.ElementType
-  disabled?: boolean
+  href?: string
 }[] = [
   { id: 'Language', label: 'Language',  icon: Languages },
   { id: 'IT',       label: 'IT & Dev',  icon: Terminal },
   { id: 'General',  label: 'General',   icon: BookOpen },
-  { id: 'Custom',   label: 'Custom',    icon: SlidersHorizontal, disabled: true },
+  { id: 'Custom',   label: 'Custom',    icon: SlidersHorizontal, href: '/admin?tab=content-types' },
 ]
 
 // ─── Step types cho Loading Overlay ─────────────────────────────────────────
@@ -135,21 +135,19 @@ export default function CreatePage() {
         {/* Content Type — pill row + Generate (same row, same height) */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-2">
-            {CONTENT_TYPES.map(({ id, label, icon: Icon, disabled }) => {
+            {CONTENT_TYPES.map(({ id, label, icon: Icon, href }) => {
               const isActive = formType === id
               return (
                 <button
                   key={id}
                   type="button"
-                  disabled={disabled}
-                  onClick={() => !disabled && handleSelectType(id)}
+                  onClick={() => href ? router.push(href) : handleSelectType(id)}
                   className={cn(
                     'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
                     'focus-visible:ring-2 focus-visible:ring-primary/40',
                     isActive
                       ? 'border-primary bg-primary/10 text-primary font-bold shadow-card'
                       : 'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
-                    disabled && 'opacity-40 cursor-not-allowed'
                   )}
                 >
                   <Icon className="w-4 h-4" />
