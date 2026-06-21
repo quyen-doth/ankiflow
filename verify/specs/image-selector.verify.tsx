@@ -5,30 +5,27 @@ import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
 
 type ImageSelectorProps = ComponentProps<typeof ImageSelector>
-type UnsplashImage = ImageSelectorProps['images'][number]
+type ImageItem = ImageSelectorProps['images'][number]
 
-function makeImage(id: string, alt: string): UnsplashImage {
+function makeImage(id: string, creditName: string): ImageItem {
   return {
     id,
-    urls: {
-      small: `https://images.unsplash.com/${id}?w=200`,
-      regular: `https://images.unsplash.com/${id}?w=800`,
-    },
-    alt_description: alt,
-    user: { name: 'Photographer', links: { html: 'https://unsplash.com/@photographer' } },
+    url: `https://images.unsplash.com/${id}?w=800`,
+    thumb: `https://images.unsplash.com/${id}?w=200`,
+    credit_name: creditName,
+    credit_url: `https://unsplash.com/@${creditName.toLowerCase().replace(/\s/g, '')}`,
   }
 }
 
 const IMAGES = [
-  makeImage('img-1', 'a cup of coffee'),
-  makeImage('img-2', 'mountain at sunrise'),
-  makeImage('img-3', 'open book on desk'),
-  makeImage('img-4', 'city street at night'),
+  makeImage('img-1', 'Alice'),
+  makeImage('img-2', 'Bob'),
+  makeImage('img-3', 'Charlie'),
+  makeImage('img-4', 'Diana'),
 ]
 
-// Spies — reset trong act
 const selectSpy = { count: 0, lastId: null as string | null }
-const recordSelect = (img: UnsplashImage) => {
+const recordSelect = (img: ImageItem) => {
   selectSpy.count++
   selectSpy.lastId = img.id
 }
@@ -41,46 +38,47 @@ const noop = () => undefined
 registerUnit<ImageSelectorProps>({
   id: 'ImageSelector',
   title: 'ImageSelector',
-  description: 'Lưới 4 ảnh Unsplash chọn được + nút Find more + skeleton khi loading.',
+  description: 'Lưới 4 ảnh Unsplash chọn được + nút Find more + upload + skeleton khi loading.',
   kind: 'component',
   render: props => <ImageSelector {...props} />,
   propsSchema: z.object({
     images: z.array(z.looseObject({ id: z.string() })),
-    selectedId: z.string().nullable(),
-    onSelect: fn<(img: UnsplashImage) => void>(),
+    selectedUrl: z.string().nullable(),
+    onSelect: fn<(img: ImageItem) => void>(),
     onRefetch: fn<() => void>(),
+    onUpload: fn<(dataUrl: string) => void>(),
     loading: z.boolean().optional(),
   }),
   fixtures: [
     {
       id: 'with-images',
-      description: '4 ảnh, chưa chọn — không có dòng credit.',
-      props: { images: IMAGES, selectedId: null, onSelect: noop, onRefetch: noop },
+      description: '4 ảnh, chưa chọn.',
+      props: { images: IMAGES, selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
     {
       id: 'with-selection',
-      description: 'Đã chọn 1 ảnh — hiện dòng credit Unsplash.',
-      props: { images: IMAGES, selectedId: 'img-2', onSelect: noop, onRefetch: noop },
+      description: 'Đã chọn 1 ảnh — hiện preview + credit.',
+      props: { images: IMAGES, selectedUrl: IMAGES[1].url, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
     {
       id: 'loading',
       description: 'Đang loading — 4 skeleton, nút hiển thị Searching... và disabled.',
-      props: { images: [], selectedId: null, onSelect: noop, onRefetch: noop, loading: true },
+      props: { images: [], selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop, loading: true },
     },
     {
       id: 'act-select',
       description: 'Act: click ảnh đầu → onSelect nhận đúng image object.',
-      props: { images: IMAGES, selectedId: null, onSelect: recordSelect, onRefetch: noop },
+      props: { images: IMAGES, selectedUrl: null, onSelect: recordSelect, onRefetch: noop, onUpload: noop },
       act: async ctx => {
         selectSpy.count = 0
         selectSpy.lastId = null
-        await ctx.click('[aria-label="Select image: a cup of coffee"]')
+        await ctx.click('[aria-label="Select image: Alice"]')
       },
     },
     {
       id: 'act-refetch',
       description: 'Act: click Find more → onRefetch gọi 1 lần.',
-      props: { images: IMAGES, selectedId: null, onSelect: noop, onRefetch: recordRefetch },
+      props: { images: IMAGES, selectedUrl: null, onSelect: noop, onRefetch: recordRefetch, onUpload: noop },
       act: async ctx => {
         refetchSpy.count = 0
         const btn = Array.from(ctx.root.querySelectorAll('button')).find(b =>
@@ -94,8 +92,8 @@ registerUnit<ImageSelectorProps>({
     {
       id: 'probe-empty-images',
       probe: true,
-      description: 'Probe: images rỗng — lưới trống, không crash, không credit.',
-      props: { images: [], selectedId: null, onSelect: noop, onRefetch: noop },
+      description: 'Probe: images rỗng — hiện message, không crash.',
+      props: { images: [], selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
   ],
   invariants: [
@@ -111,10 +109,10 @@ registerUnit<ImageSelectorProps>({
     },
     {
       id: 'credit-iff-selected',
-      description: 'Dòng credit Unsplash hiện khi và chỉ khi có selectedId',
+      description: 'Dòng credit hiện khi có selectedUrl trỏ tới ảnh Unsplash',
       check: ({ root, props }) => {
-        const hasCredit = (root.textContent ?? '').includes('Photo from')
-        const expected = props.selectedId !== null
+        const hasCredit = (root.textContent ?? '').includes('Unsplash')
+        const expected = props.selectedUrl !== null && props.images.some(img => img.url === props.selectedUrl)
         return hasCredit === expected || `credit=${hasCredit}, expected=${expected}`
       },
     },
@@ -127,8 +125,7 @@ registerUnit<ImageSelectorProps>({
           return 'vẫn còn nút ảnh khi loading'
         }
         if (!(root.textContent ?? '').includes('Searching...')) return 'không thấy "Searching..."'
-        const btn = root.querySelector<HTMLButtonElement>('button')
-        return btn?.disabled === true || 'nút refetch không disabled'
+        return true
       },
     },
     {

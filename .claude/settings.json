@@ -28,7 +28,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node ~/.claude/hooks/block-env.mjs"
+                        "command": "node .claude/hooks/block-env.mjs"
                     }
                 ]
             }

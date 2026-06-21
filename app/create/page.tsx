@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { LanguageForm } from '@/components/create/LanguageForm'
 import { ITForm } from '@/components/create/ITForm'
@@ -8,7 +9,7 @@ import { GeneralForm } from '@/components/create/GeneralForm'
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles } from 'lucide-react'
+import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles, CheckCircle, X } from 'lucide-react'
 
 // ─── Content Type ────────────────────────────────────────────────────────────
 type ContentType = 'Language' | 'IT' | 'General' | 'Custom'
@@ -44,11 +45,24 @@ const FORM_ID = 'create-form'
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function CreatePage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [formType, setFormType] = useState<ContentType>('Language')
   const [isGenerating, setIsGenerating] = useState(false)
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS)
   const [progress, setProgress] = useState(0)
   const [canSubmit, setCanSubmit] = useState(false)
+  const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get('exported') === '1') {
+      const count = parseInt(searchParams.get('count') || '0', 10)
+      setSuccessBanner({ count })
+      router.replace('/create', { scroll: false })
+      const timer = setTimeout(() => setSuccessBanner(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, router])
 
   const activeType = CONTENT_TYPES.find(t => t.id === formType)
 
@@ -101,6 +115,20 @@ export default function CreatePage() {
         ]}
         title=""
       />
+
+      {successBanner && (
+        <div className="max-w-6xl mx-auto w-full px-0 mb-2">
+          <div className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl px-5 py-3">
+            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+            <p className="text-sm font-medium text-on-surface flex-1">
+              Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to Anki!
+            </p>
+            <button type="button" onClick={() => setSuccessBanner(null)} className="text-on-surface-var hover:text-on-surface">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
 

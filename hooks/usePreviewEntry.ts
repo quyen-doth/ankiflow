@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
 import type { Entry, CardTypeConfig } from '@/types'
 
-type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description'>
+type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code'>
 
 interface PreviewEntryState {
   entry: Partial<Entry>
@@ -38,14 +38,29 @@ export function usePreviewEntry(): PreviewEntryState {
         return
       }
 
+      const content = pending.generatedContent as Record<string, unknown>
+
+      let ankiDeckName = pending.deckId || ''
+      if (pending.deckId) {
+        try {
+          const deckSnap = await getDoc(doc(db, 'decks', pending.deckId))
+          if (deckSnap.exists()) {
+            ankiDeckName = (deckSnap.data() as Record<string, string>).anki_deck_name || pending.deckId
+          }
+        } catch (e) {
+          console.error('Error fetching deck:', e)
+        }
+      }
+
       const mappedEntry: Partial<Entry> = {
         form_type: pending.formType,
         language: pending.language ?? undefined,
-        anki_deck: pending.deckId || '',
+        anki_deck: ankiDeckName,
         category_id: pending.categoryId || null,
         card_type_ids: pending.cardTypeIds,
         tags: pending.tags,
-        ...(pending.generatedContent as Partial<Entry>),
+        ...(content as Partial<Entry>),
+        word_type: (content.word_type as string) || (content.word_type_vi as string) || '',
       }
       setEntry(mappedEntry)
 
@@ -53,7 +68,6 @@ export function usePreviewEntry(): PreviewEntryState {
         const q = query(
           collection(db, 'card_types'),
           where('form_type', '==', pending.formType),
-          where('is_active', '==', true)
         )
         const snapshot = await getDocs(q)
 
@@ -62,12 +76,14 @@ export function usePreviewEntry(): PreviewEntryState {
           name: string
           description?: string
           sort_order?: number
+          is_active?: boolean
           language?: string | null
         }
 
         const fetchedCardTypes: FetchedCardType[] = snapshot.docs
           .map(doc => ({ id: doc.id, ...(doc.data() as Omit<FetchedCardType, 'id'>) }))
           .filter(ct => {
+            if (ct.is_active === false) return false
             if (!pending.language) return true
             return !ct.language || ct.language === pending.language
           })
@@ -77,6 +93,7 @@ export function usePreviewEntry(): PreviewEntryState {
           id: ct.id,
           name: ct.name,
           description: ct.description,
+          code: (ct as Record<string, unknown>).code as string || ct.id,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0

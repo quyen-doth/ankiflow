@@ -9,7 +9,9 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Layers, BookOpen, CalendarCheck, CheckCircle2, Sparkles, PlusCircle, Inbox } from 'lucide-react'
+import { EntryEditModal } from '@/components/history/EntryEditModal'
+import { useEntryEdit } from '@/hooks/useEntryEdit'
+import { Layers, BookOpen, CalendarCheck, CheckCircle2, Sparkles, PlusCircle, Inbox, Pencil } from 'lucide-react'
 import { FormType, LanguageType, type Entry } from '@/types'
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -37,6 +39,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  const [editEntry, setEditEntry] = useState<Entry | null>(null)
+  const { saveEntry } = useEntryEdit()
 
   useEffect(() => {
     async function fetchEntries() {
@@ -136,20 +140,32 @@ export default function DashboardPage() {
                   const meaning = entry.meaning_vi || entry.definition || entry.content || '—'
                   const isSynced = entry.status === 'synced'
                   return (
-                    <button
+                    <div
                       key={entry.id}
-                      type="button"
-                      onClick={() => router.push(`/history/${entry.id}`)}
-                      className="flex items-center justify-between gap-4 py-3.5 text-left rounded-lg px-2 -mx-2 transition-colors hover:bg-surface-container/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      className="flex items-center justify-between gap-4 py-3.5 rounded-lg px-2 -mx-2 transition-colors hover:bg-surface-container/60"
                     >
-                      <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/history/${entry.id}`)}
+                        className="flex-1 min-w-0 text-left focus:outline-none"
+                      >
                         <p className="font-serif font-bold text-on-surface truncate">{word}</p>
                         <p className="text-sm text-on-surface-var truncate">{meaning}</p>
+                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setEditEntry(entry)}
+                          className="p-1.5 rounded-lg text-on-surface-var hover:text-primary hover:bg-primary/5 transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <Badge className={isSynced ? 'bg-primary/10 text-primary' : 'bg-tertiary-fixed text-on-tertiary-fixed'}>
+                          {isSynced ? 'Synced' : 'Pending'}
+                        </Badge>
                       </div>
-                      <Badge className={isSynced ? 'bg-primary/10 text-primary flex-shrink-0' : 'bg-tertiary-fixed text-on-tertiary-fixed flex-shrink-0'}>
-                        {isSynced ? 'Synced' : 'Pending'}
-                      </Badge>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -193,6 +209,21 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {editEntry && (
+        <EntryEditModal
+          open={!!editEntry}
+          onClose={() => setEditEntry(null)}
+          entry={editEntry}
+          onSave={async (updates) => {
+            await saveEntry(editEntry, updates)
+            setEntries(prev => prev.map(e =>
+              e.id === editEntry.id ? { ...e, ...updates } : e
+            ))
+            setEditEntry(null)
+          }}
+        />
+      )}
     </>
   )
 }

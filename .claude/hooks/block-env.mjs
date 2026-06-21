@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-const input = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+import { readFileSync } from 'fs';
+const input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
 const tool = input.tool_name;
 const args = JSON.stringify(input.tool_input || {});
 

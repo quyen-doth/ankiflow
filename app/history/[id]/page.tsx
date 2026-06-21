@@ -7,6 +7,10 @@ import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { WordDetailCard } from '@/components/history/WordDetailCard'
 import { CardPreview } from '@/components/preview/CardPreview'
+import { EntryEditModal } from '@/components/history/EntryEditModal'
+import { Button } from '@/components/ui/Button'
+import { useEntryEdit } from '@/hooks/useEntryEdit'
+import { Pencil } from 'lucide-react'
 import type { Entry } from '@/types'
 
 export default function HistoryDetailPage() {
@@ -15,6 +19,8 @@ export default function HistoryDetailPage() {
 
   const [entry, setEntry] = useState<Entry | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editOpen, setEditOpen] = useState(false)
+  const { saveEntry } = useEntryEdit()
 
   useEffect(() => {
     async function fetchEntry() {
@@ -66,6 +72,12 @@ export default function HistoryDetailPage() {
           { label: 'History', href: '/history' },
           { label: wordLabel }
         ]}
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+            Edit
+          </Button>
+        }
       />
 
       {/* Layout 8:4 Grid */}
@@ -87,6 +99,18 @@ export default function HistoryDetailPage() {
           </div>
         </div>
       </div>
+
+      {entry && (
+        <EntryEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          entry={entry}
+          onSave={async (updates) => {
+            await saveEntry(entry, updates)
+            setEntry(prev => prev ? { ...prev, ...updates } : prev)
+          }}
+        />
+      )}
     </>
   )
 }

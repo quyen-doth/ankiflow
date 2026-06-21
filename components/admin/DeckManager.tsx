@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, query, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp,
+  addDoc, updateDoc, doc, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Card } from '@/components/ui/Card'
@@ -104,7 +104,7 @@ export function DeckManager() {
           anki_deck_name: draft.anki_deck_name,
           display_name: draft.display_name,
           form_type: draft.form_type,
-          language: draft.language === NO_LANGUAGE ? undefined : draft.language,
+          language: draft.language === NO_LANGUAGE ? deleteField() : draft.language,
           is_active: draft.is_active,
           sort_order: draft.sort_order,
           updated_at: serverTimestamp(),
@@ -114,7 +114,7 @@ export function DeckManager() {
           anki_deck_name: draft.anki_deck_name,
           display_name: draft.display_name,
           form_type: draft.form_type,
-          language: draft.language === NO_LANGUAGE ? undefined : draft.language,
+          ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           is_active: draft.is_active,
           sort_order: draft.sort_order,
           default_card_type_ids: [],
@@ -122,6 +122,17 @@ export function DeckManager() {
           updated_at: serverTimestamp(),
         })
       }
+      // Sync deck to Anki
+      try {
+        await fetch('/api/anki/decks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deckName: draft.anki_deck_name }),
+        })
+      } catch (e) {
+        console.error('AnkiConnect sync failed:', e)
+      }
+
       setModalOpen(false)
       refresh()
     } catch (error) {

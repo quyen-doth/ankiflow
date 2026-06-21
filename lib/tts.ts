@@ -19,8 +19,8 @@ export const generateAudio = async (text: string, language: LanguageType | strin
   let voiceName = "en-US-Wavenet-F";
 
   if (language === LanguageType.CHINESE) {
-    languageCode = "zh-CN";
-    voiceName = "zh-CN-Wavenet-A";
+    languageCode = "cmn-CN";
+    voiceName = "cmn-CN-Wavenet-A";
   } else if (language === LanguageType.JAPANESE) {
     languageCode = "ja-JP";
     voiceName = "ja-JP-Wavenet-A";

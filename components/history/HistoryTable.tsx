@@ -4,16 +4,17 @@ import { useRouter } from 'next/navigation'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Eye, Trash2 } from 'lucide-react'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { Entry } from '@/types'
 
 interface HistoryTableProps {
   data: Entry[]
+  onEdit?: (entry: Entry) => void
   onDelete?: (id: string) => void
 }
 
-export function HistoryTable({ data, onDelete }: HistoryTableProps) {
+export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   const router = useRouter()
 
   const columns = [
@@ -88,6 +89,17 @@ export function HistoryTable({ data, onDelete }: HistoryTableProps) {
       align: 'right' as const,
       render: (_: unknown, row: Entry) => (
         <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit?.(row)
+            }}
+            className="p-2 h-auto text-on-surface-var hover:text-primary hover:bg-primary/10 rounded-full"
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
           <Button
             variant="ghost"
             onClick={(e) => {

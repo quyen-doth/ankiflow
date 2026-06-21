@@ -1,100 +1,50 @@
 ---
 name: debug
 description: >
-  Debug và fix lỗi trong ankiflow. Dùng khi: user đề cập @debug,
-  paste error message, mô tả behavior bất thường, hỏi "tại sao X không chạy",
-  hoặc có unexpected output. Ưu tiên tìm root cause trước khi fix.
+    Debug và fix lỗi trong ankiflow. Dùng khi: user đề cập @debug,
+    paste error message, mô tả behavior bất thường, hỏi "tại sao X không chạy",
+    hoặc có unexpected output. Ưu tiên tìm root cause trước khi fix.
 ---
 
-# Skill: Debug & Fix
+# Skill: Debug
 
-## Mục tiêu
-Tìm **root cause** — không patch symptom. Mọi fix đều có giải thích
-tại sao lỗi xảy ra và cách fix giải quyết nó.
+## When to use
 
----
+Apply this skill at Step 6b of the mandatory workflow when Vitest or Playwright tests fail.
 
-## Bước 1 — Thu thập thông tin
-Nếu user chưa cung cấp đủ, hỏi:
-1. Error message đầy đủ là gì? (kể cả stack trace)
-2. Lỗi xảy ra ở đâu? (browser / terminal / build time / runtime)
-3. Lỗi xuất hiện lần đầu sau thay đổi gì?
+## Process
 
-> Không bắt đầu debug nếu chưa có ít nhất error message hoặc mô tả behavior.
+### 1. Identify failure type
 
----
+| Symptom                  | Likely cause                                           |
+| ------------------------ | ------------------------------------------------------ |
+| TypeScript compile error | Type mismatch, missing import, wrong enum value        |
+| Vitest assertion fail    | Logic error, wrong mock, incorrect expected value      |
+| Playwright timeout       | Element not found, wrong selector, async timing issue  |
+| Firestore error          | Wrong collection path, missing field, permission issue |
+| AnkiConnect error        | Anki Desktop not open, malformed note payload          |
 
-## Bước 2 — Đọc multi-file context
-Đọc theo thứ tự:
-1. File báo lỗi (file trong stack trace)
-2. File import/dependency liên quan
-3. Nếu lỗi API → đọc `docs/API.md` để check contract
-4. Nếu lỗi UI → đọc `docs/design/COMPONENT.md`
+### 2. Reproduce locally
 
----
+- Always reproduce the failure before attempting a fix
+- For Playwright: run with `--headed` flag to observe browser behavior
+- For Vitest: run with `--reporter=verbose` to see full output
 
-## Bước 3 — Phân tích root cause
+### 3. Isolate the root cause
 
-Trình bày rõ ràng:
-```
-🔍 ROOT CAUSE
-─────────────
-[Giải thích ngắn gọn TẠI SAO lỗi xảy ra]
+- Read the full stack trace — do not guess from the error message alone
+- Check if the failure is in: application code, test code, or test setup
+- If Firestore-related: re-read `docs/DATABASE.md` before changing anything
 
-📍 VỊ TRÍ
-─────────
-File: [path]
-Dòng: [số dòng nếu biết]
+### 4. Fix
 
-🧩 LIÊN QUAN
-─────────────
-[File/component nào bị ảnh hưởng]
-```
+- Fix only the root cause — do not refactor unrelated code
+- If the fix requires changing an API contract, re-read `docs/API.md`
+- If the fix changes a Firestore schema field, update `docs/DATABASE.md`
 
----
+### 5. Verify fix
 
-## Bước 4 — Đề xuất fix
-
-Luôn đưa ra **diff rõ ràng**:
-```
-TRƯỚC:
-[code cũ]
-
-SAU:
-[code đề xuất]
-
-LÝ DO:
-[giải thích tại sao fix này đúng]
-```
-
-Nếu có nhiều cách fix → liệt kê trade-off, đề xuất 1 cách tốt nhất.
-
----
-
-## Bước 5 — Verify sau khi fix
-Đề xuất cách test:
-```
-✅ Để verify fix này, thử:
-1. [bước test cụ thể]
-2. Expected result: [...]
-```
-
----
-
-## Quy tắc bắt buộc
-- **KHÔNG** fix code nếu chưa hiểu root cause
-- **KHÔNG** thay đổi nhiều file cùng lúc trừ khi chắc chắn liên quan
-- **KHÔNG** xóa code "có vẻ không dùng" trong khi debug — scope riêng
-- **PHẢI** giải thích fix, không chỉ đưa code mới
-
----
-
-## Common patterns trong Next.js + Fastify
-
-```
-Lỗi hydration      → check server/client state mismatch
-Lỗi CORS           → check Fastify cors plugin config
-Type error TS      → check interface mismatch giữa API response và frontend type
-404 API route      → check file naming: phải là route.ts, không phải index.ts
-ENV not found      → check .env.local vs .env, và NEXT_PUBLIC_ prefix
-```
+- Re-run the failing test(s) first
+- Then run full suite: `npm run verify`
+- Then re-run Playwright tests
+- All must pass before exiting the debug loop

@@ -6,12 +6,16 @@ import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { HistoryTable } from '@/components/history/HistoryTable'
+import { EntryEditModal } from '@/components/history/EntryEditModal'
+import { useEntryEdit } from '@/hooks/useEntryEdit'
 import type { Entry } from '@/types'
 
 export default function HistoryPage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [editEntry, setEditEntry] = useState<Entry | null>(null)
+  const { saveEntry } = useEntryEdit()
 
   useEffect(() => {
     async function fetchHistory() {
@@ -69,9 +73,27 @@ export default function HistoryPage() {
             <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
           </div>
         ) : (
-          <HistoryTable data={filteredEntries} />
+          <HistoryTable
+            data={filteredEntries}
+            onEdit={(entry) => setEditEntry(entry)}
+          />
         )}
       </div>
+
+      {editEntry && (
+        <EntryEditModal
+          open={!!editEntry}
+          onClose={() => setEditEntry(null)}
+          entry={editEntry}
+          onSave={async (updates) => {
+            await saveEntry(editEntry, updates)
+            setEntries(prev => prev.map(e =>
+              e.id === editEntry.id ? { ...e, ...updates } : e
+            ))
+            setEditEntry(null)
+          }}
+        />
+      )}
     </>
   )
 }

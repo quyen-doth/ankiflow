@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, query, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp,
+  addDoc, updateDoc, doc, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Card } from '@/components/ui/Card'
@@ -106,21 +106,25 @@ export function CardTypeManager() {
     if (!draft.code.trim() || !draft.name.trim()) return
     setSaving(true)
     try {
-      const payload = {
+      const base = {
         code: draft.code,
         name: draft.name,
-        description: draft.description || undefined,
+        description: draft.description || '',
         form_type: draft.form_type,
-        language: draft.language === NO_LANGUAGE ? undefined : draft.language,
         is_default: draft.is_default,
         is_active: draft.is_active,
         sort_order: draft.sort_order,
       }
       if (editing) {
-        await updateDoc(doc(db, 'card_types', editing.id), { ...payload, updated_at: serverTimestamp() })
+        await updateDoc(doc(db, 'card_types', editing.id), {
+          ...base,
+          language: draft.language === NO_LANGUAGE ? deleteField() : draft.language,
+          updated_at: serverTimestamp(),
+        })
       } else {
         await addDoc(collection(db, 'card_types'), {
-          ...payload,
+          ...base,
+          ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })

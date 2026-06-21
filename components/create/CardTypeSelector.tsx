@@ -30,11 +30,11 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
         const q = query(
           collection(db, 'card_types'),
           where('form_type', '==', dbFormType),
-          where('is_active', '==', true)
         )
         const snapshot = await getDocs(q)
         let data = snapshot.docs
-          .map(doc => ({ id: doc.id, ...(doc.data() as Pick<CardTypeConfig, 'name' | 'description' | 'language' | 'sort_order'>) }))
+          .map(doc => ({ id: doc.id, ...(doc.data() as Pick<CardTypeConfig, 'name' | 'description' | 'language' | 'sort_order' | 'is_active'>) }))
+          .filter(ct => ct.is_active !== false)
 
         if (formType === 'Language' && language) {
           data = data.filter(ct => !ct.language || ct.language === language)

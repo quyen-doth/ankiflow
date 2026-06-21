@@ -52,9 +52,23 @@ export class AnkiConnectProvider implements IFlashcardService {
     return await this.invoke<string[]>('deckNames');
   }
 
+  async createDeck(deckName: string): Promise<number> {
+    return await this.invoke<number>('createDeck', { deck: deckName });
+  }
+
   async addNotes(notes: AnkiNote[]): Promise<number[]> {
     const result = await this.invoke<(number | null)[]>('addNotes', { notes });
     return result.filter((id): id is number => id !== null);
+  }
+
+  async updateNoteFields(noteId: number, fields: Record<string, string>): Promise<void> {
+    await this.invoke<null>('updateNoteFields', {
+      note: { id: noteId, fields },
+    });
+  }
+
+  async findNotes(query: string): Promise<number[]> {
+    return await this.invoke<number[]>('findNotes', { query });
   }
 
   async storeMediaFile(filename: string, base64Data: string): Promise<string> {

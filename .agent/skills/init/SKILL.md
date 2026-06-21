@@ -41,19 +41,19 @@ app/
     └── components/       ← component local của feature
         └── [Component].tsx
 
-components/               ← nếu component dùng chung
-└── [Component]/
-    ├── index.tsx
-    └── [Component].test.tsx
+components/                  ← nếu component dùng chung
+└── [category]/              ← ví dụ: create/, preview/, admin/, ui/
+    └── [Component].tsx      ← file phẳng, KHÔNG tạo folder riêng + index.tsx
 ```
 
-### Nếu là API route (Node.js/Fastify):
+### Nếu là API route (Next.js App Router — không có Fastify trong project này):
 ```
 app/
 └── api/
     └── [feature-name]/
-        └── route.ts      ← Next.js API route
+        └── route.ts      ← Next.js route handler, dùng helper trong lib/api-response.ts, lib/auth-guard.ts
 ```
+> Xem skill `api` để biết chi tiết convention (response format, auth guard, validation).
 
 ### Naming convention:
 - Folder: `kebab-case`

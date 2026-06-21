@@ -57,7 +57,7 @@ async function seedCategories() {
   for (const cat of languageCategories) {
     await seedDoc('categories', cat.id, {
       name: cat.name,
-      form_type: 'language',
+      form_type: 'form_language',
       sort_order: cat.sort_order,
       is_active: true,
       created_at: now,
@@ -72,22 +72,22 @@ async function seedCardTypes() {
 
   const cardTypes = [
     // Language — dùng cho tất cả ngôn ngữ
-    { id: 'ct_word_meaning',  code: 'word_to_meaning',  name: 'Từ → Nghĩa VN',         form_type: 'language', language: null,      is_default: true,  sort_order: 1 },
-    { id: 'ct_meaning_word',  code: 'meaning_to_word',  name: 'Nghĩa VN → Từ',         form_type: 'language', language: null,      is_default: true,  sort_order: 2 },
-    { id: 'ct_audio_word',    code: 'audio_to_word',    name: 'Nghe → Đoán từ',        form_type: 'language', language: null,      is_default: true,  sort_order: 3 },
-    { id: 'ct_image_word',    code: 'image_to_word',    name: 'Ảnh → Đoán từ',         form_type: 'language', language: null,      is_default: true,  sort_order: 4 },
+    { id: 'ct_word_meaning',  code: 'word_to_meaning',  name: 'Từ → Nghĩa VN',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 1 },
+    { id: 'ct_meaning_word',  code: 'meaning_to_word',  name: 'Nghĩa VN → Từ',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 2 },
+    { id: 'ct_audio_word',    code: 'audio_to_word',    name: 'Nghe → Đoán từ',        form_type: 'form_language', language: null,      is_default: true,  sort_order: 3 },
+    { id: 'ct_image_word',    code: 'image_to_word',    name: 'Ảnh → Đoán từ',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 4 },
     { id: 'ct_fill_blank',    code: 'fill_in_blank',    name: 'Điền vào chỗ trống',    form_type: 'language', language: null,      is_default: true,  sort_order: 5 },
     // Chinese specific
-    { id: 'ct_pinyin_char',   code: 'reading_to_word',  name: 'Pinyin → Chữ Hán',      form_type: 'language', language: 'chinese', is_default: false, sort_order: 6 },
-    { id: 'ct_char_pinyin',   code: 'word_to_reading',  name: 'Chữ Hán → Pinyin',      form_type: 'language', language: 'chinese', is_default: false, sort_order: 7 },
+    { id: 'ct_pinyin_char',   code: 'reading_to_word',  name: 'Pinyin → Chữ Hán',      form_type: 'form_language', language: 'chinese', is_default: false, sort_order: 6 },
+    { id: 'ct_char_pinyin',   code: 'word_to_reading',  name: 'Chữ Hán → Pinyin',      form_type: 'form_language', language: 'chinese', is_default: false, sort_order: 7 },
     // Japanese specific
-    { id: 'ct_hira_kanji',    code: 'reading_to_word',  name: 'Hiragana → Kanji',      form_type: 'language', language: 'japanese',is_default: false, sort_order: 6 },
-    { id: 'ct_kanji_hira',    code: 'word_to_reading',  name: 'Kanji → Hiragana',      form_type: 'language', language: 'japanese',is_default: false, sort_order: 7 },
+    { id: 'ct_hira_kanji',    code: 'reading_to_word',  name: 'Hiragana → Kanji',      form_type: 'form_language', language: 'japanese',is_default: false, sort_order: 6 },
+    { id: 'ct_kanji_hira',    code: 'word_to_reading',  name: 'Kanji → Hiragana',      form_type: 'form_language', language: 'japanese',is_default: false, sort_order: 7 },
     // IT Vocabulary
-    { id: 'ct_concept_def',   code: 'concept_to_def',   name: 'Khái niệm → Định nghĩa',form_type: 'it',       language: null,      is_default: true,  sort_order: 1 },
-    { id: 'ct_def_concept',   code: 'def_to_concept',   name: 'Định nghĩa → Khái niệm',form_type: 'it',       language: null,      is_default: true,  sort_order: 2 },
+    { id: 'ct_concept_def',   code: 'concept_to_def',   name: 'Khái niệm → Định nghĩa',form_type: 'form_it',       language: null,      is_default: true,  sort_order: 1 },
+    { id: 'ct_def_concept',   code: 'def_to_concept',   name: 'Định nghĩa → Khái niệm',form_type: 'form_it',       language: null,      is_default: true,  sort_order: 2 },
     // General
-    { id: 'ct_front_back',    code: 'front_to_back',    name: 'Mặt trước → Mặt sau',   form_type: 'general',  language: null,      is_default: true,  sort_order: 1 },
+    { id: 'ct_front_back',    code: 'front_to_back',    name: 'Mặt trước → Mặt sau',   form_type: 'form_general',  language: null,      is_default: true,  sort_order: 1 },
   ];
 
   for (const ct of cardTypes) {
@@ -127,7 +127,7 @@ async function seedTopics() {
   for (const topic of topics) {
     await seedDoc('topics', topic.id, {
       name: topic.name,
-      form_type: 'it',
+      form_type: 'form_it',
       is_active: true,
       sort_order: topic.sort_order,
       created_at: now,
@@ -145,7 +145,7 @@ async function seedDecks() {
       id: 'deck_zh_hsk1',
       anki_deck_name: 'Language::Chinese::HSK1',
       display_name: 'Tiếng Trung HSK1',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'chinese',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_image_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -155,7 +155,7 @@ async function seedDecks() {
       id: 'deck_zh_hsk2',
       anki_deck_name: 'Language::Chinese::HSK2',
       display_name: 'Tiếng Trung HSK2',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'chinese',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_image_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -165,7 +165,7 @@ async function seedDecks() {
       id: 'deck_zh_hsk3',
       anki_deck_name: 'Language::Chinese::HSK3',
       display_name: 'Tiếng Trung HSK3',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'chinese',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -176,7 +176,7 @@ async function seedDecks() {
       id: 'deck_ja_n5',
       anki_deck_name: 'Language::Japanese::N5',
       display_name: 'Tiếng Nhật N5',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'japanese',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_image_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -186,7 +186,7 @@ async function seedDecks() {
       id: 'deck_ja_n4',
       anki_deck_name: 'Language::Japanese::N4',
       display_name: 'Tiếng Nhật N4',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'japanese',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -197,7 +197,7 @@ async function seedDecks() {
       id: 'deck_en_b1',
       anki_deck_name: 'Language::English::B1',
       display_name: 'Tiếng Anh B1',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'english',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_image_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -207,7 +207,7 @@ async function seedDecks() {
       id: 'deck_en_b2',
       anki_deck_name: 'Language::English::B2',
       display_name: 'Tiếng Anh B2',
-      form_type: 'language',
+      form_type: 'form_language',
       language: 'english',
       default_card_type_ids: ['ct_word_meaning', 'ct_meaning_word', 'ct_audio_word', 'ct_fill_blank'],
       default_category_id: 'cat_daily',
@@ -218,7 +218,7 @@ async function seedDecks() {
       id: 'deck_it',
       anki_deck_name: 'Vocabulary::IT',
       display_name: 'IT Vocabulary',
-      form_type: 'it',
+      form_type: 'form_it',
       language: null,
       default_card_type_ids: ['ct_concept_def', 'ct_def_concept'],
       default_category_id: null,
@@ -229,7 +229,7 @@ async function seedDecks() {
       id: 'deck_general',
       anki_deck_name: 'Vocabulary::General',
       display_name: 'Kiến thức chung',
-      form_type: 'general',
+      form_type: 'form_general',
       language: null,
       default_card_type_ids: ['ct_front_back'],
       default_category_id: null,
