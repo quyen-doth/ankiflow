@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FormType } from '@/types';
 import { loadSession, saveSession, clearSession, resetContentFields, SessionState } from '@/lib/session';
 
-export function useSession(formType: FormType) {
+export function useSession(formType: FormType | string) {
   const [session, setSessionState] = useState<SessionState | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 

@@ -154,5 +154,48 @@ export function resolveCardSpec(input: GenerateCardInput): CardSpec {
     )
   }
 
+  if (input.dynamicFields && input.word) {
+    return buildDynamicSpec(input.word, input.dynamicFields, input.contentTypeName)
+  }
+
   throw new Error('Invalid parameters for generating content')
+}
+
+function buildDynamicSpec(
+  word: string,
+  fields: Record<string, string>,
+  contentTypeName?: string,
+): CardSpec {
+  const schemaShape: Record<string, z.ZodType> = {
+    word: z.string().describe('The main term/word'),
+    meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
+    example_sentence: z.string().describe('Câu ví dụ minh họa'),
+    example_translation: z.string().describe('Bản dịch câu ví dụ sang tiếng Việt'),
+    unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
+  }
+
+  for (const key of Object.keys(fields)) {
+    if (!(key in schemaShape)) {
+      schemaShape[key] = z.string().describe(`Field: ${key}`)
+    }
+  }
+
+  const schema = z.object(schemaShape) as unknown as z.ZodType<Record<string, unknown>>
+
+  const typeName = contentTypeName || 'Custom'
+  const fieldList = Object.entries(fields)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join('\n')
+
+  const systemPrompt = `You are an AI assistant that creates enriched flashcard content for "${typeName}" cards.
+Given a word/term and optional context, generate comprehensive flashcard content in Vietnamese.
+Always include: meaning in Vietnamese, example sentence, and Vietnamese translation of the example.
+Return structured data via the submit_card tool.`
+
+  const userMessage = fieldList
+    ? `Create a flashcard for: "${word}"\n\nAdditional context:\n${fieldList}`
+    : `Create a flashcard for: "${word}"`
+
+  return makeSpec(schema, systemPrompt, userMessage, `Submit enriched ${typeName} flashcard.`)
 }

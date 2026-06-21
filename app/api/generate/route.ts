@@ -21,7 +21,7 @@ async function readAISettings(): Promise<{ model: string | null; webSearchEnable
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { word, term, form_type, language, topics } = body;
+    const { word, term, form_type, language, topics, dynamicFields, contentTypeName } = body;
 
     if (!form_type) {
       return NextResponse.json({ error: 'form_type is required' }, { status: 400 });
@@ -35,9 +35,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'term is required for IT form' }, { status: 400 });
     }
 
+    const isBuiltIn = Object.values(FormType).includes(form_type as FormType);
+    if (!isBuiltIn && !word) {
+      return NextResponse.json({ error: 'word is required' }, { status: 400 });
+    }
+
     const { model, webSearchEnabled } = await readAISettings();
     const provider = createAIAgentProvider({ model, webSearchEnabled });
-    const content = await provider.generateCard({ word, term, form_type, language, topics });
+    const content = await provider.generateCard({
+      word, term, form_type, language, topics,
+      dynamicFields: dynamicFields as Record<string, string> | undefined,
+      contentTypeName: contentTypeName as string | undefined,
+    });
 
     return NextResponse.json({ content });
   } catch (error) {

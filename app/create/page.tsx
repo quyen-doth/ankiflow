@@ -2,29 +2,32 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { LanguageForm } from '@/components/create/LanguageForm'
 import { ITForm } from '@/components/create/ITForm'
 import { GeneralForm } from '@/components/create/GeneralForm'
+import { DynamicForm } from '@/components/create/DynamicForm'
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles, CheckCircle, X } from 'lucide-react'
+import { FormType } from '@/types'
+import type { ContentType } from '@/types'
 
-// ─── Content Type ────────────────────────────────────────────────────────────
-type ContentType = 'Language' | 'IT' | 'General' | 'Custom'
+const ICON_MAP: Record<string, React.ElementType> = {
+  Languages,
+  Terminal,
+  BookOpen,
+  SlidersHorizontal,
+}
 
-const CONTENT_TYPES: {
-  id: ContentType
-  label: string
-  icon: React.ElementType
-  href?: string
-}[] = [
-  { id: 'Language', label: 'Language',  icon: Languages },
-  { id: 'IT',       label: 'IT & Dev',  icon: Terminal },
-  { id: 'General',  label: 'General',   icon: BookOpen },
-  { id: 'Custom',   label: 'Custom',    icon: SlidersHorizontal, href: '/admin?tab=content-types' },
-]
+const BUILTIN_ICONS: Record<string, React.ElementType> = {
+  [FormType.LANGUAGE]: Languages,
+  [FormType.IT]: Terminal,
+  [FormType.GENERAL]: BookOpen,
+}
 
 // ─── Step types cho Loading Overlay ─────────────────────────────────────────
 type StepStatus = 'completed' | 'active' | 'pending'
@@ -43,16 +46,47 @@ const INITIAL_STEPS: LoadingStep[] = [
 
 const FORM_ID = 'create-form'
 
+function resolveIcon(contentType: ContentType): React.ElementType {
+  if (BUILTIN_ICONS[contentType.code]) return BUILTIN_ICONS[contentType.code]
+  if (contentType.icon && ICON_MAP[contentType.icon]) return ICON_MAP[contentType.icon]
+  return BookOpen
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function CreatePage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [formType, setFormType] = useState<ContentType>('Language')
+  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
+  const [loadingTypes, setLoadingTypes] = useState(true)
+  const [activeCode, setActiveCode] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS)
   const [progress, setProgress] = useState(0)
   const [canSubmit, setCanSubmit] = useState(false)
   const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null)
+
+  useEffect(() => {
+    async function fetchContentTypes() {
+      try {
+        const q = query(
+          collection(db, 'content_types'),
+          where('is_active', '==', true),
+          orderBy('sort_order', 'asc'),
+        )
+        const snapshot = await getDocs(q)
+        const types = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ContentType))
+        setContentTypes(types)
+        if (types.length > 0 && !activeCode) {
+          setActiveCode(types[0].code)
+        }
+      } catch (error) {
+        console.error('Error fetching content types:', error)
+      } finally {
+        setLoadingTypes(false)
+      }
+    }
+    fetchContentTypes()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (searchParams.get('exported') === '1') {
@@ -64,35 +98,29 @@ export default function CreatePage() {
     }
   }, [searchParams, router])
 
-  const activeType = CONTENT_TYPES.find(t => t.id === formType)
+  const activeType = contentTypes.find(t => t.code === activeCode)
 
-  /** Callback nhận từ form — cập nhật step trong LoadingOverlay */
   const handleStepUpdate = useCallback((stepIndex: number, status: StepStatus) => {
     setLoadingSteps(prev => prev.map((s, i) => (i === stepIndex ? { ...s, status } : s)))
-    // Tính progress: mỗi step hoàn thành = 33%
     const completedSteps = stepIndex + (status === 'completed' ? 1 : 0)
     setProgress(Math.round((completedSteps / INITIAL_STEPS.length) * 100))
   }, [])
 
-  /** Bắt đầu loading — gọi từ form ngay khi submit */
   const handleGenerateStart = useCallback(() => {
     setIsGenerating(true)
     setLoadingSteps(INITIAL_STEPS)
     setProgress(0)
   }, [])
 
-  /** Kết thúc loading (lỗi hoặc navigate) */
   const handleGenerateEnd = useCallback(() => {
     setIsGenerating(false)
   }, [])
 
-  // Đổi loại nội dung → form mount lại, validity reset cho tới khi form báo lại
-  const handleSelectType = useCallback((id: ContentType) => {
-    setFormType(id)
+  const handleSelectType = useCallback((code: string) => {
+    setActiveCode(code)
     setCanSubmit(false)
   }, [])
 
-  // Shortcut Cmd+Enter (Mac) / Ctrl+Enter (Win) để submit form đang active
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -106,12 +134,15 @@ export default function CreatePage() {
     return () => window.removeEventListener('keydown', handler)
   }, [canSubmit, isGenerating])
 
+  const isBuiltIn = (code: string) =>
+    code === FormType.LANGUAGE || code === FormType.IT || code === FormType.GENERAL
+
   return (
     <>
       <PageHeader
         crumbs={[
           { label: 'Create Card', href: '/create' },
-          { label: `${activeType?.label ?? formType} Flow` },
+          { label: `${activeType?.name ?? 'Card'} Flow` },
         ]}
         title=""
       />
@@ -132,30 +163,49 @@ export default function CreatePage() {
 
       <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
 
-        {/* Content Type — pill row + Generate (same row, same height) */}
+        {/* Content Type — pill row + Generate */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-2">
-            {CONTENT_TYPES.map(({ id, label, icon: Icon, href }) => {
-              const isActive = formType === id
-              return (
+            {loadingTypes ? (
+              <div className="h-10 w-48 bg-surface-container rounded-full animate-pulse" />
+            ) : (
+              <>
+                {contentTypes.map((ct) => {
+                  const Icon = resolveIcon(ct)
+                  const isActive = activeCode === ct.code
+                  return (
+                    <button
+                      key={ct.id}
+                      type="button"
+                      onClick={() => handleSelectType(ct.code)}
+                      className={cn(
+                        'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
+                        'focus-visible:ring-2 focus-visible:ring-primary/40',
+                        isActive
+                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-card'
+                          : 'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm">{ct.name}</span>
+                      {isActive && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </button>
+                  )
+                })}
                 <button
-                  key={id}
                   type="button"
-                  onClick={() => href ? router.push(href) : handleSelectType(id)}
+                  onClick={() => router.push('/admin?tab=content-types')}
                   className={cn(
                     'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
                     'focus-visible:ring-2 focus-visible:ring-primary/40',
-                    isActive
-                      ? 'border-primary bg-primary/10 text-primary font-bold shadow-card'
-                      : 'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
+                    'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm">{label}</span>
-                  {isActive && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="text-sm">Custom</span>
                 </button>
-              )
-            })}
+              </>
+            )}
           </div>
 
           <Button
@@ -171,9 +221,9 @@ export default function CreatePage() {
           </Button>
         </div>
 
-        {/* Workspace — Core Content (left) + Configuration (right), each its own section */}
+        {/* Workspace — Form */}
         <div>
-          {formType === 'Language' && (
+          {activeCode === FormType.LANGUAGE && (
             <LanguageForm
               onGenerateStart={handleGenerateStart}
               onStepUpdate={handleStepUpdate}
@@ -182,7 +232,7 @@ export default function CreatePage() {
               formId={FORM_ID}
             />
           )}
-          {formType === 'IT' && (
+          {activeCode === FormType.IT && (
             <ITForm
               onGenerateStart={handleGenerateStart}
               onStepUpdate={handleStepUpdate}
@@ -191,8 +241,19 @@ export default function CreatePage() {
               formId={FORM_ID}
             />
           )}
-          {formType === 'General' && (
+          {activeCode === FormType.GENERAL && (
             <GeneralForm
+              onGenerateStart={handleGenerateStart}
+              onStepUpdate={handleStepUpdate}
+              onGenerateEnd={handleGenerateEnd}
+              onValidityChange={setCanSubmit}
+              formId={FORM_ID}
+            />
+          )}
+          {activeType && !isBuiltIn(activeCode) && (
+            <DynamicForm
+              key={activeType.id}
+              contentType={activeType}
               onGenerateStart={handleGenerateStart}
               onStepUpdate={handleStepUpdate}
               onGenerateEnd={handleGenerateEnd}
@@ -203,7 +264,6 @@ export default function CreatePage() {
         </div>
       </div>
 
-      {/* Loading Overlay — hiển thị tiến trình generate thực tế */}
       <LoadingOverlay
         open={isGenerating}
         title="Generating Cognitive Asset"

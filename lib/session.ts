@@ -16,9 +16,9 @@ const SESSION_KEYS: SessionKey[] = [
   'categoryId', 'language', 'deckId', 'cardTypeIds', 'topicIds', 'difficulty', 'tags',
 ]
 
-const getStorageKey = (formType: FormType) => `ankiflow_session_${formType}`
+const getStorageKey = (formType: FormType | string) => `ankiflow_session_${formType}`
 
-export const saveSession = (formType: FormType, data: SessionState): void => {
+export const saveSession = (formType: FormType | string, data: SessionState): void => {
   if (typeof window === 'undefined') return
   try {
     const existing = loadSession(formType) ?? {}
@@ -29,7 +29,7 @@ export const saveSession = (formType: FormType, data: SessionState): void => {
   }
 }
 
-export const loadSession = (formType: FormType): SessionState | null => {
+export const loadSession = (formType: FormType | string): SessionState | null => {
   if (typeof window === 'undefined') return null
   try {
     const item = localStorage.getItem(getStorageKey(formType))
@@ -40,12 +40,12 @@ export const loadSession = (formType: FormType): SessionState | null => {
   }
 }
 
-export const clearSession = (formType: FormType): void => {
+export const clearSession = (formType: FormType | string): void => {
   if (typeof window === 'undefined') return
   localStorage.removeItem(getStorageKey(formType))
 }
 
-export const resetContentFields = (formType: FormType): SessionState | null => {
+export const resetContentFields = (formType: FormType | string): SessionState | null => {
   if (typeof window === 'undefined') return null
   const current = loadSession(formType)
   if (!current) return null

@@ -7,9 +7,13 @@ import type { FormType, LanguageType } from '@/types'
 export interface GenerateCardInput {
   word?: string
   term?: string
-  form_type: FormType
+  form_type: FormType | string
   language?: LanguageType
   topics?: string[]
+  /** Dynamic fields from custom content types */
+  dynamicFields?: Record<string, string>
+  /** Name of the custom content type (for prompt context) */
+  contentTypeName?: string
 }
 
 /**

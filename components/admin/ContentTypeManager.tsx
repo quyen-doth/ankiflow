@@ -38,7 +38,7 @@ const FIELD_TYPE_LABELS: Record<FormFieldConfig['type'], string> = Object.fromEn
 ) as Record<FormFieldConfig['type'], string>
 
 interface ContentTypeDraft {
-  code: FormType
+  code: FormType | string
   name: string
   description: string
   icon: string
@@ -47,7 +47,7 @@ interface ContentTypeDraft {
 }
 
 const EMPTY_DRAFT: ContentTypeDraft = {
-  code: FormType.GENERAL,
+  code: '',
   name: '',
   description: '',
   icon: 'BookOpen',
@@ -221,16 +221,14 @@ export function ContentTypeManager() {
                 placeholder="e.g. Medical Terms"
               />
             </FieldWrapper>
-            <FieldWrapper label="Form Type">
-              <Select
-                aria-label="Form Type"
+            <FieldWrapper label="Code">
+              <Input
+                aria-label="Content type code"
                 value={draft.code}
-                onChange={(e) => setDraft(d => ({ ...d, code: e.target.value as FormType }))}
-              >
-                {Object.values(FormType).map(ft => (
-                  <option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>
-                ))}
-              </Select>
+                onChange={(e) => setDraft(d => ({ ...d, code: e.target.value }))}
+                placeholder="e.g. form_medical"
+                disabled={!!editing}
+              />
             </FieldWrapper>
           </div>
           <FieldWrapper label="Description">
@@ -358,7 +356,7 @@ export function ContentTypeManager() {
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={saving || !draft.name.trim()}
+              disabled={saving || !draft.name.trim() || !draft.code.trim()}
             >
               {saving ? 'Saving...' : 'Save'}
             </Button>

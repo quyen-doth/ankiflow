@@ -45,7 +45,7 @@ export interface Entry {
   // Thông tin phân loại
   category_id: string | null;
   language?: LanguageType | null;
-  form_type: FormType;
+  form_type: FormType | string;
 
   // Nội dung chung
   word?: string; // Từ vựng (Language)
@@ -168,7 +168,7 @@ export interface DeckConfig {
  */
 export interface ContentType {
   id: string;
-  code: FormType;
+  code: FormType | string;
   name: string;
   description: string;
   icon: string;

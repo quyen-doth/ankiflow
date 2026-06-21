@@ -14,7 +14,7 @@ export interface PendingEntry {
   generatedContent: Record<string, unknown>
 
   /** Metadata từ session của user */
-  formType: FormType
+  formType: FormType | string
   language?: LanguageType | null
   deckId?: string
   categoryId?: string
