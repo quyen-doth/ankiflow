@@ -187,11 +187,13 @@ export function LanguageForm({
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <LanguageSelector
                         value={language}
-                        onChange={(v) => updateSession({ language: v })}
+                        onChange={(v) => updateSession({ language: v, deckId: '' })}
                     />
                     <DeckSelector
                         value={deckId}
-                        onChange={(id) => updateSession({ deckId: id })}
+                        onChangeId={(id) => updateSession({ deckId: id })}
+                        filterFormType={FormType.LANGUAGE}
+                        filterLanguage={language}
                     />
                     <div className="col-span-2">
                         <CategorySelector

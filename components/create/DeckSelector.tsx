@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { DB_FORM_TYPE_TO_UI } from '@/lib/constants'
 import { verifyAttrs } from '@/verify/core/contract'
-import type { DeckConfig } from '@/types'
+import type { DeckConfig, FormType, LanguageType } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
 
@@ -17,10 +17,12 @@ interface DeckSelectorProps {
   /** onChangeId: chỉ nhận deckId (dùng trong form đã biết formType) */
   onChangeId?: (deckId: string) => void
   label?: string
+  filterFormType?: FormType
+  filterLanguage?: LanguageType
 }
 
-export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' }: DeckSelectorProps) {
-  const [decks, setDecks] = useState<Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'sort_order'>[]>([])
+export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck', filterFormType, filterLanguage }: DeckSelectorProps) {
+  const [decks, setDecks] = useState<Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'language' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' 
         const q = query(collection(db, 'decks'), where('is_active', '==', true))
         const snapshot = await getDocs(q)
         const data = snapshot.docs
-          .map(doc => ({ id: doc.id, ...(doc.data() as Pick<DeckConfig, 'display_name' | 'form_type' | 'sort_order'>) }))
+          .map(doc => ({ id: doc.id, ...(doc.data() as Pick<DeckConfig, 'display_name' | 'form_type' | 'language' | 'sort_order'>) }))
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
         setDecks(data)
       } catch (error) {
@@ -41,17 +43,28 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' 
     fetchDecks()
   }, [])
 
+  const filteredDecks = useMemo(() => {
+    let result = decks
+    if (filterFormType) {
+      result = result.filter(d => d.form_type === filterFormType)
+    }
+    if (filterLanguage) {
+      result = result.filter(d => !d.language || d.language === filterLanguage)
+    }
+    return result
+  }, [decks, filterFormType, filterLanguage])
+
   return (
     <FieldWrapper
       label={label}
       className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
-      {...verifyAttrs({ unit: 'DeckSelector', count: decks.length, loading })}
+      {...verifyAttrs({ unit: 'DeckSelector', count: filteredDecks.length, loading })}
     >
       <Select
         aria-label={label}
         value={value}
         onChange={(e) => {
-          const selectedDeck = decks.find(d => d.id === e.target.value)
+          const selectedDeck = filteredDecks.find(d => d.id === e.target.value)
           if (selectedDeck) {
             const uiFormType = DB_FORM_TYPE_TO_UI[selectedDeck.form_type]
             onChange?.(selectedDeck.id, uiFormType)
@@ -62,7 +75,7 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck' 
         className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer appearance-none"
       >
         <option value="" disabled>{loading ? 'Loading...' : 'Select a deck...'}</option>
-        {decks.map(deck => (
+        {filteredDecks.map(deck => (
           <option key={deck.id} value={deck.id}>{deck.display_name}</option>
         ))}
       </Select>
