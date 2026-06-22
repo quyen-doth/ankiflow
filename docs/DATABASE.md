@@ -30,11 +30,17 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 | Field | Type | Mô tả |
 |---|---|---|
 | `id` | string (PK) | Document ID |
-| `category_id` | string (FK) | Tham chiếu tới `categories` |
-| `form_type` | string | Loại form đã dùng để tạo entry |
-| `language` | string | Ngôn ngữ: `zh`, `ja`, `en`, ... |
-| `word` | string | Từ vựng chính |
+| `user_id` | string | User ID (`local-user` Phase 1, Firebase Auth UID Phase 3) |
+| `category_id` | string (FK) | Tham chiếu tới `categories` (nullable) |
+| `form_type` | string | Loại form đã dùng: `form_language` / `form_it` / `form_general` |
+| `language` | string | Ngôn ngữ: `zh`, `ja`, `en` (nullable, chỉ khi form_type = form_language) |
+| `word` | string | Từ vựng (Language form) |
+| `term` | string | Thuật ngữ (IT form) |
+| `title` | string | Tiêu đề (General form) |
 | `meaning_vi` | string | Nghĩa tiếng Việt |
+| `definition` | string | Định nghĩa (IT form) |
+| `content` | string | Nội dung chi tiết (General form) |
+| `note` | string | Ghi chú cá nhân |
 | `word_type` | string | Danh từ / động từ / tính từ... |
 | `pinyin` | string | Pinyin (Tiếng Trung) |
 | `han_viet` | string | Hán Việt (Tiếng Trung) |
@@ -48,15 +54,15 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 | `collocations` | string[] | Các cụm từ đi kèm |
 | `image_url` | string | URL ảnh minh họa |
 | `image_credit` | string | Nguồn ảnh (Unsplash...) |
-| `audio_filename` | string | Tên file audio của từ |
-| `audio_example_filename` | string | Tên file audio câu ví dụ |
+| `audio_url` | string | URL/tên file audio của từ |
+| `audio_example_url` | string | URL/tên file audio câu ví dụ |
 | `anki_deck` | string | Tên deck Anki đã export vào |
 | `anki_note_ids` | number[] | ID các note trong Anki |
-| `card_types_created` | string[] | Tham chiếu tới `card_types` |
-| `anki_tags` | string[] | Tags trong Anki |
+| `card_type_ids` | string[] | Tham chiếu tới `card_types` đã chọn |
+| `tags` | string[] | Tags trong Anki (AI sinh + user custom) |
 | `keywords` | string[] | Từ khóa IT (IT vocab specific) |
 | `topic_ids` | string[] | Tham chiếu tới `topics` |
-| `difficulty` | string | Độ khó (IT vocab specific) |
+| `difficulty` | string | Độ khó: `easy` / `medium` / `hard` (IT vocab specific) |
 | `created_at` | timestamp | Thời điểm tạo |
 | `updated_at` | timestamp | Thời điểm cập nhật |
 | `status` | string | Trạng thái: xem enum bên dưới |
@@ -67,10 +73,9 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 
 | Value | Ý nghĩa | Transition |
 |---|---|---|
-| `draft` | Đang soạn, chưa đủ thông tin | → `ready` |
-| `ready` | Đã hoàn chỉnh, sẵn sàng export Anki | → `exported` / `draft` |
-| `exported` | Đã export vào Anki thành công | → `archived` |
-| `archived` | Không dùng nữa, ẩn khỏi danh sách | — |
+| `draft` | Đang soạn, chưa hoàn chỉnh | → `reviewed` |
+| `reviewed` | AI đã enriched, sẵn sàng export | → `synced` / `draft` |
+| `synced` | Đã export vào Anki thành công | — |
 
 ---
 
@@ -185,18 +190,18 @@ Mapping giữa form type và Anki deck. Lưu cấu hình mặc định cho từn
 
 Single document — lưu config toàn cục của app.
 
-| Field | Type | Mô tả |
-|---|---|---|
-| `id` | string (PK) | Document ID |
-| `unsplash_enabled` | boolean | Bật/tắt tích hợp Unsplash |
-| `tts_enabled` | boolean | Bật/tắt Text-to-Speech |
-| `ai_model` | string | Model Claude đang dùng (vd `claude-haiku-4-5`) |
-| `web_search_enabled` | boolean | Cho phép AI agent dùng tool web_search |
-| `anki_connect_url` | string | URL AnkiConnect local |
-| `allow_duplicate` | boolean | Cho phép tạo entry trùng |
-| `auto_audio` | boolean | Tự động tạo audio |
-| `auto_image` | boolean | Tự động tìm ảnh |
-| `updated_at` | timestamp | — |
+| Field | Type | Mô tả | Default |
+|---|---|---|---|
+| `id` | string (PK) | Document ID | — |
+| `unsplash_enabled` | boolean | Bật/tắt tích hợp Unsplash | `true` |
+| `tts_enabled` | boolean | Bật/tắt Text-to-Speech | `true` |
+| `ai_model` | string | Model Claude đang dùng | `claude-haiku-4-5` |
+| `web_search_enabled` | boolean | Cho phép AI agent dùng tool web_search | `false` |
+| `anki_connect_url` | string | URL AnkiConnect local | `http://localhost:8765` |
+| `allow_duplicate` | boolean | Cho phép tạo entry trùng từ | `false` |
+| `auto_audio` | boolean | Tự động tạo audio khi generate | `true` |
+| `auto_image` | boolean | Tự động tìm ảnh khi generate | `true` |
+| `updated_at` | timestamp | Thời điểm cập nhật cuối | — |
 
 ---
 
@@ -205,7 +210,7 @@ Single document — lưu config toàn cục của app.
 ```
 entries ──(category_id)──► categories
 entries ──(topic_ids)────► topics          [many-to-many]
-entries ──(card_types_created)──► card_types  [many-to-many]
+entries ──(card_type_ids)──► card_types    [many-to-many]
 
 decks ──(default_category_id)──► categories
 decks ──(default_card_type_ids)──► card_types [many-to-many]

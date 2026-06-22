@@ -31,12 +31,14 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 ## Tech Stack
 
-- **Next.js 16** (App Router) — TypeScript strict mode
+- **Next.js 16** (App Router) — React 19, TypeScript strict mode
 - **Firestore** (Firebase Admin SDK on server, Firebase client SDK on browser) — never mix the two
-- **Tailwind CSS v4**
-- **Claude API** (`claude-haiku-4-5`, via `@anthropic-ai/sdk`)
+- **Tailwind CSS v4** — PostCSS plugin, `@theme` directive in `globals.css`
+- **Claude API** (`claude-haiku-4-5`, via `@anthropic-ai/sdk` v0.104+)
 - **Google Cloud TTS**, **Unsplash API**
 - **AnkiConnect** — local HTTP API at `localhost:8765` (requires Anki Desktop open)
+- **zod v4** — schema validation (API request bodies, AI agent output)
+- **vitest v4** — test runner (jsdom environment)
 
 ## Code Conventions
 
@@ -61,27 +63,24 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 ### Entry `status`
 
-| Value      | Meaning         |
-| ---------- | --------------- |
-| `draft`    | In progress     |
-| `ready`    | Ready to export |
-| `exported` | Pushed to Anki  |
-| `archived` | Hidden          |
+| Value      | Meaning                       |
+| ---------- | ----------------------------- |
+| `draft`    | In progress                   |
+| `reviewed` | AI-enriched, ready for export |
+| `synced`   | Exported to Anki successfully |
 
 ## Docs
 
 `ankiflow/docs/` is the source of truth — read before making changes:
 
-| File                       | Read when                                                 |
-| -------------------------- | --------------------------------------------------------- |
-| `docs/prd.md`              | Starting a new feature                                    |
-| `docs/tasks.md`            | Checking what needs to be done                            |
-| `docs/API.md`              | Writing or calling any API route                          |
-| `docs/DATABASE.md`         | Writing Firestore queries or adding fields                |
-| `docs/design/DESIGN.md`    | Creating or modifying UI                                  |
-| `docs/design/COMPONENT.md` | Before creating a new component                           |
-| `docs/VERIFICATION.md`     | Writing or modifying verification specs (`verify/`)       |
-| `docs/REFERENCE.md`        | Directory structure, data flow, env vars, git conventions |
+| File                   | Read when                                                 |
+| ---------------------- | --------------------------------------------------------- |
+| `docs/PRD.md`          | Starting a new feature                                    |
+| `docs/API.md`          | Writing or calling any API route                          |
+| `docs/DATABASE.md`     | Writing Firestore queries or adding fields                |
+| `docs/DESIGN.md`       | Creating or modifying UI                                  |
+| `docs/VERIFICATION.md` | Writing or modifying verification specs (`verify/`)       |
+| `docs/REFERENCE.md`    | Directory structure, data flow, env vars, git conventions |
 
 ## Gotchas
 
@@ -106,6 +105,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 **Step 2 — Plan**
 
+- Turn on plan mode
 - Write a clear, numbered execution plan
 - Include: files to change, why, and expected outcome
 - If the task touches Firestore schema or API routes, re-read `docs/DATABASE.md` or `docs/API.md`

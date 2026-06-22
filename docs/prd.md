@@ -145,9 +145,9 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 
 | Layer | Công nghệ | Phiên bản | Lý do chọn |
 |---|---|---|---|
-| **Frontend** | Next.js | 14+ (App Router) | Full-stack trong 1 project, React base |
-| **Language** | TypeScript | 5+ | Type safety, dễ maintain |
-| **Styling** | Tailwind CSS | 3+ | Rapid UI development |
+| **Frontend** | Next.js | 16 (App Router) | Full-stack trong 1 project, React 19 base |
+| **Language** | TypeScript | 5+ (strict mode) | Type safety, dễ maintain |
+| **Styling** | Tailwind CSS | v4 | Rapid UI development, `@theme` directive |
 | **Backend** | Next.js API Routes | - | Serverless, đơn giản |
 | **Database** | Firebase Firestore | - | Free tier rộng, real-time |
 | **AI** | Anthropic Claude Haiku 4.5 | via `@anthropic-ai/sdk` | Tool-use, structured output |
@@ -167,16 +167,22 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 
 ```typescript
 interface Entry {
-  id: string;                    // Auto ID
+  id?: string;                   // Document ID trong Firestore
+  user_id: string;               // Phase 1: 'local-user'. Phase 3: Firebase Auth UID
   
-  // Thông tin cơ bản
-  category_id: string;           // Tham chiếu tới collection categories
-  language?: LanguageType;       // "english" | "chinese" | "japanese" (nếu là ngôn ngữ)
-  form_type: FormType;           // Loại form đã dùng
+  // Thông tin phân loại
+  category_id: string | null;    // Tham chiếu tới collection categories
+  language?: LanguageType | null; // "en" | "zh" | "ja" (nếu là ngôn ngữ)
+  form_type: FormType | string;  // Loại form đã dùng
   
-  // Nội dung
-  word: string;                  // Từ gốc nhập vào
-  meaning_vi: string;            // Nghĩa tiếng Việt
+  // Nội dung chung (tuỳ form_type)
+  word?: string;                 // Từ vựng (Language)
+  term?: string;                 // Thuật ngữ (IT)
+  title?: string;                // Tiêu đề (General)
+  meaning_vi?: string;           // Nghĩa tiếng Việt
+  definition?: string;           // Định nghĩa (IT)
+  content?: string;              // Nội dung chi tiết (General)
+  note?: string;                 // Ghi chú cá nhân
   word_type?: string;            // Danh từ, động từ, tính từ...
   
   // Metadata ngôn ngữ đặc thù
@@ -188,7 +194,7 @@ interface Entry {
   ipa?: string;                  // Phiên âm quốc tế (tiếng Anh)
   level?: string;                // HSK1-6, JLPT N5-N1, CEFR A1-C2
   
-  // Ví dụ & Collocations (MỚI)
+  // Ví dụ & Collocations
   example_sentence?: string;     // Câu ví dụ ngắn gọn, tự nhiên (ngôn ngữ gốc)
   example_translation?: string;  // Dịch câu ví dụ sang tiếng Việt
   collocations?: string[];       // Các cụm từ hay đi cùng
@@ -197,14 +203,14 @@ interface Entry {
   // Media
   image_url?: string;            // Unsplash URL
   image_credit?: string;         // Tên photographer
-  audio_filename?: string;       // Tên file audio trong Anki media folder
-  audio_example_filename?: string; // Audio câu ví dụ
+  audio_url?: string;            // URL/tên file audio từ TTS
+  audio_example_url?: string;    // Audio câu ví dụ
   
   // Anki
   anki_deck: string;             // Tên deck trong Anki
-  anki_note_ids: number[];       // IDs của các notes đã tạo
-  card_types_created: string[];  // IDs của các card types đã dùng
-  anki_tags: string[];           // Tags trong Anki (AI sinh + user custom)
+  anki_note_ids?: number[];      // IDs của các notes đã tạo
+  card_type_ids: string[];       // IDs của các card types đã chọn
+  tags: string[];                // Tags trong Anki (AI sinh + user custom)
   
   // Chuyên ngành (IT, etc.)
   keywords?: string[];           // Từ khóa liên quan
@@ -232,14 +238,14 @@ interface Category {
 }
 
 // Dữ liệu mẫu:
-// { name: "Đời sống",       form_type: "language",  sort_order: 1 }
-// { name: "Kinh doanh",     form_type: "language",  sort_order: 2 }
-// { name: "Du lịch",        form_type: "language",  sort_order: 3 }
-// { name: "Ẩm thực",        form_type: "language",  sort_order: 4 }
-// { name: "Công nghệ",      form_type: "language",  sort_order: 5 }
-// { name: "Giáo dục",       form_type: "language",  sort_order: 6 }
-// { name: "Y tế",           form_type: "language",  sort_order: 7 }
-// { name: "Văn hóa",        form_type: "language",  sort_order: 8 }
+// { name: "Đời sống",       form_type: "form_language",  sort_order: 1 }
+// { name: "Kinh doanh",     form_type: "form_language",  sort_order: 2 }
+// { name: "Du lịch",        form_type: "form_language",  sort_order: 3 }
+// { name: "Ẩm thực",        form_type: "form_language",  sort_order: 4 }
+// { name: "Công nghệ",      form_type: "form_language",  sort_order: 5 }
+// { name: "Giáo dục",       form_type: "form_language",  sort_order: 6 }
+// { name: "Y tế",           form_type: "form_language",  sort_order: 7 }
+// { name: "Văn hóa",        form_type: "form_language",  sort_order: 8 }
 ```
 
 #### Collection: `card_types` (Loại card) — MỚI
@@ -259,15 +265,15 @@ interface CardTypeConfig {
 }
 
 // Dữ liệu mẫu:
-// { code: "word_to_meaning",   name: "Từ → Nghĩa VN",          form_type: "language", language: null,      is_default: true }
-// { code: "meaning_to_word",   name: "Nghĩa VN → Từ",          form_type: "language", language: null,      is_default: true }
-// { code: "audio_to_word",     name: "Nghe → Đoán từ",          form_type: "language", language: null,      is_default: true }
-// { code: "image_to_word",     name: "Ảnh → Đoán từ",           form_type: "language", language: null,      is_default: true }
-// { code: "fill_in_blank",     name: "Điền vào chỗ trống",      form_type: "language", language: null,      is_default: true }
-// { code: "reading_to_word",   name: "Pinyin → Chữ Hán",        form_type: "language", language: "chinese", is_default: false }
-// { code: "word_to_reading",   name: "Chữ Hán → Pinyin",        form_type: "language", language: "chinese", is_default: false }
-// { code: "concept_to_def",    name: "Khái niệm → Định nghĩa",  form_type: "it",      language: null,      is_default: true }
-// { code: "def_to_concept",    name: "Định nghĩa → Khái niệm",  form_type: "it",      language: null,      is_default: true }
+// { code: "word_to_meaning",   name: "Từ → Nghĩa VN",          form_type: "form_language", language: null,      is_default: true }
+// { code: "meaning_to_word",   name: "Nghĩa VN → Từ",          form_type: "form_language", language: null,      is_default: true }
+// { code: "audio_to_word",     name: "Nghe → Đoán từ",          form_type: "form_language", language: null,      is_default: true }
+// { code: "image_to_word",     name: "Ảnh → Đoán từ",           form_type: "form_language", language: null,      is_default: true }
+// { code: "fill_in_blank",     name: "Điền vào chỗ trống",      form_type: "form_language", language: null,      is_default: true }
+// { code: "reading_to_word",   name: "Pinyin → Chữ Hán",        form_type: "form_language", language: "zh", is_default: false }
+// { code: "word_to_reading",   name: "Chữ Hán → Pinyin",        form_type: "form_language", language: "zh", is_default: false }
+// { code: "concept_to_def",    name: "Khái niệm → Định nghĩa",  form_type: "form_it",      language: null,      is_default: true }
+// { code: "def_to_concept",    name: "Định nghĩa → Khái niệm",  form_type: "form_it",      language: null,      is_default: true }
 ```
 
 #### Collection: `topics` (Chủ đề IT) — MỚI
@@ -312,12 +318,12 @@ interface DeckConfig {
 }
 
 // Dữ liệu mẫu:
-// { anki_deck_name: "Language::Chinese::HSK1", display_name: "Tiếng Trung HSK1", form_type: "language", language: "chinese" }
-// { anki_deck_name: "Language::Chinese::HSK2", display_name: "Tiếng Trung HSK2", form_type: "language", language: "chinese" }
-// { anki_deck_name: "Language::Japanese::N5",  display_name: "Tiếng Nhật N5",    form_type: "language", language: "japanese" }
-// { anki_deck_name: "Language::English::B1",   display_name: "Tiếng Anh B1",     form_type: "language", language: "english" }
-// { anki_deck_name: "Vocabulary::IT",          display_name: "IT Vocabulary",     form_type: "it",      language: null }
-// { anki_deck_name: "Vocabulary::General",     display_name: "Kiến thức chung",   form_type: "general", language: null }
+// { anki_deck_name: "Language::Chinese::HSK1", display_name: "Tiếng Trung HSK1", form_type: "form_language", language: "zh" }
+// { anki_deck_name: "Language::Chinese::HSK2", display_name: "Tiếng Trung HSK2", form_type: "form_language", language: "zh" }
+// { anki_deck_name: "Language::Japanese::N5",  display_name: "Tiếng Nhật N5",    form_type: "form_language", language: "ja" }
+// { anki_deck_name: "Language::English::B1",   display_name: "Tiếng Anh B1",     form_type: "form_language", language: "en" }
+// { anki_deck_name: "Vocabulary::IT",          display_name: "IT Vocabulary",     form_type: "form_it",      language: null }
+// { anki_deck_name: "Vocabulary::General",     display_name: "Kiến thức chung",   form_type: "form_general", language: null }
 ```
 
 #### Collection: `content_types` (Loại nội dung / Form config) — MỚI
@@ -355,18 +361,30 @@ interface FormFieldConfig {
 interface Settings {
   unsplash_enabled: boolean;
   tts_enabled: boolean;
-  ai_model: string;          // Model Claude (vd claude-haiku-4-5)
+  ai_model: string;            // Model Claude (vd claude-haiku-4-5)
   web_search_enabled: boolean; // Cho phép AI agent dùng tool web_search
-  anki_connect_url: string;  // Mặc định: http://localhost:8765
+  anki_connect_url: string;    // Mặc định: http://localhost:8765
+  allow_duplicate: boolean;    // Cho phép tạo entry trùng
+  auto_audio: boolean;         // Tự động tạo audio khi generate
+  auto_image: boolean;         // Tự động tìm ảnh khi generate
+  updated_at: Timestamp;
 }
 ```
 
 ### 6.2 Enum Types
 
 ```typescript
-type FormType = 'language' | 'it' | 'general' | 'custom';
+enum FormType {
+  LANGUAGE = 'form_language',    // Language vocab (EN/ZH/JA)
+  IT = 'form_it',               // IT vocabulary
+  GENERAL = 'form_general',     // General knowledge
+}
 
-type LanguageType = 'english' | 'chinese' | 'japanese';
+enum LanguageType {
+  ENGLISH = 'en',
+  CHINESE = 'zh',
+  JAPANESE = 'ja',
+}
 ```
 
 ---
@@ -391,18 +409,18 @@ Khi user tạo nhiều card liên tiếp (ví dụ: 20 từ HSK1), họ chỉ c�
 // Sử dụng localStorage để persist giữa các session
 interface SessionState {
   form_type: FormType;
-  language?: LanguageType;
-  anki_deck?: string;
-  category_id?: string;
+  language?: LanguageType | null;
+  anki_deck?: string | null;
+  category_id?: string | null;
   tags?: string[];
   card_type_ids?: string[];
   topic_ids?: string[];        // IT form
-  difficulty?: string;         // IT form
+  difficulty?: string | null;  // IT form
   last_updated: string;        // ISO timestamp
 }
 
 // Key: "ankiflow_session_{form_type}"
-// Ví dụ: "ankiflow_session_language"
+// Ví dụ: "ankiflow_session_form_language"
 ```
 
 ### 7.4 Hành vi cụ thể
@@ -1521,32 +1539,39 @@ const response = await fetch(
 
 ```
 ankiflow/
-├── app/                          # Next.js App Router
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Dashboard
-│   ├── create/
-│   │   └── page.tsx              # Create card form
-│   ├── preview/
-│   │   └── page.tsx              # Preview & review
+├── app/                              # Next.js App Router
+│   ├── layout.tsx                    # Root layout (NavigationSidebar + main)
+│   ├── page.tsx                      # Home / redirect
+│   ├── globals.css                   # Tailwind v4 @theme tokens
+│   ├── dashboard/page.tsx            # Stats overview, recent entries
+│   ├── create/page.tsx               # Create card form
+│   ├── preview/page.tsx              # Preview & review, export to Anki
 │   ├── history/
-│   │   ├── page.tsx              # History list
-│   │   └── [id]/page.tsx         # Entry detail
-│   ├── admin/                    # MỚI: Trang quản lý
-│   │   └── page.tsx              # CRUD categories, topics, card types, decks, content types
-│   ├── settings/
-│   │   └── page.tsx              # Settings
+│   │   ├── page.tsx                  # History list
+│   │   └── [id]/page.tsx             # Entry detail
+│   ├── admin/page.tsx                # CRUD categories, topics, card types, decks, content types
+│   ├── settings/page.tsx             # Settings & integrations
+│   ├── verify/                       # Runtime verification dashboard (dev only)
+│   │   ├── page.tsx
+│   │   └── [unitId]/[fixtureId]/page.tsx
 │   └── api/
-│       ├── generate/route.ts     # Gọi Claude API (AI agent)
-│       ├── audio/route.ts        # Gọi Google TTS
-│       ├── image/route.ts        # Gọi Unsplash API
+│       ├── generate/route.ts         # Claude AI agent → sinh nội dung
+│       ├── audio/
+│       │   ├── route.ts              # TTS + store combined (backward-compat)
+│       │   ├── generate/route.ts     # TTS only → base64
+│       │   └── store/route.ts        # Store base64 → Anki media
+│       ├── image/route.ts            # Unsplash image search
 │       ├── anki/
-│       │   ├── connect/route.ts  # Kiểm tra AnkiConnect
-│       │   ├── create/route.ts   # Tạo notes
-│       │   └── decks/route.ts    # Lấy decks
+│       │   ├── connect/route.ts      # Kiểm tra AnkiConnect
+│       │   ├── create/route.ts       # Tạo notes + lưu Firestore
+│       │   ├── decks/route.ts        # Lấy danh sách decks
+│       │   └── update/route.ts       # Cập nhật notes + Firestore entry
+│       ├── entries/
+│       │   └── check-duplicate/route.ts  # Kiểm tra từ trùng
 │       ├── history/
-│       │   ├── route.ts          # CRUD entries
-│       │   └── [id]/route.ts
-│       └── admin/                # MỚI: API quản lý
+│       │   ├── route.ts              # GET/POST entries
+│       │   └── [id]/route.ts         # GET/PUT/DELETE entry
+│       └── admin/
 │           ├── categories/route.ts
 │           ├── card-types/route.ts
 │           ├── topics/route.ts
@@ -1555,62 +1580,87 @@ ankiflow/
 │
 ├── components/
 │   ├── layout/
-│   │   ├── Sidebar.tsx
-│   │   ├── Header.tsx
-│   │   └── StatusBar.tsx
+│   │   ├── NavigationSidebar.tsx      # Sidebar fixed w-64 + nav + ConnectedBadge
+│   │   └── PageHeader.tsx             # Breadcrumb, title, actions slot
+│   ├── ui/                            # Shared UI primitives
+│   │   ├── AnkiFlowLogo.tsx, Badge.tsx, Button.tsx, Card.tsx
+│   │   ├── ConnectedBadge.tsx, DataTable.tsx, EmptyState.tsx
+│   │   ├── ErrorMessage.tsx, FilterBar.tsx, FlowTip.tsx
+│   │   ├── FormField.tsx, LoadingOverlay.tsx, Modal.tsx
+│   │   ├── ProgressBar.tsx, StatCard.tsx, StepIndicator.tsx
+│   │   ├── Tabs.tsx, TagInput.tsx, Toggle.tsx
+│   │   └── ...
 │   ├── create/
-│   │   ├── CategorySelector.tsx  # Dropdown từ DB categories
-│   │   ├── LanguageSelector.tsx
-│   │   ├── DeckSelector.tsx      # Dropdown, auto-detect form type
-│   │   ├── CardTypeSelector.tsx  # Checkbox list từ DB card_types
-│   │   ├── TopicSelector.tsx     # MỚI: Checkbox list cho IT topics
-│   │   ├── LanguageForm.tsx
-│   │   ├── ITForm.tsx
-│   │   └── GeneralForm.tsx
+│   │   ├── LanguageForm.tsx, ITForm.tsx, GeneralForm.tsx
+│   │   ├── DynamicForm.tsx            # Render arbitrary content type
+│   │   ├── CategorySelector.tsx, DeckSelector.tsx
+│   │   ├── LanguageSelector.tsx, CardTypeSelector.tsx
+│   │   ├── TopicSelector.tsx
+│   │   ├── SmartEnrichmentBanner.tsx  # AI generation progress
+│   │   ├── ColumnLabel.tsx, SectionDivider.tsx
+│   │   └── ...
 │   ├── preview/
-│   │   ├── CardPreview.tsx
-│   │   ├── CardList.tsx
-│   │   ├── EditableField.tsx
-│   │   ├── ImageSelector.tsx
-│   │   └── AudioPlayer.tsx
+│   │   ├── CardPreview.tsx, CardList.tsx
+│   │   ├── EditableField.tsx, CollocationEditor.tsx
+│   │   ├── ImageSelector.tsx, AudioPlayer.tsx
+│   │   └── ...
 │   ├── history/
 │   │   ├── HistoryTable.tsx
-│   │   └── FilterBar.tsx
-│   └── admin/                    # MỚI
-│       ├── CategoryManager.tsx
-│       ├── CardTypeManager.tsx
-│       ├── TopicManager.tsx
-│       ├── DeckManager.tsx
+│   │   ├── WordDetailCard.tsx
+│   │   └── EntryEditModal.tsx         # Edit + re-export existing entry
+│   └── admin/
+│       ├── CategoryManager.tsx, CardTypeManager.tsx
+│       ├── TopicManager.tsx, DeckManager.tsx
 │       └── ContentTypeManager.tsx
 │
-├── lib/
-│   ├── firebase.ts
-│   ├── ai-agent/                # MỚI: Claude AI agent (provider + schemas)
-│   ├── tts.ts
-│   ├── unsplash.ts
-│   ├── anki-connect.ts
-│   ├── session.ts               # MỚI: Session persistence logic
-│   └── prompts/
-│       ├── chinese.ts
-│       ├── japanese.ts
-│       ├── english.ts
-│       └── it-vocab.ts
+├── hooks/
+│   ├── useSession.ts                  # Form session persistence (localStorage)
+│   ├── usePreviewEntry.ts             # Load pending entry for preview
+│   ├── useAnkiExport.ts               # Export orchestration (Anki + Firestore)
+│   ├── useDuplicateCheck.ts           # Duplicate word detection
+│   └── useEntryEdit.ts                # Edit existing entry + re-export
 │
-├── hooks/                        # MỚI
-│   ├── useSession.ts             # Hook quản lý session state
-│   ├── useAnkiConnection.ts
-│   └── useFirestore.ts
+├── lib/
+│   ├── firebase.ts                    # Client SDK init
+│   ├── firebase-admin.ts              # Admin SDK init
+│   ├── ai-agent/                      # Claude AI agent
+│   │   ├── index.ts                   # Factory + model constants
+│   │   ├── claude-agent-provider.ts   # Tool-forced + web search modes
+│   │   ├── card-schemas.ts            # Zod schemas per language/type
+│   │   └── types.ts
+│   ├── flashcard-service/             # AnkiConnect abstraction
+│   │   ├── index.ts
+│   │   ├── anki-connect-provider.ts
+│   │   └── types.ts
+│   ├── prompts/                       # Per-language system prompts
+│   │   ├── chinese.ts, japanese.ts, english.ts, it-vocab.ts
+│   ├── audio-service.ts               # TTS generate + Anki store helpers
+│   ├── session.ts                     # Session persistence logic
+│   ├── pendingEntry.ts                # Temp storage (create → preview)
+│   ├── tts.ts                         # Google Cloud TTS wrapper
+│   ├── unsplash.ts                    # Unsplash API wrapper
+│   ├── constants.ts                   # LOCAL_USER_ID, form type mappings
+│   ├── validation.ts                  # Zod schemas for API request bodies
+│   ├── auth-guard.ts                  # x-api-secret header verification
+│   ├── api-response.ts                # apiSuccess / apiError helpers
+│   ├── firestore-helpers.ts           # Firestore query helpers
+│   └── utils.ts                       # cn() utility (clsx + tailwind-merge)
 │
 ├── types/
-│   └── index.ts
+│   └── index.ts                       # All TypeScript types and enums
 │
-├── styles/
-│   └── anki-cards/
-│       ├── base.css              # CSS chung cho Anki cards
-│       ├── language.css
-│       └── it.css
+├── verify/                            # Runtime verification framework
+│   ├── core/                          # Engine (contract, registry, runner)
+│   ├── harness/                       # Firebase/Firestore stubs for testing
+│   ├── specs/                         # Component specs (50+ .verify.tsx files)
+│   ├── unit/                          # Unit tests (session, pendingEntry, AI schemas)
+│   └── matrix.test.ts                 # Integration test matrix
 │
-├── .env.local
+├── scripts/
+│   ├── seed-firestore.ts              # Seed initial data
+│   ├── setup-anki.js                  # Anki setup helper
+│   └── migrate-form-type.ts           # Migration scripts
+│
 ├── .env.example
 └── README.md
 ```
@@ -1622,7 +1672,12 @@ ankiflow/
 ```bash
 # .env.local
 
-# Firebase
+# Firebase (Admin SDK — server-side)
+FIREBASE_ADMIN_PROJECT_ID=
+FIREBASE_ADMIN_CLIENT_EMAIL=
+FIREBASE_ADMIN_PRIVATE_KEY=
+
+# Firebase (Client SDK — browser)
 NEXT_PUBLIC_FIREBASE_API_KEY=
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=
@@ -1634,13 +1689,16 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 ANTHROPIC_API_KEY=
 
 # Google Cloud TTS
-GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account.json
+GOOGLE_TTS_API_KEY=
 
 # Unsplash
 UNSPLASH_ACCESS_KEY=
 
 # AnkiConnect
 ANKI_CONNECT_URL=http://localhost:8765
+
+# Security
+API_SECRET=                    # x-api-secret header cho /api/admin/* và /api/history/*
 ```
 
 ---
