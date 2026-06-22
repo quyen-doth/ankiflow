@@ -14,14 +14,14 @@ export function LanguageSelector({ value, onChange }: LanguageSelectorProps) {
   return (
     <FieldWrapper
       label="Language"
-      className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
+      className="text-overline uppercase text-slate-600 tracking-wider font-bold"
       {...verifyAttrs({ unit: 'LanguageSelector', value })}
     >
       <Select
         aria-label="Language"
         value={value}
         onChange={(e) => onChange(e.target.value as LanguageType)}
-        className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer appearance-none"
+        className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
       >
         <option value="" disabled>Select language...</option>
         {LANGUAGE_OPTIONS.map(lang => (

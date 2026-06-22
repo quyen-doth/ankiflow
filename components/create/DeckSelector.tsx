@@ -57,7 +57,7 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck',
   return (
     <FieldWrapper
       label={label}
-      className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold"
+      className="text-overline uppercase text-slate-600 tracking-wider font-bold"
       {...verifyAttrs({ unit: 'DeckSelector', count: filteredDecks.length, loading })}
     >
       <Select
@@ -72,7 +72,7 @@ export function DeckSelector({ value, onChange, onChangeId, label = 'Anki Deck',
           }
         }}
         disabled={loading}
-        className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-on-surface focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer appearance-none"
+        className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
       >
         <option value="" disabled>{loading ? 'Loading...' : 'Select a deck...'}</option>
         {filteredDecks.map(deck => (

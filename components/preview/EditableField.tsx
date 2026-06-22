@@ -50,7 +50,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={3}
-            className="w-full text-sm text-on-surface bg-surface-low border border-primary/40 rounded-lg px-3 py-2 ring-2 ring-primary/30 focus:outline-none resize-none"
+            className="w-full text-sm text-ink bg-surface border border-primary/40 rounded-lg px-3 py-2 ring-2 ring-primary-bg focus:outline-none resize-none"
             placeholder={placeholder}
           />
         ) : (
@@ -60,7 +60,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full text-sm text-on-surface bg-surface-low border border-primary/40 rounded-lg px-3 py-2 ring-2 ring-primary/30 focus:outline-none"
+            className="w-full text-sm text-ink bg-surface border border-primary/40 rounded-lg px-3 py-2 ring-2 ring-primary-bg focus:outline-none"
             placeholder={placeholder}
           />
         )}
@@ -77,8 +77,8 @@ export function EditableField({ value, onSave, multiline = false, className, pla
       onClick={handleStartEdit}
       {...verifyAttrs({ unit: 'EditableField', editing: false, empty: !value })}
       className={cn(
-        'cursor-pointer rounded-md px-1 -mx-1 transition-colors hover:bg-primary/5 border border-transparent hover:border-primary/20',
-        !value && 'text-on-surface-var italic',
+        'cursor-pointer rounded-md px-1 -mx-1 transition-colors hover:bg-primary-bg border border-transparent hover:border-primary/20',
+        !value && 'text-slate-600 italic',
         className
       )}
       title="Click to edit"

@@ -155,12 +155,12 @@ export function DeckManager() {
     {
       key: 'anki_deck_name',
       header: 'Anki Name',
-      render: (_: unknown, row: DeckConfig) => <span className="font-mono text-label-sm text-on-surface-var">{row.anki_deck_name}</span>,
+      render: (_: unknown, row: DeckConfig) => <span className="font-mono text-overline text-slate-600">{row.anki_deck_name}</span>,
     },
     {
       key: 'display_name',
       header: 'Display Name',
-      render: (_: unknown, row: DeckConfig) => <span className="font-semibold text-on-surface">{row.display_name}</span>,
+      render: (_: unknown, row: DeckConfig) => <span className="font-semibold text-ink">{row.display_name}</span>,
     },
     {
       key: 'form_type',
@@ -171,7 +171,7 @@ export function DeckManager() {
       key: 'language',
       header: 'Language',
       render: (_: unknown, row: DeckConfig) => (
-        <span className="text-on-surface-var">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
+        <span className="text-slate-600">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
       ),
     },
     {
@@ -198,7 +198,7 @@ export function DeckManager() {
   return (
     <Card {...verifyAttrs({ unit: 'DeckManager', rows: decks.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-label-lg font-semibold text-on-surface-var">Decks</h2>
+        <h2 className="text-body font-bold font-semibold text-slate-600">Decks</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Add Deck
         </Button>

@@ -43,7 +43,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
       {...verifyAttrs({ unit: 'ImageSelector', count: images.length, loading: !!loading, selected: selectedUrl })}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-on-surface">Illustration</span>
+        <span className="text-sm font-medium text-ink">Illustration</span>
         <div className="flex gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="w-3.5 h-3.5 mr-1.5" />
@@ -68,7 +68,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
       {loading ? (
         <div className="grid grid-cols-2 gap-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="aspect-video bg-surface-low rounded-lg animate-pulse" />
+            <div key={i} className="aspect-video bg-surface rounded-lg animate-pulse" />
           ))}
         </div>
       ) : images.length > 0 ? (
@@ -82,8 +82,8 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
               className={cn(
                 'relative aspect-video rounded-lg overflow-hidden border-2 transition-all',
                 selectedUrl === img.url
-                  ? 'border-primary ring-2 ring-primary/30'
-                  : 'border-transparent hover:border-outline-var'
+                  ? 'border-primary ring-2 ring-primary-bg'
+                  : 'border-transparent hover:border-border'
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -103,13 +103,13 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
           ))}
         </div>
       ) : (
-        <p className="text-sm text-on-surface-var py-4 text-center">
+        <p className="text-sm text-slate-600 py-4 text-center">
           No images found. Try &quot;Find more&quot; or upload your own.
         </p>
       )}
 
       {selectedUrl && (
-        <div className="aspect-video rounded-lg overflow-hidden border border-outline-var/30">
+        <div className="aspect-video rounded-lg overflow-hidden border border-border/30">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selectedUrl}
@@ -120,7 +120,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
       )}
 
       {selectedUrl && images.some(img => img.url === selectedUrl) && (
-        <p className="text-label-sm text-on-surface-var">
+        <p className="text-overline text-slate-600">
           Photo by{' '}
           <a
             href={images.find(img => img.url === selectedUrl)?.credit_url}

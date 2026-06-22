@@ -34,22 +34,22 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(24, 28, 27, 0.4)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(21, 23, 28, 0.4)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       {...verifyAttrs({ unit: 'Modal', open, size })}
     >
-      <div className={cn('bg-white rounded-xl shadow-modal w-full flex flex-col', sizeClasses[size], className)}>
-        {/* Header (tonal) */}
+      <div className={cn('bg-white rounded-card shadow-modal border border-border w-full flex flex-col', sizeClasses[size], className)}>
+        {/* Header */}
         {title && (
-          <div className="bg-surface-container rounded-t-xl px-6 py-4 flex items-start justify-between">
+          <div className="bg-surface rounded-t-card px-6 py-4 flex items-start justify-between">
             <div>
-              <h2 className="font-serif text-headline-sm text-on-surface">{title}</h2>
-              {description && <p className="text-body-md text-on-surface-var mt-0.5">{description}</p>}
+              <h2 className="text-section-heading font-extrabold text-ink">{title}</h2>
+              {description && <p className="text-body text-slate-600 mt-0.5">{description}</p>}
             </div>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="text-on-surface-var hover:text-on-surface transition-colors ml-4 mt-0.5"
+              className="text-slate-400 hover:text-ink transition-colors ml-4 mt-0.5"
             >
               <X className="w-5 h-5" />
             </button>

@@ -56,8 +56,8 @@ export default function HistoryDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-xl font-bold text-on-surface mb-2">Card not found</p>
-          <p className="text-on-surface-var">This card may have been deleted or doesn&apos;t exist.</p>
+          <p className="text-xl font-bold text-ink mb-2">Card not found</p>
+          <p className="text-slate-600">This card may have been deleted or doesn&apos;t exist.</p>
         </div>
       </div>
     )
@@ -90,8 +90,8 @@ export default function HistoryDetailPage() {
         {/* Cột phải (4): Preview */}
         <div className="lg:col-span-4">
           <div className="sticky top-8 flex flex-col gap-4">
-            <div className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6 lg:p-8">
-              <h2 className="text-label-sm uppercase text-on-surface-var font-bold tracking-wider mb-6">
+            <div className="bg-white rounded-card border border-border/40 p-6 lg:p-8">
+              <h2 className="text-overline uppercase text-slate-600 font-bold tracking-wider mb-6">
                 Card Preview
               </h2>
               <CardPreview entry={entry} />

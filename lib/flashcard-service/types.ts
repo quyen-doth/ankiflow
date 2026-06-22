@@ -6,6 +6,15 @@ export interface IFlashcardService {
   updateNoteFields(noteId: number, fields: Record<string, string>): Promise<void>
   findNotes(query: string): Promise<number[]>
   storeMediaFile(filename: string, base64Data: string): Promise<string>
+  getModelNames(): Promise<string[]>
+  createModel(params: CreateModelParams): Promise<void>
+}
+
+export interface CreateModelParams {
+  modelName: string
+  inOrderFields: string[]
+  cardTemplates: { Name: string; Front: string; Back: string }[]
+  css?: string
 }
 
 export interface AnkiNote {

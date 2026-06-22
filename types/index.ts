@@ -207,6 +207,7 @@ export interface Settings {
   allow_duplicate: boolean;
   auto_audio: boolean;
   auto_image: boolean;
+  user_name: string;
   updated_at: FirestoreTimestamp;
 }
 

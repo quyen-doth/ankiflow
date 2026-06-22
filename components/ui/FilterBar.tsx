@@ -38,13 +38,13 @@ export function FilterBar({
       <div className="flex items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-var" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="search"
             placeholder={searchPlaceholder}
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-white border border-outline-var rounded-full pl-9 pr-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="w-full bg-white border border-border rounded-[9px] pl-9 pr-4 py-2.5 text-sm text-ink placeholder:text-slate-400/60 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg"
           />
         </div>
 
@@ -63,13 +63,13 @@ export function FilterBar({
       {/* Active filters */}
       {activeFilters.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-label-sm uppercase tracking-wide text-on-surface-var">Applied:</span>
+          <span className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono">Applied:</span>
           {activeFilters.map((f) => (
             <Badge key={f.key} variant="active" onRemove={() => onRemoveFilter?.(f.key)}>
               {f.label}
             </Badge>
           ))}
-          <button onClick={onClearAll} className="text-label-sm text-on-surface-var hover:text-error underline transition-colors">
+          <button onClick={onClearAll} className="text-overline text-slate-600 hover:text-danger underline transition-colors">
             Clear all
           </button>
         </div>

@@ -88,10 +88,10 @@ registerUnit<ConnectedBadgeProps>({
     },
     {
       id: 'status-text-matches-state',
-      description: 'Text trạng thái khớp connected (Connected to Anki / Anki offline)',
+      description: 'Text trạng thái khớp connected (Anki connected / Anki offline)',
       check: ({ root, contract }) => {
         const text = root.textContent ?? ''
-        const expected = contract.connected === 'true' ? 'Connected to Anki' : 'Anki offline'
+        const expected = contract.connected === 'true' ? 'Anki connected' : 'Anki offline'
         return text.includes(expected) || `không thấy "${expected}" trong "${text.trim()}"`
       },
     },

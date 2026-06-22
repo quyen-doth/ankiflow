@@ -117,7 +117,7 @@ export function CategoryManager() {
     {
       key: 'name',
       header: 'Name',
-      render: (_: unknown, row: Category) => <span className="font-semibold text-on-surface">{row.name}</span>,
+      render: (_: unknown, row: Category) => <span className="font-semibold text-ink">{row.name}</span>,
     },
     {
       key: 'form_type',
@@ -127,7 +127,7 @@ export function CategoryManager() {
     {
       key: 'sort_order',
       header: 'Order',
-      render: (_: unknown, row: Category) => <span className="text-on-surface-var">{row.sort_order}</span>,
+      render: (_: unknown, row: Category) => <span className="text-slate-600">{row.sort_order}</span>,
     },
     {
       key: 'is_active',
@@ -159,7 +159,7 @@ export function CategoryManager() {
   return (
     <Card {...verifyAttrs({ unit: 'CategoryManager', rows: categories.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-label-lg font-semibold text-on-surface-var">Categories</h2>
+        <h2 className="text-body font-bold font-semibold text-slate-600">Categories</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Add Category
         </Button>

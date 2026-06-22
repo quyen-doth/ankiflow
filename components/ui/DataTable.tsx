@@ -35,13 +35,13 @@ export function DataTable<T extends object>({
     >
       <table className="w-full">
         <thead>
-          <tr className="border-b border-outline-var/50">
+          <tr className="border-b border-border">
             {columns.map((col) => (
               <th
                 key={String(col.key)}
                 style={{ width: col.width }}
                 className={cn(
-                  'px-4 py-3 text-label-sm uppercase tracking-wide text-on-surface-var font-semibold',
+                  'px-4 py-3 text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold',
                   col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                 )}
               >
@@ -53,7 +53,7 @@ export function DataTable<T extends object>({
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="text-center py-12 text-on-surface-var text-sm">
+              <td colSpan={columns.length} className="text-center py-12 text-slate-400 text-sm">
                 {emptyMessage}
               </td>
             </tr>
@@ -63,15 +63,15 @@ export function DataTable<T extends object>({
                 key={keyField ? String(row[keyField]) : i}
                 onClick={() => onRowClick?.(row)}
                 className={cn(
-                  'border-b border-outline-var/30 transition-colors duration-100',
-                  onRowClick && 'cursor-pointer hover:bg-surface-container/50'
+                  'border-b border-border/60 transition-colors duration-100',
+                  onRowClick && 'cursor-pointer hover:bg-surface'
                 )}
               >
                 {columns.map((col) => (
                   <td
                     key={String(col.key)}
                     className={cn(
-                      'px-4 py-3.5 text-body-md text-on-surface',
+                      'px-4 py-3.5 text-body text-ink',
                       col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                     )}
                   >

@@ -11,21 +11,21 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  neutral:  'bg-surface-high text-on-surface-var',
-  active:   'bg-primary/10 text-primary',
-  inactive: 'bg-error-container text-on-error',
-  pending:  'bg-tertiary-fixed text-on-tertiary-fixed',
-  ai:       'bg-tertiary-fixed text-on-tertiary-fixed',
-  language: 'bg-primary/10 text-primary',
-  level:    'bg-surface-high text-on-surface-var border border-outline-var/40',
+  neutral:  'bg-canvas text-slate-600',
+  active:   'bg-primary-bg text-primary',
+  inactive: 'bg-danger-bg text-danger',
+  pending:  'bg-amber-bg text-amber-dark',
+  ai:       'bg-amber-bg text-amber-dark',
+  language: 'bg-primary-bg text-primary font-mono',
+  level:    'bg-canvas text-slate-600 border border-border',
 }
 
 export function Badge({ variant = 'neutral', children, className, onRemove }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5',
-        'text-sm font-medium',
+        'inline-flex items-center gap-1.5 rounded-pill px-3 py-1.5',
+        'text-[11.5px] font-semibold',
         variantStyles[variant],
         className
       )}

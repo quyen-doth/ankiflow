@@ -31,13 +31,13 @@ export function StepIndicator({ steps, className }: StepIndicatorProps) {
           <div className={cn(
             'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
             step.status === 'completed' && 'bg-primary text-white',
-            step.status === 'active' && 'bg-surface-high text-primary border-2 border-primary',
-            step.status === 'pending' && 'bg-surface-high text-on-surface-var/40',
+            step.status === 'active' && 'bg-primary-bg text-primary border-2 border-primary',
+            step.status === 'pending' && 'bg-canvas text-slate-400',
           )}>
             {step.status === 'completed' ? (
               <Check className="w-4 h-4" />
             ) : (
-              <span className="text-label-sm font-bold">{i + 1}</span>
+              <span className="text-overline font-bold">{i + 1}</span>
             )}
           </div>
 
@@ -45,14 +45,14 @@ export function StepIndicator({ steps, className }: StepIndicatorProps) {
           <div className="flex-1 min-w-0">
             <p className={cn(
               'text-sm font-semibold',
-              step.status === 'pending' ? 'text-on-surface-var/50' : 'text-on-surface'
+              step.status === 'pending' ? 'text-slate-400' : 'text-ink'
             )}>
               {step.label}
             </p>
             {step.description && (
               <p className={cn(
-                'text-label-sm mt-0.5',
-                step.status === 'active' ? 'text-on-surface-var italic' : 'text-on-surface-var/50'
+                'text-secondary mt-0.5',
+                step.status === 'active' ? 'text-slate-600 italic' : 'text-slate-400'
               )}>
                 {step.description}
               </p>

@@ -53,7 +53,7 @@ export function TopicSelector({ selectedIds, onChange }: TopicSelectorProps) {
       {...verifyAttrs({ unit: 'TopicSelector', count: topics.length, selected: selectedIds.length, loading })}
     >
       {loading ? (
-        <span className="text-sm text-on-surface-var">Loading topics...</span>
+        <span className="text-sm text-slate-600">Loading topics...</span>
       ) : (
         <div className="flex flex-wrap gap-2">
           {topics.map(topic => (

@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MonitorCheck, MonitorX } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface ConnectedBadgeProps {
-  /** Override the connection status — if omitted, polls Anki every 30s */
   connected?: boolean
 }
 
@@ -32,21 +30,18 @@ export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps
 
   return (
     <div
-      className="mx-1 mb-1 flex items-center gap-2.5 px-3 py-2.5 bg-surface-high rounded-lg"
+      className="flex items-center gap-2.5 px-3 py-2.5 bg-canvas rounded-[8px]"
       {...verifyAttrs({ unit: 'ConnectedBadge', connected })}
     >
-      {/* Status dot */}
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${connected ? 'bg-primary' : 'bg-outline'}`} />
-
-      {/* Icon */}
-      {connected
-        ? <MonitorCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-        : <MonitorX className="w-3.5 h-3.5 text-on-surface-var flex-shrink-0" />
-      }
-
-      <span className="text-label-sm font-semibold tracking-wide uppercase text-on-surface-var truncate">
-        {connected ? 'Connected to Anki' : 'Anki offline'}
+      <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${connected ? 'bg-primary' : 'bg-slate-400'}`}
+        style={connected ? { boxShadow: '0 0 0 3px rgba(49,99,66,.14)' } : undefined}
+      />
+      <span className={`text-[13px] font-medium ${connected ? 'text-ink' : 'text-slate-400'}`}>
+        {connected ? 'Anki connected' : 'Anki offline'}
       </span>
+      {connected && (
+        <span className="ml-auto text-[12.5px] font-mono text-slate-400">:8765</span>
+      )}
     </div>
   )
 }

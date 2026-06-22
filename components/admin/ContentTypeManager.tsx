@@ -157,17 +157,17 @@ export function ContentTypeManager() {
     {
       key: 'code',
       header: 'Code',
-      render: (_: unknown, row: ContentType) => <span className="font-mono text-label-sm text-on-surface-var">{row.code}</span>,
+      render: (_: unknown, row: ContentType) => <span className="font-mono text-overline text-slate-600">{row.code}</span>,
     },
     {
       key: 'name',
       header: 'Name',
-      render: (_: unknown, row: ContentType) => <span className="font-semibold text-on-surface">{row.name}</span>,
+      render: (_: unknown, row: ContentType) => <span className="font-semibold text-ink">{row.name}</span>,
     },
     {
       key: 'fields',
       header: 'Fields',
-      render: (_: unknown, row: ContentType) => <span className="text-on-surface-var">{row.fields?.length || 0}</span>,
+      render: (_: unknown, row: ContentType) => <span className="text-slate-600">{row.fields?.length || 0}</span>,
     },
     {
       key: 'is_active',
@@ -191,7 +191,7 @@ export function ContentTypeManager() {
   return (
     <Card {...verifyAttrs({ unit: 'ContentTypeManager', rows: contentTypes.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-label-lg font-semibold text-on-surface-var">Content Types</h2>
+        <h2 className="text-body font-bold font-semibold text-slate-600">Content Types</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Add Content Type
         </Button>
@@ -260,23 +260,23 @@ export function ContentTypeManager() {
 
           {/* Fields */}
           <div className="flex items-center justify-between mt-2">
-            <h3 className="text-label-md font-semibold text-on-surface-var">Fields</h3>
+            <h3 className="text-body font-semibold text-slate-600">Fields</h3>
             <Button variant="ghost" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={addField}>
               Add Field
             </Button>
           </div>
 
           {fields.map((field, index) => (
-            <div key={index} className="rounded-xl border border-outline-var/40 p-4 flex flex-col gap-3">
+            <div key={index} className="rounded-card border border-border/40 p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-label-sm text-on-surface-var">
+                <span className="font-mono text-overline text-slate-600">
                   {field.field_key || `field_${index}`}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => removeField(index)}
-                  className="p-1.5 h-auto text-on-surface-var hover:text-error rounded-full"
+                  className="p-1.5 h-auto text-slate-600 hover:text-danger rounded-full"
                   aria-label={`Remove field ${field.field_key || index}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -346,7 +346,7 @@ export function ContentTypeManager() {
           ))}
 
           {fields.length === 0 && (
-            <p className="text-sm text-on-surface-var text-center py-4">
+            <p className="text-sm text-slate-600 text-center py-4">
               No fields yet. Click &quot;Add Field&quot; to define form fields.
             </p>
           )}

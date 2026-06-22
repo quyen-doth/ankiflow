@@ -17,12 +17,30 @@ interface HistoryTableProps {
 export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   const router = useRouter()
 
+  function truncateDeck(deck: string | undefined): string {
+    if (!deck) return '—'
+    if (deck.length <= 20) return deck
+    return '…' + deck.slice(-17)
+  }
+
+  function formatDate(row: Entry): string {
+    if (!row.created_at) return '—'
+    const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as { seconds: number }).seconds * 1000)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  function langCode(row: Entry): string | null {
+    if (row.form_type !== 'form_language' || !row.language) return null
+    const map: Record<string, string> = { en: 'EN', ja: 'JA', zh: 'ZH' }
+    return map[row.language] || row.language.toUpperCase().slice(0, 2)
+  }
+
   const columns = [
     {
       key: 'word',
       header: 'Word',
       render: (_: unknown, row: Entry) => (
-        <span className="font-serif font-bold text-lg text-on-surface">
+        <span className="font-bold text-lg text-ink">
           {row.word || row.term || row.title || '—'}
         </span>
       ),
@@ -31,21 +49,21 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
       key: 'meaning',
       header: 'Meaning',
       render: (_: unknown, row: Entry) => (
-        <span className="text-on-surface-var">
+        <span className="text-slate-600">
           {row.meaning_vi || row.definition || row.content || '—'}
         </span>
       ),
     },
     {
-      key: 'type',
-      header: 'Category',
+      key: 'language',
+      header: 'Lang',
       render: (_: unknown, row: Entry) => {
-        let label = 'General'
-        if (row.form_type === 'form_language') label = row.language || 'Language'
-        if (row.form_type === 'form_it') label = 'IT & Dev'
+        const code = langCode(row)
+        if (!code) return <span className="text-slate-400">—</span>
+        const isJa = code === 'JA'
         return (
-          <Badge className="bg-surface-high text-on-surface-var font-medium px-3 py-1">
-            {label}
+          <Badge className={`px-2.5 py-1 text-[11px] ${isJa ? 'bg-amber-bg text-amber-dark' : 'bg-primary-bg text-primary'}`}>
+            {code}
           </Badge>
         )
       },
@@ -54,8 +72,8 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
       key: 'anki_deck',
       header: 'Deck',
       render: (_: unknown, row: Entry) => (
-        <span className="text-on-surface font-medium">
-          {row.anki_deck || '—'}
+        <span className="text-ink font-medium text-[13px] font-mono">
+          {truncateDeck(row.anki_deck)}
         </span>
       ),
     },
@@ -66,10 +84,11 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
         const isSynced = row.status === 'synced'
         return (
           <Badge className={isSynced
-            ? 'bg-primary/10 text-primary'
-            : 'bg-tertiary-fixed text-on-tertiary-fixed'
+            ? 'bg-primary-bg text-primary'
+            : 'bg-amber-bg text-amber-dark'
           }>
-            {isSynced ? 'Synced' : 'Pending sync'}
+            <span className={`inline-block w-[6px] h-[6px] rounded-full mr-1.5 ${isSynced ? 'bg-primary' : 'bg-amber'}`} />
+            {isSynced ? 'Synced' : 'Pending'}
           </Badge>
         )
       },
@@ -77,25 +96,23 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
     {
       key: 'created_at',
       header: 'Created',
-      render: (_: unknown, row: Entry) => {
-        if (!row.created_at) return '—'
-        const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as { seconds: number }).seconds * 1000)
-        return <span className="text-on-surface-var text-sm">{date.toLocaleDateString('en-US')}</span>
-      },
+      render: (_: unknown, row: Entry) => (
+        <span className="text-slate-600 text-sm">{formatDate(row)}</span>
+      ),
     },
     {
       key: 'actions',
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: Entry) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation()
               onEdit?.(row)
             }}
-            className="p-2 h-auto text-on-surface-var hover:text-primary hover:bg-primary/10 rounded-full"
+            className="p-2 h-auto text-slate-600 hover:text-primary hover:bg-primary-bg rounded-full"
             title="Edit"
           >
             <Pencil className="w-4 h-4" />
@@ -106,7 +123,7 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
               e.stopPropagation()
               router.push(`/history/${row.id}`)
             }}
-            className="p-2 h-auto text-on-surface-var hover:text-primary hover:bg-primary/10 rounded-full"
+            className="p-2 h-auto text-slate-600 hover:text-primary hover:bg-primary-bg rounded-full"
             title="View details"
           >
             <Eye className="w-4 h-4" />
@@ -117,7 +134,7 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
               e.stopPropagation()
               onDelete?.(row.id as string)
             }}
-            className="p-2 h-auto text-on-surface-var hover:text-error hover:bg-error-container rounded-full"
+            className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -129,7 +146,7 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
 
   return (
     <div
-      className="bg-white rounded-xl shadow-card border border-outline-var/40 overflow-hidden"
+      className="bg-white rounded-card border border-border/40 overflow-hidden"
       {...verifyAttrs({ unit: 'HistoryTable', rows: data.length })}
     >
       <DataTable

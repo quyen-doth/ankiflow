@@ -8,7 +8,7 @@ export function ErrorMessage({ message }: ErrorMessageProps) {
   if (!message) return null
   return (
     <div
-      className="mb-4 px-4 py-3 bg-error-container border border-error/30 rounded-xl text-sm text-on-error"
+      className="mb-4 px-4 py-3 bg-danger-bg border border-danger/30 rounded-card text-sm text-danger"
       {...verifyAttrs({ unit: 'ErrorMessage' })}
     >
       ⚠️ {message}

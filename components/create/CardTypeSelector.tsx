@@ -64,7 +64,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
   return (
     <div {...verifyAttrs({ unit: 'CardTypeSelector', count: cardTypes.length, selected: selectedIds.length, loading })}>
       <div className="flex justify-between items-center mb-3">
-        <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold">
+        <label className="text-overline uppercase text-slate-600 tracking-wider font-bold">
           {loading ? 'Loading card types...' : 'Generated Card Types'}
         </label>
         <div className="flex gap-2">
@@ -76,7 +76,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
       {loading ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-16 rounded-xl bg-surface-container animate-pulse" />
+            <div key={i} className="h-16 rounded-card bg-surface animate-pulse" />
           ))}
         </div>
       ) : (
@@ -87,22 +87,22 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
               <label
                 key={ct.id}
                 className={cn(
-                  'flex items-center gap-3 p-4 rounded-xl cursor-pointer border transition-all duration-150',
+                  'flex items-center gap-3 p-4 rounded-card cursor-pointer border transition-all duration-150',
                   isChecked
-                    ? 'border-primary/50 bg-primary/5'
-                    : 'border-transparent bg-surface-container hover:bg-surface-high'
+                    ? 'border-primary/50 bg-primary-bg'
+                    : 'border-transparent bg-surface hover:bg-canvas'
                 )}
               >
                 <input
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => handleToggle(ct.id)}
-                  className="w-4 h-4 rounded border-outline-var text-primary focus-visible:ring-2 focus-visible:ring-primary/40 flex-shrink-0"
+                  className="w-4 h-4 rounded border-border text-primary focus-visible:ring-2 focus-visible:ring-primary-bg flex-shrink-0"
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-bold text-on-surface truncate">{ct.name}</span>
+                  <span className="text-sm font-bold text-ink truncate">{ct.name}</span>
                   {ct.description && (
-                    <span className="text-label-sm text-on-surface-var uppercase font-semibold tracking-wide truncate">
+                    <span className="text-overline text-slate-600 uppercase font-semibold tracking-wide truncate">
                       {ct.description}
                     </span>
                   )}

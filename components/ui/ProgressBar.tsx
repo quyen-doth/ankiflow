@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface ProgressBarProps {
-  value: number           // 0–100
+  value: number
   label?: string
   showPercent?: boolean
   size?: 'sm' | 'md'
@@ -19,13 +19,13 @@ export function ProgressBar({ value, label, showPercent = false, size = 'md', cl
     >
       {(label || showPercent) && (
         <div className="flex justify-between items-center mb-1.5">
-          {label && <span className="text-label-sm uppercase tracking-wide text-on-surface-var">{label}</span>}
-          {showPercent && <span className="text-label-sm font-semibold text-primary">{clampedValue}%</span>}
+          {label && <span className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono">{label}</span>}
+          {showPercent && <span className="text-meta font-mono font-bold text-primary">{clampedValue}%</span>}
         </div>
       )}
-      <div className={cn('bg-surface-high rounded-full overflow-hidden', size === 'md' ? 'h-2.5' : 'h-1.5')}>
+      <div className={cn('bg-border rounded-pill overflow-hidden', size === 'md' ? 'h-2.5' : 'h-1.5')}>
         <div
-          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-primary rounded-pill transition-all duration-500 ease-out"
           style={{ width: `${clampedValue}%` }}
           role="progressbar"
           aria-valuenow={clampedValue}

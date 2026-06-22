@@ -100,12 +100,12 @@ export function TopicManager() {
     {
       key: 'name',
       header: 'Name',
-      render: (_: unknown, row: Topic) => <span className="font-semibold text-on-surface">{row.name}</span>,
+      render: (_: unknown, row: Topic) => <span className="font-semibold text-ink">{row.name}</span>,
     },
     {
       key: 'sort_order',
       header: 'Order',
-      render: (_: unknown, row: Topic) => <span className="text-on-surface-var">{row.sort_order}</span>,
+      render: (_: unknown, row: Topic) => <span className="text-slate-600">{row.sort_order}</span>,
     },
     {
       key: 'is_active',
@@ -131,7 +131,7 @@ export function TopicManager() {
   return (
     <Card {...verifyAttrs({ unit: 'TopicManager', rows: topics.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-label-lg font-semibold text-on-surface-var">Topics</h2>
+        <h2 className="text-body font-bold font-semibold text-slate-600">Topics</h2>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Add Topic
         </Button>

@@ -156,11 +156,11 @@ export function ITForm({
             {...verifyAttrs({ unit: "ITForm", error: !!error })}
         >
             {/* Left — Core Content (focal) */}
-            <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+            <div className="lg:col-span-7 flex flex-col bg-white rounded-card p-6 lg:p-8">
                 <ColumnLabel label="Core Content" />
 
                 <div className="mb-5">
-                    <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+                    <label className="text-overline uppercase text-slate-600 tracking-wider font-bold block mb-2">
                         Technical Term
                     </label>
                     <input
@@ -168,12 +168,12 @@ export function ITForm({
                         value={term}
                         onChange={(e) => setTerm(e.target.value)}
                         placeholder="E.g., Event Loop, Closure..."
-                        className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
+                        className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-ink placeholder:text-slate-600/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-bg appearance-none shadow-none"
                     />
                 </div>
 
                 <div className="mb-5">
-                    <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+                    <label className="text-overline uppercase text-slate-600 tracking-wider font-bold block mb-2">
                         Your Definition (optional)
                     </label>
                     <Textarea
@@ -181,7 +181,7 @@ export function ITForm({
                         value={definition}
                         onChange={(e) => setDefinition(e.target.value)}
                         rows={3}
-                        className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
+                        className="bg-surface hover:bg-canvas transition-colors px-5 py-4 text-sm"
                     />
                 </div>
 
@@ -189,7 +189,7 @@ export function ITForm({
             </div>
 
             {/* Right — Configuration */}
-            <div className="lg:col-span-5 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+            <div className="lg:col-span-5 flex flex-col bg-white rounded-card p-6 lg:p-8">
                 <ColumnLabel label="Configuration" />
 
                 <div className="flex flex-col gap-4 mb-6">
@@ -232,9 +232,9 @@ export function ITForm({
             >
                 <div className="mt-2 space-y-2">
                     {duplicates.map(d => (
-                        <div key={d.id} className="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2 text-sm">
-                            <span className="font-semibold text-on-surface">{d.word}</span>
-                            <span className="text-on-surface-var">{d.anki_deck}</span>
+                        <div key={d.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2 text-sm">
+                            <span className="font-semibold text-ink">{d.word}</span>
+                            <span className="text-slate-600">{d.anki_deck}</span>
                         </div>
                     ))}
                 </div>

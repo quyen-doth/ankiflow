@@ -40,8 +40,8 @@ export function AudioPlayer({ audioUrl, onRegenerate, loading, label = 'Audio' }
       className="flex items-center gap-3"
       {...verifyAttrs({ unit: 'AudioPlayer', playing: isPlaying, hasAudio: !!audioUrl, loading: !!loading })}
     >
-      <span className="text-sm font-medium text-on-surface flex items-center gap-1.5">
-        <Volume2 className="w-4 h-4 text-on-surface-var" />
+      <span className="text-sm font-medium text-ink flex items-center gap-1.5">
+        <Volume2 className="w-4 h-4 text-slate-600" />
         {label}
       </span>
 

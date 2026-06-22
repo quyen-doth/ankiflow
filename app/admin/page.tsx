@@ -28,13 +28,12 @@ export default function AdminPage() {
   return (
     <>
       <PageHeader
-        crumbs={[{ label: 'Admin' }]}
         title="Admin"
-        description="Manage the configuration data that powers the Create flow"
+        description="Manage the configuration data that powers the Create flow."
       />
 
       <div className="max-w-5xl mx-auto w-full pb-12 flex flex-col gap-6">
-        <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} className="self-start" />
+        <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} variant="underline" className="self-start" />
 
         {activeTab === 'categories' && <CategoryManager />}
         {activeTab === 'card-types' && <CardTypeManager />}

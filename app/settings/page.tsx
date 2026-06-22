@@ -9,7 +9,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { MonitorCheck, MonitorX, Sparkles, Volume2, ImageIcon } from 'lucide-react'
+import { MonitorCheck, MonitorX, Sparkles, Volume2, ImageIcon, Settings as SettingsIcon, SlidersHorizontal, Check } from 'lucide-react'
 import type { Settings } from '@/types'
 
 const SETTINGS_DOC_ID = 'default'
@@ -29,21 +29,19 @@ interface IntegrationStatus {
 
 function IntegrationCard({ label, description, icon, connected, checking }: IntegrationStatus) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-surface-container rounded-lg">
-      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-on-surface-var">
+    <div className="flex items-center gap-4 p-4 bg-surface rounded-lg">
+      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-slate-600">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-on-surface">{label}</p>
-        <p className="text-label-sm text-on-surface-var truncate">{description}</p>
+        <p className="text-sm font-semibold text-ink">{label}</p>
+        <p className="text-overline text-slate-600 truncate">{description}</p>
       </div>
       {checking ? (
         <Badge variant="neutral">Checking...</Badge>
       ) : (
-        <Badge className={connected ? 'bg-primary/10 text-primary' : 'bg-error-container text-on-error'}>
-          {connected
-            ? <MonitorCheck className="w-3.5 h-3.5" />
-            : <MonitorX className="w-3.5 h-3.5" />}
+        <Badge className={connected ? 'bg-primary-bg text-primary' : 'bg-danger-bg text-danger'}>
+          <span className={`inline-block w-[6px] h-[6px] rounded-full mr-1.5 ${connected ? 'bg-primary' : 'bg-danger'}`} />
           {connected ? 'Connected' : 'Offline'}
         </Badge>
       )}
@@ -120,9 +118,9 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
-          <p className="text-lg font-semibold text-on-surface mb-2">Settings not found</p>
-          <p className="text-sm text-on-surface-var">
-            Run <code className="px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface">npm run seed</code> to initialize the settings document.
+          <p className="text-lg font-semibold text-ink mb-2">Settings not found</p>
+          <p className="text-sm text-slate-600">
+            Run <code className="px-1.5 py-0.5 rounded-md bg-surface text-ink">npm run seed</code> to initialize the settings document.
           </p>
         </div>
       </div>
@@ -132,12 +130,11 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader
-        crumbs={[{ label: 'Settings' }]}
         title="Settings"
-        description="Manage integrations and global preferences"
+        description="Manage integrations and global preferences."
         actions={
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+          <Button variant="primary" leftIcon={<Check className="w-4 h-4" />} onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save changes'}
           </Button>
         }
       />
@@ -146,7 +143,10 @@ export default function SettingsPage() {
 
         {/* Integrations */}
         <Card>
-          <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">Integrations</h2>
+          <div className="flex items-center gap-2.5 mb-4">
+            <SettingsIcon className="w-[18px] h-[18px] text-primary" />
+            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Integrations</h2>
+          </div>
           <div className="flex flex-col gap-3">
             <IntegrationCard
               label="Anki Desktop"
@@ -179,21 +179,12 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* AnkiConnect config */}
-        <Card>
-          <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">AnkiConnect</h2>
-          <FieldWrapper label="Connect URL">
-            <Input
-              value={settings.anki_connect_url}
-              onChange={(e) => updateField('anki_connect_url', e.target.value)}
-              placeholder="http://localhost:8765"
-            />
-          </FieldWrapper>
-        </Card>
-
         {/* AI config */}
         <Card>
-          <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">AI Generation</h2>
+          <div className="flex items-center gap-2.5 mb-4">
+            <Sparkles className="w-[18px] h-[18px] text-primary" />
+            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">AI generation</h2>
+          </div>
           <FieldWrapper label="Claude Model">
             <Select
               value={settings.ai_model ?? 'claude-haiku-4-5'}
@@ -216,7 +207,10 @@ export default function SettingsPage() {
 
         {/* Preferences */}
         <Card>
-          <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">Preferences</h2>
+          <div className="flex items-center gap-2.5 mb-4">
+            <SlidersHorizontal className="w-[18px] h-[18px] text-primary" />
+            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Preferences</h2>
+          </div>
           <div className="flex flex-col gap-3">
             <Toggle
               label="Enable Unsplash images"
@@ -252,7 +246,7 @@ export default function SettingsPage() {
         </Card>
 
         {savedAt && (
-          <p className="text-label-sm text-on-surface-var text-center">Saved successfully.</p>
+          <p className="text-overline text-slate-600 text-center">Saved successfully.</p>
         )}
       </div>
     </>

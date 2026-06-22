@@ -9,9 +9,8 @@ import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { EntryEditModal } from '@/components/history/EntryEditModal'
-import { useEntryEdit } from '@/hooks/useEntryEdit'
-import { Layers, BookOpen, CalendarCheck, CheckCircle2, Sparkles, PlusCircle, Inbox, Pencil } from 'lucide-react'
+import { FlowTip } from '@/components/ui/FlowTip'
+import { Layers, BookOpen, CalendarCheck, CheckCircle2, PlusCircle, Inbox, Search, ArrowRight } from 'lucide-react'
 import { FormType, LanguageType, type Entry } from '@/types'
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -39,8 +38,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
-  const [editEntry, setEditEntry] = useState<Entry | null>(null)
-  const { saveEntry } = useEntryEdit()
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     async function fetchEntries() {
@@ -83,12 +81,26 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Welcome back"
-        description="Here's a snapshot of your vocabulary journey"
+        title="Dashboard"
+        description="A snapshot of your vocabulary library."
         actions={
-          <Button variant="primary" leftIcon={<PlusCircle className="w-4 h-4" />} onClick={() => router.push('/create')}>
-            Create New Card
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search cards…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-[200px] h-[38px] pl-9 pr-10 bg-white border border-border rounded-[9px] text-sm text-ink placeholder:text-slate-400/60 focus:border-primary focus:ring-[3px] focus:ring-primary-bg focus:outline-none"
+              />
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-slate-400 border border-border rounded px-1.5 py-0.5">/</kbd>
+            </div>
+            <Button variant="primary" leftIcon={<PlusCircle className="w-4 h-4" />} onClick={() => router.push('/create')}>
+              Create card
+              <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘N</kbd>
+            </Button>
+          </div>
         }
       />
 
@@ -97,22 +109,22 @@ export default function DashboardPage() {
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total Vocabulary"
+            label="Vocabulary"
             value={loading ? '—' : entries.length}
             icon={<BookOpen className="w-5 h-5" />}
           />
           <StatCard
-            label="Total Cards"
+            label="Cards"
             value={loading ? '—' : stats.totalCards}
             icon={<Layers className="w-5 h-5" />}
           />
           <StatCard
-            label="Created Today"
+            label="Today"
             value={loading ? '—' : stats.createdToday}
             icon={<CalendarCheck className="w-5 h-5" />}
           />
           <StatCard
-            label="Synced to Anki"
+            label="Synced"
             value={loading ? '—' : `${stats.successRate}%`}
             icon={<CheckCircle2 className="w-5 h-5" />}
           />
@@ -120,8 +132,17 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Recent entries */}
-          <section className="lg:col-span-7 bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
-            <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">Recently Created</h2>
+          <section className="lg:col-span-7 bg-white rounded-card border border-border/40 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Recently created</h2>
+              <button
+                type="button"
+                onClick={() => router.push('/history')}
+                className="flex items-center gap-1.5 text-[13px] font-medium text-ink hover:text-primary transition-colors"
+              >
+                View all <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
@@ -134,38 +155,37 @@ export default function DashboardPage() {
                 action={<Button variant="primary" size="sm" onClick={() => router.push('/create')}>Create a card</Button>}
               />
             ) : (
-              <div className="flex flex-col divide-y divide-outline-var/30">
+              <div className="flex flex-col divide-y divide-border">
                 {recentEntries.map(entry => {
                   const word = entry.word || entry.term || entry.title || '—'
                   const meaning = entry.meaning_vi || entry.definition || entry.content || '—'
                   const isSynced = entry.status === 'synced'
+                  const langCode = entry.form_type === FormType.LANGUAGE && entry.language
+                    ? entry.language === LanguageType.JAPANESE ? 'JA'
+                      : entry.language === LanguageType.CHINESE ? 'ZH'
+                      : 'EN'
+                    : null
                   return (
-                    <div
+                    <button
                       key={entry.id}
-                      className="flex items-center justify-between gap-4 py-3.5 rounded-lg px-2 -mx-2 transition-colors hover:bg-surface-container/60"
+                      type="button"
+                      onClick={() => router.push(`/history/${entry.id}`)}
+                      className="flex items-center gap-3 py-3.5 text-left transition-colors hover:bg-surface/60 rounded-lg px-2 -mx-2"
                     >
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/history/${entry.id}`)}
-                        className="flex-1 min-w-0 text-left focus:outline-none"
-                      >
-                        <p className="font-serif font-bold text-on-surface truncate">{word}</p>
-                        <p className="text-sm text-on-surface-var truncate">{meaning}</p>
-                      </button>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setEditEntry(entry)}
-                          className="p-1.5 rounded-lg text-on-surface-var hover:text-primary hover:bg-primary/5 transition-colors"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <Badge className={isSynced ? 'bg-primary/10 text-primary' : 'bg-tertiary-fixed text-on-tertiary-fixed'}>
-                          {isSynced ? 'Synced' : 'Pending'}
+                      {langCode && (
+                        <Badge variant={langCode === 'JA' ? 'pending' : 'language'} className="text-[11px] px-2.5 py-1 flex-shrink-0">
+                          {langCode}
                         </Badge>
-                      </div>
-                    </div>
+                      )}
+                      <span className="flex-1 min-w-0 truncate">
+                        <span className="font-bold text-ink">{word}</span>
+                        <span className="text-slate-600 ml-2">{meaning}</span>
+                      </span>
+                      <Badge className={`flex-shrink-0 ${isSynced ? 'bg-primary-bg text-primary' : 'bg-amber-bg text-amber-dark'}`}>
+                        <span className={`inline-block w-[6px] h-[6px] rounded-full mr-1.5 ${isSynced ? 'bg-primary' : 'bg-amber'}`} />
+                        {isSynced ? 'Synced' : 'Pending'}
+                      </Badge>
+                    </button>
                   )
                 })}
               </div>
@@ -174,20 +194,20 @@ export default function DashboardPage() {
 
           {/* Language breakdown + AI suggestion */}
           <div className="lg:col-span-5 flex flex-col gap-6">
-            <section className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
-              <h2 className="text-label-lg font-semibold text-on-surface-var mb-4">Language Breakdown</h2>
+            <section className="bg-white rounded-card border border-border/40 p-6">
+              <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold mb-4">By language</h2>
               {languageBreakdown.length === 0 ? (
-                <p className="text-sm text-on-surface-var">No language vocabulary yet — start by creating a card.</p>
+                <p className="text-sm text-slate-600">No language vocabulary yet — start by creating a card.</p>
               ) : (
                 <div className="flex flex-col gap-4">
                   {languageBreakdown.map(({ lang, label, count, pct }) => (
                     <div key={lang}>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm font-semibold text-on-surface">{label}</span>
-                        <span className="text-sm text-on-surface-var">{count} words</span>
+                        <span className="text-sm font-semibold text-ink">{label}</span>
+                        <span className="text-sm text-slate-600">{count}</span>
                       </div>
-                      <div className="h-2 bg-surface-high rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                      <div className="h-2 bg-canvas rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${lang === LanguageType.JAPANESE ? 'bg-amber' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   ))}
@@ -195,35 +215,13 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="bg-tertiary-fixed/30 border border-tertiary-fixed border-l-[4px] border-l-tertiary rounded-xl p-5 flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-tertiary mb-1">Suggestion</p>
-                <p className="text-sm text-on-surface-var leading-relaxed">
-                  Reviewing words in short, frequent sessions improves long-term retention more than cramming. Try creating a few cards each day to build a steady habit.
-                </p>
-              </div>
-            </section>
+            <FlowTip label="Tip">
+              Short, frequent sessions beat cramming. A few cards a day compounds fast.
+            </FlowTip>
           </div>
         </div>
       </div>
 
-      {editEntry && (
-        <EntryEditModal
-          open={!!editEntry}
-          onClose={() => setEditEntry(null)}
-          entry={editEntry}
-          onSave={async (updates) => {
-            await saveEntry(editEntry, updates)
-            setEntries(prev => prev.map(e =>
-              e.id === editEntry.id ? { ...e, ...updates } : e
-            ))
-            setEditEntry(null)
-          }}
-        />
-      )}
     </>
   )
 }

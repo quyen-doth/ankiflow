@@ -151,7 +151,7 @@ export function DynamicForm({
         if (isPrimary) {
             return (
                 <div className="mb-5" key={key}>
-                    <label className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold block mb-2">
+                    <label className="text-overline uppercase text-slate-600 tracking-wider font-bold block mb-2">
                         {field.label}
                     </label>
                     <input
@@ -160,7 +160,7 @@ export function DynamicForm({
                         value={value}
                         onChange={(e) => updateField(key, e.target.value)}
                         placeholder={field.placeholder || undefined}
-                        className="w-full bg-surface-container hover:bg-surface-high transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-on-surface placeholder:text-on-surface-var/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 appearance-none shadow-none"
+                        className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-5 py-4 text-xl font-bold text-ink placeholder:text-slate-600/40 placeholder:font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-bg appearance-none shadow-none"
                     />
                 </div>
             );
@@ -176,7 +176,7 @@ export function DynamicForm({
                             onChange={(e) => updateField(key, e.target.value)}
                             rows={3}
                             placeholder={field.placeholder || undefined}
-                            className="bg-surface-container hover:bg-surface-high transition-colors px-5 py-4 text-sm"
+                            className="bg-surface hover:bg-canvas transition-colors px-5 py-4 text-sm"
                         />
                     </FieldWrapper>
                 );
@@ -230,7 +230,7 @@ export function DynamicForm({
             })}
         >
             {/* Left — Core Content */}
-            <div className="lg:col-span-7 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+            <div className="lg:col-span-7 flex flex-col bg-white rounded-card p-6 lg:p-8">
                 <ColumnLabel label="Core Content" />
                 {primaryField && renderField(primaryField, true)}
                 <div className="flex flex-col gap-4">
@@ -240,7 +240,7 @@ export function DynamicForm({
             </div>
 
             {/* Right — Configuration */}
-            <div className="lg:col-span-5 flex flex-col bg-white rounded-xl shadow-card p-6 lg:p-8">
+            <div className="lg:col-span-5 flex flex-col bg-white rounded-card p-6 lg:p-8">
                 <ColumnLabel label="Configuration" />
                 <div className="flex flex-col gap-4">
                     <DeckSelector
@@ -266,12 +266,12 @@ export function DynamicForm({
                     {duplicates.map((d) => (
                         <div
                             key={d.id}
-                            className="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2 text-sm"
+                            className="flex items-center justify-between bg-surface rounded-lg px-3 py-2 text-sm"
                         >
-                            <span className="font-semibold text-on-surface">
+                            <span className="font-semibold text-ink">
                                 {d.word}
                             </span>
-                            <span className="text-on-surface-var">{d.anki_deck}</span>
+                            <span className="text-slate-600">{d.anki_deck}</span>
                         </div>
                     ))}
                 </div>

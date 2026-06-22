@@ -62,12 +62,12 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-open-create-modal',
-      description: 'Act: click Add Card Type → modal mở.',
+      description: 'Act: click Add card type → modal mở.',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
         await ctx.wait(50)
-        clickButtonByText(ctx.root, 'Add Card Type')
+        clickButtonByText(ctx.root, 'Add card type')
         await ctx.wait(0)
       },
     },
@@ -78,7 +78,7 @@ registerUnit<Record<string, never>>({
       mocks: { firestore: SEED },
       act: async ctx => {
         await ctx.wait(50)
-        clickButtonByText(ctx.root, 'Add Card Type')
+        clickButtonByText(ctx.root, 'Add card type')
         await ctx.wait(0)
         setFieldValue(ctx.root, 'Code', 'cloze')
         setFieldValue(ctx.root, 'Name', 'Cloze')

@@ -13,12 +13,12 @@ interface ToggleProps {
 export function Toggle({ checked, onChange, label, description, disabled }: ToggleProps) {
   return (
     <div
-      className="flex items-center justify-between py-4 px-5 bg-white rounded-lg border border-outline-var/40"
+      className="flex items-center justify-between py-4 px-5 bg-white rounded-[9px] border border-border"
       {...verifyAttrs({ unit: 'Toggle', checked, disabled: !!disabled })}
     >
       <div className="flex-1 mr-4">
-        <p className="text-sm font-semibold text-on-surface">{label}</p>
-        {description && <p className="text-label-sm text-on-surface-var mt-0.5">{description}</p>}
+        <p className="text-sm font-semibold text-ink">{label}</p>
+        {description && <p className="text-secondary text-slate-400 mt-0.5">{description}</p>}
       </div>
       <button
         role="switch"
@@ -27,18 +27,19 @@ export function Toggle({ checked, onChange, label, description, disabled }: Togg
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`
-          relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full
-          transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+          relative inline-flex h-6 w-[42px] flex-shrink-0 cursor-pointer rounded-pill
+          transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-bg
           disabled:opacity-40 disabled:cursor-not-allowed
-          ${checked ? 'bg-primary' : 'bg-outline-var'}
+          ${checked ? 'bg-primary' : 'bg-[#DCDCD7]'}
         `}
       >
         <span
           className={`
-            pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow
+            pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white
             transition duration-200 ease-in-out mt-0.5
-            ${checked ? 'translate-x-5' : 'translate-x-0.5'}
+            ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}
           `}
+          style={{ boxShadow: checked ? 'none' : '0 1px 2px rgba(0,0,0,.2)' }}
         />
       </button>
     </div>

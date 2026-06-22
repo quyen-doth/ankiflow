@@ -151,12 +151,12 @@ export function CardTypeManager() {
     {
       key: 'code',
       header: 'Code',
-      render: (_: unknown, row: CardTypeConfig) => <span className="font-mono text-label-sm text-on-surface-var">{row.code}</span>,
+      render: (_: unknown, row: CardTypeConfig) => <span className="font-mono text-overline text-slate-600">{row.code}</span>,
     },
     {
       key: 'name',
       header: 'Name',
-      render: (_: unknown, row: CardTypeConfig) => <span className="font-semibold text-on-surface">{row.name}</span>,
+      render: (_: unknown, row: CardTypeConfig) => <span className="font-semibold text-ink">{row.name}</span>,
     },
     {
       key: 'form_type',
@@ -167,14 +167,14 @@ export function CardTypeManager() {
       key: 'language',
       header: 'Language',
       render: (_: unknown, row: CardTypeConfig) => (
-        <span className="text-on-surface-var">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
+        <span className="text-slate-600">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
       ),
     },
     {
       key: 'is_default',
       header: 'Default',
       render: (_: unknown, row: CardTypeConfig) => (
-        row.is_default ? <Badge className="bg-primary/10 text-primary">Default</Badge> : <span className="text-on-surface-var">—</span>
+        row.is_default ? <Badge className="bg-primary-bg text-primary">Default</Badge> : <span className="text-slate-600">—</span>
       ),
     },
     {
@@ -201,9 +201,12 @@ export function CardTypeManager() {
   return (
     <Card {...verifyAttrs({ unit: 'CardTypeManager', rows: cardTypes.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-label-lg font-semibold text-on-surface-var">Card Types</h2>
+        <div>
+          <h2 className="text-body font-bold font-semibold text-slate-600">Card Types</h2>
+          <p className="text-secondary text-slate-400 mt-0.5">Note templates generated per vocabulary item</p>
+        </div>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-          Add Card Type
+          Add card type
         </Button>
       </div>
 

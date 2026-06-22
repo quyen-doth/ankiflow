@@ -16,12 +16,12 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       {...verifyAttrs({ unit: 'EmptyState', hasAction: !!action })}
     >
       {icon && (
-        <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-var mb-4">
+        <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-slate-400 mb-4">
           {icon}
         </div>
       )}
-      <p className="text-label-lg font-semibold text-on-surface">{title}</p>
-      {description && <p className="text-sm text-on-surface-var mt-1 max-w-sm">{description}</p>}
+      <p className="text-body font-semibold text-ink">{title}</p>
+      {description && <p className="text-sm text-slate-600 mt-1 max-w-sm">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   )

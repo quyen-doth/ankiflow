@@ -177,7 +177,7 @@ export default function PreviewPage() {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center">
                     <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-on-surface-var">
+                    <p className="text-sm text-slate-600">
                         Loading data...
                     </p>
                 </div>
@@ -189,10 +189,10 @@ export default function PreviewPage() {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center max-w-md">
-                    <p className="text-lg font-semibold text-on-surface mb-2">
+                    <p className="text-lg font-semibold text-ink mb-2">
                         Data not found
                     </p>
-                    <p className="text-sm text-on-surface-var mb-6">{error}</p>
+                    <p className="text-sm text-slate-600 mb-6">{error}</p>
                     <Button
                         variant="primary"
                         onClick={() => router.push("/create")}
@@ -220,11 +220,11 @@ export default function PreviewPage() {
                 {/* ── LEFT PANEL: Vocabulary Data ── */}
                 <div className="md:col-span-8 flex flex-col gap-6">
                     {/* Main fields card */}
-                    <section className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
+                    <section className="bg-white rounded-card border border-border/40 p-6">
                         {/* Row 1: Word + Reading */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                             <div>
-                                <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                                <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                     Word
                                 </p>
                                 <EditableField
@@ -235,11 +235,11 @@ export default function PreviewPage() {
                                         ""
                                     }
                                     onSave={(v) => updateField("word", v)}
-                                    className="text-headline-sm font-serif text-on-surface"
+                                    className="text-section-heading font-extrabold text-ink"
                                 />
                             </div>
                             <div>
-                                <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                                <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                     Reading
                                 </p>
                                 <EditableField
@@ -250,7 +250,7 @@ export default function PreviewPage() {
                                         ""
                                     }
                                     onSave={(v) => updateField("hiragana", v)}
-                                    className="text-body-md text-on-surface-var"
+                                    className="text-body text-slate-600"
                                 />
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export default function PreviewPage() {
                         {/* Row 2: Meaning + Word Type / Level */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 mt-5">
                             <div>
-                                <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                                <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                     Meaning
                                 </p>
                                 <EditableField
@@ -268,12 +268,12 @@ export default function PreviewPage() {
                                         ""
                                     }
                                     onSave={(v) => updateField("meaning_vi", v)}
-                                    className="text-body-md text-on-surface"
+                                    className="text-body text-ink"
                                 />
                             </div>
                             <div className="flex gap-4">
                                 <div className="flex-1">
-                                    <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                                    <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                         Word Type
                                     </p>
                                     <EditableField
@@ -281,14 +281,14 @@ export default function PreviewPage() {
                                         onSave={(v) =>
                                             updateField("word_type", v)
                                         }
-                                        className="text-body-md text-on-surface-var"
+                                        className="text-body text-slate-600"
                                         placeholder="Noun, Verb..."
                                     />
                                 </div>
                                 {typeof (entry as Record<string, unknown>)
                                     .level === "string" && (
                                     <div>
-                                        <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                                        <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                             Level
                                         </p>
                                         <Badge variant="level">
@@ -307,11 +307,11 @@ export default function PreviewPage() {
                         </div>
 
                         {/* Divider */}
-                        <div className="border-t border-outline-var/30 my-6" />
+                        <div className="border-t border-border/30 my-6" />
 
                         {/* Example Sentence */}
                         <div>
-                            <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                            <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                 Example Sentence
                             </p>
                             <div className="flex items-start gap-3">
@@ -322,7 +322,7 @@ export default function PreviewPage() {
                                             updateField("example_sentence", v)
                                         }
                                         multiline
-                                        className="text-body-md text-on-surface"
+                                        className="text-body text-ink"
                                     />
                                 </div>
                             </div>
@@ -330,7 +330,7 @@ export default function PreviewPage() {
 
                         {/* Translation */}
                         <div className="mt-4">
-                            <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1.5">
+                            <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1.5">
                                 Translation
                             </p>
                             <EditableField
@@ -339,12 +339,12 @@ export default function PreviewPage() {
                                     updateField("example_translation", v)
                                 }
                                 multiline
-                                className="text-body-md text-on-surface-var italic"
+                                className="text-body text-slate-600 italic"
                             />
                         </div>
 
                         {/* Divider */}
-                        <div className="border-t border-outline-var/30 my-6" />
+                        <div className="border-t border-border/30 my-6" />
 
                         {/* Collocations */}
                         <CollocationEditor
@@ -354,7 +354,7 @@ export default function PreviewPage() {
                     </section>
 
                     {/* Image Reference */}
-                    <section className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
+                    <section className="bg-white rounded-card border border-border/40 p-6">
                         <ImageSelector
                             images={images}
                             selectedUrl={entry.image_url || null}
@@ -366,7 +366,7 @@ export default function PreviewPage() {
                     </section>
 
                     {/* Audio */}
-                    <section className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
+                    <section className="bg-white rounded-card border border-border/40 p-6">
                         <AudioPlayer
                             audioUrl={audioUrl}
                             onRegenerate={generateAudio}
@@ -379,26 +379,26 @@ export default function PreviewPage() {
                 <div className="md:col-span-4">
                     <div className="sticky top-8 flex flex-col gap-4">
                         {/* Card Preview */}
-                        <div className="bg-white rounded-xl shadow-card border border-outline-var/40 p-6">
+                        <div className="bg-white rounded-card border border-border/40 p-6">
                             <CardPreview entry={entry} audioUrl={audioUrl} />
                         </div>
 
                         {/* Target Deck */}
-                        <div className="bg-white rounded-xl shadow-card border border-outline-var/40 px-5 py-4">
+                        <div className="bg-white rounded-card border border-border/40 px-5 py-4">
                             <DeckSelector
                                 value={selectedDeckId}
                                 onChangeId={handleDeckChange}
                                 label="Target Deck"
                             />
                             {entry.anki_deck && (
-                                <p className="text-label-sm text-on-surface-var mt-1.5 truncate">
+                                <p className="text-overline text-slate-600 mt-1.5 truncate">
                                     Anki: {entry.anki_deck}
                                 </p>
                             )}
                         </div>
 
                         {/* Card Types */}
-                        <div className="bg-white rounded-xl shadow-card border border-outline-var/40 p-5">
+                        <div className="bg-white rounded-card border border-border/40 p-5">
                             <CardList
                                 cardTypes={cardTypes}
                                 selectedIds={selectedCardTypeIds}
@@ -410,7 +410,7 @@ export default function PreviewPage() {
             </div>
 
             {/* ── FOOTER BAR ── */}
-            <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-outline-var/40 shadow-card z-30">
+            <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-border/40 z-30">
                 <div className="max-w-6xl mx-auto w-full px-6 md:px-8 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Button

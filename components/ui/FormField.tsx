@@ -17,12 +17,12 @@ export function FieldWrapper({ label, error, className, children, ...rest }: Fie
   return (
     <div className={cn('flex flex-col gap-1.5', className)} {...rest}>
       {label && (
-        <label className="text-label-sm uppercase tracking-wide text-on-surface-var">
+        <label className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono">
           {label}
         </label>
       )}
       {children}
-      {error && <p className="text-label-sm text-error">{error}</p>}
+      {error && <p className="text-overline text-danger">{error}</p>}
     </div>
   )
 }
@@ -36,11 +36,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ error, classNam
   <input
     ref={ref}
     className={cn(
-      'w-full bg-surface-container rounded-lg px-4 py-3',
-      'text-body-md text-on-surface placeholder:text-on-surface-var/50',
-      'border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+      'w-full h-[42px] bg-[#FCFCFB] rounded-[9px] px-4',
+      'text-body text-ink placeholder:text-slate-400/60',
+      'border border-[#E3E3DE] focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg',
       'transition-shadow duration-150',
-      error && 'ring-2 ring-error/50',
+      error && 'border-danger ring-[3px] ring-danger-bg',
       className
     )}
     {...props}
@@ -58,11 +58,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ error,
   <textarea
     ref={ref}
     className={cn(
-      'w-full bg-surface-container rounded-lg px-4 py-3 resize-none',
-      'text-body-md text-on-surface placeholder:text-on-surface-var/50',
-      'border border-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+      'w-full bg-[#FCFCFB] rounded-[9px] px-4 py-3 resize-none',
+      'text-body text-ink placeholder:text-slate-400/60',
+      'border border-[#E3E3DE] focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg',
       'transition-shadow duration-150',
-      error && 'ring-2 ring-error/50',
+      error && 'border-danger ring-[3px] ring-danger-bg',
       className
     )}
     {...props}
@@ -81,10 +81,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ error, class
     <select
       ref={ref}
       className={cn(
-        'w-full bg-surface-container border border-transparent rounded-lg px-4 py-3 appearance-none',
-        'text-body-md text-on-surface cursor-pointer',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-        error && 'border-error ring-2 ring-error/30',
+        'w-full h-[42px] bg-[#FCFCFB] border border-[#E3E3DE] rounded-[9px] px-4 appearance-none',
+        'text-body text-ink cursor-pointer',
+        'focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg',
+        error && 'border-danger ring-[3px] ring-danger-bg',
         className
       )}
       {...props}
@@ -92,7 +92,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ error, class
     >
       {children}
     </select>
-    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-var pointer-events-none" />
+    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
   </div>
 ))
 Select.displayName = 'Select'

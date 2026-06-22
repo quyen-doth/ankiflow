@@ -99,16 +99,23 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 **Step 1 — Read & Understand**
 
-- Read all files relevant to the task
+- Identify all files relevant to the task: entry points, affected components,
+  shared utilities, and related types
 - Read the corresponding `docs/` file(s) listed in the Docs table above
-- Fully understand the current behavior before planning anything
+  before touching any code — not after
+- If the task involves Firestore, read `docs/DATABASE.md` first;
+  if it involves API routes, read `docs/API.md` first
+- Trace the full execution path end-to-end (e.g. UI → API route → service →
+  Firestore) to understand how data flows through the affected area
+- Do not begin planning until the current behavior is fully understood
 
 **Step 2 — Plan**
 
 - Turn on plan mode
 - Write a clear, numbered execution plan
 - Include: files to change, why, and expected outcome
-- If the task touches Firestore schema or API routes, re-read `docs/DATABASE.md` or `docs/API.md`
+- If the task touches Firestore schema or API routes, re-read
+  `docs/DATABASE.md` or `docs/API.md`
 
 **Step 3 — Request Approval**
 
@@ -121,6 +128,13 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Implement only what was approved in Step 3
 - Follow all conventions defined in the Code Conventions section above
 
+**Step 4.5 — Self-Review**
+
+- Review the full diff against the approved plan in Step 3
+- Confirm no files were modified outside the agreed scope
+- If any unintended change was made, revert it before proceeding
+- Do NOT proceed to testing if the diff does not match the plan
+
 **Step 5 — Write Tests**
 
 - Write Vitest unit tests for any modified logic in `verify/`
@@ -132,13 +146,20 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Write or update Playwright tests covering the changed UI/API flows
 - Run Playwright tests against `localhost:3000` (ensure dev server is running)
 
-**Step 6b — Debug Loop (if tests fail)**
+**Step 6b — Debug Loop — if tests fail**
 
 - Analyze failure → fix → re-run tests
 - Repeat until all Vitest and Playwright tests pass
 - Do NOT report completion while any test is failing
 
-**Step 7 — Report**
+**Step 7 — Update Docs**
+
+- Update `docs/API.md` if any API route was added, removed, or modified
+- Update `docs/DATABASE.md` if any Firestore schema or query pattern changed
+- Do NOT modify `docs/PRD.md` without explicit user instruction
+- Cross-reference the Docs table above if unsure which files apply
+
+**Step 8 — Report**
 
 - Summarize what was changed, which files were modified, and test results
 - Flag any known limitations or follow-up items

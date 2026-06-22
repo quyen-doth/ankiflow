@@ -4,7 +4,7 @@ import { verifyAttrs } from '@/verify/core/contract'
 
 interface FlowTipProps {
   children: React.ReactNode
-  label?: string  // default: "Flow Tip"
+  label?: string
   className?: string
 }
 
@@ -12,18 +12,18 @@ export function FlowTip({ children, label = 'Flow Tip', className }: FlowTipProp
   return (
     <div
       className={cn(
-        'bg-tertiary-fixed/30 border border-tertiary-fixed/60 rounded-lg p-4',
+        'bg-amber-bg border border-amber-tint rounded-[9px] p-4',
         'flex items-start gap-3',
         className
       )}
       {...verifyAttrs({ unit: 'FlowTip', label })}
     >
-      <div className="w-7 h-7 rounded-full bg-tertiary-fixed flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Lightbulb className="w-3.5 h-3.5 text-tertiary" />
+      <div className="w-7 h-7 rounded-[7px] bg-amber-tint flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Lightbulb className="w-3.5 h-3.5 text-amber" />
       </div>
       <div>
-        <p className="text-label-sm uppercase tracking-wide text-tertiary mb-1">{label}</p>
-        <p className="text-body-md text-on-surface">{children}</p>
+        <p className="text-overline uppercase tracking-[0.05em] text-amber-dark font-mono mb-1">{label}</p>
+        <p className="text-body text-ink">{children}</p>
       </div>
     </div>
   )

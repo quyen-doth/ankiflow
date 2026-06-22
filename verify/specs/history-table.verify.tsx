@@ -112,12 +112,12 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'status-badges-correct',
-      description: 'Status synced → "Synced", khác → "Pending sync"',
+      description: 'Status synced → "Synced", khác → "Pending"',
       onlyFixtures: ['populated'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
         if (!text.includes('Synced')) return 'không thấy badge Synced'
-        return text.includes('Pending sync') || 'không thấy badge Pending sync'
+        return text.includes('Pending') || 'không thấy badge Pending'
       },
     },
     {

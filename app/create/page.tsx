@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { LanguageForm } from '@/components/create/LanguageForm'
 import { ITForm } from '@/components/create/ITForm'
 import { GeneralForm } from '@/components/create/GeneralForm'
@@ -12,7 +11,7 @@ import { DynamicForm } from '@/components/create/DynamicForm'
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles, CheckCircle, X } from 'lucide-react'
+import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles, CheckCircle, X, PlusCircle } from 'lucide-react'
 import { FormType } from '@/types'
 import type { ContentType } from '@/types'
 
@@ -139,22 +138,25 @@ export default function CreatePage() {
 
   return (
     <>
-      <PageHeader
-        crumbs={[
-          { label: 'Create Card', href: '/create' },
-          { label: `${activeType?.name ?? 'Card'} Flow` },
-        ]}
-        title=""
-      />
+      {/* Custom breadcrumb + title */}
+      <div className="mb-6">
+        <nav className="flex items-center text-meta font-mono text-slate-400 mb-2">
+          <PlusCircle className="w-3.5 h-3.5 mr-2 text-slate-400" />
+          <span className="uppercase tracking-[0.05em] font-bold">Create Card</span>
+          <span className="mx-2.5 text-slate-400/50">/</span>
+          <span className="text-primary font-bold">{activeType?.name ?? 'Card'} Flow</span>
+        </nav>
+        <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
+      </div>
 
       {successBanner && (
         <div className="max-w-6xl mx-auto w-full px-0 mb-2">
-          <div className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl px-5 py-3">
+          <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
             <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-            <p className="text-sm font-medium text-on-surface flex-1">
+            <p className="text-sm font-medium text-ink flex-1">
               Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to Anki!
             </p>
-            <button type="button" onClick={() => setSuccessBanner(null)} className="text-on-surface-var hover:text-on-surface">
+            <button type="button" onClick={() => setSuccessBanner(null)} className="text-slate-600 hover:text-ink">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -163,11 +165,11 @@ export default function CreatePage() {
 
       <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
 
-        {/* Content Type — pill row + Generate */}
+        {/* Content Type tabs + Generate button (same row) */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {loadingTypes ? (
-              <div className="h-10 w-48 bg-surface-container rounded-full animate-pulse" />
+              <div className="h-10 w-48 bg-surface rounded-full animate-pulse" />
             ) : (
               <>
                 {contentTypes.map((ct) => {
@@ -180,10 +182,10 @@ export default function CreatePage() {
                       onClick={() => handleSelectType(ct.code)}
                       className={cn(
                         'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-primary/40',
+                        'focus-visible:ring-2 focus-visible:ring-primary-bg',
                         isActive
-                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-card'
-                          : 'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
+                          ? 'border-primary bg-primary-bg text-primary font-bold'
+                          : 'border-transparent bg-surface text-slate-600 hover:bg-canvas',
                       )}
                     >
                       <Icon className="w-4 h-4" />
@@ -197,8 +199,8 @@ export default function CreatePage() {
                   onClick={() => router.push('/admin?tab=content-types')}
                   className={cn(
                     'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
-                    'focus-visible:ring-2 focus-visible:ring-primary/40',
-                    'border-transparent bg-surface-container text-on-surface-var hover:bg-surface-high',
+                    'focus-visible:ring-2 focus-visible:ring-primary-bg',
+                    'border-transparent bg-surface text-slate-600 hover:bg-canvas',
                   )}
                 >
                   <SlidersHorizontal className="w-4 h-4" />
@@ -214,10 +216,10 @@ export default function CreatePage() {
             size="md"
             disabled={!canSubmit || isGenerating}
             leftIcon={<Sparkles className="w-4 h-4" />}
-            className="shadow-card"
+            className="shadow-button"
           >
             Generate
-            <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘⏎</kbd>
+            <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
           </Button>
         </div>
 

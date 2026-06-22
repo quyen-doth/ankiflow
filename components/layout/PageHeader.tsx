@@ -26,23 +26,23 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
     >
       {/* Breadcrumb */}
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex items-center text-sm font-medium text-on-surface-var mb-3" aria-label="Breadcrumb">
-          <Link href="/dashboard" className="text-on-surface-var hover:text-on-surface transition-colors flex items-center">
+        <nav className="flex items-center text-meta font-mono text-slate-400 mb-3" aria-label="Breadcrumb">
+          <Link href="/dashboard" className="text-slate-400 hover:text-ink transition-colors flex items-center">
             <Home className="w-4 h-4" />
           </Link>
 
           {crumbs.map((crumb, i) => (
             <span key={crumb.label} className="flex items-center">
-              <span className="text-on-surface-var/50 mx-2.5 font-normal">›</span>
+              <span className="text-slate-400/50 mx-2.5 font-normal">›</span>
               {crumb.href && i < crumbs.length - 1 ? (
-                <Link href={crumb.href} className="text-on-surface-var hover:text-on-surface transition-colors">
+                <Link href={crumb.href} className="text-slate-400 hover:text-ink transition-colors">
                   {crumb.label}
                 </Link>
               ) : (
                 <span className={cn(
                   i === crumbs.length - 1
                     ? 'text-primary font-bold'
-                    : 'text-on-surface-var'
+                    : 'text-slate-400'
                 )}>
                   {crumb.label}
                 </span>
@@ -52,17 +52,17 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
         </nav>
       )}
 
-      {/* Title row — chỉ hiện khi có title hoặc actions */}
+      {/* Title row */}
       {(displayTitle || description || actions) && (
         <div className="flex items-start justify-between gap-4">
           <div>
             {displayTitle && (
-              <h1 className="font-serif text-headline-md text-on-surface leading-tight">
+              <h1 className="text-page-title font-extrabold text-ink leading-tight tracking-[-0.02em]">
                 {displayTitle}
               </h1>
             )}
             {description && (
-              <p className="text-body-md text-on-surface-var mt-1.5">{description}</p>
+              <p className="text-body text-slate-600 mt-1.5">{description}</p>
             )}
           </div>
           {actions && (

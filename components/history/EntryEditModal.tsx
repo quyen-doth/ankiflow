@@ -61,74 +61,74 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
     >
       <div className="space-y-4 mt-3 max-h-[60vh] overflow-y-auto pr-1">
         <div>
-          <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+          <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
             Word
           </p>
           <EditableField
             value={(fields[wordField] as string) || ''}
             onSave={(v) => updateField(wordField, v)}
-            className="text-lg font-bold text-on-surface"
+            className="text-lg font-bold text-ink"
           />
         </div>
 
         {readingField && (
           <div>
-            <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+            <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
               Reading
             </p>
             <EditableField
               value={(fields[readingField] as string) || ''}
               onSave={(v) => updateField(readingField, v)}
-              className="text-body-md text-on-surface-var"
+              className="text-body text-slate-600"
             />
           </div>
         )}
 
         <div>
-          <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+          <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
             Meaning
           </p>
           <EditableField
             value={(fields[meaningField] as string) || ''}
             onSave={(v) => updateField(meaningField, v)}
-            className="text-body-md text-on-surface"
+            className="text-body text-ink"
           />
         </div>
 
         {entry.word_type !== undefined && (
           <div>
-            <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+            <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
               Word Type
             </p>
             <EditableField
               value={(fields.word_type as string) || ''}
               onSave={(v) => updateField('word_type', v)}
-              className="text-body-md text-on-surface-var"
+              className="text-body text-slate-600"
             />
           </div>
         )}
 
         <div>
-          <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+          <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
             Example Sentence
           </p>
           <EditableField
             value={(fields.example_sentence as string) || ''}
             onSave={(v) => updateField('example_sentence', v)}
             multiline
-            className="text-body-md text-on-surface"
+            className="text-body text-ink"
           />
         </div>
 
         <div>
-          <p className="text-label-sm uppercase text-on-surface-var tracking-wider font-bold mb-1">
+          <p className="text-overline uppercase text-slate-600 tracking-wider font-bold mb-1">
             Translation
           </p>
           <EditableField
             value={(fields.example_translation as string) || ''}
             onSave={(v) => updateField('example_translation', v)}
             multiline
-            className="text-body-md text-on-surface-var italic"
+            className="text-body text-slate-600 italic"
           />
         </div>
 
@@ -138,7 +138,7 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
         />
       </div>
 
-      <div className="flex gap-3 justify-end mt-4 pt-3 border-t border-outline-var/30">
+      <div className="flex gap-3 justify-end mt-4 pt-3 border-t border-border/30">
         <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
         <Button variant="primary" onClick={handleSave} loading={saving}>
           Save & Sync to Anki
