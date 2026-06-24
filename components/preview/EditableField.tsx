@@ -11,9 +11,11 @@ interface EditableFieldProps {
   multiline?: boolean
   className?: string
   placeholder?: string
+  /** Khi ở chế độ hiển thị, tô sáng (case-insensitive) từ khóa này trong nội dung. */
+  highlight?: string
 }
 
-export function EditableField({ value, onSave, multiline = false, className, placeholder }: EditableFieldProps) {
+export function EditableField({ value, onSave, multiline = false, className, placeholder, highlight }: EditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
@@ -72,6 +74,22 @@ export function EditableField({ value, onSave, multiline = false, className, pla
     )
   }
 
+  const renderDisplay = () => {
+    if (!value) return placeholder || 'Click to edit...'
+    if (!highlight) return value
+    const idx = value.toLowerCase().indexOf(highlight.toLowerCase())
+    if (idx === -1) return value
+    return (
+      <>
+        {value.slice(0, idx)}
+        <mark className="bg-[rgba(49,99,66,0.12)] text-primary font-semibold px-1 py-0.5 rounded-[4px]">
+          {value.slice(idx, idx + highlight.length)}
+        </mark>
+        {value.slice(idx + highlight.length)}
+      </>
+    )
+  }
+
   return (
     <span
       onClick={handleStartEdit}
@@ -83,7 +101,7 @@ export function EditableField({ value, onSave, multiline = false, className, pla
       )}
       title="Click to edit"
     >
-      {value || placeholder || 'Click to edit...'}
+      {renderDisplay()}
     </span>
   )
 }

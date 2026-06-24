@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Play, Square } from 'lucide-react'
+import { Play, Square, RotateCw } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { Entry } from '@/types'
 
@@ -27,17 +27,16 @@ export function CardPreview({ entry, audioUrl }: CardPreviewProps) {
 
   const front = getFront(activeTab, entry)
   const back = getBack(activeTab, entry)
+  const hasAudio = !!(audioUrl || entry.audio_url)
 
   const toggleAudio = (e: React.MouseEvent) => {
     e.stopPropagation()
     const url = audioUrl || entry.audio_url
     if (!url) return
-
     if (!audioRef.current) {
       audioRef.current = new Audio(url)
       audioRef.current.onended = () => setIsPlaying(false)
     }
-
     if (isPlaying) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -49,19 +48,20 @@ export function CardPreview({ entry, audioUrl }: CardPreviewProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4" {...verifyAttrs({ unit: 'CardPreview', tab: activeTab, flipped })}>
+    <div
+      className="bg-[#faf3e6] border border-[#efe0c6] rounded-[14px] p-[22px]"
+      {...verifyAttrs({ unit: 'CardPreview', tab: activeTab, flipped })}
+    >
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface rounded-lg p-1">
+      <div className="flex gap-1 bg-[rgba(184,117,20,0.1)] rounded-[8px] p-1">
         {TABS.map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => { setActiveTab(tab.id); setFlipped(false) }}
             className={cn(
-              'flex-1 text-overline font-medium py-1.5 rounded-md transition-colors',
-              activeTab === tab.id
-                ? 'bg-white text-primary'
-                : 'text-slate-600 hover:text-ink'
+              'flex-1 text-center text-[12px] font-bold py-[7px] rounded-[6px] transition-colors',
+              activeTab === tab.id ? 'bg-primary text-white' : 'text-[#9a7a3f] hover:text-[#7a5f2f]'
             )}
           >
             {tab.label}
@@ -71,67 +71,51 @@ export function CardPreview({ entry, audioUrl }: CardPreviewProps) {
 
       {/* Card with 3D flip */}
       <div
-        className="cursor-pointer select-none"
+        className="cursor-pointer select-none mt-4"
         style={{ perspective: '1000px' }}
         onClick={() => setFlipped(f => !f)}
         title="Click to flip"
       >
         <div
           className="relative w-full transition-transform duration-500 ease-in-out"
-          style={{
-            transformStyle: 'preserve-3d',
-            transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          }}
+          style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front */}
           <div
-            className="bg-white rounded-card border border-border/30 p-6 min-h-36 flex flex-col items-center justify-center gap-2"
+            className="bg-white rounded-[12px] p-6 min-h-[160px] flex flex-col items-center justify-center gap-2 text-center"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <p className="text-overline text-slate-600 uppercase tracking-wider mb-1">Front</p>
-            <p className="text-2xl font-extrabold text-ink text-center">{front.primary || '—'}</p>
+            <p className="text-[10px] font-bold tracking-[0.1em] uppercase font-mono text-slate-400">Front</p>
+            <p className="text-[30px] font-extrabold text-ink tracking-[-0.02em] leading-none">{front.primary || '—'}</p>
             {front.secondary && (
-              <p className="text-sm text-slate-600 text-center">{front.secondary}</p>
+              <p className="text-[14px] text-slate-400 font-mono">{front.secondary}</p>
             )}
-            {(audioUrl || entry.audio_url) && (
+            {hasAudio && (
               <button
                 type="button"
                 onClick={toggleAudio}
-                className={cn(
-                  'flex items-center gap-1.5 text-overline px-3 py-1 rounded-full border transition-colors mt-2',
-                  isPlaying
-                    ? 'border-primary text-primary bg-primary-bg'
-                    : 'border-border/50 text-slate-600 hover:border-primary hover:text-primary'
-                )}
+                className="inline-flex items-center gap-1.5 mt-2 bg-[rgba(49,99,66,0.08)] text-primary text-[12.5px] font-bold px-4 py-2 rounded-full hover:bg-[rgba(49,99,66,0.14)] transition-colors"
               >
-                {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                {isPlaying ? 'Stop' : 'Play'}
+                {isPlaying ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                {isPlaying ? 'Stop' : 'Play audio'}
               </button>
             )}
           </div>
 
           {/* Back */}
           <div
-            className="absolute inset-0 bg-surface rounded-card border border-border/30 p-6 min-h-36 flex flex-col items-center justify-center gap-2"
-            style={{
-              backfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)',
-            }}
+            className="absolute inset-0 bg-white rounded-[12px] p-6 min-h-[160px] flex flex-col items-center justify-center gap-2 text-center"
+            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <p className="text-overline text-slate-600 uppercase tracking-wider mb-1">Back</p>
-            <p className="text-xl font-semibold text-ink text-center">{back.primary || '—'}</p>
+            <p className="text-[10px] font-bold tracking-[0.1em] uppercase font-mono text-slate-400">Back</p>
+            <p className="text-[22px] font-bold text-ink text-center">{back.primary || '—'}</p>
             {back.secondary && (
-              <p className="text-sm text-slate-600 text-center">{back.secondary}</p>
+              <p className="text-[14px] text-slate-400">{back.secondary}</p>
             )}
-
             {entry.image_url && (
-              <div className="w-full mt-2 rounded-lg overflow-hidden">
+              <div className="w-full mt-2 rounded-[8px] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={entry.image_url}
-                  alt="Illustration"
-                  className="w-full h-24 object-cover rounded-lg"
-                />
+                <img src={entry.image_url} alt="Illustration" className="w-full h-24 object-cover rounded-[8px]" />
               </div>
             )}
           </div>
@@ -139,7 +123,10 @@ export function CardPreview({ entry, audioUrl }: CardPreviewProps) {
       </div>
 
       {/* Hint */}
-      <p className="text-overline text-slate-600 text-center">Click card to flip</p>
+      <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-[#9a7a3f] mt-3">
+        <RotateCw className="w-[13px] h-[13px]" />
+        Click card to flip
+      </p>
     </div>
   )
 }

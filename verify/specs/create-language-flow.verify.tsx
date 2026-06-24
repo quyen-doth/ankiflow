@@ -1,8 +1,11 @@
 import { z } from 'zod'
-import { LanguageForm } from '@/components/create/LanguageForm'
+import { CardForm } from '@/components/create/CardForm'
+import { BUILTIN_BLUEPRINTS } from '@/lib/create/formBlueprint'
 import { registerUnit } from '@/verify/core/registry'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType, LanguageType } from '@/types'
+
+const LANGUAGE_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.LANGUAGE]!
 
 /**
  * Feature spec: luồng end-to-end Create (ngôn ngữ) → handoff sang Preview.
@@ -53,7 +56,7 @@ registerUnit<Record<string, never>>({
   title: 'Feature: Create → Preview (Language)',
   description: 'Luồng tạo thẻ ngôn ngữ: nhập từ → /api/generate → lưu pending entry → điều hướng /preview.',
   kind: 'feature',
-  render: () => <LanguageForm />,
+  render: () => <CardForm blueprint={LANGUAGE_BLUEPRINT} />,
   propsSchema: z.object({}),
   fixtures: [
     {
@@ -68,7 +71,7 @@ registerUnit<Record<string, never>>({
       },
       act: async ctx => {
         await ctx.wait(50)
-        await ctx.type('input[aria-label="Vocabulary Item"]', '猫')
+        await ctx.type('input[aria-label="Vocabulary item"]', '猫')
         submitForm(ctx.root)
         await ctx.wait(1100)
       },
@@ -88,7 +91,7 @@ registerUnit<Record<string, never>>({
       },
       act: async ctx => {
         await ctx.wait(50)
-        await ctx.type('input[aria-label="Vocabulary Item"]', '猫')
+        await ctx.type('input[aria-label="Vocabulary item"]', '猫')
         submitForm(ctx.root)
         await ctx.wait(150)
       },

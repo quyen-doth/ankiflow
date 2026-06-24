@@ -57,7 +57,7 @@ function clickEditFirst(root: HTMLElement): void {
 registerUnit<Record<string, never>>({
   id: 'ContentTypeManager',
   title: 'ContentTypeManager',
-  description: 'Admin chỉ edit content types: chỉnh fields[] của form, updateDoc (vitest-only).',
+  description: 'Admin content types: edit fields[], toggle is_active, delete (vitest-only).',
   kind: 'component',
   render: () => <ContentTypeManager />,
   propsSchema: z.object({}),
@@ -102,6 +102,32 @@ registerUnit<Record<string, never>>({
         await ctx.wait(0)
         setFieldValue(ctx.root, 'Label', 'Vocabulary Item')
         clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-toggle-active',
+      description: 'Act: click badge Active row đầu → updateDoc lật is_active sang false.',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Active')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-delete',
+      description: 'Act: click Delete row đầu → confirm modal → Delete → deleteDoc xóa ct-lang.',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        const del = ctx.root.querySelector<HTMLButtonElement>('button[aria-label^="Delete content type"]')
+        if (!del) throw new Error('không tìm thấy nút Delete content type')
+        del.click()
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Delete')
         await ctx.wait(80)
       },
     },
@@ -189,6 +215,27 @@ registerUnit<Record<string, never>>({
         if (!updated) return 'mất field word'
         if (updated.label !== 'Vocabulary Item') return `label="${updated.label}"`
         return !modalOpen(root) || 'modal vẫn mở sau Save'
+      },
+    },
+    {
+      id: 'toggle-flips-active',
+      description: 'Toggle: doc ct-lang đảo is_active sang false',
+      onlyFixtures: ['act-toggle-active'],
+      check: () => {
+        const doc = collectionDocs('content_types').find(d => d.id === 'ct-lang')
+        if (!doc) return 'mất doc ct-lang'
+        return doc.is_active === false || `is_active=${doc.is_active}`
+      },
+    },
+    {
+      id: 'delete-removes-doc',
+      description: 'Delete: ct-lang bị xóa khỏi store, còn lại 1 doc, modal đóng',
+      onlyFixtures: ['act-delete'],
+      check: ({ root }) => {
+        const docs = collectionDocs('content_types')
+        if (docs.length !== 1) return `store=${docs.length}, expected=1`
+        if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang vẫn còn trong store'
+        return !modalOpen(root) || 'modal vẫn mở sau Delete'
       },
     },
     {

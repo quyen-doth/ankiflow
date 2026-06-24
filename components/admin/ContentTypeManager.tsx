@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, query, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Card } from '@/components/ui/Card'
@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { ContentType, FormFieldConfig } from '@/types'
@@ -74,7 +75,10 @@ export function ContentTypeManager() {
   const [draft, setDraft] = useState<ContentTypeDraft>(EMPTY_DRAFT)
   const [fields, setFields] = useState<FormFieldConfig[]>([])
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ContentType | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const toast = useToast()
 
   useEffect(() => {
     async function fetchContentTypes() {
@@ -146,10 +150,42 @@ export function ContentTypeManager() {
       }
       setModalOpen(false)
       refresh()
+      toast.success(editing ? 'Đã cập nhật content type' : 'Đã tạo content type')
     } catch (error) {
       console.error('Error saving content type:', error)
+      toast.error('Không lưu được content type.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleToggleActive = async (contentType: ContentType) => {
+    try {
+      await updateDoc(doc(db, 'content_types', contentType.id), {
+        is_active: !contentType.is_active,
+        updated_at: serverTimestamp(),
+      })
+      refresh()
+      toast.success(!contentType.is_active ? 'Đã kích hoạt content type' : 'Đã tắt content type')
+    } catch (error) {
+      console.error('Error toggling content type status:', error)
+      toast.error('Không cập nhật được trạng thái.')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteDoc(doc(db, 'content_types', deleteTarget.id))
+      setDeleteTarget(null)
+      refresh()
+      toast.success('Đã xóa content type')
+    } catch (error) {
+      console.error('Error deleting content type:', error)
+      toast.error('Không xóa được content type.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -173,7 +209,9 @@ export function ContentTypeManager() {
       key: 'is_active',
       header: 'Status',
       render: (_: unknown, row: ContentType) => (
-        <Badge variant={row.is_active ? 'active' : 'inactive'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>
+        <button onClick={(e) => { e.stopPropagation(); handleToggleActive(row) }} aria-label={`Toggle status ${row.name}`}>
+          <Badge variant={row.is_active ? 'active' : 'inactive'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>
+        </button>
       ),
     },
     {
@@ -181,9 +219,14 @@ export function ContentTypeManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: ContentType) => (
-        <Button variant="ghost" size="sm" aria-label={`Edit fields ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" aria-label={`Edit fields ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" aria-label={`Delete content type ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -257,6 +300,13 @@ export function ContentTypeManager() {
               />
             </FieldWrapper>
           </div>
+
+          <Toggle
+            label="Active"
+            description="Visible and selectable in the Create flow"
+            checked={draft.is_active}
+            onChange={(v) => setDraft(d => ({ ...d, is_active: v }))}
+          />
 
           {/* Fields */}
           <div className="flex items-center justify-between mt-2">
@@ -361,6 +411,24 @@ export function ContentTypeManager() {
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete content type"
+        size="sm"
+      >
+        <p className="text-sm text-slate-600">
+          Delete <span className="font-semibold text-ink">{deleteTarget?.name}</span>? This removes the
+          form configuration permanently and cannot be undone.
+        </p>
+        <div className="flex gap-3 justify-end mt-5">
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </div>
       </Modal>
     </Card>

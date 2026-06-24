@@ -20,6 +20,13 @@ function pressEnter(root: HTMLElement): void {
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 }
 
+// Nút "+ Add" — hiển thị input nhập (input ẩn cho tới khi bấm)
+function clickAdd(root: HTMLElement): void {
+  const btn = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Add')
+  if (!btn) throw new Error('không tìm thấy nút Add')
+  btn.click()
+}
+
 registerUnit<CollocationEditorProps>({
   id: 'CollocationEditor',
   title: 'CollocationEditor',
@@ -38,16 +45,18 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'empty',
-      description: 'Không có item — chỉ còn input.',
+      description: 'Không có item — chỉ còn nút "+ Add".',
       props: { items: [], onChange: noop },
     },
     {
       id: 'act-add',
-      description: 'Act: gõ + Enter → onChange nhận mảng có item mới.',
+      description: 'Act: bấm Add → gõ + Enter → onChange nhận mảng có item mới.',
       props: { items: ['take a break'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
         changeSpy.lastValue = null
+        clickAdd(ctx.root)
+        await ctx.wait(0)
         await ctx.type('input', 'pay attention')
         pressEnter(ctx.root)
         await ctx.wait(0)
@@ -60,16 +69,18 @@ registerUnit<CollocationEditorProps>({
       act: async ctx => {
         changeSpy.count = 0
         changeSpy.lastValue = null
-        await ctx.click('[aria-label="Remove"]')
+        await ctx.click('[aria-label="Remove take a break"]')
       },
     },
     {
       id: 'probe-duplicate-add',
       probe: true,
-      description: 'Probe: thêm item trùng — onChange KHÔNG gọi, input được xóa.',
+      description: 'Probe: thêm item trùng — onChange KHÔNG gọi, input đóng lại.',
       props: { items: ['take a break'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
+        clickAdd(ctx.root)
+        await ctx.wait(0)
         await ctx.type('input', 'take a break')
         pressEnter(ctx.root)
         await ctx.wait(0)
@@ -79,9 +90,9 @@ registerUnit<CollocationEditorProps>({
   invariants: [
     {
       id: 'chip-count-matches-items',
-      description: 'Số chip badge = items.length, contract count khớp',
+      description: 'Số chip = items.length, contract count khớp',
       check: ({ root, props, contract }) => {
-        const chips = root.querySelectorAll('[data-verify-unit="Badge"]').length
+        const chips = root.querySelectorAll('button[aria-label^="Remove "]').length
         if (chips !== props.items.length) {
           return `chips=${chips}, items=${props.items.length}`
         }
@@ -108,12 +119,12 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'duplicate-add-inert',
-      description: 'Item trùng không gọi onChange và input được reset rỗng',
+      description: 'Item trùng không gọi onChange và input đóng lại (reset)',
       onlyFixtures: ['probe-duplicate-add'],
       check: ({ root }) => {
         if (changeSpy.count !== 0) return `onChange bị gọi ${changeSpy.count} lần`
         const input = root.querySelector<HTMLInputElement>('input')
-        return input?.value === '' || `input.value="${input?.value}"`
+        return !input || input.value === '' || `input.value="${input?.value}"`
       },
     },
   ],

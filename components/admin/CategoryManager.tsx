@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Category } from '@/types'
@@ -40,6 +41,7 @@ export function CategoryManager() {
   const [draft, setDraft] = useState<CategoryDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const toast = useToast()
 
   useEffect(() => {
     async function fetchCategories() {
@@ -94,8 +96,10 @@ export function CategoryManager() {
       }
       setModalOpen(false)
       refresh()
+      toast.success(editing ? 'Đã cập nhật category' : 'Đã tạo category')
     } catch (error) {
       console.error('Error saving category:', error)
+      toast.error('Không lưu được category.')
     } finally {
       setSaving(false)
     }
@@ -108,8 +112,10 @@ export function CategoryManager() {
         updated_at: serverTimestamp(),
       })
       refresh()
+      toast.success(!category.is_active ? 'Đã kích hoạt category' : 'Đã tắt category')
     } catch (error) {
       console.error('Error toggling category status:', error)
+      toast.error('Không cập nhật được trạng thái.')
     }
   }
 

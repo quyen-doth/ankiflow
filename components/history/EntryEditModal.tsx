@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { EditableField } from '@/components/preview/EditableField'
 import { CollocationEditor } from '@/components/preview/CollocationEditor'
+import { useToast } from '@/components/ui/Toast'
 import type { Entry } from '@/types'
 
 interface EntryEditModalProps {
@@ -30,6 +31,7 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
     collocations: entry.collocations || [],
   })
   const [saving, setSaving] = useState(false)
+  const toast = useToast()
 
   const wordField = entry.word ? 'word' : entry.term ? 'term' : 'title'
   const meaningField = entry.meaning_vi ? 'meaning_vi' : 'definition'
@@ -43,10 +45,11 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
     setSaving(true)
     try {
       await onSave(fields)
+      toast.success('Đã lưu thay đổi')
       onClose()
     } catch (e) {
       console.error('Save error:', e)
-      alert('Failed to save changes.')
+      toast.error('Không lưu được thay đổi.')
     } finally {
       setSaving(false)
     }

@@ -71,6 +71,30 @@ export class AnkiConnectProvider implements IFlashcardService {
     return await this.invoke<number[]>('findNotes', { query });
   }
 
+  async findCards(query: string): Promise<number[]> {
+    return await this.invoke<number[]>('findCards', { query });
+  }
+
+  async suspend(cardIds: number[]): Promise<boolean> {
+    if (cardIds.length === 0) return true;
+    return await this.invoke<boolean>('suspend', { cards: cardIds });
+  }
+
+  async unsuspend(cardIds: number[]): Promise<boolean> {
+    if (cardIds.length === 0) return true;
+    return await this.invoke<boolean>('unsuspend', { cards: cardIds });
+  }
+
+  async changeDeck(cardIds: number[], deckName: string): Promise<void> {
+    if (cardIds.length === 0) return;
+    await this.invoke<null>('changeDeck', { cards: cardIds, deck: deckName });
+  }
+
+  async deleteDecks(deckNames: string[], cardsToo = false): Promise<void> {
+    if (deckNames.length === 0) return;
+    await this.invoke<null>('deleteDecks', { decks: deckNames, cardsToo });
+  }
+
   async storeMediaFile(filename: string, base64Data: string): Promise<string> {
     return await this.invoke<string>('storeMediaFile', { filename, data: base64Data });
   }

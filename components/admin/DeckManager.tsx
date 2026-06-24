@@ -1,274 +1,577 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react';
 import {
-  collection, query, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp, deleteField,
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { Card } from '@/components/ui/Card'
-import { DataTable } from '@/components/ui/DataTable'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
-import { Plus, Pencil } from 'lucide-react'
-import { verifyAttrs } from '@/verify/core/contract'
-import { FormType, LanguageType } from '@/types'
-import type { DeckConfig } from '@/types'
+    collection,
+    query,
+    orderBy,
+    getDocs,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    serverTimestamp,
+    deleteField,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Card } from '@/components/ui/Card';
+import { DataTable } from '@/components/ui/DataTable';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Input, FieldWrapper, Select } from '@/components/ui/FormField';
+import { Plus, Pencil, Search, RefreshCw, Trash2 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
+import { verifyAttrs } from '@/verify/core/contract';
+import { FormType, LanguageType } from '@/types';
+import type { DeckConfig } from '@/types';
+
+/** Gọi API đồng bộ deck với Anki; throw nếu thất bại (Anki offline / lỗi). */
+async function postDeckSync(body: Record<string, unknown>): Promise<void> {
+    const res = await fetch('/api/anki/decks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Anki sync failed');
+    }
+}
 
 const FORM_TYPE_LABELS: Record<FormType, string> = {
-  [FormType.LANGUAGE]: 'Language',
-  [FormType.IT]: 'IT',
-  [FormType.GENERAL]: 'General',
-}
+    [FormType.LANGUAGE]: 'Language',
+    [FormType.IT]: 'IT',
+    [FormType.GENERAL]: 'General',
+};
 
 const LANGUAGE_LABELS: Record<LanguageType, string> = {
-  [LanguageType.ENGLISH]: 'English',
-  [LanguageType.JAPANESE]: 'Japanese',
-  [LanguageType.CHINESE]: 'Chinese',
-}
+    [LanguageType.ENGLISH]: 'English',
+    [LanguageType.JAPANESE]: 'Japanese',
+    [LanguageType.CHINESE]: 'Chinese',
+};
 
-const NO_LANGUAGE = '__none__'
+const NO_LANGUAGE = '__none__';
 
 interface DeckDraft {
-  anki_deck_name: string
-  display_name: string
-  form_type: FormType
-  language: LanguageType | typeof NO_LANGUAGE
-  is_active: boolean
-  sort_order: number
+    anki_deck_name: string;
+    display_name: string;
+    form_type: FormType;
+    language: LanguageType | typeof NO_LANGUAGE;
+    is_active: boolean;
+    sort_order: number;
 }
 
 const EMPTY_DRAFT: DeckDraft = {
-  anki_deck_name: '',
-  display_name: '',
-  form_type: FormType.LANGUAGE,
-  language: NO_LANGUAGE,
-  is_active: true,
-  sort_order: 0,
-}
+    anki_deck_name: '',
+    display_name: '',
+    form_type: FormType.LANGUAGE,
+    language: NO_LANGUAGE,
+    is_active: true,
+    sort_order: 0,
+};
 
 export function DeckManager() {
-  const [decks, setDecks] = useState<DeckConfig[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<DeckConfig | null>(null)
-  const [draft, setDraft] = useState<DeckDraft>(EMPTY_DRAFT)
-  const [saving, setSaving] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
+    const [decks, setDecks] = useState<DeckConfig[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editing, setEditing] = useState<DeckConfig | null>(null);
+    const [draft, setDraft] = useState<DeckDraft>(EMPTY_DRAFT);
+    const [saving, setSaving] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<DeckConfig | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const toast = useToast();
 
-  useEffect(() => {
-    async function fetchDecks() {
-      setLoading(true)
-      try {
-        const q = query(collection(db, 'decks'), orderBy('sort_order', 'asc'))
-        const snapshot = await getDocs(q)
-        setDecks(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as DeckConfig)))
-      } catch (error) {
-        console.error('Error fetching decks:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchDecks()
-  }, [refreshKey])
+    const [search, setSearch] = useState('');
+    const [filterFormType, setFilterFormType] = useState<FormType | ''>('');
+    const [filterLanguage, setFilterLanguage] = useState<LanguageType | ''>('');
+    const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('');
 
-  const refresh = () => setRefreshKey(k => k + 1)
+    const filteredDecks = useMemo(() => {
+        return decks.filter((d) => {
+            if (search) {
+                const q = search.toLowerCase();
+                if (!d.display_name.toLowerCase().includes(q) && !d.anki_deck_name.toLowerCase().includes(q))
+                    return false;
+            }
+            if (filterFormType && d.form_type !== filterFormType) return false;
+            if (filterLanguage && d.language !== filterLanguage) return false;
+            if (filterStatus === 'active' && !d.is_active) return false;
+            if (filterStatus === 'inactive' && d.is_active) return false;
+            return true;
+        });
+    }, [decks, search, filterFormType, filterLanguage, filterStatus]);
 
-  const openCreate = () => {
-    setEditing(null)
-    setDraft(EMPTY_DRAFT)
-    setModalOpen(true)
-  }
+    const activeFilters: { key: string; label: string }[] = [];
+    if (filterFormType) activeFilters.push({ key: 'formType', label: FORM_TYPE_LABELS[filterFormType] });
+    if (filterLanguage) activeFilters.push({ key: 'language', label: LANGUAGE_LABELS[filterLanguage] });
+    if (filterStatus) activeFilters.push({ key: 'status', label: filterStatus === 'active' ? 'Active' : 'Inactive' });
 
-  const openEdit = (deck: DeckConfig) => {
-    setEditing(deck)
-    setDraft({
-      anki_deck_name: deck.anki_deck_name,
-      display_name: deck.display_name,
-      form_type: deck.form_type,
-      language: deck.language || NO_LANGUAGE,
-      is_active: deck.is_active,
-      sort_order: deck.sort_order,
-    })
-    setModalOpen(true)
-  }
+    const removeFilter = (key: string) => {
+        if (key === 'formType') setFilterFormType('');
+        if (key === 'language') setFilterLanguage('');
+        if (key === 'status') setFilterStatus('');
+    };
 
-  const handleSave = async () => {
-    if (!draft.anki_deck_name.trim() || !draft.display_name.trim()) return
-    setSaving(true)
-    try {
-      if (editing) {
-        await updateDoc(doc(db, 'decks', editing.id), {
-          anki_deck_name: draft.anki_deck_name,
-          display_name: draft.display_name,
-          form_type: draft.form_type,
-          language: draft.language === NO_LANGUAGE ? deleteField() : draft.language,
-          is_active: draft.is_active,
-          sort_order: draft.sort_order,
-          updated_at: serverTimestamp(),
-        })
-      } else {
-        await addDoc(collection(db, 'decks'), {
-          anki_deck_name: draft.anki_deck_name,
-          display_name: draft.display_name,
-          form_type: draft.form_type,
-          ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
-          is_active: draft.is_active,
-          sort_order: draft.sort_order,
-          default_card_type_ids: [],
-          created_at: serverTimestamp(),
-          updated_at: serverTimestamp(),
-        })
-      }
-      // Sync deck to Anki
-      try {
-        await fetch('/api/anki/decks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deckName: draft.anki_deck_name }),
-        })
-      } catch (e) {
-        console.error('AnkiConnect sync failed:', e)
-      }
+    const clearAllFilters = () => {
+        setSearch('');
+        setFilterFormType('');
+        setFilterLanguage('');
+        setFilterStatus('');
+    };
 
-      setModalOpen(false)
-      refresh()
-    } catch (error) {
-      console.error('Error saving deck:', error)
-    } finally {
-      setSaving(false)
-    }
-  }
+    useEffect(() => {
+        async function fetchDecks() {
+            setLoading(true);
+            try {
+                const q = query(collection(db, 'decks'), orderBy('sort_order', 'asc'));
+                const snapshot = await getDocs(q);
+                setDecks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as DeckConfig));
+            } catch (error) {
+                console.error('Error fetching decks:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchDecks();
+    }, [refreshKey]);
 
-  const handleToggleActive = async (deckConfig: DeckConfig) => {
-    try {
-      await updateDoc(doc(db, 'decks', deckConfig.id), { is_active: !deckConfig.is_active, updated_at: serverTimestamp() })
-      refresh()
-    } catch (error) {
-      console.error('Error toggling deck status:', error)
-    }
-  }
+    const refresh = () => setRefreshKey((k) => k + 1);
 
-  const columns = [
-    {
-      key: 'anki_deck_name',
-      header: 'Anki Name',
-      render: (_: unknown, row: DeckConfig) => <span className="font-mono text-overline text-slate-600">{row.anki_deck_name}</span>,
-    },
-    {
-      key: 'display_name',
-      header: 'Display Name',
-      render: (_: unknown, row: DeckConfig) => <span className="font-semibold text-ink">{row.display_name}</span>,
-    },
-    {
-      key: 'form_type',
-      header: 'Form Type',
-      render: (_: unknown, row: DeckConfig) => <Badge variant="neutral">{FORM_TYPE_LABELS[row.form_type] ?? row.form_type}</Badge>,
-    },
-    {
-      key: 'language',
-      header: 'Language',
-      render: (_: unknown, row: DeckConfig) => (
-        <span className="text-slate-600">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
-      ),
-    },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (_: unknown, row: DeckConfig) => (
-        <button onClick={(e) => { e.stopPropagation(); handleToggleActive(row) }}>
-          <Badge variant={row.is_active ? 'active' : 'inactive'}>{row.is_active ? 'Active' : 'Inactive'}</Badge>
-        </button>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right' as const,
-      render: (_: unknown, row: DeckConfig) => (
-        <Button variant="ghost" size="sm" aria-label={`Edit deck ${row.display_name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
-      ),
-    },
-  ]
+    const openCreate = () => {
+        setEditing(null);
+        setDraft(EMPTY_DRAFT);
+        setModalOpen(true);
+    };
 
-  return (
-    <Card {...verifyAttrs({ unit: 'DeckManager', rows: decks.length, modalOpen, loading })}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-body font-bold font-semibold text-slate-600">Decks</h2>
-        <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-          Add Deck
-        </Button>
-      </div>
+    const openEdit = (deck: DeckConfig) => {
+        setEditing(deck);
+        setDraft({
+            anki_deck_name: deck.anki_deck_name,
+            display_name: deck.display_name,
+            form_type: deck.form_type,
+            language: deck.language || NO_LANGUAGE,
+            is_active: deck.is_active,
+            sort_order: deck.sort_order,
+        });
+        setModalOpen(true);
+    };
 
-      <DataTable
-        data={decks}
-        columns={columns}
-        keyField="id"
-        emptyMessage={loading ? 'Loading decks...' : 'No decks yet.'}
-      />
+    const handleSave = async () => {
+        if (!draft.anki_deck_name.trim() || !draft.display_name.trim()) return;
+        setSaving(true);
+        const isEditing = !!editing;
+        const oldName = editing?.anki_deck_name;
+        try {
+            if (editing) {
+                await updateDoc(doc(db, 'decks', editing.id), {
+                    anki_deck_name: draft.anki_deck_name,
+                    display_name: draft.display_name,
+                    form_type: draft.form_type,
+                    language: draft.language === NO_LANGUAGE ? deleteField() : draft.language,
+                    is_active: draft.is_active,
+                    sort_order: draft.sort_order,
+                    updated_at: serverTimestamp(),
+                });
+            } else {
+                await addDoc(collection(db, 'decks'), {
+                    anki_deck_name: draft.anki_deck_name,
+                    display_name: draft.display_name,
+                    form_type: draft.form_type,
+                    ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
+                    is_active: draft.is_active,
+                    sort_order: draft.sort_order,
+                    default_card_type_ids: [],
+                    created_at: serverTimestamp(),
+                    updated_at: serverTimestamp(),
+                });
+            }
+            setModalOpen(false);
+            refresh();
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Deck' : 'Add Deck'} size="md">
-        <div className="flex flex-col gap-4">
-          <FieldWrapper label="Anki Deck Name">
-            <Input
-              value={draft.anki_deck_name}
-              onChange={(e) => setDraft(d => ({ ...d, anki_deck_name: e.target.value }))}
-              placeholder="e.g. AnkiFlow::English::Vocabulary"
+            // Đồng bộ Anki ngay: tạo/đổi tên deck + suspend/unsuspend theo trạng thái.
+            try {
+                const name = draft.anki_deck_name;
+                if (isEditing && oldName && oldName !== name) {
+                    await postDeckSync({ op: 'rename', oldName, newName: name });
+                } else {
+                    await postDeckSync({ op: 'ensure', deckName: name });
+                }
+                await postDeckSync({ op: draft.is_active ? 'unsuspend' : 'suspend', deckName: name });
+                toast.success(isEditing ? 'Đã lưu & đồng bộ deck với Anki' : 'Đã tạo deck & đồng bộ với Anki');
+            } catch (e) {
+                console.error('AnkiConnect sync failed:', e);
+                toast.warning('Đã lưu deck, nhưng chưa đồng bộ được Anki (Anki có đang mở không?)');
+            }
+        } catch (error) {
+            console.error('Error saving deck:', error);
+            toast.error('Không lưu được deck. Vui lòng thử lại.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleToggleActive = async (deckConfig: DeckConfig) => {
+        const next = !deckConfig.is_active;
+        try {
+            await updateDoc(doc(db, 'decks', deckConfig.id), { is_active: next, updated_at: serverTimestamp() });
+            refresh();
+            try {
+                await postDeckSync({ op: next ? 'unsuspend' : 'suspend', deckName: deckConfig.anki_deck_name });
+                toast.success(
+                    next ? 'Đã kích hoạt deck & bỏ tạm dừng thẻ trên Anki' : 'Đã tắt deck & tạm dừng thẻ trên Anki',
+                );
+            } catch (e) {
+                console.error('AnkiConnect sync failed:', e);
+                toast.warning('Đã cập nhật trạng thái, nhưng chưa đồng bộ được Anki.');
+            }
+        } catch (error) {
+            console.error('Error toggling deck status:', error);
+            toast.error('Không cập nhật được trạng thái deck.');
+        }
+    };
+
+    // Đẩy toàn bộ deck của app lên Anki (ensure tồn tại + suspend/unsuspend theo trạng thái).
+    const handleSyncAll = async () => {
+        if (decks.length === 0) return;
+        setSyncing(true);
+        try {
+            const res = await fetch('/api/anki/decks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    op: 'sync-all',
+                    decks: decks.map((d) => ({ name: d.anki_deck_name, is_active: d.is_active })),
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Sync failed');
+            }
+            const data = await res.json();
+            if (data.failed?.length) {
+                toast.warning(`Đã đồng bộ ${data.synced}/${data.total} deck. Một số deck lỗi — Anki có đang mở không?`);
+            } else {
+                toast.success(`Đã đồng bộ ${data.synced} deck với Anki`);
+            }
+        } catch (e) {
+            console.error('Sync-all failed:', e);
+            toast.error('Không đồng bộ được với Anki. Hãy chắc chắn Anki đang mở.');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        const target = deleteTarget;
+        try {
+            await postDeckSync({ op: 'delete', deckName: target.anki_deck_name });
+            await deleteDoc(doc(db, 'decks', target.id));
+            setDeleteTarget(null);
+            refresh();
+            toast.success('Đã xóa deck khỏi AnkiFlow và Anki');
+        } catch (error) {
+            console.error('Error deleting deck:', error);
+            toast.error('Xóa thất bại — hãy chắc chắn Anki đang mở.');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const columns = [
+        {
+            key: 'anki_deck_name',
+            header: 'Anki Name',
+            render: (_: unknown, row: DeckConfig) => (
+                <span className="font-mono text-overline text-slate-600">{row.anki_deck_name}</span>
+            ),
+        },
+        {
+            key: 'display_name',
+            header: 'Display Name',
+            render: (_: unknown, row: DeckConfig) => <span className="font-semibold text-ink">{row.display_name}</span>,
+        },
+        {
+            key: 'form_type',
+            header: 'Form Type',
+            render: (_: unknown, row: DeckConfig) => (
+                <Badge variant="neutral">{FORM_TYPE_LABELS[row.form_type] ?? row.form_type}</Badge>
+            ),
+        },
+        {
+            key: 'language',
+            header: 'Language',
+            render: (_: unknown, row: DeckConfig) => (
+                <span className="text-slate-600">
+                    {row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'is_active',
+            header: 'Status',
+            render: (_: unknown, row: DeckConfig) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleActive(row);
+                    }}
+                >
+                    <Badge variant={row.is_active ? 'active' : 'inactive'}>
+                        {row.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                </button>
+            ),
+        },
+        {
+            key: 'actions',
+            header: '',
+            align: 'right' as const,
+            render: (_: unknown, row: DeckConfig) => (
+                <div className="flex items-center justify-end gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Edit deck ${row.display_name}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(row);
+                        }}
+                        className="p-2 h-auto rounded-full"
+                    >
+                        <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete deck ${row.display_name}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(row);
+                        }}
+                        className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <Card
+            {...verifyAttrs({
+                unit: 'DeckManager',
+                rows: decks.length,
+                filteredRows: filteredDecks.length,
+                modalOpen,
+                loading,
+            })}
+        >
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-body font-bold font-semibold text-slate-600">Decks</h2>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        aria-label="Đồng bộ với Anki"
+                        title="Đồng bộ với Anki"
+                        onClick={handleSyncAll}
+                        disabled={syncing || decks.length === 0}
+                        leftIcon={<RefreshCw className={`w-4 h-4${syncing ? ' animate-spin' : ''}`} />}
+                    >
+                        {/* {syncing ? 'Syncing…' : 'Sync Anki'} */}
+                    </Button>
+                    <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
+                        Add Deck
+                    </Button>
+                </div>
+            </div>
+
+            {/* Filter bar */}
+            <div className="flex flex-col gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/70" />
+                        <input
+                            type="search"
+                            placeholder="Search decks..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] pl-10 pr-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow"
+                        />
+                    </div>
+                    <Select
+                        aria-label="Filter by content type"
+                        value={filterFormType}
+                        onChange={(e) => setFilterFormType(e.target.value as FormType | '')}
+                        className="!w-auto min-w-[130px]"
+                    >
+                        <option value="">All Types</option>
+                        {Object.values(FormType).map((ft) => (
+                            <option key={ft} value={ft}>
+                                {FORM_TYPE_LABELS[ft]}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select
+                        aria-label="Filter by language"
+                        value={filterLanguage}
+                        onChange={(e) => setFilterLanguage(e.target.value as LanguageType | '')}
+                        className="!w-auto min-w-[130px]"
+                    >
+                        <option value="">All Languages</option>
+                        {Object.values(LanguageType).map((lang) => (
+                            <option key={lang} value={lang}>
+                                {LANGUAGE_LABELS[lang]}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select
+                        aria-label="Filter by status"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
+                        className="!w-auto min-w-[110px]"
+                    >
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </Select>
+                </div>
+                {activeFilters.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs uppercase tracking-wider text-on-surface-var/60 font-mono">
+                            Applied:
+                        </span>
+                        {activeFilters.map((f) => (
+                            <Badge key={f.key} variant="active" onRemove={() => removeFilter(f.key)}>
+                                {f.label}
+                            </Badge>
+                        ))}
+                        <button
+                            onClick={clearAllFilters}
+                            className="text-xs text-on-surface-var hover:text-error underline transition-colors"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <DataTable
+                data={filteredDecks}
+                columns={columns}
+                keyField="id"
+                emptyMessage={
+                    loading
+                        ? 'Loading decks...'
+                        : filteredDecks.length === 0 && decks.length > 0
+                          ? 'No decks match your filters.'
+                          : 'No decks yet.'
+                }
             />
-          </FieldWrapper>
-          <FieldWrapper label="Display Name">
-            <Input
-              value={draft.display_name}
-              onChange={(e) => setDraft(d => ({ ...d, display_name: e.target.value }))}
-              placeholder="e.g. English Vocabulary"
-            />
-          </FieldWrapper>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldWrapper label="Form Type">
-              <Select
-                aria-label="Form Type"
-                value={draft.form_type}
-                onChange={(e) => setDraft(d => ({ ...d, form_type: e.target.value as FormType }))}
-              >
-                {Object.values(FormType).map(ft => (
-                  <option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>
-                ))}
-              </Select>
-            </FieldWrapper>
-            <FieldWrapper label="Language">
-              <Select
-                aria-label="Language"
-                value={draft.language}
-                onChange={(e) => setDraft(d => ({ ...d, language: e.target.value as LanguageType | typeof NO_LANGUAGE }))}
-              >
-                <option value={NO_LANGUAGE}>—</option>
-                {Object.values(LanguageType).map(lang => (
-                  <option key={lang} value={lang}>{LANGUAGE_LABELS[lang]}</option>
-                ))}
-              </Select>
-            </FieldWrapper>
-          </div>
-          <FieldWrapper label="Sort Order">
-            <Input
-              type="number"
-              aria-label="Sort Order"
-              value={draft.sort_order}
-              onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))}
-            />
-          </FieldWrapper>
 
-          <div className="flex gap-3 justify-end mt-2">
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving || !draft.anki_deck_name.trim() || !draft.display_name.trim()}>
-              {saving ? 'Saving...' : 'Save'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </Card>
-  )
+            <Modal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={editing ? 'Edit Deck' : 'Add Deck'}
+                size="md"
+            >
+                <div className="flex flex-col gap-4">
+                    <FieldWrapper label="Anki Deck Name">
+                        <Input
+                            value={draft.anki_deck_name}
+                            onChange={(e) => setDraft((d) => ({ ...d, anki_deck_name: e.target.value }))}
+                            placeholder="e.g. AnkiFlow::English::Vocabulary"
+                        />
+                    </FieldWrapper>
+                    <FieldWrapper label="Display Name">
+                        <Input
+                            value={draft.display_name}
+                            onChange={(e) => setDraft((d) => ({ ...d, display_name: e.target.value }))}
+                            placeholder="e.g. English Vocabulary"
+                        />
+                    </FieldWrapper>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FieldWrapper label="Form Type">
+                            <Select
+                                aria-label="Form Type"
+                                value={draft.form_type}
+                                onChange={(e) => setDraft((d) => ({ ...d, form_type: e.target.value as FormType }))}
+                            >
+                                {Object.values(FormType).map((ft) => (
+                                    <option key={ft} value={ft}>
+                                        {FORM_TYPE_LABELS[ft]}
+                                    </option>
+                                ))}
+                            </Select>
+                        </FieldWrapper>
+                        <FieldWrapper label="Language">
+                            <Select
+                                aria-label="Language"
+                                value={draft.language}
+                                onChange={(e) =>
+                                    setDraft((d) => ({
+                                        ...d,
+                                        language: e.target.value as LanguageType | typeof NO_LANGUAGE,
+                                    }))
+                                }
+                            >
+                                <option value={NO_LANGUAGE}>—</option>
+                                {Object.values(LanguageType).map((lang) => (
+                                    <option key={lang} value={lang}>
+                                        {LANGUAGE_LABELS[lang]}
+                                    </option>
+                                ))}
+                            </Select>
+                        </FieldWrapper>
+                    </div>
+                    <FieldWrapper label="Sort Order">
+                        <Input
+                            type="number"
+                            aria-label="Sort Order"
+                            value={draft.sort_order}
+                            onChange={(e) => setDraft((d) => ({ ...d, sort_order: Number(e.target.value) }))}
+                        />
+                    </FieldWrapper>
+
+                    <div className="flex gap-3 justify-end mt-2">
+                        <Button variant="ghost" onClick={() => setModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleSave}
+                            disabled={saving || !draft.anki_deck_name.trim() || !draft.display_name.trim()}
+                        >
+                            {saving ? 'Saving...' : 'Save'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal
+                open={!!deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                title="Xóa hoàn toàn deck"
+                size="sm"
+            >
+                <p className="text-sm text-slate-600">
+                    Xóa <span className="font-semibold text-ink">{deleteTarget?.display_name}</span>?
+                    Thao tác này xóa deck vĩnh viễn khỏi AnkiFlow và Anki,{' '}
+                    <span className="font-semibold text-danger">kèm toàn bộ thẻ bên trong</span>. Không hoàn tác được.
+                </p>
+                <div className="flex gap-3 justify-end mt-5">
+                    <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                        {deleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </div>
+            </Modal>
+        </Card>
+    );
 }

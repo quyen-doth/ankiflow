@@ -21,7 +21,11 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
 
   return (
     <header
-      className={cn('mb-8', className)}
+      className={cn(
+        'sticky top-16 md:top-0 z-10 -mx-4 md:-mx-8 md:-mt-8 mb-8 px-4 md:px-[34px] py-5',
+        'border-b border-[#eaeae6] bg-canvas/85 backdrop-blur-md',
+        className
+      )}
       {...verifyAttrs({ unit: 'PageHeader', crumbs: crumbs?.length ?? 0 })}
     >
       {/* Breadcrumb */}
@@ -62,7 +66,7 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
               </h1>
             )}
             {description && (
-              <p className="text-body text-slate-600 mt-1.5">{description}</p>
+              <p className="text-[13.5px] text-[#8c8f97] mt-1">{description}</p>
             )}
           </div>
           {actions && (

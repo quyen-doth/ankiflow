@@ -8,17 +8,23 @@ interface ToggleProps {
   label: string
   description?: string
   disabled?: boolean
+  /** Render only the row (label + switch) without the default boxed container. */
+  bare?: boolean
 }
 
-export function Toggle({ checked, onChange, label, description, disabled }: ToggleProps) {
+export function Toggle({ checked, onChange, label, description, disabled, bare }: ToggleProps) {
   return (
     <div
-      className="flex items-center justify-between py-4 px-5 bg-white rounded-[9px] border border-border"
+      className={
+        bare
+          ? 'flex items-center justify-between gap-4'
+          : 'flex items-center justify-between py-4 px-5 bg-white rounded-[9px] border border-border'
+      }
       {...verifyAttrs({ unit: 'Toggle', checked, disabled: !!disabled })}
     >
       <div className="flex-1 mr-4">
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        {description && <p className="text-secondary text-slate-400 mt-0.5">{description}</p>}
+        <p className={bare ? 'text-[14px] font-bold text-ink' : 'text-sm font-semibold text-ink'}>{label}</p>
+        {description && <p className={bare ? 'text-[12.5px] text-slate-400 mt-0.5' : 'text-secondary text-slate-400 mt-0.5'}>{description}</p>}
       </div>
       <button
         role="switch"

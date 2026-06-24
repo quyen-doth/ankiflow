@@ -1,12 +1,14 @@
 import type { ComponentProps } from 'react'
 import { z } from 'zod'
-import { ITForm } from '@/components/create/ITForm'
+import { CardForm } from '@/components/create/CardForm'
+import { BUILTIN_BLUEPRINTS } from '@/lib/create/formBlueprint'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
 
-type ITFormProps = ComponentProps<typeof ITForm>
+type ITFormProps = Omit<ComponentProps<typeof CardForm>, 'blueprint'>
+const IT_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.IT]!
 
 const GENERATED = {
   term: 'Event Loop',
@@ -53,14 +55,14 @@ function loadPending(): PendingEntry | null {
   return raw ? (JSON.parse(raw) as PendingEntry) : null
 }
 
-const TERM_INPUT = 'input[placeholder="E.g., Event Loop, Closure..."]'
+const TERM_INPUT = 'input[aria-label="Technical term"]'
 
 registerUnit<ITFormProps>({
   id: 'ITForm',
   title: 'ITForm',
   description: 'Form tạo thuật ngữ IT: term + topics + difficulty → /api/generate (vitest-only).',
   kind: 'component',
-  render: props => <ITForm {...props} />,
+  render: props => <CardForm blueprint={IT_BLUEPRINT} {...props} />,
   propsSchema: z.object({
     onGenerateStart: fn<() => void>().optional(),
     onStepUpdate: fn<(step: number, status: string) => void>().optional(),

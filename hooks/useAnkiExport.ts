@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/ui/Toast'
 import type { Entry } from '@/types'
 
 interface CardTypeItem {
@@ -117,6 +118,7 @@ export function buildNotes(entry: Partial<Entry>, cardTypes: CardTypeItem[], aud
 
 export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: AnkiExportOptions): AnkiExportState {
   const router = useRouter()
+  const toast = useToast()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -180,13 +182,14 @@ export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: An
       if (!res.ok) {
         const err = await res.json()
         console.error('Anki export failed:', err)
-        alert(`Export failed: ${err.error || 'Unknown error'}`)
+        toast.error(`Xuất thất bại: ${err.error || 'Lỗi không xác định'}`)
       } else {
+        toast.success(`Đã tạo ${noteCount} thẻ trong Anki`)
         router.push(`/create?exported=1&count=${noteCount}`)
       }
     } catch (err) {
       console.error('Anki connection error:', err)
-      alert('Could not connect to AnkiConnect. Please make sure Anki is open.')
+      toast.error('Không kết nối được AnkiConnect. Hãy chắc chắn Anki đang mở.')
     } finally {
       setIsExporting(false)
     }

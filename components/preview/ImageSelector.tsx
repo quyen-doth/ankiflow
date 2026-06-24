@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { Check, RefreshCw, Upload } from 'lucide-react'
+import { Check, Upload, Search, ImageIcon } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 
 export interface ImageItem {
@@ -37,20 +37,27 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
     e.target.value = ''
   }
 
+  const creditItem = images.find(img => img.url === selectedUrl)
+
   return (
     <div
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       {...verifyAttrs({ unit: 'ImageSelector', count: images.length, loading: !!loading, selected: selectedUrl })}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-ink">Illustration</span>
+        <div className="flex items-center gap-2">
+          <span className="w-[26px] h-[26px] rounded-[7px] bg-[rgba(49,99,66,0.1)] text-primary flex items-center justify-center flex-shrink-0">
+            <ImageIcon className="w-[15px] h-[15px]" />
+          </span>
+          <span className="text-[12px] font-bold tracking-[0.05em] uppercase font-mono text-slate-600">
+            Illustration
+          </span>
+        </div>
         <div className="flex gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload className="w-3.5 h-3.5 mr-1.5" />
+          <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} leftIcon={<Upload className="w-3.5 h-3.5" />}>
             Upload
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={onRefetch} disabled={loading}>
-            <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', loading && 'animate-spin')} />
+          <Button type="button" variant="secondary" size="sm" onClick={onRefetch} disabled={loading} leftIcon={<Search className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />}>
             {loading ? 'Searching...' : 'Find more'}
           </Button>
         </div>
@@ -66,41 +73,36 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
       />
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-2.5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="aspect-video bg-surface rounded-lg animate-pulse" />
+            <div key={i} className="aspect-square bg-surface rounded-[10px] animate-pulse" />
           ))}
         </div>
       ) : images.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2">
-          {images.slice(0, 4).map(img => (
-            <button
-              key={img.id}
-              type="button"
-              aria-label={`Select image: ${img.credit_name}`}
-              onClick={() => onSelect(img)}
-              className={cn(
-                'relative aspect-video rounded-lg overflow-hidden border-2 transition-all',
-                selectedUrl === img.url
-                  ? 'border-primary ring-2 ring-primary-bg'
-                  : 'border-transparent hover:border-border'
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.thumb}
-                alt={`Photo by ${img.credit_name}`}
-                className="w-full h-full object-cover"
-              />
-              {selectedUrl === img.url && (
-                <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                  <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-              )}
-            </button>
-          ))}
+        <div className="grid grid-cols-4 gap-2.5">
+          {images.slice(0, 4).map(img => {
+            const isSelected = selectedUrl === img.url
+            return (
+              <button
+                key={img.id}
+                type="button"
+                aria-label={`Select image: ${img.credit_name}`}
+                onClick={() => onSelect(img)}
+                className={cn(
+                  'relative aspect-square rounded-[10px] overflow-hidden border-2 transition-all',
+                  isSelected ? 'border-primary' : 'border-[#e3e3de] hover:border-slate-400'
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.thumb} alt={`Photo by ${img.credit_name}`} className="w-full h-full object-cover" />
+                {isSelected && (
+                  <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       ) : (
         <p className="text-sm text-slate-600 py-4 text-center">
@@ -108,35 +110,13 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
         </p>
       )}
 
-      {selectedUrl && (
-        <div className="aspect-video rounded-lg overflow-hidden border border-border/30">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={selectedUrl}
-            alt="Selected illustration"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
-      {selectedUrl && images.some(img => img.url === selectedUrl) && (
-        <p className="text-overline text-slate-600">
+      {creditItem && (
+        <p className="text-[11px] text-slate-400">
           Photo by{' '}
-          <a
-            href={images.find(img => img.url === selectedUrl)?.credit_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            {images.find(img => img.url === selectedUrl)?.credit_name}
-          </a>
-          {' '}on{' '}
-          <a
-            href="https://unsplash.com/?utm_source=ankiflow&utm_medium=referral"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
+          <a href={creditItem.credit_url} target="_blank" rel="noopener noreferrer" className="underline">
+            {creditItem.credit_name}
+          </a>{' '}on{' '}
+          <a href="https://unsplash.com/?utm_source=ankiflow&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="underline">
             Unsplash
           </a>
         </p>

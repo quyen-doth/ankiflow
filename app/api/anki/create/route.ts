@@ -12,6 +12,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing notes array' }, { status: 400 });
     }
 
+    // 0. Đảm bảo mọi deck tồn tại trong Anki trước khi thêm note (tránh "deck was not found").
+    //    createDeck là idempotent — đã có thì không sao, chưa có thì tạo.
+    const deckNames = [...new Set(
+      (notes as { deckName?: string }[]).map(n => n.deckName).filter((d): d is string => !!d),
+    )];
+    for (const deckName of deckNames) {
+      await flashcardService.createDeck(deckName);
+    }
+
     // 1. Tạo notes trong Anki
     const noteIds = await flashcardService.addNotes(notes);
 

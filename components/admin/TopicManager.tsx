@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Topic } from '@/types'
@@ -32,6 +33,7 @@ export function TopicManager() {
   const [editing, setEditing] = useState<Topic | null>(null)
   const [draft, setDraft] = useState<TopicDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
+  const toast = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
@@ -80,8 +82,10 @@ export function TopicManager() {
       }
       setModalOpen(false)
       refresh()
+      toast.success(editing ? 'Đã cập nhật topic' : 'Đã tạo topic')
     } catch (error) {
       console.error('Error saving topic:', error)
+      toast.error('Không lưu được topic.')
     } finally {
       setSaving(false)
     }
@@ -91,8 +95,10 @@ export function TopicManager() {
     try {
       await updateDoc(doc(db, 'topics', topic.id), { is_active: !topic.is_active, updated_at: serverTimestamp() })
       refresh()
+      toast.success(!topic.is_active ? 'Đã kích hoạt topic' : 'Đã tắt topic')
     } catch (error) {
       console.error('Error toggling topic status:', error)
+      toast.error('Không cập nhật được trạng thái.')
     }
   }
 

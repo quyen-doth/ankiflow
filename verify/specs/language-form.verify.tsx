@@ -1,12 +1,14 @@
 import type { ComponentProps } from 'react'
 import { z } from 'zod'
-import { LanguageForm } from '@/components/create/LanguageForm'
+import { CardForm } from '@/components/create/CardForm'
+import { BUILTIN_BLUEPRINTS } from '@/lib/create/formBlueprint'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
 
-type LanguageFormProps = ComponentProps<typeof LanguageForm>
+type LanguageFormProps = Omit<ComponentProps<typeof CardForm>, 'blueprint'>
+const LANGUAGE_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.LANGUAGE]!
 
 const GENERATED = {
   word: 'serendipity',
@@ -61,7 +63,7 @@ registerUnit<LanguageFormProps>({
   description:
     'Form tạo vocab ngôn ngữ: gọi /api/generate → lưu pending entry → push /preview (vitest-only).',
   kind: 'component',
-  render: props => <LanguageForm {...props} />,
+  render: props => <CardForm blueprint={LANGUAGE_BLUEPRINT} {...props} />,
   propsSchema: z.object({
     onGenerateStart: fn<() => void>().optional(),
     onStepUpdate: fn<(step: number, status: string) => void>().optional(),
@@ -98,7 +100,7 @@ registerUnit<LanguageFormProps>({
       },
       act: async ctx => {
         await ctx.wait(50)
-        await ctx.type('input[aria-label="Vocabulary Item"]', 'serendipity')
+        await ctx.type('input[aria-label="Vocabulary item"]', 'serendipity')
         submitForm(ctx.root)
         // fetch + 500ms + 400ms các bước giả lập tiến độ
         await ctx.wait(1100)
@@ -122,7 +124,7 @@ registerUnit<LanguageFormProps>({
       },
       act: async ctx => {
         await ctx.wait(50)
-        await ctx.type('input[aria-label="Vocabulary Item"]', 'serendipity')
+        await ctx.type('input[aria-label="Vocabulary item"]', 'serendipity')
         submitForm(ctx.root)
         await ctx.wait(100)
       },
@@ -141,8 +143,8 @@ registerUnit<LanguageFormProps>({
         validitySpy.last = null
         validitySpy.sawTrue = false
         await ctx.wait(50)
-        await ctx.type('input[aria-label="Vocabulary Item"]', 'hello')
-        await ctx.type('input[aria-label="Vocabulary Item"]', '')
+        await ctx.type('input[aria-label="Vocabulary item"]', 'hello')
+        await ctx.type('input[aria-label="Vocabulary item"]', '')
         await ctx.wait(16)
       },
     },
@@ -152,7 +154,7 @@ registerUnit<LanguageFormProps>({
       id: 'form-renders-core-fields',
       description: 'Form có input từ vựng, note, language/deck/category selector',
       check: ({ root }) => {
-        if (!root.querySelector('input[aria-label="Vocabulary Item"]')) return 'thiếu input từ vựng'
+        if (!root.querySelector('input[aria-label="Vocabulary item"]')) return 'thiếu input từ vựng'
         if (!root.querySelector('[data-verify-unit="LanguageSelector"]')) return 'thiếu LanguageSelector'
         if (!root.querySelector('[data-verify-unit="DeckSelector"]')) return 'thiếu DeckSelector'
         return !!root.querySelector('[data-verify-unit="CategorySelector"]') || 'thiếu CategorySelector'

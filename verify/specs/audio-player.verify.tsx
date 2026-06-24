@@ -39,7 +39,8 @@ registerUnit<AudioPlayerProps>({
     audioUrl: z.string().nullable(),
     onRegenerate: fn<() => void>(),
     loading: z.boolean().optional(),
-    label: z.string().optional(),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
   }),
   fixtures: [
     {
@@ -104,9 +105,9 @@ registerUnit<AudioPlayerProps>({
     },
     {
       id: 'label-visible',
-      description: 'Label hiển thị (mặc định "Audio")',
+      description: 'Tiêu đề hiển thị (mặc định "Native pronunciation")',
       check: ({ root, props }) =>
-        (root.textContent ?? '').includes(props.label ?? 'Audio') || 'không thấy label',
+        (root.textContent ?? '').includes(props.title ?? 'Native pronunciation') || 'không thấy tiêu đề',
     },
     {
       id: 'loading-text',

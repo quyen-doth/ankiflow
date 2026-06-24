@@ -1,12 +1,14 @@
 import type { ComponentProps } from 'react'
 import { z } from 'zod'
-import { GeneralForm } from '@/components/create/GeneralForm'
+import { CardForm } from '@/components/create/CardForm'
+import { BUILTIN_BLUEPRINTS } from '@/lib/create/formBlueprint'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
 
-type GeneralFormProps = ComponentProps<typeof GeneralForm>
+type GeneralFormProps = Omit<ComponentProps<typeof CardForm>, 'blueprint'>
+const GENERAL_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.GENERAL]!
 
 const SESSION = JSON.stringify({
   deckId: 'd-gen',
@@ -45,14 +47,14 @@ function loadPending(): PendingEntry | null {
   return raw ? (JSON.parse(raw) as PendingEntry) : null
 }
 
-const TITLE_INPUT = 'input[placeholder="Front side..."]'
+const TITLE_INPUT = 'input[aria-label="Card title"]'
 
 registerUnit<GeneralFormProps>({
   id: 'GeneralForm',
   title: 'GeneralForm',
   description: 'Form kiến thức chung: không gọi API — build content cục bộ rồi lưu pending (vitest-only).',
   kind: 'component',
-  render: props => <GeneralForm {...props} />,
+  render: props => <CardForm blueprint={GENERAL_BLUEPRINT} {...props} />,
   propsSchema: z.object({
     onGenerateStart: fn<() => void>().optional(),
     onStepUpdate: fn<(step: number, status: string) => void>().optional(),

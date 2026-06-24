@@ -5,6 +5,11 @@ export interface IFlashcardService {
   addNotes(notes: AnkiNote[]): Promise<number[]>
   updateNoteFields(noteId: number, fields: Record<string, string>): Promise<void>
   findNotes(query: string): Promise<number[]>
+  findCards(query: string): Promise<number[]>
+  suspend(cardIds: number[]): Promise<boolean>
+  unsuspend(cardIds: number[]): Promise<boolean>
+  changeDeck(cardIds: number[], deckName: string): Promise<void>
+  deleteDecks(deckNames: string[], cardsToo?: boolean): Promise<void>
   storeMediaFile(filename: string, base64Data: string): Promise<string>
   getModelNames(): Promise<string[]>
   createModel(params: CreateModelParams): Promise<void>

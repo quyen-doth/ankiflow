@@ -30,17 +30,19 @@ export function ConnectedBadge({ connected: propConnected }: ConnectedBadgeProps
 
   return (
     <div
-      className="flex items-center gap-2.5 px-3 py-2.5 bg-canvas rounded-[8px]"
+      className={`flex items-center gap-2 px-2.5 py-2 rounded-[8px] border ${
+        connected ? 'border-primary-tint bg-primary-bg' : 'border-border bg-canvas'
+      }`}
       {...verifyAttrs({ unit: 'ConnectedBadge', connected })}
     >
-      <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${connected ? 'bg-primary' : 'bg-slate-400'}`}
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${connected ? 'bg-primary' : 'bg-slate-400'}`}
         style={connected ? { boxShadow: '0 0 0 3px rgba(49,99,66,.14)' } : undefined}
       />
-      <span className={`text-[13px] font-medium ${connected ? 'text-ink' : 'text-slate-400'}`}>
+      <span className={`text-[11px] font-semibold ${connected ? 'text-primary' : 'text-slate-400'}`}>
         {connected ? 'Anki connected' : 'Anki offline'}
       </span>
       {connected && (
-        <span className="ml-auto text-[12.5px] font-mono text-slate-400">:8765</span>
+        <span className="ml-auto text-[9.5px] font-mono text-[#7fa48c]">:8765</span>
       )}
     </div>
   )

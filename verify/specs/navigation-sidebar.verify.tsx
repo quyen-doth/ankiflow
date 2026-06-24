@@ -17,7 +17,7 @@ const ankiConnectMock = {
 function checkActiveLink(root: HTMLElement, expectedHref: string | null): true | string {
   if (!verifyGlobals().__verifyNav) return true
   const links = Array.from(root.querySelectorAll<HTMLAnchorElement>('aside nav a'))
-  const active = links.filter(a => a.className.includes('bg-primary-bg'))
+  const active = links.filter(a => a.className.includes('bg-[rgba(49,99,66,0.1)]'))
   if (expectedHref === null) {
     return active.length === 0 || `${active.length} link active, expected 0`
   }

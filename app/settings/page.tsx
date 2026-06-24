@@ -6,10 +6,11 @@ import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { Toggle } from '@/components/ui/Toggle'
-import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
+import { FieldWrapper, Select } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { MonitorCheck, MonitorX, Sparkles, Volume2, ImageIcon, Settings as SettingsIcon, SlidersHorizontal, Check } from 'lucide-react'
+import { Monitor, Sparkles, Volume2, ImageIcon, SlidersHorizontal, Plug, Brain, Check } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
+import { cn } from '@/lib/utils'
 import type { Settings } from '@/types'
 
 const SETTINGS_DOC_ID = 'default'
@@ -19,31 +20,63 @@ const CLAUDE_MODEL_OPTIONS = [
   { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
 ]
 
-interface IntegrationStatus {
+type Tone = 'green' | 'amber'
+
+const HEADER_TONE: Record<Tone, string> = {
+  green: 'text-primary bg-[rgba(49,99,66,0.1)]',
+  amber: 'text-[#b87514] bg-[rgba(184,117,20,0.1)]',
+}
+
+const ICON_TONE: Record<Tone, string> = {
+  green: 'text-primary bg-[rgba(49,99,66,0.08)]',
+  amber: 'text-[#b87514] bg-[rgba(184,117,20,0.08)]',
+}
+
+function SectionHeader({ icon: Icon, label, tone }: { icon: React.ElementType; label: string; tone: Tone }) {
+  return (
+    <div className="flex items-center gap-2 mb-[18px]">
+      <span className={cn('w-[26px] h-[26px] rounded-[7px] flex items-center justify-center flex-shrink-0', HEADER_TONE[tone])}>
+        <Icon className="w-[15px] h-[15px]" />
+      </span>
+      <span className="text-[12px] font-bold tracking-[0.05em] uppercase font-mono text-slate-600">{label}</span>
+    </div>
+  )
+}
+
+interface IntegrationCardProps {
   label: string
   description: string
-  icon: React.ReactNode
+  icon: React.ElementType
+  tone: Tone
+  descMono?: boolean
   connected: boolean
   checking: boolean
 }
 
-function IntegrationCard({ label, description, icon, connected, checking }: IntegrationStatus) {
+function IntegrationCard({ label, description, icon: Icon, tone, descMono, connected, checking }: IntegrationCardProps) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-surface rounded-lg">
-      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0 text-slate-600">
-        {icon}
-      </div>
+    <div className="flex items-center gap-3.5 p-[14px] border border-[#eceae4] rounded-[11px]">
+      <span className={cn('w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0', ICON_TONE[tone])}>
+        <Icon className="w-[18px] h-[18px]" />
+      </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-ink">{label}</p>
-        <p className="text-overline text-slate-600 truncate">{description}</p>
+        <p className="text-[14px] font-bold text-ink">{label}</p>
+        <p className={cn('text-[12.5px] text-slate-400 truncate', descMono && 'font-mono')}>{description}</p>
       </div>
       {checking ? (
-        <Badge variant="neutral">Checking...</Badge>
+        <span className="inline-flex items-center text-[12px] font-bold text-slate-400 bg-canvas px-3 py-1.5 rounded-full">
+          Checking…
+        </span>
       ) : (
-        <Badge className={connected ? 'bg-primary-bg text-primary' : 'bg-danger-bg text-danger'}>
-          <span className={`inline-block w-[6px] h-[6px] rounded-full mr-1.5 ${connected ? 'bg-primary' : 'bg-danger'}`} />
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full',
+            connected ? 'bg-[rgba(49,99,66,0.08)] text-primary' : 'bg-danger-bg text-danger'
+          )}
+        >
+          <span className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-primary' : 'bg-danger')} />
           {connected ? 'Connected' : 'Offline'}
-        </Badge>
+        </span>
       )}
     </div>
   )
@@ -56,6 +89,7 @@ export default function SettingsPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [ankiConnected, setAnkiConnected] = useState(false)
   const [checkingAnki, setCheckingAnki] = useState(true)
+  const toast = useToast()
 
   useEffect(() => {
     async function fetchSettings() {
@@ -99,8 +133,10 @@ export default function SettingsPage() {
       const ref = doc(db, 'settings', SETTINGS_DOC_ID)
       await setDoc(ref, { ...settings, updated_at: serverTimestamp() }, { merge: true })
       setSavedAt(Date.now())
+      toast.success('Đã lưu cài đặt')
     } catch (error) {
       console.error('Error saving settings:', error)
+      toast.error('Không lưu được cài đặt. Vui lòng thử lại.')
     } finally {
       setSaving(false)
     }
@@ -143,36 +179,38 @@ export default function SettingsPage() {
 
         {/* Integrations */}
         <Card>
-          <div className="flex items-center gap-2.5 mb-4">
-            <SettingsIcon className="w-[18px] h-[18px] text-primary" />
-            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Integrations</h2>
-          </div>
-          <div className="flex flex-col gap-3">
+          <SectionHeader icon={Plug} label="Integrations" tone="green" />
+          <div className="flex flex-col gap-2.5">
             <IntegrationCard
               label="Anki Desktop"
               description="Local AnkiConnect plugin at localhost:8765"
-              icon={<MonitorCheck className="w-5 h-5" />}
+              icon={Monitor}
+              tone="green"
               connected={ankiConnected}
               checking={checkingAnki}
             />
             <IntegrationCard
               label="Claude API"
-              description={`Model: ${settings.ai_model ?? 'claude-haiku-4-5'}`}
-              icon={<Sparkles className="w-5 h-5" />}
+              description={settings.ai_model ?? 'claude-haiku-4-5'}
+              icon={Sparkles}
+              tone="amber"
+              descMono
               connected
               checking={false}
             />
             <IntegrationCard
               label="Google Cloud TTS"
               description={settings.tts_enabled ? 'Audio generation enabled' : 'Audio generation disabled'}
-              icon={<Volume2 className="w-5 h-5" />}
+              icon={Volume2}
+              tone="green"
               connected={settings.tts_enabled}
               checking={false}
             />
             <IntegrationCard
               label="Unsplash"
               description={settings.unsplash_enabled ? 'Image search enabled' : 'Image search disabled'}
-              icon={<ImageIcon className="w-5 h-5" />}
+              icon={ImageIcon}
+              tone="green"
               connected={settings.unsplash_enabled}
               checking={false}
             />
@@ -181,10 +219,7 @@ export default function SettingsPage() {
 
         {/* AI config */}
         <Card>
-          <div className="flex items-center gap-2.5 mb-4">
-            <Sparkles className="w-[18px] h-[18px] text-primary" />
-            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">AI generation</h2>
-          </div>
+          <SectionHeader icon={Brain} label="AI generation" tone="amber" />
           <FieldWrapper label="Claude Model">
             <Select
               value={settings.ai_model ?? 'claude-haiku-4-5'}
@@ -195,8 +230,9 @@ export default function SettingsPage() {
               ))}
             </Select>
           </FieldWrapper>
-          <div className="mt-3">
+          <div className="mt-3.5 flex items-center p-[14px] border border-[#eceae4] rounded-[11px] bg-[#fcfcfb]">
             <Toggle
+              bare
               label="Enable web search"
               description="Cho phép AI agent tra cứu web để kiểm chứng nghĩa/cách dùng (chậm và tốn phí hơn)"
               checked={settings.web_search_enabled ?? false}
@@ -207,41 +243,25 @@ export default function SettingsPage() {
 
         {/* Preferences */}
         <Card>
-          <div className="flex items-center gap-2.5 mb-4">
-            <SlidersHorizontal className="w-[18px] h-[18px] text-primary" />
-            <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Preferences</h2>
-          </div>
-          <div className="flex flex-col gap-3">
-            <Toggle
-              label="Enable Unsplash images"
-              description="Search for illustration images when generating cards"
-              checked={settings.unsplash_enabled}
-              onChange={(v) => updateField('unsplash_enabled', v)}
-            />
-            <Toggle
-              label="Enable text-to-speech"
-              description="Generate native audio pronunciation for vocabulary"
-              checked={settings.tts_enabled}
-              onChange={(v) => updateField('tts_enabled', v)}
-            />
-            <Toggle
-              label="Auto-generate audio"
-              description="Automatically request audio when a card is generated"
-              checked={settings.auto_audio}
-              onChange={(v) => updateField('auto_audio', v)}
-            />
-            <Toggle
-              label="Auto-fetch images"
-              description="Automatically search for illustration images when a card is generated"
-              checked={settings.auto_image}
-              onChange={(v) => updateField('auto_image', v)}
-            />
-            <Toggle
-              label="Allow duplicate entries"
-              description="Permit creating cards for vocabulary that already exists"
-              checked={settings.allow_duplicate}
-              onChange={(v) => updateField('allow_duplicate', v)}
-            />
+          <SectionHeader icon={SlidersHorizontal} label="Preferences" tone="green" />
+          <div className="flex flex-col">
+            {([
+              { key: 'unsplash_enabled', label: 'Enable Unsplash images', description: 'Search for illustration images when generating cards.' },
+              { key: 'tts_enabled', label: 'Enable text-to-speech', description: 'Generate native audio pronunciation for vocabulary.' },
+              { key: 'auto_audio', label: 'Auto-generate audio', description: 'Automatically request audio when a card is generated.' },
+              { key: 'auto_image', label: 'Auto-fetch images', description: 'Automatically search for illustration images when a card is generated.' },
+              { key: 'allow_duplicate', label: 'Allow duplicate entries', description: 'Permit creating cards for vocabulary that already exists.' },
+            ] as const).map(pref => (
+              <div key={pref.key} className="py-[15px] border-b border-[#f5f5f1] last:border-b-0">
+                <Toggle
+                  bare
+                  label={pref.label}
+                  description={pref.description}
+                  checked={settings[pref.key]}
+                  onChange={(v) => updateField(pref.key, v)}
+                />
+              </div>
+            ))}
           </div>
         </Card>
 

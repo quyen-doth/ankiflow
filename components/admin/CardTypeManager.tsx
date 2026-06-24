@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select, Textarea } from '@/components/ui/FormField'
 import { Plus, Pencil } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType, LanguageType } from '@/types'
 import type { CardTypeConfig } from '@/types'
@@ -62,6 +63,7 @@ export function CardTypeManager() {
   const [draft, setDraft] = useState<CardTypeDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const toast = useToast()
 
   useEffect(() => {
     async function fetchCardTypes() {
@@ -131,8 +133,10 @@ export function CardTypeManager() {
       }
       setModalOpen(false)
       refresh()
+      toast.success(editing ? 'Đã cập nhật card type' : 'Đã tạo card type')
     } catch (error) {
       console.error('Error saving card type:', error)
+      toast.error('Không lưu được card type.')
     } finally {
       setSaving(false)
     }
@@ -142,8 +146,10 @@ export function CardTypeManager() {
     try {
       await updateDoc(doc(db, 'card_types', cardType.id), { is_active: !cardType.is_active, updated_at: serverTimestamp() })
       refresh()
+      toast.success(!cardType.is_active ? 'Đã kích hoạt card type' : 'Đã tắt card type')
     } catch (error) {
       console.error('Error toggling card type status:', error)
+      toast.error('Không cập nhật được trạng thái.')
     }
   }
 

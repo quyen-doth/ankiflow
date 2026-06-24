@@ -1,278 +1,262 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
-import { LanguageForm } from '@/components/create/LanguageForm'
-import { ITForm } from '@/components/create/ITForm'
-import { GeneralForm } from '@/components/create/GeneralForm'
-import { DynamicForm } from '@/components/create/DynamicForm'
-import { LoadingOverlay } from '@/components/ui/LoadingOverlay'
-import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
-import { Languages, Terminal, BookOpen, SlidersHorizontal, Check, Sparkles, CheckCircle, X, PlusCircle } from 'lucide-react'
-import { FormType } from '@/types'
-import type { ContentType } from '@/types'
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { CardForm } from '@/components/create/CardForm';
+import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
+import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
+import {
+    Languages,
+    Terminal,
+    BookOpen,
+    SlidersHorizontal,
+    ArrowUpRight,
+    Sparkles,
+    CheckCircle,
+    X,
+    PlusCircle,
+} from 'lucide-react';
+import { FormType } from '@/types';
+import type { ContentType } from '@/types';
 
 const ICON_MAP: Record<string, React.ElementType> = {
-  Languages,
-  Terminal,
-  BookOpen,
-  SlidersHorizontal,
-}
+    Languages,
+    Terminal,
+    BookOpen,
+    SlidersHorizontal,
+};
 
 const BUILTIN_ICONS: Record<string, React.ElementType> = {
-  [FormType.LANGUAGE]: Languages,
-  [FormType.IT]: Terminal,
-  [FormType.GENERAL]: BookOpen,
-}
+    [FormType.LANGUAGE]: Languages,
+    [FormType.IT]: Terminal,
+    [FormType.GENERAL]: BookOpen,
+};
 
 // ─── Step types cho Loading Overlay ─────────────────────────────────────────
-type StepStatus = 'completed' | 'active' | 'pending'
+type StepStatus = 'completed' | 'active' | 'pending';
 
 interface LoadingStep {
-  label: string
-  description?: string
-  status: StepStatus
+    label: string;
+    description?: string;
+    status: StepStatus;
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-  { label: 'Calling Claude AI', status: 'active' },
-  { label: 'Generating audio (TTS)', status: 'pending' },
-  { label: 'Finding images (Unsplash)', status: 'pending' },
-]
+    { label: 'Calling Claude AI', status: 'active' },
+    { label: 'Generating audio (TTS)', status: 'pending' },
+    { label: 'Finding images (Unsplash)', status: 'pending' },
+];
 
-const FORM_ID = 'create-form'
+const FORM_ID = 'create-form';
 
 function resolveIcon(contentType: ContentType): React.ElementType {
-  if (BUILTIN_ICONS[contentType.code]) return BUILTIN_ICONS[contentType.code]
-  if (contentType.icon && ICON_MAP[contentType.icon]) return ICON_MAP[contentType.icon]
-  return BookOpen
+    const ft = resolveBuiltinFormType(contentType.id) ?? resolveBuiltinFormType(contentType.code);
+    if (ft && BUILTIN_ICONS[ft]) return BUILTIN_ICONS[ft];
+    if (contentType.icon && ICON_MAP[contentType.icon]) return ICON_MAP[contentType.icon];
+    return BookOpen;
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function CreatePage() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
-  const [loadingTypes, setLoadingTypes] = useState(true)
-  const [activeCode, setActiveCode] = useState<string>('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS)
-  const [progress, setProgress] = useState(0)
-  const [canSubmit, setCanSubmit] = useState(false)
-  const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null)
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
+    const [loadingTypes, setLoadingTypes] = useState(true);
+    const [activeCode, setActiveCode] = useState<string>('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
+    const [progress, setProgress] = useState(0);
+    const [canSubmit, setCanSubmit] = useState(false);
+    const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null);
 
-  useEffect(() => {
-    async function fetchContentTypes() {
-      try {
-        const q = query(
-          collection(db, 'content_types'),
-          where('is_active', '==', true),
-          orderBy('sort_order', 'asc'),
-        )
-        const snapshot = await getDocs(q)
-        const types = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ContentType))
-        setContentTypes(types)
-        if (types.length > 0 && !activeCode) {
-          setActiveCode(types[0].code)
+    useEffect(() => {
+        async function fetchContentTypes() {
+            try {
+                const q = query(
+                    collection(db, 'content_types'),
+                    where('is_active', '==', true),
+                    orderBy('sort_order', 'asc'),
+                );
+                const snapshot = await getDocs(q);
+                const types = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as ContentType);
+                setContentTypes(types);
+                if (types.length > 0 && !activeCode) {
+                    setActiveCode(types[0].code);
+                }
+            } catch (error) {
+                console.error('Error fetching content types:', error);
+            } finally {
+                setLoadingTypes(false);
+            }
         }
-      } catch (error) {
-        console.error('Error fetching content types:', error)
-      } finally {
-        setLoadingTypes(false)
-      }
-    }
-    fetchContentTypes()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+        fetchContentTypes();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (searchParams.get('exported') === '1') {
-      const count = parseInt(searchParams.get('count') || '0', 10)
-      setSuccessBanner({ count })
-      router.replace('/create', { scroll: false })
-      const timer = setTimeout(() => setSuccessBanner(null), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [searchParams, router])
+    useEffect(() => {
+        if (searchParams.get('exported') === '1') {
+            const count = parseInt(searchParams.get('count') || '0', 10);
+            setSuccessBanner({ count });
+            router.replace('/create', { scroll: false });
+            const timer = setTimeout(() => setSuccessBanner(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [searchParams, router]);
 
-  const activeType = contentTypes.find(t => t.code === activeCode)
+    const activeType = contentTypes.find((t) => t.code === activeCode);
 
-  const handleStepUpdate = useCallback((stepIndex: number, status: StepStatus) => {
-    setLoadingSteps(prev => prev.map((s, i) => (i === stepIndex ? { ...s, status } : s)))
-    const completedSteps = stepIndex + (status === 'completed' ? 1 : 0)
-    setProgress(Math.round((completedSteps / INITIAL_STEPS.length) * 100))
-  }, [])
+    const handleStepUpdate = useCallback((stepIndex: number, status: StepStatus) => {
+        setLoadingSteps((prev) => prev.map((s, i) => (i === stepIndex ? { ...s, status } : s)));
+        const completedSteps = stepIndex + (status === 'completed' ? 1 : 0);
+        setProgress(Math.round((completedSteps / INITIAL_STEPS.length) * 100));
+    }, []);
 
-  const handleGenerateStart = useCallback(() => {
-    setIsGenerating(true)
-    setLoadingSteps(INITIAL_STEPS)
-    setProgress(0)
-  }, [])
+    const handleGenerateStart = useCallback(() => {
+        setIsGenerating(true);
+        setLoadingSteps(INITIAL_STEPS);
+        setProgress(0);
+    }, []);
 
-  const handleGenerateEnd = useCallback(() => {
-    setIsGenerating(false)
-  }, [])
+    const handleGenerateEnd = useCallback(() => {
+        setIsGenerating(false);
+    }, []);
 
-  const handleSelectType = useCallback((code: string) => {
-    setActiveCode(code)
-    setCanSubmit(false)
-  }, [])
+    const handleSelectType = useCallback((code: string) => {
+        setActiveCode(code);
+        setCanSubmit(false);
+    }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault()
-        if (!canSubmit || isGenerating) return
-        const form = document.getElementById(FORM_ID) as HTMLFormElement | null
-        form?.requestSubmit()
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [canSubmit, isGenerating])
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!canSubmit || isGenerating) return;
+                const form = document.getElementById(FORM_ID) as HTMLFormElement | null;
+                form?.requestSubmit();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [canSubmit, isGenerating]);
 
-  const isBuiltIn = (code: string) =>
-    code === FormType.LANGUAGE || code === FormType.IT || code === FormType.GENERAL
+    const blueprint = useMemo(() => {
+        return activeType ? getBlueprintForContentType(activeType) : null;
+    }, [activeType]);
 
-  return (
-    <>
-      {/* Custom breadcrumb + title */}
-      <div className="mb-6">
-        <nav className="flex items-center text-meta font-mono text-slate-400 mb-2">
-          <PlusCircle className="w-3.5 h-3.5 mr-2 text-slate-400" />
-          <span className="uppercase tracking-[0.05em] font-bold">Create Card</span>
-          <span className="mx-2.5 text-slate-400/50">/</span>
-          <span className="text-primary font-bold">{activeType?.name ?? 'Card'} Flow</span>
-        </nav>
-        <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
-      </div>
+    return (
+        <>
+            {/* Custom breadcrumb + title */}
+            <div className="sticky top-16 md:top-0 z-10 -mx-4 md:-mx-8 md:-mt-8 mb-6 px-4 md:px-[34px] py-5 border-b border-[#eaeae6] bg-canvas/85 backdrop-blur-md">
+                <nav className="flex items-center text-meta font-mono text-slate-400 mb-2">
+                    <PlusCircle className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                    <span className="uppercase tracking-[0.05em] font-bold">Create Card</span>
+                    <span className="mx-2.5 text-slate-400/50">/</span>
+                    <span className="text-primary font-bold">{activeType?.name ?? 'Card'} Flow</span>
+                </nav>
+                <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
+            </div>
 
-      {successBanner && (
-        <div className="max-w-6xl mx-auto w-full px-0 mb-2">
-          <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
-            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-            <p className="text-sm font-medium text-ink flex-1">
-              Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to Anki!
-            </p>
-            <button type="button" onClick={() => setSuccessBanner(null)} className="text-slate-600 hover:text-ink">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
-
-        {/* Content Type tabs + Generate button (same row) */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {loadingTypes ? (
-              <div className="h-10 w-48 bg-surface rounded-full animate-pulse" />
-            ) : (
-              <>
-                {contentTypes.map((ct) => {
-                  const Icon = resolveIcon(ct)
-                  const isActive = activeCode === ct.code
-                  return (
-                    <button
-                      key={ct.id}
-                      type="button"
-                      onClick={() => handleSelectType(ct.code)}
-                      className={cn(
-                        'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-primary-bg',
-                        isActive
-                          ? 'border-primary bg-primary-bg text-primary font-bold'
-                          : 'border-transparent bg-surface text-slate-600 hover:bg-canvas',
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm">{ct.name}</span>
-                      {isActive && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </button>
-                  )
-                })}
-                <button
-                  type="button"
-                  onClick={() => router.push('/admin?tab=content-types')}
-                  className={cn(
-                    'relative flex items-center gap-2.5 pl-4 pr-5 py-2.5 rounded-full border transition-all duration-150 outline-none',
-                    'focus-visible:ring-2 focus-visible:ring-primary-bg',
-                    'border-transparent bg-surface text-slate-600 hover:bg-canvas',
-                  )}
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span className="text-sm">Custom</span>
-                </button>
-              </>
+            {successBanner && (
+                <div className="max-w-6xl mx-auto w-full px-0 mb-2">
+                    <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
+                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                        <p className="text-sm font-medium text-ink flex-1">
+                            Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to
+                            Anki!
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setSuccessBanner(null)}
+                            className="text-slate-600 hover:text-ink"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
             )}
-          </div>
 
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="md"
-            disabled={!canSubmit || isGenerating}
-            leftIcon={<Sparkles className="w-4 h-4" />}
-            className="shadow-button"
-          >
-            Generate
-            <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
-          </Button>
-        </div>
+            <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
+                {/* Content Type tabs + Generate button (same row) */}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {loadingTypes ? (
+                        <div className="h-[46px] w-72 bg-[#ececea] rounded-[11px] animate-pulse" />
+                    ) : (
+                        <div className="inline-flex flex-wrap gap-1 bg-[#ececea] rounded-[11px] p-1">
+                            {contentTypes.map((ct) => {
+                                const Icon = resolveIcon(ct);
+                                const isActive = activeCode === ct.code;
+                                return (
+                                    <button
+                                        key={ct.id}
+                                        type="button"
+                                        onClick={() => handleSelectType(ct.code)}
+                                        className={cn(
+                                            'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
+                                            'focus-visible:ring-2 focus-visible:ring-primary/30',
+                                            isActive
+                                                ? 'bg-white text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+                                                : 'bg-transparent text-[#7c7f87] hover:text-ink',
+                                        )}
+                                    >
+                                        <Icon className="w-4 h-4" />
+                                        <span>{ct.name}</span>
+                                    </button>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={() => router.push('/admin?tab=content-types')}
+                                className={cn(
+                                    'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
+                                    'focus-visible:ring-2 focus-visible:ring-primary/30 bg-transparent text-[#7c7f87] hover:text-ink',
+                                )}
+                            >
+                                <SlidersHorizontal className="w-4 h-4" />
+                                <span>Custom</span>
+                                <ArrowUpRight className="w-3 h-3 text-[#aeb0b7]" />
+                            </button>
+                        </div>
+                    )}
 
-        {/* Workspace — Form */}
-        <div>
-          {activeCode === FormType.LANGUAGE && (
-            <LanguageForm
-              onGenerateStart={handleGenerateStart}
-              onStepUpdate={handleStepUpdate}
-              onGenerateEnd={handleGenerateEnd}
-              onValidityChange={setCanSubmit}
-              formId={FORM_ID}
-            />
-          )}
-          {activeCode === FormType.IT && (
-            <ITForm
-              onGenerateStart={handleGenerateStart}
-              onStepUpdate={handleStepUpdate}
-              onGenerateEnd={handleGenerateEnd}
-              onValidityChange={setCanSubmit}
-              formId={FORM_ID}
-            />
-          )}
-          {activeCode === FormType.GENERAL && (
-            <GeneralForm
-              onGenerateStart={handleGenerateStart}
-              onStepUpdate={handleStepUpdate}
-              onGenerateEnd={handleGenerateEnd}
-              onValidityChange={setCanSubmit}
-              formId={FORM_ID}
-            />
-          )}
-          {activeType && !isBuiltIn(activeCode) && (
-            <DynamicForm
-              key={activeType.id}
-              contentType={activeType}
-              onGenerateStart={handleGenerateStart}
-              onStepUpdate={handleStepUpdate}
-              onGenerateEnd={handleGenerateEnd}
-              onValidityChange={setCanSubmit}
-              formId={FORM_ID}
-            />
-          )}
-        </div>
-      </div>
+                    <Button
+                        type="submit"
+                        form={FORM_ID}
+                        size="md"
+                        disabled={!canSubmit || isGenerating}
+                        leftIcon={<Sparkles className="w-4 h-4" />}
+                        className="shadow-button"
+                    >
+                        Generate
+                        <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
+                    </Button>
+                </div>
 
-      <LoadingOverlay
-        open={isGenerating}
-        title="Generating Cognitive Asset"
-        steps={loadingSteps}
-        progress={progress}
-        flowTip="Tip: Short example sentences help your brain retain words 3-5x faster than long definitions."
-      />
-    </>
-  )
+                {/* Workspace — Form (blueprint-driven, no hardcoded branches) */}
+                <div>
+                    {blueprint && (
+                        <CardForm
+                            key={activeCode}
+                            blueprint={blueprint}
+                            onGenerateStart={handleGenerateStart}
+                            onStepUpdate={handleStepUpdate}
+                            onGenerateEnd={handleGenerateEnd}
+                            onValidityChange={setCanSubmit}
+                            formId={FORM_ID}
+                        />
+                    )}
+                </div>
+            </div>
+
+            <LoadingOverlay
+                open={isGenerating}
+                title="Generating Cognitive Asset"
+                steps={loadingSteps}
+                progress={progress}
+                flowTip="Tip: Short example sentences help your brain retain words 3-5x faster than long definitions."
+            />
+        </>
+    );
 }

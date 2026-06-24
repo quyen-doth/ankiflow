@@ -26,25 +26,33 @@ const recordChange = (ids: string[]) => {
 }
 const noop = () => undefined
 
-function clickButtonByText(root: HTMLElement, text: string): void {
-  const btn = Array.from(root.querySelectorAll('button')).find(b =>
-    b.textContent?.includes(text)
+// Chip buttons render an icon (svg) + name span; the All/Clear links have no svg.
+function chipButtons(root: HTMLElement): HTMLButtonElement[] {
+  return Array.from(root.querySelectorAll('button')).filter(b => b.querySelector('svg'))
+}
+
+function isChecked(btn: HTMLButtonElement): boolean {
+  return btn.className.includes('rgba(49,99,66,0.07)')
+}
+
+// Click a header link (All / Clear) — a button with no svg matching exact text.
+function clickLinkByText(root: HTMLElement, text: string): void {
+  const btn = Array.from(root.querySelectorAll('button')).find(
+    b => !b.querySelector('svg') && b.textContent?.trim() === text
   )
-  if (!btn) throw new Error(`không tìm thấy button "${text}"`)
+  if (!btn) throw new Error(`không tìm thấy link "${text}"`)
   btn.click()
 }
 
 function visibleNames(root: HTMLElement): string[] {
-  return Array.from(root.querySelectorAll('label input[type="checkbox"]')).map(
-    cb => cb.closest('label')?.querySelector('span')?.textContent?.trim() ?? ''
-  )
+  return chipButtons(root).map(b => b.querySelector('span')?.textContent?.trim() ?? '')
 }
 
 registerUnit<CardTypeSelectorProps>({
   id: 'CardTypeSelector',
   title: 'CardTypeSelector',
   description:
-    'Checkbox grid card types: lọc form_type + is_active + language (null = mọi ngôn ngữ), Select All / Clear (vitest-only).',
+    'Chip card types: lọc form_type + is_active + language (null = mọi ngôn ngữ), All / Clear (vitest-only).',
   kind: 'component',
   render: props => <CardTypeSelector {...props} />,
   propsSchema: z.object({
@@ -65,30 +73,29 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'act-toggle',
-      description: 'Act: tick checkbox chưa chọn → onChange thêm id.',
+      description: 'Act: click chip chưa chọn → onChange thêm id.',
       props: { formType: 'Language', language: LanguageType.ENGLISH, selectedIds: ['ct-en'], onChange: recordChange },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
         await ctx.wait(50)
         changeSpy.count = 0
         changeSpy.lastValue = null
-        const checkboxes = ctx.root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
-        const unchecked = Array.from(checkboxes).find(cb => !cb.checked)
-        if (!unchecked) throw new Error('không có checkbox chưa chọn')
+        const unchecked = chipButtons(ctx.root).find(b => !isChecked(b))
+        if (!unchecked) throw new Error('không có chip chưa chọn')
         unchecked.click()
         await ctx.wait(0)
       },
     },
     {
       id: 'act-select-all',
-      description: 'Act: Select All → onChange nhận toàn bộ id đang hiển thị.',
+      description: 'Act: All → onChange nhận toàn bộ id đang hiển thị.',
       props: { formType: 'Language', language: LanguageType.ENGLISH, selectedIds: [], onChange: recordChange },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
         await ctx.wait(50)
         changeSpy.count = 0
         changeSpy.lastValue = null
-        clickButtonByText(ctx.root, 'Select All')
+        clickLinkByText(ctx.root, 'All')
         await ctx.wait(0)
       },
     },
@@ -101,7 +108,7 @@ registerUnit<CardTypeSelectorProps>({
         await ctx.wait(50)
         changeSpy.count = 0
         changeSpy.lastValue = null
-        clickButtonByText(ctx.root, 'Clear')
+        clickLinkByText(ctx.root, 'Clear')
         await ctx.wait(0)
       },
     },
@@ -131,10 +138,10 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'checked-matches-selection',
-      description: 'Checkbox checked khớp selectedIds, contract selected khớp',
+      description: 'Chip checked khớp selectedIds, contract selected khớp',
       onlyFixtures: ['loaded-language-en'],
       check: ({ root, contract }) => {
-        const checked = root.querySelectorAll('input[type="checkbox"]:checked').length
+        const checked = chipButtons(root).filter(isChecked).length
         if (checked !== 1) return `checked=${checked}, expected=1`
         return contract.selected === '1' || `contract.selected="${contract.selected}"`
       },
