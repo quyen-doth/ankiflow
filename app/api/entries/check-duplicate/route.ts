@@ -2,38 +2,59 @@ import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { LOCAL_USER_ID } from '@/lib/constants'
 
+interface DuplicateEntry {
+  id: string
+  word: string
+  anki_deck: string
+  status: string
+  created_at: string | null
+}
+
 export async function POST(request: Request) {
   try {
-    const { word, language } = await request.json()
+    const body = await request.json()
+    const { word, words } = body as { word?: string; words?: string[] }
 
-    if (!word) {
+    // Danh sách từ cần kiểm tra: ưu tiên `words` (batch), fallback `word` (single).
+    const targets: string[] = Array.isArray(words) ? words : word ? [word] : []
+    if (targets.length === 0) {
       return NextResponse.json({ error: 'Missing word' }, { status: 400 })
     }
 
     const db = getAdminDb()
-    const wordLower = word.toLowerCase().trim()
 
-    let query = db.collection('entries')
+    // Kiểm tra TOÀN CỤC: quét toàn bộ entries của user, KHÔNG lọc theo deck/ngôn ngữ.
+    const snapshot = await db.collection('entries')
       .where('user_id', '==', LOCAL_USER_ID)
+      .get()
 
-    if (language) {
-      query = query.where('language', '==', language)
+    const allEntries = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        normalized: (data.word || data.term || data.title || '').toLowerCase().trim(),
+        entry: {
+          id: doc.id,
+          word: data.word || data.term || data.title,
+          anki_deck: data.anki_deck,
+          status: data.status,
+          created_at: data.created_at?.toDate?.()?.toISOString() || null,
+        } as DuplicateEntry,
+      }
+    })
+
+    const matchFor = (w: string): DuplicateEntry[] => {
+      const wl = w.toLowerCase().trim()
+      return allEntries.filter(e => e.normalized === wl).map(e => e.entry)
     }
 
-    const snapshot = await query.get()
+    // Batch: trả mảng kết quả theo từng từ.
+    if (Array.isArray(words)) {
+      const results = words.map(w => ({ word: w, duplicates: matchFor(w) }))
+      return NextResponse.json({ results })
+    }
 
-    const duplicates = snapshot.docs.filter(doc => {
-      const data = doc.data()
-      const entryWord = (data.word || data.term || data.title || '').toLowerCase().trim()
-      return entryWord === wordLower
-    }).map(doc => ({
-      id: doc.id,
-      word: doc.data().word || doc.data().term || doc.data().title,
-      anki_deck: doc.data().anki_deck,
-      status: doc.data().status,
-      created_at: doc.data().created_at?.toDate?.()?.toISOString() || null,
-    }))
-
+    // Single: tương thích ngược.
+    const duplicates = matchFor(targets[0])
     return NextResponse.json({
       isDuplicate: duplicates.length > 0,
       duplicates,

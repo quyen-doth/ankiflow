@@ -22,6 +22,11 @@ export function BatchItemList({ items, onChange, label, placeholder, hint }: Bat
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const focusTarget = useRef<number | null>(null)
 
+  // Khi mount (vào chế độ batch): con trỏ vào dòng nhập đầu tiên.
+  useEffect(() => {
+    inputRefs.current[0]?.focus()
+  }, [])
+
   // Sau khi danh sách đổi, focus vào dòng được đánh dấu (thêm/xóa).
   useEffect(() => {
     if (focusTarget.current !== null) {

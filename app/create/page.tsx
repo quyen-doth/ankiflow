@@ -91,6 +91,7 @@ export default function CreatePage() {
                 setContentTypes(types);
                 if (types.length > 0 && !activeCode) {
                     setActiveCode(types[0].code);
+                    setBatchMode(types[0].default_create_mode === 'batch');
                 }
             } catch (error) {
                 console.error('Error fetching content types:', error);
@@ -132,8 +133,12 @@ export default function CreatePage() {
 
     const handleSelectType = useCallback((code: string) => {
         setActiveCode(code);
+        // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
+        const next = contentTypes.find((ct) => ct.code === code);
+        setBatchMode(next?.default_create_mode === 'batch');
         setCanSubmit(false);
-    }, []);
+        setBatchCount(0);
+    }, [contentTypes]);
 
     const handleModeChange = useCallback((batch: boolean) => {
         setBatchMode(batch);

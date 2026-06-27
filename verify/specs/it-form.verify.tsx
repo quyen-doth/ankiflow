@@ -152,7 +152,7 @@ registerUnit<ITFormProps>({
       description: 'Form có term input, DeckSelector, TopicSelector, difficulty select',
       check: ({ root }) => {
         if (!root.querySelector(TERM_INPUT)) return 'thiếu term input'
-        if (!root.querySelector('[data-verify-unit="DeckSelector"]')) return 'thiếu DeckSelector'
+        if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return 'thiếu DeckCreatableField'
         if (!root.querySelector('[data-verify-unit="TopicSelector"]')) return 'thiếu TopicSelector'
         return !!root.querySelector('select[aria-label="Difficulty"]') || 'thiếu difficulty select'
       },

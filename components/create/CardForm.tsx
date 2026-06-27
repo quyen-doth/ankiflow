@@ -6,15 +6,17 @@ import { PenLine, SlidersHorizontal } from "lucide-react";
 import { Input, Textarea, Select, FieldWrapper } from "@/components/ui/FormField";
 import { TagInput } from "@/components/ui/TagInput";
 import { LanguageSelector } from "./LanguageSelector";
-import { CategorySelector } from "./CategorySelector";
+import { CategoryCreatableField } from "./CategoryCreatableField";
 import { CardTypeSelector } from "./CardTypeSelector";
-import { DeckSelector } from "./DeckSelector";
+import { DeckCreatableField } from "./DeckCreatableField";
 import { TopicSelector } from "./TopicSelector";
 import { ColumnLabel } from "./ColumnLabel";
 import { InfoCallout } from "./InfoCallout";
 import { BatchItemList } from "./BatchItemList";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { DuplicateModal } from "./DuplicateModal";
+import { BatchDuplicateModal } from "./BatchDuplicateModal";
+import type { BatchDuplicateResult } from "@/hooks/useDuplicateCheck";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/components/ui/Toast";
 import { useDuplicateCheck } from "@/hooks/useDuplicateCheck";
@@ -60,9 +62,11 @@ export function CardForm({
     const [values, setValues] = useState<Record<string, string>>({});
     const [batchItems, setBatchItems] = useState<string[]>([""]);
     const [error, setError] = useState<string | null>(null);
-    const { duplicates, showWarning, setShowWarning, checkDuplicate } = useDuplicateCheck();
+    const { duplicates, showWarning, setShowWarning, checkDuplicate, checkDuplicatesBatch } = useDuplicateCheck();
     const skipDuplicateCheck = useRef(false);
     const abortRef = useRef<AbortController | null>(null);
+    const [batchDuplicates, setBatchDuplicates] = useState<BatchDuplicateResult[]>([]);
+    const [showBatchDuplicate, setShowBatchDuplicate] = useState(false);
 
     const setValue = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
 
@@ -166,9 +170,9 @@ export function CardForm({
         }
     };
 
-    const runBatchGenerate = async () => {
+    const runBatchGenerate = async (itemsOverride?: string[]) => {
         setError(null);
-        const items = batchItems.map((it) => it.trim()).filter(Boolean);
+        const items = itemsOverride ?? batchItems.map((it) => it.trim()).filter(Boolean);
         if (items.length === 0) return;
 
         onGenerateStart?.();
@@ -232,7 +236,17 @@ export function CardForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (batchMode) {
-            await runBatchGenerate();
+            const items = batchItems.map((it) => it.trim()).filter(Boolean);
+            if (items.length === 0) return;
+            // Kiểm tra trùng TOÀN CỤC trước khi gọi AI.
+            const results = await checkDuplicatesBatch(items);
+            const dup = results.filter((r) => r.duplicates.length > 0);
+            if (dup.length > 0) {
+                setBatchDuplicates(dup);
+                setShowBatchDuplicate(true);
+                return;
+            }
+            await runBatchGenerate(items);
             return;
         }
         if (skipDuplicateCheck.current) {
@@ -240,10 +254,22 @@ export function CardForm({
             await runGenerate();
             return;
         }
-        const hasDuplicate = await checkDuplicate(primaryValue, metaLanguage ?? undefined);
+        const hasDuplicate = await checkDuplicate(primaryValue);
         if (!hasDuplicate) {
             await runGenerate();
         }
+    };
+
+    // Batch duplicate modal handlers
+    const batchValidItemsList = () => batchItems.map((it) => it.trim()).filter(Boolean);
+    const handleBatchProceedAll = () => {
+        setShowBatchDuplicate(false);
+        runBatchGenerate(batchValidItemsList());
+    };
+    const handleBatchSkipDuplicates = () => {
+        setShowBatchDuplicate(false);
+        const dupWords = new Set(batchDuplicates.map((d) => d.word));
+        runBatchGenerate(batchValidItemsList().filter((it) => !dupWords.has(it)));
     };
 
     const handleProceedAnyway = () => {
@@ -266,6 +292,7 @@ export function CardForm({
                 <input
                     type="text"
                     aria-label={field.label}
+                    autoFocus
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={field.placeholder}
@@ -328,17 +355,19 @@ export function CardForm({
                 );
             case "deck":
                 return (
-                    <DeckSelector
+                    <DeckCreatableField
                         value={deckId}
                         onChangeId={(id) => updateSession({ deckId: id })}
                         onClear={() => updateSession({ deckId: "" })}
                         filterFormType={leaf.filterByLanguage ? FormType.LANGUAGE : undefined}
                         filterLanguage={leaf.filterByLanguage ? language : undefined}
+                        createFormType={blueprint.formType}
+                        createLanguage={isLanguageFlow ? language : undefined}
                     />
                 );
             case "category":
                 return (
-                    <CategorySelector
+                    <CategoryCreatableField
                         formType={(blueprint.uiFormType ?? "") as UIFormType | ""}
                         value={category}
                         onChange={(v) => updateSession({ categoryId: v })}
@@ -436,6 +465,15 @@ export function CardForm({
                 word={primaryValue}
                 language={metaLanguage ?? undefined}
                 duplicates={duplicates}
+            />
+
+            <BatchDuplicateModal
+                open={showBatchDuplicate}
+                onClose={() => setShowBatchDuplicate(false)}
+                onProceedAll={handleBatchProceedAll}
+                onSkipDuplicates={handleBatchSkipDuplicates}
+                duplicates={batchDuplicates}
+                totalCount={batchValidItems.length}
             />
         </form>
     );

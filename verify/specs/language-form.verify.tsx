@@ -156,8 +156,8 @@ registerUnit<LanguageFormProps>({
       check: ({ root }) => {
         if (!root.querySelector('input[aria-label="Vocabulary item"]')) return 'thiếu input từ vựng'
         if (!root.querySelector('[data-verify-unit="LanguageSelector"]')) return 'thiếu LanguageSelector'
-        if (!root.querySelector('[data-verify-unit="DeckSelector"]')) return 'thiếu DeckSelector'
-        return !!root.querySelector('[data-verify-unit="CategorySelector"]') || 'thiếu CategorySelector'
+        if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return 'thiếu DeckCreatableField'
+        return !!root.querySelector('[data-verify-unit="CategoryCreatableField"]') || 'thiếu CategoryCreatableField'
       },
     },
     {

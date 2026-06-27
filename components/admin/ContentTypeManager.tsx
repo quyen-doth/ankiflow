@@ -16,6 +16,7 @@ import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
+import { cn } from '@/lib/utils'
 import { FormType } from '@/types'
 import type { ContentType, FormFieldConfig } from '@/types'
 
@@ -45,6 +46,7 @@ interface ContentTypeDraft {
   icon: string
   is_active: boolean
   sort_order: number
+  default_create_mode: 'single' | 'batch'
 }
 
 const EMPTY_DRAFT: ContentTypeDraft = {
@@ -54,6 +56,7 @@ const EMPTY_DRAFT: ContentTypeDraft = {
   icon: 'BookOpen',
   is_active: true,
   sort_order: 0,
+  default_create_mode: 'single',
 }
 
 const EMPTY_FIELD: FormFieldConfig = {
@@ -127,6 +130,7 @@ export function ContentTypeManager() {
       icon: contentType.icon,
       is_active: contentType.is_active,
       sort_order: contentType.sort_order,
+      default_create_mode: contentType.default_create_mode ?? 'single',
     })
     setFields([...contentType.fields].sort((a, b) => a.sort_order - b.sort_order).map(f => ({ ...f })))
     setModalOpen(true)
@@ -351,6 +355,30 @@ export function ContentTypeManager() {
             checked={draft.is_active}
             onChange={(v) => setDraft(d => ({ ...d, is_active: v }))}
           />
+
+          <FieldWrapper label="Default create mode">
+            <div className="inline-flex gap-1 bg-[#ececea] rounded-[11px] p-1" role="radiogroup" aria-label="Default create mode">
+              {(['single', 'batch'] as const).map((mode) => {
+                const active = draft.default_create_mode === mode
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setDraft(d => ({ ...d, default_create_mode: mode }))}
+                    className={cn(
+                      'px-4 py-[7px] rounded-[8px] text-[13px] font-bold capitalize transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+                      active ? 'bg-white text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'bg-transparent text-[#7c7f87] hover:text-ink',
+                    )}
+                  >
+                    {mode}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[12px] text-slate-400 mt-1.5">Pre-selected when this content type is opened in Create (user can still switch).</p>
+          </FieldWrapper>
 
           {/* Fields */}
           <div className="flex items-center justify-between mt-2">

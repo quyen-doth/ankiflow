@@ -121,7 +121,7 @@ registerUnit<GeneralFormProps>({
       check: ({ root }) => {
         if (!root.querySelector(TITLE_INPUT)) return 'thiếu title input'
         if (!root.querySelector('textarea')) return 'thiếu content textarea'
-        if (!root.querySelector('[data-verify-unit="DeckSelector"]')) return 'thiếu DeckSelector'
+        if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return 'thiếu DeckCreatableField'
         return !!root.querySelector('[data-verify-unit="TagInput"]') || 'thiếu TagInput'
       },
     },

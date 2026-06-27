@@ -264,6 +264,7 @@ async function seedContentTypes() {
       description: 'Từ vựng tiếng Anh, Trung, Nhật',
       icon: '🌍',
       sort_order: 1,
+      default_create_mode: 'batch' as const,
       fields: [
         { field_key: 'language',       label: 'Ngôn ngữ',    type: 'dropdown',       is_required: true,  is_session_persistent: true,  sort_order: 1, data_source: null,           placeholder: null },
         { field_key: 'anki_deck',      label: 'Anki Deck',   type: 'dropdown',       is_required: true,  is_session_persistent: true,  sort_order: 2, data_source: 'decks',        placeholder: null },
@@ -281,6 +282,7 @@ async function seedContentTypes() {
       description: 'Thuật ngữ lập trình, công nghệ',
       icon: '💻',
       sort_order: 2,
+      default_create_mode: 'single' as const,
       fields: [
         { field_key: 'anki_deck',      label: 'Anki Deck',       type: 'dropdown',       is_required: true,  is_session_persistent: true,  sort_order: 1, data_source: 'decks',      placeholder: null },
         { field_key: 'topic_ids',      label: 'Chủ đề',          type: 'checkbox_group', is_required: false, is_session_persistent: true,  sort_order: 2, data_source: 'topics',     placeholder: null },
@@ -298,6 +300,7 @@ async function seedContentTypes() {
       description: 'Bất kỳ nội dung nào khác',
       icon: '📚',
       sort_order: 3,
+      default_create_mode: 'single' as const,
       fields: [
         { field_key: 'anki_deck', label: 'Anki Deck',         type: 'dropdown',  is_required: true,  is_session_persistent: true,  sort_order: 1, data_source: 'decks', placeholder: null },
         { field_key: 'title',     label: 'Tiêu đề / Khái niệm',type: 'text',     is_required: true,  is_session_persistent: false, sort_order: 2, data_source: null,    placeholder: 'Nhập tiêu đề...' },
@@ -316,6 +319,7 @@ async function seedContentTypes() {
       fields: ct.fields,
       is_active: true,
       sort_order: ct.sort_order,
+      default_create_mode: ct.default_create_mode,
       created_at: now,
       updated_at: now,
     });

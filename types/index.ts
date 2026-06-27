@@ -175,6 +175,8 @@ export interface ContentType {
   fields: FormFieldConfig[];
   is_active: boolean;
   sort_order: number;
+  /** Chế độ tạo thẻ mặc định khi chọn content type này trong trang Create. */
+  default_create_mode?: 'single' | 'batch';
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }

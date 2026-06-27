@@ -69,7 +69,7 @@ export function DuplicateModal({
             <div className="flex-1 min-w-0">
               <h2 className="text-[16px] font-extrabold text-ink">Duplicate found</h2>
               <p className="text-[13.5px] text-[#7c7f87] mt-1 leading-[1.5]">
-                &ldquo;{word}&rdquo; already exists{language ? ' with the same language' : ''}. You can
+                &ldquo;{word}&rdquo; already exists in your collection. You can
                 edit the existing card instead, or generate a new one anyway.
               </p>
             </div>
