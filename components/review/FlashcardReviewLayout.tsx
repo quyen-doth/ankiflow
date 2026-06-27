@@ -9,8 +9,8 @@ import { ImageSelector, type ImageItem } from '@/components/preview/ImageSelecto
 import { AudioPlayer } from '@/components/preview/AudioPlayer'
 import { CardPreview } from '@/components/preview/CardPreview'
 import { CardList } from '@/components/preview/CardList'
-import { DeckSelector } from '@/components/create/DeckSelector'
-import type { Entry } from '@/types'
+import { DeckCreatableField } from '@/components/create/DeckCreatableField'
+import type { Entry, LanguageType } from '@/types'
 
 interface CardTypeItem {
   id: string
@@ -216,7 +216,15 @@ export function FlashcardReviewLayout({
 
           {/* Target deck */}
           <section className="bg-white border border-border rounded-[14px] p-5">
-            <DeckSelector value={selectedDeckId} onChangeId={onDeckChange} onClear={onDeckClear} label="Target Deck" />
+            <DeckCreatableField
+              value={selectedDeckId}
+              onChangeId={onDeckChange}
+              onClear={onDeckClear}
+              label="Target Deck"
+              createFormType={entry.form_type ?? ''}
+              createLanguage={entry.language as LanguageType | undefined}
+              fallbackDeckName={entry.anki_deck}
+            />
             {entry.anki_deck && (
               <p className="text-[11px] font-mono text-slate-400 mt-2 truncate">Anki: {entry.anki_deck}</p>
             )}

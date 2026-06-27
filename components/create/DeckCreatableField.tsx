@@ -10,7 +10,7 @@ import { verifyAttrs } from '@/verify/core/contract'
 import type { DeckConfig, FormType, LanguageType } from '@/types'
 import type { CreatedDeck } from '@/lib/create/createDeckCategory'
 
-type DeckRow = Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'language' | 'sort_order'>
+type DeckRow = Pick<DeckConfig, 'id' | 'display_name' | 'anki_deck_name' | 'form_type' | 'language' | 'sort_order'>
 
 interface DeckCreatableFieldProps {
   value: string
@@ -22,6 +22,8 @@ interface DeckCreatableFieldProps {
   /** form_type/ngôn ngữ gán cho deck MỚI khi tạo trong trang create. */
   createFormType: FormType | string
   createLanguage?: LanguageType | null
+  /** Tên Anki deck đang gắn vào entry — dùng để hiển thị deck đang chọn khi chưa có deckId. */
+  fallbackDeckName?: string
 }
 
 /** Pulldown deck có tìm kiếm + tạo deck mới ngay (qua popup). Dùng trong trang Create. */
@@ -34,6 +36,7 @@ export function DeckCreatableField({
   filterLanguage,
   createFormType,
   createLanguage,
+  fallbackDeckName,
 }: DeckCreatableFieldProps) {
   const [decks, setDecks] = useState<DeckRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,10 +70,17 @@ export function DeckCreatableField({
 
   const options = filteredDecks.map(d => ({ id: d.id, label: d.display_name }))
 
+  // Hiển thị deck đang chọn: ưu tiên value (deckId); nếu chưa có id thì resolve theo tên Anki deck.
+  const effectiveValue = useMemo(() => {
+    if (value) return value
+    if (fallbackDeckName) return decks.find(d => d.anki_deck_name === fallbackDeckName)?.id ?? ''
+    return ''
+  }, [value, fallbackDeckName, decks])
+
   const handleDeckCreated = (deck: CreatedDeck) => {
     setDecks(prev => [
       ...prev,
-      { id: deck.id, display_name: deck.display_name, form_type: createFormType as FormType, language: createLanguage ?? null, sort_order: 999 },
+      { id: deck.id, display_name: deck.display_name, anki_deck_name: deck.anki_deck_name, form_type: createFormType as FormType, language: createLanguage ?? null, sort_order: 999 },
     ])
     onChangeId(deck.id)
   }
@@ -84,7 +94,7 @@ export function DeckCreatableField({
       <CreatableSelect
         ariaLabel={label}
         options={options}
-        value={value}
+        value={effectiveValue}
         onChange={onChangeId}
         onClear={onClear}
         onCreate={(q) => { setPendingName(q); setModalOpen(true) }}
