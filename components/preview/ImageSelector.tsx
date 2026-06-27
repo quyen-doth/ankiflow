@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { Check, Upload, Search, ImageIcon } from 'lucide-react'
+import { Check, Upload, Search, ImageIcon, X } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 
 export interface ImageItem {
@@ -25,23 +25,69 @@ interface ImageSelectorProps {
 
 export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUpload, loading }: ImageSelectorProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') onUpload(reader.result)
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
     e.target.value = ''
   }
 
+  // Dán ảnh (file trong clipboard) hoặc URL ảnh.
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (items) {
+      for (const item of Array.from(items)) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            e.preventDefault()
+            processFile(file)
+            return
+          }
+        }
+      }
+    }
+    const text = e.clipboardData?.getData('text')?.trim()
+    if (text && /^https?:\/\//i.test(text)) {
+      e.preventDefault()
+      onUpload(text)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer?.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      processFile(file)
+      return
+    }
+    const url = (e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain') || '').trim()
+    if (url && /^https?:\/\//i.test(url)) onUpload(url)
+  }
+
   const creditItem = images.find(img => img.url === selectedUrl)
+  // Ảnh đang chọn không thuộc gợi ý Unsplash (upload/dán/kéo-thả/URL ngoài) → hiển thị preview riêng.
+  const isCustom = !!selectedUrl && !images.some(img => img.url === selectedUrl)
 
   return (
     <div
-      className="flex flex-col gap-4"
+      className={cn('flex flex-col gap-4 rounded-[10px] transition-shadow', isDragging && 'ring-2 ring-primary ring-offset-2')}
+      tabIndex={0}
+      onPaste={handlePaste}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+      onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+      onDrop={handleDrop}
       {...verifyAttrs({ unit: 'ImageSelector', count: images.length, loading: !!loading, selected: selectedUrl })}
     >
       <div className="flex items-center justify-between">
@@ -71,6 +117,22 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
         aria-label="Upload image"
         onChange={handleFileChange}
       />
+
+      {/* Ảnh cục bộ đang chọn (upload/dán/kéo-thả/URL ngoài) — hiển thị preview riêng. */}
+      {isCustom && selectedUrl && (
+        <div className="relative rounded-[10px] overflow-hidden border-2 border-primary">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={selectedUrl} alt="Selected illustration" className="w-full max-h-[220px] object-contain bg-surface" />
+          <button
+            type="button"
+            aria-label="Remove image"
+            onClick={() => onUpload('')}
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-4 gap-2.5">
@@ -106,7 +168,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
         </div>
       ) : (
         <p className="text-sm text-slate-600 py-4 text-center">
-          No images found. Try &quot;Find more&quot; or upload your own.
+          No images found. Drag-drop, paste, or use &quot;Upload&quot; — or try &quot;Find more&quot;.
         </p>
       )}
 

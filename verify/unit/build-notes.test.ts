@@ -116,4 +116,27 @@ describe('buildNotes — audio in all card types', () => {
     expect(notes[0].tags).toContain('zh')
     expect(notes[0].tags).toContain('hsk')
   })
+
+  it('imageFilename: nhúng <img> dùng tên file media Anki vào back', () => {
+    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], undefined, 'ankiflow_img_hello.png')
+    expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
+  })
+
+  it('image_to_word: imageFilename dùng làm front', () => {
+    const notes = buildNotes(makeEntry(), [makeCardType('image_to_word')], undefined, 'ankiflow_img_hello.png')
+    expect(notes[0].fields.Front).toContain('<img src="ankiflow_img_hello.png"')
+  })
+
+  it('ảnh data URL không có imageFilename → không nhúng <img>', () => {
+    const notes = buildNotes(
+      makeEntry({ image_url: 'data:image/png;base64,AAAA' }),
+      [makeCardType('word_to_meaning')],
+    )
+    expect(notes[0].fields.Back).not.toContain('<img')
+  })
+
+  it('ảnh URL http (Unsplash) vẫn nhúng trực tiếp khi không có imageFilename', () => {
+    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')])
+    expect(notes[0].fields.Back).toContain('<img src="https://images.unsplash.com/photo-hello"')
+  })
 })

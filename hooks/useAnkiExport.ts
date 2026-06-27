@@ -31,7 +31,7 @@ interface AnkiExportState {
   handleConfirm: () => Promise<void>
 }
 
-export function buildNotes(entry: Partial<Entry>, cardTypes: CardTypeItem[], audioFilename?: string): AnkiNote[] {
+export function buildNotes(entry: Partial<Entry>, cardTypes: CardTypeItem[], audioFilename?: string, imageFilename?: string): AnkiNote[] {
   const deckName = entry.anki_deck || 'Default'
   const word = entry.word || entry.term || entry.title || ''
   const reading = entry.hiragana || entry.pinyin || entry.ipa || ''
@@ -40,7 +40,10 @@ export function buildNotes(entry: Partial<Entry>, cardTypes: CardTypeItem[], aud
   const example = entry.example_sentence || ''
   const translation = entry.example_translation || ''
   const tags = entry.tags || []
-  const imageHtml = entry.image_url && !entry.image_url.startsWith('data:')
+  // Ưu tiên ảnh đã lưu vào Anki media (ảnh cục bộ); fallback ảnh URL http (Unsplash/link ngoài).
+  const imageHtml = imageFilename
+    ? `<img src="${imageFilename}" style="max-height:200px">`
+    : entry.image_url && !entry.image_url.startsWith('data:')
     ? `<img src="${entry.image_url}" style="max-height:200px">`
     : ''
 
@@ -167,8 +170,35 @@ export async function exportEntryToAnki(
     }
   }
 
-  // Step 2: Build notes with audio embedded in all card types
-  const notes = buildNotes(entry, selectedTypes, audioFilename)
+  // Step 1b: Store ảnh cục bộ (data URL) vào Anki media folder
+  let imageFilename: string | undefined
+  if (entry.image_url && entry.image_url.startsWith('data:image')) {
+    const match = entry.image_url.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,(.*)$/)
+    const ext = (match?.[1] || 'png').replace('jpeg', 'jpg')
+    const base64 = match?.[2]
+    if (base64) {
+      const word = entry.word || entry.term || entry.title || 'image'
+      const fname = `ankiflow_img_${word.replace(/[\s/\\:*?"<>|]/g, '_')}.${ext}`
+      try {
+        const storeRes = await fetch('/api/image/store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64, filename: fname }),
+        })
+        if (storeRes.ok) {
+          const storeData = await storeRes.json()
+          imageFilename = storeData.filename || fname
+        } else {
+          console.warn('Image store returned non-OK status:', storeRes.status)
+        }
+      } catch (e) {
+        console.warn('Failed to store image in Anki media — cards will export without image:', e)
+      }
+    }
+  }
+
+  // Step 2: Build notes with audio + image embedded in all card types
+  const notes = buildNotes(entry, selectedTypes, audioFilename, imageFilename)
 
   const entryData = {
     ...entry,
