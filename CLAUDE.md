@@ -50,6 +50,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Never call Firestore in a loop — use `Promise.all()` for batch fetches
 - Never hardcode string values for `form_type` or `status` — use the TypeScript enums in `types/index.ts`
 - `settings` is a singleton document — never create a new one, only update the existing one
+- All user-facing UI text (labels, toasts, descriptions, modals) must be in English — no other language (But have to use Vietnamese in call chat session)
 
 ## Critical Enums
 

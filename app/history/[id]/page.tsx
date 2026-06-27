@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
 import { useCardMedia } from '@/hooks/useCardMedia'
 import { useToast } from '@/components/ui/Toast'
+import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import { ArrowLeft, Check } from 'lucide-react'
 import type { Entry } from '@/types'
 
@@ -87,6 +88,11 @@ export default function HistoryDetailPage() {
     }
   }, [])
 
+  const handleDeckClear = useCallback(() => {
+    setSelectedDeckId('')
+    setEntry(prev => ({ ...prev, anki_deck: '' }))
+  }, [])
+
   const media = useCardMedia(entry, setEntry, !loading && !notFound && !!entry.id)
 
   const updateField = (field: keyof Entry, value: unknown) => {
@@ -95,6 +101,11 @@ export default function HistoryDetailPage() {
 
   const handleSave = async () => {
     if (!entry.id) return
+    const errors = validateCardEntry(entry, selectedCardTypeIds)
+    if (errors.length > 0) {
+      toast.error(formatValidationMessage(errors))
+      return
+    }
     setSaving(true)
     setSavedAt(null)
     try {
@@ -118,7 +129,7 @@ export default function HistoryDetailPage() {
         card_type_ids: selectedCardTypeIds,
         category_id: entry.category_id ?? null,
       }
-      // Firestore không nhận undefined — lọc bỏ
+      // Firestore rejects undefined values
       const updates = Object.fromEntries(
         Object.entries(raw).filter(([, v]) => v !== undefined),
       ) as Partial<Entry>
@@ -126,10 +137,10 @@ export default function HistoryDetailPage() {
       await saveEntry(entry as Entry, updates)
       setEntry(prev => ({ ...prev, ...updates }))
       setSavedAt(Date.now())
-      toast.success('Đã lưu thay đổi')
+      toast.success('Changes saved')
     } catch (e) {
       console.error('Save error:', e)
-      toast.error('Không lưu được thay đổi. Vui lòng thử lại.')
+      toast.error('Failed to save changes. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -181,6 +192,7 @@ export default function HistoryDetailPage() {
       audioSubtitle={`Google TTS · ${entry.language || 'en'}`}
       selectedDeckId={selectedDeckId}
       onDeckChange={handleDeckChange}
+      onDeckClear={handleDeckClear}
       cardTypes={cardTypes}
       selectedCardTypeIds={selectedCardTypeIds}
       onCardTypesChange={setSelectedCardTypeIds}

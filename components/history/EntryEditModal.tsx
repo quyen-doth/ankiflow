@@ -45,11 +45,11 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
     setSaving(true)
     try {
       await onSave(fields)
-      toast.success('Đã lưu thay đổi')
+      toast.success('Changes saved')
       onClose()
     } catch (e) {
       console.error('Save error:', e)
-      toast.error('Không lưu được thay đổi.')
+      toast.error('Failed to save changes.')
     } finally {
       setSaving(false)
     }
@@ -59,6 +59,7 @@ export function EntryEditModal({ open, onClose, entry, onSave }: EntryEditModalP
     <Modal
       open={open}
       onClose={onClose}
+      onConfirm={handleSave}
       title="Edit Flashcard"
       description={`Editing "${entry.word || entry.term || entry.title}"`}
     >

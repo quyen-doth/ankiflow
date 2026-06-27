@@ -1,0 +1,290 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
+import { BatchNavStrip } from "@/components/review/BatchNavStrip";
+import { usePreviewBatch } from "@/hooks/usePreviewBatch";
+import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
+import { useCardMedia } from "@/hooks/useCardMedia";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Entry, CardTypeConfig } from "@/types";
+
+type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">;
+
+// ── Reviewer cho thẻ đang xem ──────────────────────────────────────────────
+// Tách thành component để bọc key={activeIndex} ở parent → remount khi đổi thẻ,
+// useCardMedia chạy lại cho thẻ mới (lazy). Audio đã sinh được lưu vào entry trong
+// mảng nên quay lại không sinh lại (cached).
+interface BatchCardReviewerProps {
+    entry: Partial<Entry>;
+    setEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>>;
+    updateField: (field: keyof Entry, value: unknown) => void;
+    cardTypes: CardTypeItem[];
+    selectedCardTypeIds: string[];
+    onCardTypesChange: (ids: string[]) => void;
+    selectedDeckId: string;
+    onDeckChange: (deckId: string) => void;
+    onDeckClear: () => void;
+    headerLabel: string;
+    headerActions: React.ReactNode;
+    subHeader: React.ReactNode;
+}
+
+function BatchCardReviewer({
+    entry,
+    setEntry,
+    updateField,
+    cardTypes,
+    selectedCardTypeIds,
+    onCardTypesChange,
+    selectedDeckId,
+    onDeckChange,
+    onDeckClear,
+    headerLabel,
+    headerActions,
+    subHeader,
+}: BatchCardReviewerProps) {
+    const media = useCardMedia(entry, setEntry, !!entry);
+
+    return (
+        <FlashcardReviewLayout
+            headerLabel={headerLabel}
+            headerActions={headerActions}
+            subHeader={subHeader}
+            entry={entry}
+            updateField={updateField}
+            images={media.images}
+            imageLoading={media.imageLoading}
+            onImageSelect={media.handleImageSelect}
+            onImageUpload={media.handleImageUpload}
+            onImageRefetch={() => media.fetchImages()}
+            audioUrl={media.audioUrl}
+            audioLoading={media.audioLoading}
+            onAudioRegenerate={media.generateAudio}
+            audioSubtitle={`Google TTS · ${entry.language || "en"}`}
+            selectedDeckId={selectedDeckId}
+            onDeckChange={onDeckChange}
+            onDeckClear={onDeckClear}
+            cardTypes={cardTypes}
+            selectedCardTypeIds={selectedCardTypeIds}
+            onCardTypesChange={onCardTypesChange}
+        />
+    );
+}
+
+// ── Trang review batch ─────────────────────────────────────────────────────
+export default function BatchPreviewPage() {
+    const router = useRouter();
+
+    const {
+        entries,
+        setEntries,
+        cardTypes,
+        selectedCardTypeIds,
+        setSelectedCardTypeIds,
+        selectedDeckId,
+        setSelectedDeckId,
+        isLoading,
+        error,
+    } = usePreviewBatch();
+
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    const total = entries.length;
+    const activeEntry = entries[activeIndex] ?? {};
+
+    const updateActiveField = useCallback(
+        (field: keyof Entry, value: unknown) => {
+            setEntries((prev) => prev.map((e, i) => (i === activeIndex ? { ...e, [field]: value } : e)));
+        },
+        [activeIndex, setEntries],
+    );
+
+    // setEntry cho useCardMedia: ghi vào phần tử đang active của mảng.
+    const setActiveEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>> = useCallback(
+        (update) => {
+            setEntries((prev) =>
+                prev.map((e, i) => {
+                    if (i !== activeIndex) return e;
+                    return typeof update === "function"
+                        ? (update as (p: Partial<Entry>) => Partial<Entry>)(e)
+                        : update;
+                }),
+            );
+        },
+        [activeIndex, setEntries],
+    );
+
+    // Deck & card types DÙNG CHUNG cho cả batch.
+    const handleDeckChange = useCallback(
+        async (deckId: string) => {
+            setSelectedDeckId(deckId);
+            let ankiDeckName = deckId;
+            try {
+                const deckSnap = await getDoc(doc(db, "decks", deckId));
+                if (deckSnap.exists()) {
+                    ankiDeckName = (deckSnap.data() as Record<string, string>).anki_deck_name || deckId;
+                }
+            } catch (e) {
+                console.error("Error fetching deck:", e);
+            }
+            setEntries((prev) => prev.map((e) => ({ ...e, anki_deck: ankiDeckName })));
+        },
+        [setEntries, setSelectedDeckId],
+    );
+
+    const handleDeckClear = useCallback(() => {
+        setSelectedDeckId("");
+        setEntries((prev) => prev.map((e) => ({ ...e, anki_deck: "" })));
+    }, [setEntries, setSelectedDeckId]);
+
+    const { confirmOpen, setConfirmOpen, isExporting, progress, requestExport, handleExportAll } =
+        useBatchAnkiExport({
+            entries,
+            selectedCardTypeIds,
+            cardTypes,
+            onInvalid: setActiveIndex,
+        });
+
+    const goPrev = useCallback(() => setActiveIndex((i) => Math.max(0, i - 1)), []);
+    const goNext = useCallback(() => setActiveIndex((i) => Math.min(total - 1, i + 1)), [total]);
+
+    // Bàn phím: Tab = thẻ sau, Shift+Tab = thẻ trước (khi không gõ trong field);
+    // ⌘↵ mở export; Enter khi modal mở.
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                if (!isExporting) requestExport();
+                return;
+            }
+            if (e.key !== "Tab") return;
+            const el = document.activeElement;
+            const typing = el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+            if (typing) return; // đang chỉnh sửa → Tab chuyển focus field như thường
+            e.preventDefault();
+            if (e.shiftKey) goPrev();
+            else goNext();
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [isExporting, requestExport, goPrev, goNext]);
+
+    useEffect(() => {
+        if (!confirmOpen || isExporting) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                handleExportAll();
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [confirmOpen, isExporting, handleExportAll]);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center">
+                    <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-slate-600">Loading batch...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center max-w-md">
+                    <p className="text-lg font-semibold text-ink mb-2">Data not found</p>
+                    <p className="text-sm text-slate-600 mb-6">{error}</p>
+                    <Button variant="primary" onClick={() => router.push("/create")}>
+                        Back to Create
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    const headerActions = (
+        <>
+            <Button variant="secondary" onClick={() => router.push("/create")} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                Back
+            </Button>
+            <Button variant="ghost" onClick={goPrev} disabled={activeIndex === 0} leftIcon={<ChevronLeft className="w-4 h-4" />}>
+                Prev
+            </Button>
+            <Button variant="ghost" onClick={goNext} disabled={activeIndex >= total - 1} leftIcon={<ChevronRight className="w-4 h-4" />}>
+                Next
+            </Button>
+            <Button
+                variant="primary"
+                onClick={requestExport}
+                disabled={isExporting}
+                leftIcon={<CheckCheck className="w-4 h-4" />}
+            >
+                {isExporting ? `Exporting ${progress.done}/${progress.total}...` : `Export all (${total})`}
+                {!isExporting && <kbd className="ml-1.5 text-[10px] opacity-60 font-mono">&#8984;&#9166;</kbd>}
+            </Button>
+        </>
+    );
+
+    const subHeader = (
+        <div>
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-meta font-mono uppercase tracking-[0.05em] font-bold text-slate-400">
+                    Reviewing card {activeIndex + 1} of {total}
+                </p>
+                <p className="text-[12px] font-mono text-slate-400">Tab / Shift+Tab to switch cards</p>
+            </div>
+            <BatchNavStrip
+                entries={entries}
+                selectedCardTypeIds={selectedCardTypeIds}
+                activeIndex={activeIndex}
+                onSelect={setActiveIndex}
+            />
+        </div>
+    );
+
+    return (
+        <>
+            <BatchCardReviewer
+                key={activeIndex}
+                entry={activeEntry}
+                setEntry={setActiveEntry}
+                updateField={updateActiveField}
+                cardTypes={cardTypes}
+                selectedCardTypeIds={selectedCardTypeIds}
+                onCardTypesChange={setSelectedCardTypeIds}
+                selectedDeckId={selectedDeckId}
+                onDeckChange={handleDeckChange}
+                onDeckClear={handleDeckClear}
+                headerLabel="Review Batch"
+                headerActions={headerActions}
+                subHeader={subHeader}
+            />
+
+            <Modal
+                open={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                title="Confirm Export to Anki"
+                description={`Export all ${total} card(s) with ${selectedCardTypeIds.length} card type(s) each to Anki?`}
+            >
+                <div className="flex gap-3 justify-end mt-2">
+                    <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleExportAll}>
+                        Confirm
+                    </Button>
+                </div>
+            </Modal>
+        </>
+    );
+}

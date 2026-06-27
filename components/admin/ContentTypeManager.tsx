@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   collection, query, orderBy, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
@@ -80,6 +80,9 @@ export function ContentTypeManager() {
   const [refreshKey, setRefreshKey] = useState(0)
   const toast = useToast()
 
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
+
   useEffect(() => {
     async function fetchContentTypes() {
       setLoading(true)
@@ -97,6 +100,16 @@ export function ContentTypeManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+
+  const filteredContentTypes = useMemo(() => {
+    let result = contentTypes
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(ct => ct.name.toLowerCase().includes(q) || ct.code.toLowerCase().includes(q))
+    }
+    if (filterStatus) result = result.filter(ct => (filterStatus === 'active') === ct.is_active)
+    return result
+  }, [contentTypes, search, filterStatus])
 
   const openCreate = () => {
     setEditing(null)
@@ -150,10 +163,10 @@ export function ContentTypeManager() {
       }
       setModalOpen(false)
       refresh()
-      toast.success(editing ? 'Đã cập nhật content type' : 'Đã tạo content type')
+      toast.success(editing ? 'Content type updated' : 'Content type created')
     } catch (error) {
       console.error('Error saving content type:', error)
-      toast.error('Không lưu được content type.')
+      toast.error('Failed to save content type.')
     } finally {
       setSaving(false)
     }
@@ -166,10 +179,10 @@ export function ContentTypeManager() {
         updated_at: serverTimestamp(),
       })
       refresh()
-      toast.success(!contentType.is_active ? 'Đã kích hoạt content type' : 'Đã tắt content type')
+      toast.success(!contentType.is_active ? 'Content type activated' : 'Content type deactivated')
     } catch (error) {
       console.error('Error toggling content type status:', error)
-      toast.error('Không cập nhật được trạng thái.')
+      toast.error('Failed to update status.')
     }
   }
 
@@ -180,10 +193,10 @@ export function ContentTypeManager() {
       await deleteDoc(doc(db, 'content_types', deleteTarget.id))
       setDeleteTarget(null)
       refresh()
-      toast.success('Đã xóa content type')
+      toast.success('Content type deleted')
     } catch (error) {
       console.error('Error deleting content type:', error)
-      toast.error('Không xóa được content type.')
+      toast.error('Failed to delete content type.')
     } finally {
       setDeleting(false)
     }
@@ -240,16 +253,47 @@ export function ContentTypeManager() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/70" />
+          <input
+            type="search"
+            placeholder="Search content types..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] pl-10 pr-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow"
+          />
+        </div>
+        <Select
+          aria-label="Filter by status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
+          className="!w-auto min-w-[110px]"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+      </div>
+
       <DataTable
-        data={contentTypes}
+        data={filteredContentTypes}
         columns={columns}
         keyField="id"
-        emptyMessage={loading ? 'Loading content types...' : 'No content types yet.'}
+        onRowClick={(row) => openEdit(row)}
+        emptyMessage={
+          loading
+            ? 'Loading content types...'
+            : filteredContentTypes.length === 0 && contentTypes.length > 0
+              ? 'No content types match your filters.'
+              : 'No content types yet.'
+        }
       />
 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        onConfirm={handleSave}
         title={editing ? `Edit — ${editing.name}` : 'Add Content Type'}
         size="lg"
       >
@@ -417,6 +461,7 @@ export function ContentTypeManager() {
       <Modal
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
         title="Delete content type"
         size="sm"
       >

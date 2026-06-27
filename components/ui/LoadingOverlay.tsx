@@ -1,6 +1,6 @@
 'use client'
 
-import { Brain } from 'lucide-react'
+import { Brain, X } from 'lucide-react'
 import { StepIndicator } from './StepIndicator'
 import { ProgressBar } from './ProgressBar'
 import { FlowTip } from './FlowTip'
@@ -20,6 +20,8 @@ interface LoadingOverlayProps {
   progress: number
   flowTip?: string
   statusText?: string
+  onCancel?: () => void
+  cancelLabel?: string
 }
 
 export function LoadingOverlay({
@@ -30,6 +32,8 @@ export function LoadingOverlay({
   progress,
   flowTip,
   statusText,
+  onCancel,
+  cancelLabel = 'Cancel',
 }: LoadingOverlayProps) {
   if (!open) return null
 
@@ -63,6 +67,18 @@ export function LoadingOverlay({
         {/* Status text */}
         {statusText && (
           <p className="text-center text-secondary text-slate-400 italic">{statusText}</p>
+        )}
+
+        {/* Cancel */}
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mx-auto inline-flex items-center gap-1.5 text-[13px] font-bold text-slate-600 hover:text-danger transition-colors"
+          >
+            <X className="w-4 h-4" />
+            {cancelLabel}
+          </button>
         )}
       </div>
     </div>

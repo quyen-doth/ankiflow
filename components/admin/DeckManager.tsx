@@ -191,7 +191,6 @@ export function DeckManager() {
             setModalOpen(false);
             refresh();
 
-            // Đồng bộ Anki ngay: tạo/đổi tên deck + suspend/unsuspend theo trạng thái.
             try {
                 const name = draft.anki_deck_name;
                 if (isEditing && oldName && oldName !== name) {
@@ -200,14 +199,14 @@ export function DeckManager() {
                     await postDeckSync({ op: 'ensure', deckName: name });
                 }
                 await postDeckSync({ op: draft.is_active ? 'unsuspend' : 'suspend', deckName: name });
-                toast.success(isEditing ? 'Đã lưu & đồng bộ deck với Anki' : 'Đã tạo deck & đồng bộ với Anki');
+                toast.success(isEditing ? 'Saved & synced deck with Anki' : 'Created deck & synced with Anki');
             } catch (e) {
                 console.error('AnkiConnect sync failed:', e);
-                toast.warning('Đã lưu deck, nhưng chưa đồng bộ được Anki (Anki có đang mở không?)');
+                toast.warning('Saved deck, but Anki sync failed — is Anki open?');
             }
         } catch (error) {
             console.error('Error saving deck:', error);
-            toast.error('Không lưu được deck. Vui lòng thử lại.');
+            toast.error('Failed to save deck. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -221,19 +220,18 @@ export function DeckManager() {
             try {
                 await postDeckSync({ op: next ? 'unsuspend' : 'suspend', deckName: deckConfig.anki_deck_name });
                 toast.success(
-                    next ? 'Đã kích hoạt deck & bỏ tạm dừng thẻ trên Anki' : 'Đã tắt deck & tạm dừng thẻ trên Anki',
+                    next ? 'Activated deck & unsuspended cards in Anki' : 'Deactivated deck & suspended cards in Anki',
                 );
             } catch (e) {
                 console.error('AnkiConnect sync failed:', e);
-                toast.warning('Đã cập nhật trạng thái, nhưng chưa đồng bộ được Anki.');
+                toast.warning('Status updated, but Anki sync failed.');
             }
         } catch (error) {
             console.error('Error toggling deck status:', error);
-            toast.error('Không cập nhật được trạng thái deck.');
+            toast.error('Failed to update deck status.');
         }
     };
 
-    // Đẩy toàn bộ deck của app lên Anki (ensure tồn tại + suspend/unsuspend theo trạng thái).
     const handleSyncAll = async () => {
         if (decks.length === 0) return;
         setSyncing(true);
@@ -252,13 +250,13 @@ export function DeckManager() {
             }
             const data = await res.json();
             if (data.failed?.length) {
-                toast.warning(`Đã đồng bộ ${data.synced}/${data.total} deck. Một số deck lỗi — Anki có đang mở không?`);
+                toast.warning(`Synced ${data.synced}/${data.total} decks. Some failed — is Anki open?`);
             } else {
-                toast.success(`Đã đồng bộ ${data.synced} deck với Anki`);
+                toast.success(`Synced ${data.synced} decks with Anki`);
             }
         } catch (e) {
             console.error('Sync-all failed:', e);
-            toast.error('Không đồng bộ được với Anki. Hãy chắc chắn Anki đang mở.');
+            toast.error('Failed to sync with Anki. Make sure Anki is open.');
         } finally {
             setSyncing(false);
         }
@@ -273,10 +271,10 @@ export function DeckManager() {
             await deleteDoc(doc(db, 'decks', target.id));
             setDeleteTarget(null);
             refresh();
-            toast.success('Đã xóa deck khỏi AnkiFlow và Anki');
+            toast.success('Deleted deck from AnkiFlow and Anki');
         } catch (error) {
             console.error('Error deleting deck:', error);
-            toast.error('Xóa thất bại — hãy chắc chắn Anki đang mở.');
+            toast.error('Delete failed — make sure Anki is open.');
         } finally {
             setDeleting(false);
         }
@@ -378,8 +376,8 @@ export function DeckManager() {
                     <Button
                         variant="secondary"
                         size="sm"
-                        aria-label="Đồng bộ với Anki"
-                        title="Đồng bộ với Anki"
+                        aria-label="Sync with Anki"
+                        title="Sync with Anki"
                         onClick={handleSyncAll}
                         disabled={syncing || decks.length === 0}
                         leftIcon={<RefreshCw className={`w-4 h-4${syncing ? ' animate-spin' : ''}`} />}
@@ -466,6 +464,7 @@ export function DeckManager() {
                 data={filteredDecks}
                 columns={columns}
                 keyField="id"
+                onRowClick={(row) => openEdit(row)}
                 emptyMessage={
                     loading
                         ? 'Loading decks...'
@@ -478,6 +477,7 @@ export function DeckManager() {
             <Modal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
+                onConfirm={handleSave}
                 title={editing ? 'Edit Deck' : 'Add Deck'}
                 size="md"
             >
@@ -557,13 +557,14 @@ export function DeckManager() {
             <Modal
                 open={!!deleteTarget}
                 onClose={() => setDeleteTarget(null)}
-                title="Xóa hoàn toàn deck"
+                onConfirm={handleDelete}
+                title="Permanently delete deck"
                 size="sm"
             >
                 <p className="text-sm text-slate-600">
-                    Xóa <span className="font-semibold text-ink">{deleteTarget?.display_name}</span>?
-                    Thao tác này xóa deck vĩnh viễn khỏi AnkiFlow và Anki,{' '}
-                    <span className="font-semibold text-danger">kèm toàn bộ thẻ bên trong</span>. Không hoàn tác được.
+                    Delete <span className="font-semibold text-ink">{deleteTarget?.display_name}</span>?
+                    This permanently removes the deck from AnkiFlow and Anki,{' '}
+                    <span className="font-semibold text-danger">including all cards inside</span>. This cannot be undone.
                 </p>
                 <div className="flex gap-3 justify-end mt-5">
                     <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>

@@ -8,6 +8,7 @@ import { verifyAttrs } from '@/verify/core/contract'
 interface ModalProps {
   open: boolean
   onClose: () => void
+  onConfirm?: () => void
   title?: string
   description?: string
   children: React.ReactNode
@@ -21,13 +22,28 @@ const sizeClasses = {
   lg: 'max-w-2xl',
 }
 
-export function Modal({ open, onClose, title, description, children, size = 'md', className }: ModalProps) {
+export function Modal({ open, onClose, onConfirm, title, description, children, size = 'md', className }: ModalProps) {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     if (open) document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose])
+
+  // Confirm on Enter
+  useEffect(() => {
+    if (!open || !onConfirm) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.isComposing
+          && !(e.target instanceof HTMLTextAreaElement)
+          && !(e.target instanceof HTMLSelectElement)) {
+        e.preventDefault()
+        onConfirm()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [open, onConfirm])
 
   if (!open) return null
 

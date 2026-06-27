@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   collection, query, where, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Card } from '@/components/ui/Card'
@@ -11,8 +11,8 @@ import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { Input, FieldWrapper } from '@/components/ui/FormField'
-import { Plus, Pencil } from 'lucide-react'
+import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
+import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
@@ -33,8 +33,13 @@ export function TopicManager() {
   const [editing, setEditing] = useState<Topic | null>(null)
   const [draft, setDraft] = useState<TopicDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const toast = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
+
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
     async function fetchTopics() {
@@ -53,6 +58,16 @@ export function TopicManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+
+  const filteredTopics = useMemo(() => {
+    let result = topics
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(t => t.name.toLowerCase().includes(q))
+    }
+    if (filterStatus) result = result.filter(t => (filterStatus === 'active') === t.is_active)
+    return result
+  }, [topics, search, filterStatus])
 
   const openCreate = () => {
     setEditing(null)
@@ -82,10 +97,10 @@ export function TopicManager() {
       }
       setModalOpen(false)
       refresh()
-      toast.success(editing ? 'Đã cập nhật topic' : 'Đã tạo topic')
+      toast.success(editing ? 'Topic updated' : 'Topic created')
     } catch (error) {
       console.error('Error saving topic:', error)
-      toast.error('Không lưu được topic.')
+      toast.error('Failed to save topic.')
     } finally {
       setSaving(false)
     }
@@ -95,10 +110,26 @@ export function TopicManager() {
     try {
       await updateDoc(doc(db, 'topics', topic.id), { is_active: !topic.is_active, updated_at: serverTimestamp() })
       refresh()
-      toast.success(!topic.is_active ? 'Đã kích hoạt topic' : 'Đã tắt topic')
+      toast.success(!topic.is_active ? 'Topic activated' : 'Topic deactivated')
     } catch (error) {
       console.error('Error toggling topic status:', error)
-      toast.error('Không cập nhật được trạng thái.')
+      toast.error('Failed to update status.')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteDoc(doc(db, 'topics', deleteTarget.id))
+      setDeleteTarget(null)
+      refresh()
+      toast.success('Topic deleted')
+    } catch (error) {
+      console.error('Error deleting topic:', error)
+      toast.error('Failed to delete topic.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -127,9 +158,14 @@ export function TopicManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: Topic) => (
-        <Button variant="ghost" size="sm" aria-label={`Edit topic ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" aria-label={`Edit topic ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" aria-label={`Delete topic ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -143,14 +179,44 @@ export function TopicManager() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/70" />
+          <input
+            type="search"
+            placeholder="Search topics..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] pl-10 pr-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow"
+          />
+        </div>
+        <Select
+          aria-label="Filter by status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
+          className="!w-auto min-w-[110px]"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+      </div>
+
       <DataTable
-        data={topics}
+        data={filteredTopics}
         columns={columns}
         keyField="id"
-        emptyMessage={loading ? 'Loading topics...' : 'No topics yet.'}
+        onRowClick={(row) => openEdit(row)}
+        emptyMessage={
+          loading
+            ? 'Loading topics...'
+            : filteredTopics.length === 0 && topics.length > 0
+              ? 'No topics match your filters.'
+              : 'No topics yet.'
+        }
       />
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Topic' : 'Add Topic'} size="sm">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} onConfirm={handleSave} title={editing ? 'Edit Topic' : 'Add Topic'} size="sm">
         <div className="flex flex-col gap-4">
           <FieldWrapper label="Name">
             <Input value={draft.name} onChange={(e) => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. Frontend" />
@@ -170,6 +236,19 @@ export function TopicManager() {
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} title="Delete topic" size="sm">
+        <p className="text-sm text-slate-600">
+          Delete <span className="font-semibold text-ink">{deleteTarget?.name}</span>?
+          This removes the topic permanently. This cannot be undone.
+        </p>
+        <div className="flex gap-3 justify-end mt-5">
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </div>
       </Modal>
     </Card>

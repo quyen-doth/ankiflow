@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
+import { ClearSelectButton } from '@/components/create/ClearSelectButton'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { Category, FormType } from '@/types'
@@ -15,9 +16,10 @@ interface CategorySelectorProps {
   formType: UIFormType | ''
   value: string
   onChange: (value: string) => void
+  onClear?: () => void
 }
 
-export function CategorySelector({ formType, value, onChange }: CategorySelectorProps) {
+export function CategorySelector({ formType, value, onChange, onClear }: CategorySelectorProps) {
   const [categories, setCategories] = useState<Pick<Category, 'id' | 'name' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -55,18 +57,21 @@ export function CategorySelector({ formType, value, onChange }: CategorySelector
       className="text-overline uppercase text-slate-600 tracking-wider font-bold"
       {...verifyAttrs({ unit: 'CategorySelector', count: categories.length, loading })}
     >
-      <Select
-        aria-label="Category"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={!formType || loading}
-        className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
-      >
-        <option value="" disabled>{loading ? 'Loading...' : 'Select category...'}</option>
-        {categories.map(cat => (
-          <option key={cat.id} value={cat.id}>{cat.name}</option>
-        ))}
-      </Select>
+      <div className="relative">
+        <Select
+          aria-label="Category"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={!formType || loading}
+          className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
+        >
+          <option value="" disabled>{loading ? 'Loading...' : 'Select category...'}</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </Select>
+        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Xóa category đã chọn" />
+      </div>
     </FieldWrapper>
   )
 }

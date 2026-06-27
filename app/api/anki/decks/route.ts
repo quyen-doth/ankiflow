@@ -11,12 +11,14 @@ export async function GET() {
 }
 
 /**
- * Đồng bộ deck với Anki theo `op`:
- *  - 'ensure'    : tạo deck nếu chưa có (idempotent)
- *  - 'rename'    : tạo deck mới + chuyển toàn bộ thẻ từ deck cũ + xóa deck cũ
- *  - 'suspend'   : suspend mọi thẻ trong deck (deck inactive)
- *  - 'unsuspend' : unsuspend mọi thẻ trong deck (deck active lại)
- * Tương thích ngược: body chỉ có { deckName } → mặc định 'ensure'.
+ * Sync deck with Anki by `op`:
+ *  - 'ensure'    : create deck if not exists (idempotent)
+ *  - 'rename'    : create new deck + move all cards from old deck + delete old deck
+ *  - 'delete'    : delete deck with all cards + clean up empty parent decks
+ *  - 'suspend'   : suspend all cards in deck (deck inactive)
+ *  - 'unsuspend' : unsuspend all cards in deck (deck active again)
+ *  - 'sync-all'  : ensure all app decks exist + suspend/unsuspend by status
+ * Backwards-compatible: body with only { deckName } defaults to 'ensure'.
  */
 export async function POST(request: Request) {
   try {
@@ -43,9 +45,28 @@ export async function POST(request: Request) {
       case 'delete': {
         const { deckName } = body
         if (!deckName) return NextResponse.json({ error: 'Missing deckName' }, { status: 400 })
-        // Xóa hoàn toàn: xóa deck KÈM toàn bộ thẻ bên trong.
         await flashcardService.deleteDecks([deckName], true)
-        break
+
+        // Clean up empty parent decks walking up the `::` hierarchy
+        const cleanedParents: string[] = []
+        try {
+          const remaining = await flashcardService.getDecks()
+          const remainingSet = new Set(remaining)
+          const parts = deckName.split('::')
+          for (let depth = parts.length - 1; depth >= 1; depth--) {
+            const parent = parts.slice(0, depth).join('::')
+            if (!remainingSet.has(parent)) break
+            const hasChildren = remaining.some(d => d.startsWith(parent + '::'))
+            if (hasChildren) break
+            await flashcardService.deleteDecks([parent], true)
+            remainingSet.delete(parent)
+            cleanedParents.push(parent)
+          }
+        } catch (e) {
+          console.warn('Parent cleanup failed (non-fatal):', e)
+        }
+
+        return NextResponse.json({ success: true, cleanedParents })
       }
       case 'suspend':
       case 'unsuspend': {
@@ -57,7 +78,7 @@ export async function POST(request: Request) {
         break
       }
       case 'sync-all': {
-        // Đẩy toàn bộ deck của app lên Anki: ensure tồn tại + suspend/unsuspend theo trạng thái.
+        // Push all app decks to Anki: ensure they exist + suspend/unsuspend by status.
         const decks = body.decks as { name: string; is_active: boolean }[] | undefined
         if (!Array.isArray(decks)) {
           return NextResponse.json({ error: 'Missing decks array' }, { status: 400 })

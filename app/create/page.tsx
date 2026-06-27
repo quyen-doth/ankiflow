@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CardForm } from '@/components/create/CardForm';
+import { ModeToggle } from '@/components/create/ModeToggle';
 import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { Button } from '@/components/ui/Button';
@@ -72,6 +73,10 @@ export default function CreatePage() {
     const [progress, setProgress] = useState(0);
     const [canSubmit, setCanSubmit] = useState(false);
     const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null);
+    const [batchMode, setBatchMode] = useState(false);
+    const [batchCount, setBatchCount] = useState(0);
+    const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+    const cancelRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         async function fetchContentTypes() {
@@ -118,6 +123,7 @@ export default function CreatePage() {
         setIsGenerating(true);
         setLoadingSteps(INITIAL_STEPS);
         setProgress(0);
+        setBatchProgress({ done: 0, total: 0 });
     }, []);
 
     const handleGenerateEnd = useCallback(() => {
@@ -127,6 +133,22 @@ export default function CreatePage() {
     const handleSelectType = useCallback((code: string) => {
         setActiveCode(code);
         setCanSubmit(false);
+    }, []);
+
+    const handleModeChange = useCallback((batch: boolean) => {
+        setBatchMode(batch);
+        setCanSubmit(false);
+        setBatchCount(0);
+    }, []);
+
+    const handleBatchProgress = useCallback((done: number, total: number) => {
+        setBatchProgress({ done, total });
+    }, []);
+
+    const handleCancelGenerate = useCallback(() => {
+        cancelRef.current?.();
+        setIsGenerating(false);
+        setBatchProgress({ done: 0, total: 0 });
     }, []);
 
     useEffect(() => {
@@ -179,8 +201,9 @@ export default function CreatePage() {
             )}
 
             <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
-                {/* Content Type tabs + Generate button (same row) */}
+                {/* Content Type tabs + mode toggle + Generate button (same row) */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {loadingTypes ? (
                         <div className="h-[46px] w-72 bg-[#ececea] rounded-[11px] animate-pulse" />
                     ) : (
@@ -221,6 +244,9 @@ export default function CreatePage() {
                         </div>
                     )}
 
+                    <ModeToggle batch={batchMode} onChange={handleModeChange} />
+                  </div>
+
                     <Button
                         type="submit"
                         form={FORM_ID}
@@ -229,7 +255,7 @@ export default function CreatePage() {
                         leftIcon={<Sparkles className="w-4 h-4" />}
                         className="shadow-button"
                     >
-                        Generate
+                        {batchMode ? `Generate ${batchCount} card${batchCount !== 1 ? 's' : ''}` : 'Generate'}
                         <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
                     </Button>
                 </div>
@@ -240,10 +266,14 @@ export default function CreatePage() {
                         <CardForm
                             key={activeCode}
                             blueprint={blueprint}
+                            batchMode={batchMode}
                             onGenerateStart={handleGenerateStart}
                             onStepUpdate={handleStepUpdate}
                             onGenerateEnd={handleGenerateEnd}
                             onValidityChange={setCanSubmit}
+                            onBatchCountChange={setBatchCount}
+                            onBatchProgress={handleBatchProgress}
+                            registerCancel={(fn) => { cancelRef.current = fn; }}
                             formId={FORM_ID}
                         />
                     )}
@@ -252,10 +282,22 @@ export default function CreatePage() {
 
             <LoadingOverlay
                 open={isGenerating}
-                title="Generating Cognitive Asset"
-                steps={loadingSteps}
-                progress={progress}
+                title={batchMode ? 'Generating Cards' : 'Generating Cognitive Asset'}
+                steps={
+                    batchMode
+                        ? [{
+                            label: `Generating cards ${batchProgress.done}/${batchProgress.total || batchCount}`,
+                            status: 'active' as const,
+                        }]
+                        : loadingSteps
+                }
+                progress={
+                    batchMode
+                        ? Math.round((batchProgress.done / Math.max(1, batchProgress.total || batchCount)) * 100)
+                        : progress
+                }
                 flowTip="Tip: Short example sentences help your brain retain words 3-5x faster than long definitions."
+                onCancel={handleCancelGenerate}
             />
         </>
     );

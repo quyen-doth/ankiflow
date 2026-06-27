@@ -36,12 +36,17 @@ export function DuplicateModal({
   duplicates,
 }: DuplicateModalProps) {
   useEffect(() => {
+    if (!open) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault()
+        onProceed()
+      }
     }
-    if (open) document.addEventListener('keydown', handler)
+    document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [open, onClose])
+  }, [open, onClose, onProceed])
 
   if (!open) return null
 

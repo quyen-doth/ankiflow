@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   collection, query, orderBy, getDocs,
-  addDoc, updateDoc, doc, serverTimestamp,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Card } from '@/components/ui/Card'
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
@@ -40,8 +40,14 @@ export function CategoryManager() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [draft, setDraft] = useState<CategoryDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const toast = useToast()
+
+  const [search, setSearch] = useState('')
+  const [filterFormType, setFilterFormType] = useState<FormType | ''>('')
+  const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
     async function fetchCategories() {
@@ -60,6 +66,17 @@ export function CategoryManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+
+  const filteredCategories = useMemo(() => {
+    let result = categories
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(c => c.name.toLowerCase().includes(q))
+    }
+    if (filterFormType) result = result.filter(c => c.form_type === filterFormType)
+    if (filterStatus) result = result.filter(c => (filterStatus === 'active') === c.is_active)
+    return result
+  }, [categories, search, filterFormType, filterStatus])
 
   const openCreate = () => {
     setEditing(null)
@@ -96,10 +113,10 @@ export function CategoryManager() {
       }
       setModalOpen(false)
       refresh()
-      toast.success(editing ? 'Đã cập nhật category' : 'Đã tạo category')
+      toast.success(editing ? 'Category updated' : 'Category created')
     } catch (error) {
       console.error('Error saving category:', error)
-      toast.error('Không lưu được category.')
+      toast.error('Failed to save category.')
     } finally {
       setSaving(false)
     }
@@ -112,10 +129,26 @@ export function CategoryManager() {
         updated_at: serverTimestamp(),
       })
       refresh()
-      toast.success(!category.is_active ? 'Đã kích hoạt category' : 'Đã tắt category')
+      toast.success(!category.is_active ? 'Category activated' : 'Category deactivated')
     } catch (error) {
       console.error('Error toggling category status:', error)
-      toast.error('Không cập nhật được trạng thái.')
+      toast.error('Failed to update status.')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteDoc(doc(db, 'categories', deleteTarget.id))
+      setDeleteTarget(null)
+      refresh()
+      toast.success('Category deleted')
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      toast.error('Failed to delete category.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -149,15 +182,14 @@ export function CategoryManager() {
       header: '',
       align: 'right' as const,
       render: (_: unknown, row: Category) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Edit category ${row.name}`}
-          onClick={(e) => { e.stopPropagation(); openEdit(row) }}
-          className="p-2 h-auto rounded-full"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" aria-label={`Edit category ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" aria-label={`Delete category ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -171,16 +203,58 @@ export function CategoryManager() {
         </Button>
       </div>
 
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/70" />
+          <input
+            type="search"
+            placeholder="Search categories..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] pl-10 pr-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow"
+          />
+        </div>
+        <Select
+          aria-label="Filter by form type"
+          value={filterFormType}
+          onChange={(e) => setFilterFormType(e.target.value as FormType | '')}
+          className="!w-auto min-w-[130px]"
+        >
+          <option value="">All Types</option>
+          {Object.values(FormType).map(ft => (
+            <option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>
+          ))}
+        </Select>
+        <Select
+          aria-label="Filter by status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')}
+          className="!w-auto min-w-[110px]"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+      </div>
+
       <DataTable
-        data={categories}
+        data={filteredCategories}
         columns={columns}
         keyField="id"
-        emptyMessage={loading ? 'Loading categories...' : 'No categories yet.'}
+        onRowClick={(row) => openEdit(row)}
+        emptyMessage={
+          loading
+            ? 'Loading categories...'
+            : filteredCategories.length === 0 && categories.length > 0
+              ? 'No categories match your filters.'
+              : 'No categories yet.'
+        }
       />
 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+        onConfirm={handleSave}
         title={editing ? 'Edit Category' : 'Add Category'}
         size="sm"
       >
@@ -214,6 +288,25 @@ export function CategoryManager() {
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete category"
+        size="sm"
+      >
+        <p className="text-sm text-slate-600">
+          Delete <span className="font-semibold text-ink">{deleteTarget?.name}</span>?
+          This removes the category permanently. This cannot be undone.
+        </p>
+        <div className="flex gap-3 justify-end mt-5">
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </div>
       </Modal>
     </Card>

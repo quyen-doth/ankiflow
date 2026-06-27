@@ -116,6 +116,83 @@ export function buildNotes(entry: Partial<Entry>, cardTypes: CardTypeItem[], aud
   })
 }
 
+/** Đảm bảo model AnkiFlow-Basic tồn tại. Gọi 1 lần trước khi tạo note (kể cả batch). */
+export async function ensureAnkiModel(): Promise<void> {
+  try {
+    await fetch('/api/anki/ensure-model', { method: 'POST' })
+  } catch (e) {
+    console.warn('Could not ensure AnkiFlow-Basic model:', e)
+  }
+}
+
+export interface ExportEntryResult {
+  ok: boolean
+  error?: string
+  noteCount: number
+}
+
+/**
+ * Export 1 entry sang Anki: lưu audio (nếu có) → buildNotes → POST /api/anki/create.
+ * KHÔNG ensure-model (gọi ensureAnkiModel() riêng 1 lần) và KHÔNG điều hướng — để
+ * dùng được cho cả luồng đơn lẫn batch. Trả về kết quả thay vì toast.
+ */
+export async function exportEntryToAnki(
+  entry: Partial<Entry>,
+  selectedTypes: CardTypeItem[],
+): Promise<ExportEntryResult> {
+  const noteCount = selectedTypes.length
+
+  // Step 1: Store audio in Anki media folder
+  let audioFilename: string | undefined
+  if (entry.audio_url && entry.audio_url.startsWith('data:audio')) {
+    const base64 = entry.audio_url.split(',')[1]
+    if (base64) {
+      const word = entry.word || entry.term || entry.title || 'audio'
+      const fname = `ankiflow_${word.replace(/[\s/\\:*?"<>|]/g, '_')}.mp3`
+      try {
+        const storeRes = await fetch('/api/audio/store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64, filename: fname }),
+        })
+        if (storeRes.ok) {
+          const storeData = await storeRes.json()
+          audioFilename = storeData.filename || fname
+        } else {
+          console.warn('Audio store returned non-OK status:', storeRes.status)
+        }
+      } catch (e) {
+        console.warn('Failed to store audio in Anki media — cards will export without audio:', e)
+      }
+    }
+  }
+
+  // Step 2: Build notes with audio embedded in all card types
+  const notes = buildNotes(entry, selectedTypes, audioFilename)
+
+  const entryData = {
+    ...entry,
+    card_type_ids: selectedTypes.map(t => t.id),
+    status: 'exported',
+  }
+
+  // Step 3: Create notes in Anki
+  try {
+    const res = await fetch('/api/anki/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes, entryData }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { ok: false, error: err.error || 'Unknown error', noteCount }
+    }
+    return { ok: true, noteCount }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message, noteCount }
+  }
+}
+
 export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: AnkiExportOptions): AnkiExportState {
   const router = useRouter()
   const toast = useToast()
@@ -127,69 +204,20 @@ export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: An
     setConfirmOpen(false)
 
     try {
-      // Step 0: Ensure AnkiFlow-Basic model exists
-      try {
-        await fetch('/api/anki/ensure-model', { method: 'POST' })
-      } catch (e) {
-        console.warn('Could not ensure AnkiFlow-Basic model:', e)
-      }
-
+      await ensureAnkiModel()
       const selectedTypes = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id))
+      const result = await exportEntryToAnki(entry, selectedTypes)
 
-      // Step 1: Store audio in Anki media folder
-      let audioFilename: string | undefined
-      if (entry.audio_url && entry.audio_url.startsWith('data:audio')) {
-        const base64 = entry.audio_url.split(',')[1]
-        if (base64) {
-          const word = entry.word || entry.term || entry.title || 'audio'
-          const fname = `ankiflow_${word.replace(/[\s/\\:*?"<>|]/g, '_')}.mp3`
-          try {
-            const storeRes = await fetch('/api/audio/store', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ base64, filename: fname }),
-            })
-            if (storeRes.ok) {
-              const storeData = await storeRes.json()
-              audioFilename = storeData.filename || fname
-            } else {
-              console.warn('Audio store returned non-OK status:', storeRes.status)
-            }
-          } catch (e) {
-            console.warn('Failed to store audio in Anki media — cards will export without audio:', e)
-          }
-        }
-      }
-
-      // Step 2: Build notes with audio embedded in all card types
-      const notes = buildNotes(entry, selectedTypes, audioFilename)
-
-      const entryData = {
-        ...entry,
-        card_type_ids: selectedCardTypeIds,
-        status: 'exported',
-      }
-
-      // Step 3: Create notes in Anki
-      const res = await fetch('/api/anki/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, entryData }),
-      })
-
-      const noteCount = selectedTypes.length
-
-      if (!res.ok) {
-        const err = await res.json()
-        console.error('Anki export failed:', err)
-        toast.error(`Xuất thất bại: ${err.error || 'Lỗi không xác định'}`)
+      if (!result.ok) {
+        console.error('Anki export failed:', result.error)
+        toast.error(`Export failed: ${result.error || 'Unknown error'}`)
       } else {
-        toast.success(`Đã tạo ${noteCount} thẻ trong Anki`)
-        router.push(`/create?exported=1&count=${noteCount}`)
+        toast.success(`Created ${result.noteCount} cards in Anki`)
+        router.push(`/create?exported=1&count=${result.noteCount}`)
       }
     } catch (err) {
       console.error('Anki connection error:', err)
-      toast.error('Không kết nối được AnkiConnect. Hãy chắc chắn Anki đang mở.')
+      toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.')
     } finally {
       setIsExporting(false)
     }

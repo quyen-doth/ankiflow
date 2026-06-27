@@ -9,6 +9,8 @@ import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout
 import { usePreviewEntry } from "@/hooks/usePreviewEntry";
 import { useAnkiExport } from "@/hooks/useAnkiExport";
 import { useCardMedia } from "@/hooks/useCardMedia";
+import { useToast } from "@/components/ui/Toast";
+import { validateCardEntry, formatValidationMessage } from "@/lib/cardValidation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry } from "@/types";
@@ -45,6 +47,11 @@ export default function PreviewPage() {
         [setEntry],
     );
 
+    const handleDeckClear = useCallback(() => {
+        setSelectedDeckId("");
+        setEntry((prev) => ({ ...prev, anki_deck: "" }));
+    }, [setEntry]);
+
     const { confirmOpen, setConfirmOpen, isExporting, handleConfirm } = useAnkiExport({
         entry,
         selectedCardTypeIds,
@@ -52,20 +59,29 @@ export default function PreviewPage() {
     });
 
     const media = useCardMedia(entry, setEntry, !isLoading && !error);
+    const toast = useToast();
+
+    // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi.
+    const requestConfirm = useCallback(() => {
+        const errors = validateCardEntry(entry, selectedCardTypeIds);
+        if (errors.length > 0) {
+            toast.error(formatValidationMessage(errors));
+            return;
+        }
+        setConfirmOpen(true);
+    }, [entry, selectedCardTypeIds, toast, setConfirmOpen]);
 
     // Keyboard shortcut: Cmd+Enter / Ctrl+Enter to open confirm modal
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                if (!isExporting && selectedCardTypeIds.length > 0) {
-                    setConfirmOpen(true);
-                }
+                if (!isExporting) requestConfirm();
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isExporting, selectedCardTypeIds.length, setConfirmOpen]);
+    }, [isExporting, requestConfirm]);
 
     // Enter to confirm when modal is open
     useEffect(() => {
@@ -122,8 +138,8 @@ export default function PreviewPage() {
                         </Button>
                         <Button
                             variant="primary"
-                            onClick={() => setConfirmOpen(true)}
-                            disabled={isExporting || selectedCardTypeIds.length === 0}
+                            onClick={requestConfirm}
+                            disabled={isExporting}
                             leftIcon={<CheckCheck className="w-4 h-4" />}
                         >
                             {isExporting ? "Exporting..." : "Confirm & Create"}
@@ -146,6 +162,7 @@ export default function PreviewPage() {
                 audioSubtitle={`Google TTS · ${entry.language || "en"}`}
                 selectedDeckId={selectedDeckId}
                 onDeckChange={handleDeckChange}
+                onDeckClear={handleDeckClear}
                 cardTypes={cardTypes}
                 selectedCardTypeIds={selectedCardTypeIds}
                 onCardTypesChange={setSelectedCardTypeIds}

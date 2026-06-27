@@ -133,10 +133,10 @@ export default function SettingsPage() {
       const ref = doc(db, 'settings', SETTINGS_DOC_ID)
       await setDoc(ref, { ...settings, updated_at: serverTimestamp() }, { merge: true })
       setSavedAt(Date.now())
-      toast.success('Đã lưu cài đặt')
+      toast.success('Settings saved')
     } catch (error) {
       console.error('Error saving settings:', error)
-      toast.error('Không lưu được cài đặt. Vui lòng thử lại.')
+      toast.error('Failed to save settings. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -234,7 +234,7 @@ export default function SettingsPage() {
             <Toggle
               bare
               label="Enable web search"
-              description="Cho phép AI agent tra cứu web để kiểm chứng nghĩa/cách dùng (chậm và tốn phí hơn)"
+              description="Allow AI agent to search the web for verification (slower and more expensive)"
               checked={settings.web_search_enabled ?? false}
               onChange={(v) => updateField('web_search_enabled', v)}
             />

@@ -19,6 +19,8 @@ interface CardTypeItem {
 interface FlashcardReviewLayoutProps {
   headerLabel: string
   headerActions: React.ReactNode
+  /** Nội dung tùy chọn hiển thị ngay dưới thanh header sticky (vd dải điều hướng batch). */
+  subHeader?: React.ReactNode
   entry: Partial<Entry>
   updateField: (field: keyof Entry, value: unknown) => void
   // Media
@@ -34,6 +36,7 @@ interface FlashcardReviewLayoutProps {
   // Deck
   selectedDeckId: string
   onDeckChange: (deckId: string) => void
+  onDeckClear?: () => void
   // Card types
   cardTypes: CardTypeItem[]
   selectedCardTypeIds: string[]
@@ -47,6 +50,7 @@ interface FlashcardReviewLayoutProps {
 export function FlashcardReviewLayout({
   headerLabel,
   headerActions,
+  subHeader,
   entry,
   updateField,
   images,
@@ -60,6 +64,7 @@ export function FlashcardReviewLayout({
   audioSubtitle,
   selectedDeckId,
   onDeckChange,
+  onDeckClear,
   cardTypes,
   selectedCardTypeIds,
   onCardTypesChange,
@@ -76,6 +81,10 @@ export function FlashcardReviewLayout({
         </div>
         <div className="flex items-center gap-3">{headerActions}</div>
       </div>
+
+      {subHeader && (
+        <div className="max-w-[1280px] mx-auto w-full mb-6">{subHeader}</div>
+      )}
 
       <div className="max-w-[1280px] mx-auto w-full pb-10 grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[18px] items-start">
         {/* ── LEFT ── */}
@@ -205,7 +214,7 @@ export function FlashcardReviewLayout({
 
           {/* Target deck */}
           <section className="bg-white border border-border rounded-[14px] p-5">
-            <DeckSelector value={selectedDeckId} onChangeId={onDeckChange} label="Target Deck" />
+            <DeckSelector value={selectedDeckId} onChangeId={onDeckChange} onClear={onDeckClear} label="Target Deck" />
             {entry.anki_deck && (
               <p className="text-[11px] font-mono text-slate-400 mt-2 truncate">Anki: {entry.anki_deck}</p>
             )}
