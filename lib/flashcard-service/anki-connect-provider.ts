@@ -57,7 +57,13 @@ export class AnkiConnectProvider implements IFlashcardService {
   }
 
   async addNotes(notes: AnkiNote[]): Promise<number[]> {
-    const result = await this.invoke<(number | null)[]>('addNotes', { notes });
+    // Cho phép tạo note dù Anki coi là trùng (nhiều card type cùng 1 từ, hoặc tạo lại
+    // từ đã tồn tại). Nếu không, một note trùng sẽ khiến cả lệnh addNotes thất bại.
+    const notesWithOptions = notes.map((note) => ({
+      ...note,
+      options: { allowDuplicate: true, duplicateScope: 'deck', ...(note.options ?? {}) },
+    }));
+    const result = await this.invoke<(number | null)[]>('addNotes', { notes: notesWithOptions });
     return result.filter((id): id is number => id !== null);
   }
 

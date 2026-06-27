@@ -27,4 +27,8 @@ export interface AnkiNote {
   modelName: string
   fields: Record<string, string>
   tags?: string[]
+  options?: {
+    allowDuplicate?: boolean
+    duplicateScope?: string
+  }
 }
