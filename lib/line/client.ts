@@ -29,21 +29,44 @@ export async function pushMessage(
   messages: LineMessage[],
 ): Promise<LinePushResult> {
   const payload: LineMessagePayload = { to: userId, messages }
+  const payloadJson = JSON.stringify(payload)
 
-  const response = await fetch(`${LINE_API_BASE}/message/push`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${channelAccessToken}`,
-    },
-    body: JSON.stringify(payload),
-  })
+  console.log('[LINE] Push payload size:', payloadJson.length, 'bytes')
+  console.log('[LINE] Push payload:', payloadJson)
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    return { success: false, error: body.message ?? `HTTP ${response.status}` }
+  let response: Response
+  try {
+    response = await fetch(`${LINE_API_BASE}/message/push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${channelAccessToken}`,
+      },
+      body: payloadJson,
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[LINE] Fetch error:', msg)
+    return { success: false, error: `Network error: ${msg}` }
   }
 
+  if (!response.ok) {
+    const rawText = await response.text().catch(() => '')
+    console.error('[LINE] Error response:', response.status, rawText)
+    let errorMsg = `HTTP ${response.status}`
+    try {
+      const body = JSON.parse(rawText)
+      const details = body.details?.map((d: Record<string, string>) => d.message).join('; ')
+      errorMsg = details
+        ? `HTTP ${response.status}: ${body.message} — ${details}`
+        : `HTTP ${response.status}: ${body.message ?? rawText}`
+    } catch {
+      errorMsg = `HTTP ${response.status}: ${rawText}`
+    }
+    return { success: false, error: errorMsg }
+  }
+
+  console.log('[LINE] Push success')
   return { success: true }
 }
 

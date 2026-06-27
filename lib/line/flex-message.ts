@@ -88,7 +88,6 @@ function buildVocabBubble(entry: Entry): Record<string, unknown> {
         color: '#64748b',
         margin: 'xs',
         wrap: true,
-        style: 'italic',
       })
     }
   }

@@ -163,13 +163,16 @@ export function NotificationManager() {
       const res = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: 3 }),
+        body: JSON.stringify({ count: 3, debug: true }),
       })
       const data = await res.json()
       if (data.success) {
         toast.success(`Sent ${data.sent} words: ${data.words?.join(', ') ?? ''}`)
       } else {
-        toast.error(data.error ?? 'Send failed')
+        const step = data.step ? ` [${data.step}]` : ''
+        const hint = data.hint ? `\n${data.hint}` : ''
+        toast.error(`${data.error ?? 'Send failed'}${step}${hint}`)
+        console.error('Test send failed:', data)
       }
     } catch (error) {
       console.error('Test send error:', error)

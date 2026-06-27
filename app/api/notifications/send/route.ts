@@ -75,11 +75,38 @@ export async function POST(request: Request) {
     }
   }
 
+  const debug = body.debug === true
+
+  if (debug) {
+    const textResult = await pushMessage(token, userId, [{
+      type: 'text' as const,
+      text: '🔧 AnkiFlow debug: credential test OK',
+    }])
+    if (!textResult.success) {
+      return NextResponse.json({
+        error: textResult.error,
+        step: 'text_message_test',
+        hint: 'LINE credentials or user ID may be invalid',
+      }, { status: 502 })
+    }
+  }
+
   const message = buildReviewMessage(selected)
+
+  if (debug) {
+    const flexJson = JSON.stringify(message, null, 2)
+    console.log('[DEBUG] Flex message JSON:', flexJson)
+  }
+
   const result = await pushMessage(token, userId, [message])
 
   if (!result.success) {
-    return NextResponse.json({ error: result.error ?? 'LINE push failed' }, { status: 502 })
+    console.error('LINE push failed:', result.error)
+    return NextResponse.json({
+      error: result.error ?? 'LINE push failed',
+      selected_words: selected.map(e => e.word ?? e.term ?? e.title),
+      selected_count: selected.length,
+    }, { status: 502 })
   }
 
   return NextResponse.json({
