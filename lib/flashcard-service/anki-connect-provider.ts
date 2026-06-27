@@ -1,4 +1,4 @@
-import type { IFlashcardService, AnkiNote, CreateModelParams } from './types'
+import type { IFlashcardService, AnkiNote, AnkiCardInfo, CreateModelParams } from './types'
 
 interface AnkiConnectResponse<T> {
   result: T;
@@ -79,6 +79,11 @@ export class AnkiConnectProvider implements IFlashcardService {
 
   async findCards(query: string): Promise<number[]> {
     return await this.invoke<number[]>('findCards', { query });
+  }
+
+  async cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]> {
+    if (cardIds.length === 0) return [];
+    return await this.invoke<AnkiCardInfo[]>('cardsInfo', { cards: cardIds });
   }
 
   async suspend(cardIds: number[]): Promise<boolean> {

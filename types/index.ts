@@ -90,6 +90,9 @@ export interface Entry {
   topic_ids?: string[];
   difficulty?: 'easy' | 'medium' | 'hard';
 
+  // SRS
+  review_state?: ReviewState;
+
   // Metadata
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
@@ -195,6 +198,42 @@ export interface FormFieldConfig {
   data_source?: string | null; // Tên collection để lấy dữ liệu cho dropdown/checkbox
 }
 
+// ─── SRS (Spaced Repetition System) ─────────────────────
+
+export type SRSRating = 'again' | 'hard' | 'good' | 'easy'
+export type SRSQueue = 'new' | 'learning' | 'review' | 'relearning'
+export type SRSSource = 'anki_sync' | 'builtin' | 'heuristic'
+
+export interface ReviewState {
+  ease_factor: number;
+  interval_days: number;
+  due_date: string;
+  lapses: number;
+  total_reviews: number;
+  last_reviewed_at: string;
+  last_rating: SRSRating;
+  queue: SRSQueue;
+  learning_step: number;
+  source: SRSSource;
+  synced_at: string;
+}
+
+// ─── Collection: notification_triggers ───────────────────
+
+export interface NotificationTrigger {
+  id: string;
+  type: 'vocab_review';
+  name: string;
+  schedule_hours: number[];
+  timezone: string;
+  deck_filter: string[];
+  language_filter: string[];
+  words_per_notification: number;
+  is_active: boolean;
+  created_at: FirestoreTimestamp;
+  updated_at: FirestoreTimestamp;
+}
+
 // ─── Collection: settings ─────────────────────────────
 
 /**
@@ -203,13 +242,16 @@ export interface FormFieldConfig {
 export interface Settings {
   unsplash_enabled: boolean;
   tts_enabled: boolean;
-  ai_model: string; // Model Claude dùng để sinh nội dung (vd claude-haiku-4-5)
-  web_search_enabled: boolean; // Cho phép AI agent dùng tool web_search
+  ai_model: string;
+  web_search_enabled: boolean;
   anki_connect_url: string;
   allow_duplicate: boolean;
   auto_audio: boolean;
   auto_image: boolean;
   user_name: string;
+  notifications_enabled: boolean;
+  line_channel_access_token?: string;
+  line_user_id?: string;
   updated_at: FirestoreTimestamp;
 }
 

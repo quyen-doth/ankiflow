@@ -9,6 +9,7 @@ import { CardTypeManager } from '@/components/admin/CardTypeManager'
 import { TopicManager } from '@/components/admin/TopicManager'
 import { DeckManager } from '@/components/admin/DeckManager'
 import { ContentTypeManager } from '@/components/admin/ContentTypeManager'
+import { NotificationManager } from '@/components/admin/NotificationManager'
 
 const TABS = [
   { id: 'categories', label: 'Categories' },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'topics', label: 'Topics' },
   { id: 'decks', label: 'Decks' },
   { id: 'content-types', label: 'Content Types' },
+  { id: 'notifications', label: 'Notifications' },
 ]
 
 const TAB_IDS = TABS.map(t => t.id)
@@ -40,6 +42,7 @@ export default function AdminPage() {
         {activeTab === 'topics' && <TopicManager />}
         {activeTab === 'decks' && <DeckManager />}
         {activeTab === 'content-types' && <ContentTypeManager />}
+        {activeTab === 'notifications' && <NotificationManager />}
       </div>
     </>
   )

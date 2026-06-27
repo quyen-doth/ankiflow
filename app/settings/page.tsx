@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Toggle } from '@/components/ui/Toggle'
 import { FieldWrapper, Select } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
-import { Monitor, Sparkles, Volume2, ImageIcon, SlidersHorizontal, Plug, Brain, Check } from 'lucide-react'
+import { Monitor, Sparkles, Volume2, ImageIcon, SlidersHorizontal, Plug, Brain, Check, Bell, RefreshCw, MessageSquare } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/utils'
 import type { Settings } from '@/types'
@@ -89,6 +89,7 @@ export default function SettingsPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [ankiConnected, setAnkiConnected] = useState(false)
   const [checkingAnki, setCheckingAnki] = useState(true)
+  const [syncingSRS, setSyncingSRS] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -263,6 +264,86 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+        </Card>
+
+        {/* Notifications */}
+        <Card>
+          <SectionHeader icon={Bell} label="Notifications" tone="amber" />
+          <div className="flex flex-col gap-3.5">
+            <div className="py-[15px] border-b border-[#f5f5f1]">
+              <Toggle
+                bare
+                label="Enable notifications"
+                description="Send vocabulary review reminders via LINE."
+                checked={settings.notifications_enabled ?? false}
+                onChange={(v) => updateField('notifications_enabled', v)}
+              />
+            </div>
+
+            <IntegrationCard
+              label="LINE Messaging"
+              description={settings.line_channel_access_token ? 'Token configured' : 'Not configured'}
+              icon={MessageSquare}
+              tone="amber"
+              connected={!!settings.line_channel_access_token}
+              checking={false}
+            />
+
+            <FieldWrapper label="LINE Channel Access Token">
+              <input
+                type="password"
+                value={settings.line_channel_access_token ?? ''}
+                onChange={(e) => updateField('line_channel_access_token', e.target.value || undefined)}
+                placeholder="Paste your LINE Channel Access Token"
+                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
+              />
+            </FieldWrapper>
+
+            <FieldWrapper label="LINE User ID">
+              <input
+                type="text"
+                value={settings.line_user_id ?? ''}
+                onChange={(e) => updateField('line_user_id', e.target.value || undefined)}
+                placeholder="Your LINE User ID"
+                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
+              />
+            </FieldWrapper>
+          </div>
+        </Card>
+
+        {/* SRS Sync */}
+        <Card>
+          <SectionHeader icon={RefreshCw} label="SRS Data Sync" tone="green" />
+          <p className="text-sm text-slate-600 mb-4">
+            Sync spaced repetition data from Anki Desktop to Firestore. Requires Anki Desktop to be open.
+          </p>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
+            disabled={syncingSRS || !ankiConnected}
+            onClick={async () => {
+              setSyncingSRS(true)
+              try {
+                const res = await fetch('/api/anki/sync-srs', { method: 'POST' })
+                const data = await res.json()
+                if (data.success) {
+                  toast.success(`Synced ${data.synced} of ${data.total} entries`)
+                } else {
+                  toast.error(data.error ?? 'Sync failed')
+                }
+              } catch {
+                toast.error('Failed to sync SRS data.')
+              } finally {
+                setSyncingSRS(false)
+              }
+            }}
+          >
+            {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
+          </Button>
+          {!ankiConnected && (
+            <p className="text-xs text-slate-400 mt-2">Anki Desktop must be running to sync.</p>
+          )}
         </Card>
 
         {savedAt && (

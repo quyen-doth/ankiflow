@@ -1,3 +1,15 @@
+export interface AnkiCardInfo {
+  cardId: number
+  noteId: number
+  deckName: string
+  interval: number
+  ease: number
+  due: number
+  lapses: number
+  queue: number
+  type: number
+}
+
 export interface IFlashcardService {
   ping(): Promise<{ connected: boolean; version?: number }>
   getDecks(): Promise<string[]>
@@ -6,6 +18,7 @@ export interface IFlashcardService {
   updateNoteFields(noteId: number, fields: Record<string, string>): Promise<void>
   findNotes(query: string): Promise<number[]>
   findCards(query: string): Promise<number[]>
+  cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]>
   suspend(cardIds: number[]): Promise<boolean>
   unsuspend(cardIds: number[]): Promise<boolean>
   changeDeck(cardIds: number[], deckName: string): Promise<void>
