@@ -1,8 +1,10 @@
 'use client'
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toastItem } from '@/lib/motion'
 import { verifyAttrs } from '@/verify/core/contract'
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info'
@@ -95,11 +97,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={fns}>
       {children}
       <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div key={t.id} className="pointer-events-auto">
-            <Toast variant={t.variant} message={t.message} onClose={() => remove(t.id)} />
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              layout
+              variants={toastItem}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              className="pointer-events-auto"
+            >
+              <Toast variant={t.variant} message={t.message} onClose={() => remove(t.id)} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   )

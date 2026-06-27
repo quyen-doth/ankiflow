@@ -3,6 +3,7 @@ import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { NavigationSidebar } from '@/components/layout/NavigationSidebar'
 import { ToastProvider } from '@/components/ui/Toast'
+import { MotionProvider } from '@/components/providers/MotionProvider'
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: '--font-sans',
@@ -34,13 +35,15 @@ export default function RootLayout({
       className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="bg-canvas font-sans text-ink min-h-full flex">
-        <ToastProvider>
-          <NavigationSidebar />
-          {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
-          <main className="flex-1 min-h-screen pt-16 px-4 py-6 md:ml-[200px] md:pt-8 md:px-8 md:py-8 md:max-w-[calc(100vw-200px)]">
-            {children}
-          </main>
-        </ToastProvider>
+        <MotionProvider>
+          <ToastProvider>
+            <NavigationSidebar />
+            {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
+            <main className="flex-1 min-h-screen pt-16 px-4 py-6 md:ml-[200px] md:pt-8 md:px-8 md:py-8 md:max-w-[calc(100vw-200px)]">
+              {children}
+            </main>
+          </ToastProvider>
+        </MotionProvider>
       </body>
     </html>
   )

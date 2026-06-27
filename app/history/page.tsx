@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { collection, query, orderBy, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { MotionPage } from '@/components/ui/MotionPage'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { HistoryTable } from '@/components/history/HistoryTable'
 import { EntryEditModal } from '@/components/history/EntryEditModal'
@@ -67,7 +68,7 @@ export default function HistoryPage() {
   })
 
   return (
-    <>
+    <MotionPage>
       <PageHeader
         title="Card history"
         description="Review and manage the cards you've created."
@@ -137,6 +138,6 @@ export default function HistoryPage() {
           }}
         />
       )}
-    </>
+    </MotionPage>
   )
 }

@@ -1,6 +1,8 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { Sparkles, FileText } from 'lucide-react'
+import { staggerContainer, staggerItem } from '@/lib/motion'
 import { EditableField } from '@/components/preview/EditableField'
 import { CollocationEditor } from '@/components/preview/CollocationEditor'
 import { ImageSelector, type ImageItem } from '@/components/preview/ImageSelector'
@@ -88,9 +90,9 @@ export function FlashcardReviewLayout({
 
       <div className="max-w-[1280px] mx-auto w-full pb-10 grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[18px] items-start">
         {/* ── LEFT ── */}
-        <div className="flex flex-col gap-[18px]">
+        <motion.div className="flex flex-col gap-[18px]" variants={staggerContainer} initial="hidden" animate="show">
           {/* Generated content */}
-          <section className="bg-white border border-border rounded-[14px] p-6">
+          <motion.section className="bg-white border border-border rounded-[14px] p-6" variants={staggerItem}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <span className="w-[26px] h-[26px] rounded-[7px] bg-[rgba(49,99,66,0.1)] text-primary flex items-center justify-center flex-shrink-0">
@@ -183,10 +185,10 @@ export function FlashcardReviewLayout({
                 />
               </>
             )}
-          </section>
+          </motion.section>
 
           {/* Illustration */}
-          <section className="bg-white border border-border rounded-[14px] p-6">
+          <motion.section className="bg-white border border-border rounded-[14px] p-6" variants={staggerItem}>
             <ImageSelector
               images={images}
               selectedUrl={entry.image_url || null}
@@ -195,18 +197,18 @@ export function FlashcardReviewLayout({
               onUpload={onImageUpload}
               loading={imageLoading}
             />
-          </section>
+          </motion.section>
 
           {/* Pronunciation */}
-          <section className="bg-white border border-border rounded-[14px] px-6 py-[18px]">
+          <motion.section className="bg-white border border-border rounded-[14px] px-6 py-[18px]" variants={staggerItem}>
             <AudioPlayer
               audioUrl={audioUrl}
               onRegenerate={onAudioRegenerate}
               loading={audioLoading}
               subtitle={audioSubtitle}
             />
-          </section>
-        </div>
+          </motion.section>
+        </motion.div>
 
         {/* ── RIGHT ── */}
         <div className="lg:sticky lg:top-24 flex flex-col gap-[18px]">

@@ -1,5 +1,10 @@
 import { createElement } from 'react'
 import { beforeEach, vi } from 'vitest'
+import { MotionGlobalConfig } from 'framer-motion'
+
+// --- framer-motion chạy tức thì trong test (AnimatePresence gỡ DOM ngay khi exit) ---
+// để các verify spec kiểm sự hiện diện/biến mất của DOM không bị animation làm trễ.
+MotionGlobalConfig.skipAnimations = true
 
 // --- Mock next/navigation cho toàn bộ test ---
 // Specs đọc/ghi trạng thái qua globalThis.__verifyNav (xem verify/core/globals.ts)

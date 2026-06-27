@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Plus, Check, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { dropdownPanel } from '@/lib/motion'
 
 export interface CreatableOption {
   id: string
@@ -164,10 +166,15 @@ export function CreatableSelect({
         <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
       </button>
 
-      {open && (
-        <div
+      <AnimatePresence>
+        {open && (
+        <motion.div
           role="listbox"
-          className="absolute z-30 mt-1 w-full bg-white border border-border rounded-lg shadow-modal overflow-hidden"
+          className="absolute z-30 mt-1 w-full bg-white border border-border rounded-lg shadow-modal overflow-hidden origin-top"
+          variants={dropdownPanel}
+          initial="hidden"
+          animate="show"
+          exit="exit"
         >
           <div className="flex items-center gap-2 px-3 py-2 border-b border-[#f0f0ec]">
             <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
@@ -222,8 +229,9 @@ export function CreatableSelect({
               </p>
             )}
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

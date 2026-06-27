@@ -1,7 +1,9 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { staggerContainer, staggerItem } from '@/lib/motion'
 import { validateCardEntry } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
@@ -18,16 +20,25 @@ interface BatchNavStripProps {
  */
 export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSelect }: BatchNavStripProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Batch cards">
+    <motion.div
+      className="flex flex-wrap items-center gap-2"
+      role="tablist"
+      aria-label="Batch cards"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
       {entries.map((entry, index) => {
         const isValid = validateCardEntry(entry, selectedCardTypeIds).length === 0
         const isActive = index === activeIndex
         const label = entry.word || entry.term || entry.title || `Card ${index + 1}`
         return (
-          <button
+          <motion.button
             key={index}
             type="button"
             role="tab"
+            variants={staggerItem}
+            whileTap={{ scale: 0.96 }}
             aria-selected={isActive}
             aria-label={`Card ${index + 1}: ${label}${isValid ? '' : ' (incomplete)'}`}
             onClick={() => onSelect(index)}
@@ -49,9 +60,9 @@ export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSel
             <span className="truncate">
               {index + 1}. {label}
             </span>
-          </button>
+          </motion.button>
         )
       })}
-    </div>
+    </motion.div>
   )
 }

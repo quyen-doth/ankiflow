@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
+import { MotionPage } from "@/components/ui/MotionPage";
 import { usePreviewEntry } from "@/hooks/usePreviewEntry";
 import { useAnkiExport } from "@/hooks/useAnkiExport";
 import { useCardMedia } from "@/hooks/useCardMedia";
@@ -128,7 +129,7 @@ export default function PreviewPage() {
     }
 
     return (
-        <>
+        <MotionPage>
             <FlashcardReviewLayout
                 headerLabel="Review Generation"
                 headerActions={
@@ -184,6 +185,6 @@ export default function PreviewPage() {
                     </Button>
                 </div>
             </Modal>
-        </>
+        </MotionPage>
     );
 }

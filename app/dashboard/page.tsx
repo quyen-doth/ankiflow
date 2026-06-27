@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { MotionPage } from '@/components/ui/MotionPage'
 import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -79,7 +80,7 @@ export default function DashboardPage() {
   const recentEntries = entries.slice(0, 6)
 
   return (
-    <>
+    <MotionPage>
       <PageHeader
         title="Dashboard"
         description="A snapshot of your vocabulary library."
@@ -222,6 +223,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-    </>
+    </MotionPage>
   )
 }

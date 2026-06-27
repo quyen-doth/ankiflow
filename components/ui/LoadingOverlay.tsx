@@ -1,9 +1,11 @@
 'use client'
 
+import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, X } from 'lucide-react'
 import { StepIndicator } from './StepIndicator'
 import { ProgressBar } from './ProgressBar'
 import { FlowTip } from './FlowTip'
+import { overlayFade, scaleModal } from '@/lib/motion'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface LoadingStep {
@@ -35,15 +37,19 @@ export function LoadingOverlay({
   onCancel,
   cancelLabel = 'Cancel',
 }: LoadingOverlayProps) {
-  if (!open) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(21,23,28,0.3)', backdropFilter: 'blur(4px)' }}
-      {...verifyAttrs({ unit: 'LoadingOverlay', open, progress })}
-    >
-      <div className="bg-white rounded-card shadow-modal w-full max-w-md p-8 flex flex-col gap-6">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(21,23,28,0.3)', backdropFilter: 'blur(4px)' }}
+          variants={overlayFade}
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          {...verifyAttrs({ unit: 'LoadingOverlay', open, progress })}
+        >
+          <motion.div className="bg-white rounded-card shadow-modal w-full max-w-md p-8 flex flex-col gap-6" variants={scaleModal}>
         {/* Header */}
         <div className="flex flex-col items-center text-center gap-3">
           <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center">
@@ -80,7 +86,9 @@ export function LoadingOverlay({
             {cancelLabel}
           </button>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

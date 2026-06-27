@@ -1,6 +1,8 @@
 'use client'
 
+import { motion, AnimatePresence } from 'framer-motion'
 import { TriangleAlert, X } from 'lucide-react'
+import { overlayFade, scaleModal } from '@/lib/motion'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { BatchDuplicateResult } from '@/hooks/useDuplicateCheck'
 
@@ -29,19 +31,23 @@ export function BatchDuplicateModal({
   duplicates,
   totalCount,
 }: BatchDuplicateModalProps) {
-  if (!open) return null
-
   const dupCount = duplicates.length
   const newCount = totalCount - dupCount
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(20, 22, 24, 0.4)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      {...verifyAttrs({ unit: 'BatchDuplicateModal', open, count: dupCount })}
-    >
-      <div className="w-[480px] max-w-full bg-white rounded-[16px] shadow-modal overflow-hidden">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(20, 22, 24, 0.4)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+          variants={overlayFade}
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          {...verifyAttrs({ unit: 'BatchDuplicateModal', open, count: dupCount })}
+        >
+          <motion.div className="w-[480px] max-w-full bg-white rounded-[16px] shadow-modal overflow-hidden" variants={scaleModal}>
         <div className="px-6 pt-[22px] pb-[18px]">
           <div className="flex items-start gap-[14px]">
             <span className="w-[42px] h-[42px] rounded-[11px] bg-[rgba(184,117,20,0.1)] flex items-center justify-center flex-shrink-0">
@@ -106,7 +112,9 @@ export function BatchDuplicateModal({
             Create all ({totalCount})
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

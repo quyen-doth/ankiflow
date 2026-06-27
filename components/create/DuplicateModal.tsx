@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { TriangleAlert, X } from 'lucide-react'
+import { overlayFade, scaleModal } from '@/lib/motion'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface DuplicateEntry {
@@ -48,18 +50,22 @@ export function DuplicateModal({
     return () => document.removeEventListener('keydown', handler)
   }, [open, onClose, onProceed])
 
-  if (!open) return null
-
   const badge = langBadge(language)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(20, 22, 24, 0.4)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      {...verifyAttrs({ unit: 'DuplicateModal', open, count: duplicates.length })}
-    >
-      <div className="w-[440px] max-w-full bg-white rounded-[16px] shadow-modal overflow-hidden">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(20, 22, 24, 0.4)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+          variants={overlayFade}
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          {...verifyAttrs({ unit: 'DuplicateModal', open, count: duplicates.length })}
+        >
+          <motion.div className="w-[440px] max-w-full bg-white rounded-[16px] shadow-modal overflow-hidden" variants={scaleModal}>
         {/* Body */}
         <div className="px-6 pt-[22px] pb-[18px]">
           <div className="flex items-start gap-[14px]">
@@ -118,7 +124,9 @@ export function DuplicateModal({
             Generate anyway
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

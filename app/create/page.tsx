@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CardForm } from '@/components/create/CardForm';
 import { ModeToggle } from '@/components/create/ModeToggle';
+import { MotionPage } from '@/components/ui/MotionPage';
 import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { Button } from '@/components/ui/Button';
@@ -174,7 +176,7 @@ export default function CreatePage() {
     }, [activeType]);
 
     return (
-        <>
+        <MotionPage>
             {/* Custom breadcrumb + title */}
             <div className="sticky top-16 md:top-0 z-10 -mx-4 md:-mx-8 md:-mt-8 mb-6 px-4 md:px-[34px] py-5 border-b border-[#eaeae6] bg-canvas/85 backdrop-blur-md">
                 <nav className="flex items-center text-meta font-mono text-slate-400 mb-2">
@@ -186,24 +188,32 @@ export default function CreatePage() {
                 <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
             </div>
 
-            {successBanner && (
-                <div className="max-w-6xl mx-auto w-full px-0 mb-2">
-                    <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
-                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                        <p className="text-sm font-medium text-ink flex-1">
-                            Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to
-                            Anki!
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => setSuccessBanner(null)}
-                            className="text-slate-600 hover:text-ink"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
+            <AnimatePresence>
+                {successBanner && (
+                    <motion.div
+                        className="max-w-6xl mx-auto w-full px-0 mb-2 overflow-hidden"
+                        initial={{ opacity: 0, height: 0, y: -8 }}
+                        animate={{ opacity: 1, height: 'auto', y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -8 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
+                            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                            <p className="text-sm font-medium text-ink flex-1">
+                                Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to
+                                Anki!
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setSuccessBanner(null)}
+                                className="text-slate-600 hover:text-ink"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
@@ -304,6 +314,6 @@ export default function CreatePage() {
                 flowTip="Tip: Short example sentences help your brain retain words 3-5x faster than long definitions."
                 onCancel={handleCancelGenerate}
             />
-        </>
+        </MotionPage>
     );
 }

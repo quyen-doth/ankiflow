@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
 import { BatchNavStrip } from "@/components/review/BatchNavStrip";
+import { MotionPage } from "@/components/ui/MotionPage";
 import { usePreviewBatch } from "@/hooks/usePreviewBatch";
 import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
 import { useCardMedia } from "@/hooks/useCardMedia";
@@ -253,7 +254,7 @@ export default function BatchPreviewPage() {
     );
 
     return (
-        <>
+        <MotionPage>
             <BatchCardReviewer
                 key={activeIndex}
                 entry={activeEntry}
@@ -285,6 +286,6 @@ export default function BatchPreviewPage() {
                     </Button>
                 </div>
             </Modal>
-        </>
+        </MotionPage>
     );
 }
