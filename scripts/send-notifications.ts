@@ -25,6 +25,8 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     };
 }
 
+console.log('🔑 Project ID:', serviceAccount.projectId ?? (serviceAccount as Record<string, unknown>).project_id ?? 'UNKNOWN');
+
 const app = initializeApp({ credential: cert(serviceAccount as Parameters<typeof cert>[0]) });
 const db = getFirestore(app);
 

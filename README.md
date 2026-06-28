@@ -1,10 +1,10 @@
 <div align="center">
 
-# AnkiFlow 📚
+# AnkiFlow
 
-**AI で単語カードづくりを自動化する、多言語学習者のための Web アプリケーション**
+**AI によるコンテンツ自動生成と Anki 連携で、学習カードの作成・管理・復習を一元化する Web アプリ**
 
-語彙を入力 → AI が例文・発音・画像を自動生成 → 内容を確認・編集 → Anki にエクスポート
+語彙や用語を入力するだけで AI がコンテンツを自動補完。カードタイプやカテゴリは CMS で柔軟に管理でき、LINE 通知による受動的な復習にも対応しています。
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -12,119 +12,116 @@
 ![Firebase](https://img.shields.io/badge/Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-280_passing-success)
+![Tests](https://img.shields.io/badge/tests-375_passing-success)
 
 </div>
 
-## 📖 概要
+## 概要
 
-語学学習において「単語カードを作る作業」は地味に時間がかかり、継続の妨げになります。**AnkiFlow** は、単語やIT用語を入力するだけで AI（Claude API / Anthropic）が意味・例文・コロケーション・発音記号などを自動生成し、ワンクリックで [Anki](https://apps.ankiweb.net/)（定番の暗記アプリ）に取り込めるようにすることで、この「作る手間」をなくすことを目的としています。
+語学学習や技術用語のインプットにおいて、「単語カードを作る手間」は地味に大きく、学習の継続を妨げる要因になります。AnkiFlow は、この「作る・管理する・復習する」の 3 つをひとつのアプリで完結させることを目的とした個人開発プロジェクトです。
 
-- **対象コンテンツ**: 語学（英語 🇺🇸 / 中国語 🇨🇳 / 日本語 🇯🇵）、IT用語、一般知識
-- **連携先**: ローカルで動作する Anki Desktop（AnkiConnect プラグイン経由）
-- **規模**: TypeScript 約 16,500 行 / 46 コンポーネント / 17 API ルート / 10 ページ / 280 自動テスト
+- **対象コンテンツ**: 語学（英語 / 中国語 / 日本語）、IT 用語、一般知識をはじめ、CMS でコンテンツタイプを自由に追加可能
+- **連携先**: Anki Desktop（AnkiConnect 経由）/ LINE Messaging API（復習通知）
+- **規模**: TypeScript 約 23,000 行 / 59 コンポーネント / 23 API ルート / 10 ページ / 375 自動テスト
 
-## ✨ 主な機能
+## 主な機能
 
-| 機能                         | 説明                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| 🤖 **AI による自動補完**     | 単語を入力すると Claude API が意味・例文・発音・関連語などを生成         |
-| 🖼️ **画像・音声の自動付与**  | Unsplash で関連画像、Google Cloud TTS でネイティブ音声を取得             |
-| 👀 **プレビュー & 編集**     | エクスポート前にカード内容をその場で確認・修正（⌘Enter で即エクスポート）|
-| 📤 **Anki へのエクスポート** | AnkiConnect 経由で複数のカードタイプを一括生成（音声メディア同期対応）   |
-| 🔄 **重複チェック**          | カード作成前に同一単語・同一言語の重複を自動検出し警告                   |
-| ✏️ **既存カード編集**         | Dashboard・History から既存カードを編集し、Anki ノートに即時同期         |
-| 🗂️ **履歴管理**              | 作成済みカードの一覧・詳細表示・再作成・削除                             |
-| ⚙️ **管理画面（CMS）**       | カテゴリ・カードタイプ・デッキなどの CRUD 管理 + Anki デッキ自動同期     |
-| 💾 **セッション永続化**      | デッキ・言語・タグなどの設定を `localStorage` に保持し、次回入力を高速化 |
+### 作成
 
-## 🖼️ スクリーンショット
+| 機能                     | 説明                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| **AI 自動補完**          | 語彙入力 → Claude API が意味・例文・コロケーション・発音記号などを生成 |
+| **画像・音声の自動付与** | Unsplash で関連画像、Google Cloud TTS でネイティブ音声を取得           |
+| **重複チェック**         | 同一単語・同一言語の重複を作成前に自動検出し警告                       |
+| **一括作成**             | 複数の語彙をまとめて作成し、バッチでプレビュー・エクスポート           |
 
-画面キャプチャは `docs/screenshots/` に以下のファイル名で配置します。
+### 管理
 
-```
-docs/screenshots/
-├── dashboard.png   # ダッシュボード
-├── create.png      # カード作成
-└── preview.png     # プレビュー
-```
+| 機能                  | 説明                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| **プレビュー & 編集** | エクスポート前にカード内容をその場で確認・修正（⌘Enter で即エクスポート）          |
+| **既存カード編集**    | History から既存カードを編集し、Anki ノートに即時同期                              |
+| **履歴管理**          | 作成済みカードの一覧・詳細表示・再作成・削除                                       |
+| **管理画面（CMS）**   | カテゴリ・カードタイプ・コンテンツタイプ・デッキの CRUD 管理 + Anki デッキ自動同期 |
 
-<!-- 上記の画像を配置したら、このコメントを外して掲載してください:
-| ダッシュボード | カード作成 | プレビュー |
-|---|---|---|
-| ![dashboard](docs/screenshots/dashboard.png) | ![create](docs/screenshots/create.png) | ![preview](docs/screenshots/preview.png) |
--->
+### 復習・連携
 
-## 🛠️ 技術スタック
+| 機能                        | 説明                                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Anki エクスポート**       | AnkiConnect 経由で複数カードタイプを一括生成（音声メディア同期対応）                                                           |
+| **LINE 通知による受動 SRS** | SM-2 アルゴリズムに基づき、復習タイミングを LINE に Flex Message でプッシュ通知。Anki Desktop を開かなくても隙間時間に復習可能 |
+| **セッション永続化**        | デッキ・言語・タグなどの設定を保持し、次回入力を高速化                                                                         |
 
-| 領域           | 採用技術                            | 選定理由                                                    |
-| -------------- | ----------------------------------- | ----------------------------------------------------------- |
-| フレームワーク | **Next.js 16**（App Router）        | サーバーコンポーネントと API ルートを単一コードベースで管理 |
-| 言語           | **TypeScript**（strict モード）     | `any` を排し、型でドメインの整合性を担保                    |
-| データベース   | **Cloud Firestore**                 | サーバーは Admin SDK、ブラウザは Client SDK を使い分け      |
-| スタイリング   | **Tailwind CSS v4**                 | デザイントークンに基づく一貫した UI                         |
-| AI 生成        | **Claude API**（Anthropic）         | Tool-based AI agent による語彙コンテンツのエンリッチ        |
-| 音声 / 画像    | **Google Cloud TTS / Unsplash API** | ネイティブ発音・関連画像の取得                              |
-| 暗記アプリ連携 | **AnkiConnect**（`localhost:8765`） | ローカル HTTP API でカードを直接生成                        |
-| バリデーション | **zod 4**                           | API 入出力・フォームのスキーマ検証                          |
-| テスト         | **Vitest + jsdom**                  | 自作のランタイム検証基盤を駆動（後述）                      |
-
-## 🏗️ システム構成
-
-ブラウザ UI から Next.js の API ルートを介して各外部サービスにアクセスする構成です。**サーバーロジックはすべて API ルートに集約**し、クライアントとサーバーの責務を明確に分離しています。
+## システム構成
 
 ```
 ブラウザ UI
    │
    ▼
-Next.js API ルート (app/api/*)  ──┬── Firestore（Admin SDK）
-                                 ├── AnkiConnect（localhost:8765）
-                                 ├── Claude API（コンテンツ生成）
-                                 ├── Google Cloud TTS（音声生成）
-                                 └── Unsplash API（画像取得）
+Next.js API ルート (app/api/*)
+   ├── Firestore（Admin SDK）
+   ├── AnkiConnect（localhost:8765）
+   ├── Claude API（コンテンツ生成）
+   ├── Google Cloud TTS（音声生成）
+   ├── Unsplash API（画像取得）
+   └── LINE Messaging API（SRS 通知）
 ```
 
-**カード作成のデータフロー（Create → Preview → Anki）**
+**カード作成フロー**
 
-1. 作成フォームで語彙を入力し、`POST /api/generate` で Claude API が内容を生成
-2. 生成結果を `localStorage`（`ankiflow_pending_result`）に一時保存
-3. プレビュー画面へ遷移し、内容を読み込み・編集
-4. `POST /api/anki/create` で AnkiConnect にカードを送信し、Firestore に履歴を保存
+1. 作成フォームで語彙を入力 → `POST /api/generate` で Claude API が内容を生成
+2. 生成結果を `localStorage` に一時保存し、プレビュー画面へ遷移
+3. 内容を確認・編集 → `POST /api/anki/create` でカードを Anki に送信 & Firestore に保存
 
-> **設計上の選択（ローカルファースト）**: create → preview 間の一時データ（`lib/pendingEntry.ts` / `ankiflow_pending_result`）と、デッキ・言語・タグなどのフォーム設定（`lib/session.ts` / `ankiflow_session_*`）は `localStorage` に保持しています。これはサーバー状態を持たず単一ユーザーのローカル動作で完結させるための意図的な設計で、AnkiConnect がローカル前提であることとも整合します。複数ユーザー対応（サーバー側でのセッション・状態管理）はこのトレードオフを理解したうえでの今後の課題です。
+> **設計上の選択（ローカルファースト）**: create → preview 間の一時データとフォーム設定は `localStorage` に保持しています。これはサーバー状態を持たず、単一ユーザーのローカル動作で完結させるための意図的な設計です。AnkiConnect 自体がローカル前提であることとも整合しています。複数ユーザー対応（サーバー側でのセッション・状態管理）は、このトレードオフを理解したうえでの今後の課題です。
 
-## 💡 技術的ハイライト
+## 技術スタック
 
-採用担当の方に特に見ていただきたい、設計・実装上の工夫です。
+| 領域           | 採用技術                                                      |
+| -------------- | ------------------------------------------------------------- |
+| フレームワーク | Next.js 16（App Router）/ React 19                            |
+| 言語           | TypeScript（strict モード）                                   |
+| データベース   | Cloud Firestore（サーバー: Admin SDK / ブラウザ: Client SDK） |
+| AI 生成        | Claude API（Anthropic）— Tool-based agent                     |
+| 音声・画像     | Google Cloud TTS / Unsplash API                               |
+| スタイリング   | Tailwind CSS v4                                               |
+| 暗記アプリ連携 | AnkiConnect（`localhost:8765`）                               |
+| プッシュ通知   | LINE Messaging API                                            |
+| バリデーション | Zod v4                                                        |
+| テスト         | Vitest + jsdom（自作ランタイム検証基盤）                      |
+
+## 技術的ハイライト
 
 ### 1. 自作のランタイム検証フレームワーク（`verify/`）
 
-「単体テストでは UI の実挙動まで担保しづらい」という課題に対し、**実際のコンポーネントをマウントし、操作（クリック・入力）した後に DOM を観測して合否を判定する**独自の検証基盤を設計・実装しました。
+「単体テストでは UI の実挙動まで担保しづらい」という課題に対し、実際のコンポーネントをマウントし、操作（クリック・入力）後に DOM を観測して合否を判定する独自の検証基盤を設計・実装しました。
 
-- **同一のコードパス**（`runFixture()`）が 3 つの実行環境（CI のターミナル / ブラウザのダッシュボード `/verify` / エージェント用コンソール API）を兼ねる
-- **プラガブルな 4 種の検証器**（スキーマ・不変条件・DOM コントラクト・アクセシビリティ）を、コンポーネントを改変せず追加可能
-- Firestore / fetch / ルーター / `localStorage` を**モック注入**し、外部依存のあるコンポーネントも単体で検証
-- **46 のコンポーネント／フィーチャー**を網羅し、**280 件のテストが通過**
+- 同一のコードパス（`runFixture()`）が CLI・ブラウザ（`/verify`）・コンソール API の 3 環境で動作
+- スキーマ・不変条件・DOM コントラクト・アクセシビリティの 4 種の検証器をプラガブルに追加可能
+- Firestore / fetch / Router / `localStorage` をモック注入し、外部依存のあるコンポーネントも単体で検証
+- 59 コンポーネントを網羅し、375 件のテストが安定して通過
 
-> この基盤を整備する過程で、アクセシビリティ欠陥（ラベル未設定のフォーム）や非同期処理のフレーキーなテストを検出・修正しました。**テスト容易性を起点に設計・品質を改善する**という実務的な視点を重視しています。
+> この基盤を整備する過程で、アクセシビリティ欠陥や非同期処理のフレーキーなテストを検出・修正しました。
 
 ### 2. 型安全なドメインモデリング
 
-`FormType` や言語種別などの**列挙型を単一の真実源**（`types/index.ts`）として定義し、フォームの分岐・AI プロンプトの選択・Firestore クエリのすべてを型で結びつけています。文字列のハードコードを禁じ、設定ミスによる「サイレントな誤動作」を防いでいます。
+`FormType`・言語種別などの列挙型を `types/index.ts` の単一の真実源として定義。フォームの分岐・AI プロンプト選択・Firestore クエリをすべて型で結びつけ、文字列ハードコードと「サイレントな誤動作」を防いでいます。
 
-### 3. 外部サービスのオーケストレーションとエラーハンドリング
+### 3. LINE を使った受動 SRS 学習
 
-AnkiConnect は**ローカルでのみ動作する**ため、未接続時を含むあらゆる失敗ケースを明示的にハンドリングしています。AI・TTS・画像取得といった複数の非同期処理を協調させつつ、ユーザーには進捗をステップ表示します。既存カードの編集時には Firestore と Anki ノートを同時に同期更新し、データの一貫性を保ちます。
+SM-2 アルゴリズムで次回復習日を計算し、AnkiConnect から取得した学習状態と Firestore の `review_state` を同期。定期通知で学習カードを LINE に Flex Message で配信します。Anki Desktop を開かなくても隙間時間に復習できる仕組みです。
 
 ### 4. 設定駆動の管理画面（CMS）
 
-カテゴリ・カードタイプ・デッキなどの設定を**コードではなくデータとして管理**できる管理画面を実装。フォームの項目構成まで Firestore のドキュメントで制御でき、機能追加に強い構造にしています。
+カテゴリ・カードタイプ・コンテンツタイプ・デッキをコードではなくデータとして管理。フォームの項目構成も Firestore ドキュメントで制御でき、新しいコンテンツタイプの追加にコード変更が不要な構造にしています。
 
 ### 5. 技術選定の判断 — なぜ Anki に乗せたか
 
-間隔反復（SRS）エンジンを自前でゼロから作るのではなく、実績ある **Anki**（AnkiConnect 経由）にカードの保存・復習を委ねる構成を選びました。学習継続を支える SRS の核心は堅牢な既存実装に任せ、本アプリは「カードを作る手間をなくす」価値に集中することで、早期に実利用へ到達することを優先した判断です。その代償として、エクスポートは Anki Desktop が同一端末で起動している「ローカル動作前提」という制約を負っています。この local 依存を解消する独自 SRS 化は、次のステップとして視野に入れています。
+間隔反復（SRS）エンジンを自前でゼロから作るのではなく、実績ある Anki（AnkiConnect 経由）にカードの保存・復習を委ねる構成を選びました。学習継続を支える SRS の核心は堅牢な既存実装に任せ、本アプリは「カードを作る手間をなくす」価値に集中することで、早期に実利用へ到達することを優先した判断です。
 
-## ✅ 品質保証・テスト
+その代償として、エクスポートは Anki Desktop が同一端末で起動している「ローカル動作前提」という制約を負っています。この local 依存を解消する独自 SRS 化は、次のステップとして視野に入れています。
+
+## 品質保証
 
 ```bash
 npm run verify        # 検証マトリクス + 単体テスト（Vitest）
@@ -133,47 +130,44 @@ npm run lint          # ESLint
 npm run build         # 本番ビルド
 ```
 
-- **280 テストが安定して通過**（実行順をシャッフルしても緑であることを確認済み）
-- 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404・検証用の DOM 属性も出力されません）
+- 375 テストが安定して通過（実行順シャッフルでも緑）
+- 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404）
 - 詳細は [`docs/VERIFICATION.md`](docs/VERIFICATION.md) を参照
 
-## 📂 ディレクトリ構成
+## ディレクトリ構成
 
 ```
 ankiflow/
 ├── app/
-│   ├── api/         # すべてのサーバーロジック（API ルート）
+│   ├── api/         # すべてのサーバーロジック（23 API ルート）
 │   ├── dashboard/   # 統計サマリー・クイックアクション
 │   ├── create/      # カード作成フォーム
-│   ├── preview/     # 生成カードの確認・編集・エクスポート
+│   ├── preview/     # 生成カードの確認・編集・エクスポート（バッチ対応）
 │   ├── history/     # 作成履歴の一覧・詳細
 │   ├── admin/       # 設定データの管理（CMS）
 │   └── settings/    # 連携状態・各種トグル
-├── components/      # UI コンポーネント（ui / create / preview / history / admin / layout）
-├── hooks/           # カスタムフック（useAnkiExport, useEntryEdit, useDuplicateCheck ...）
+├── components/      # UI コンポーネント（59 ファイル）
+├── hooks/           # カスタムフック
 ├── lib/             # 共通ユーティリティ（firebase, ai-agent, tts, unsplash, session ...）
 ├── types/           # 型定義・列挙型（ドメインの真実源）
 ├── verify/          # 自作ランタイム検証フレームワーク
-└── docs/            # 設計ドキュメント（source of truth）
+└── docs/            # 設計ドキュメント
 ```
 
-## 🚀 セットアップ
+## セットアップ
 
 ```bash
-# 1. リポジトリ直下の ankiflow/ で依存をインストール
-cd ankiflow
+# 1. 依存インストール
 npm install
 
-# 2. 環境変数を設定（.env.example をコピー）
-cp .env.example .env.local
-# Firebase / Anthropic / Google TTS / Unsplash のキーを設定
+# 2. 環境変数を設定
+cp .env.example .env
+# Firebase / Anthropic / Google TTS / Unsplash / LINE のキーを設定
 
 # 3. 開発サーバーを起動
 npm run dev
 # → http://localhost:3000
 ```
-
-> Anki へのエクスポート機能を試すには、**Anki Desktop を起動**し、AnkiConnect プラグインを導入してください（`localhost:8765`）。AI 生成やプレビューまでは Anki なしで確認できます。
 
 主な環境変数:
 
@@ -183,19 +177,21 @@ npm run dev
 | `ANTHROPIC_API_KEY`                           | Anthropic Console                 |
 | `GOOGLE_TTS_API_KEY`                          | Google Cloud Console              |
 | `UNSPLASH_ACCESS_KEY`                         | Unsplash Developers               |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_USER_ID`  | LINE Developers                   |
 | `API_SECRET`                                  | 管理系 API の認証用ランダム文字列 |
 
-## 🗺️ 今後の展望
+> Anki へのエクスポート機能には **Anki Desktop の起動と AnkiConnect プラグイン**（`localhost:8765`）が必要です。AI 生成・プレビューは Anki なしでも確認できます。
+
+## 今後の展望
 
 - 独自 SRS エンジンの実装（Anki Desktop 依存の解消）
-- E2E テスト（Playwright）の整備
-- 複数ユーザー対応（現状はローカル単一ユーザー想定）
-- モバイル対応（レスポンシブ UI の最適化）
+- 複数ユーザー対応
+- モバイル向け UI 最適化
+- 学習状況統計の画面
+- 複数デバイスからのメモ入力（Chrome 拡張機能などの活用）
 
-## 👤 作者について
+## 作者
 
-個人開発のプロジェクトです。要件定義からアーキテクチャ設計、実装、テスト基盤の整備までを一人で担当しました。
+個人開発プロジェクトです。要件定義・アーキテクチャ設計・実装・テスト基盤の整備まで一人で担当しました。
 
 - **GitHub**: https://github.com/quyen-doth
-
-ご覧いただきありがとうございます。ご質問やフィードバックがあればお気軽にご連絡ください。

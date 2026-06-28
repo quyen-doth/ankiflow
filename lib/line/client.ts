@@ -29,10 +29,6 @@ export async function pushMessage(
   messages: LineMessage[],
 ): Promise<LinePushResult> {
   const payload: LineMessagePayload = { to: userId, messages }
-  const payloadJson = JSON.stringify(payload)
-
-  console.log('[LINE] Push payload size:', payloadJson.length, 'bytes')
-  console.log('[LINE] Push payload:', payloadJson)
 
   let response: Response
   try {
@@ -42,7 +38,7 @@ export async function pushMessage(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${channelAccessToken}`,
       },
-      body: payloadJson,
+      body: JSON.stringify(payload),
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -52,7 +48,7 @@ export async function pushMessage(
 
   if (!response.ok) {
     const rawText = await response.text().catch(() => '')
-    console.error('[LINE] Error response:', response.status, rawText)
+    console.error('[LINE] Push error:', response.status, rawText)
     let errorMsg = `HTTP ${response.status}`
     try {
       const body = JSON.parse(rawText)
@@ -66,7 +62,6 @@ export async function pushMessage(
     return { success: false, error: errorMsg }
   }
 
-  console.log('[LINE] Push success')
   return { success: true }
 }
 
