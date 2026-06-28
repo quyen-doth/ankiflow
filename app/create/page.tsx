@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
@@ -65,6 +65,14 @@ function resolveIcon(contentType: ContentType): React.ElementType {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function CreatePage() {
+    return (
+        <Suspense>
+            <CreateContent />
+        </Suspense>
+    );
+}
+
+function CreateContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
