@@ -415,9 +415,9 @@ export function CardForm({
     const renderBlock = (block: ConfigBlock, i: number): React.ReactNode => {
         if (block.kind === "row") {
             return (
-                <div key={`row-${i}`} className="grid grid-cols-2 gap-3">
+                <div key={`row-${i}`} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {block.blocks.map((leaf, j) => (
-                        <div key={`${leaf.kind}-${j}`} className={leaf.span === 2 ? "col-span-2" : undefined}>
+                        <div key={`${leaf.kind}-${j}`} className={leaf.span === 2 ? "sm:col-span-2" : undefined}>
                             {renderLeaf(leaf)}
                         </div>
                     ))}

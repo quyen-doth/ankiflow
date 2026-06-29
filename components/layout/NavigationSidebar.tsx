@@ -104,7 +104,7 @@ export function NavigationSidebar() {
             {/* Sidebar / drawer */}
             <aside
                 className={cn(
-                    'w-[200px] h-screen bg-surface flex flex-col px-3 py-[18px] fixed left-0 top-0 z-50 border-r border-border',
+                    'w-[240px] h-screen bg-surface flex flex-col px-3 py-[18px] fixed left-0 top-0 z-50 border-r border-border',
                     'transition-transform duration-200 md:translate-x-0',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full',
                 )}

@@ -303,7 +303,7 @@ export function ContentTypeManager() {
       >
         <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-1">
           {/* Metadata */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrapper label="Name">
               <Input
                 aria-label="Content type name"
@@ -330,7 +330,7 @@ export function ContentTypeManager() {
               placeholder="Short description of this content type"
             />
           </FieldWrapper>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrapper label="Icon">
               <Input
                 aria-label="Icon name"
@@ -404,7 +404,7 @@ export function ContentTypeManager() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <FieldWrapper label="Field Key">
                   <Input
                     aria-label={`Field key ${index}`}
@@ -433,7 +433,7 @@ export function ContentTypeManager() {
                   </Select>
                 </FieldWrapper>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldWrapper label="Placeholder">
                   <Input
                     value={field.placeholder || ''}

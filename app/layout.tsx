@@ -39,7 +39,7 @@ export default function RootLayout({
           <ToastProvider>
             <NavigationSidebar />
             {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
-            <main className="flex-1 min-h-screen pt-16 px-4 py-6 md:ml-[200px] md:pt-8 md:px-8 md:py-8 md:max-w-[calc(100vw-200px)]">
+            <main className="flex-1 min-w-0 min-h-screen overflow-x-clip pt-16 px-4 py-6 md:ml-[240px] md:pt-8 md:px-8 md:py-8 xl:px-10 2xl:px-12 md:max-w-[calc(100vw-240px)]">
               {children}
             </main>
           </ToastProvider>

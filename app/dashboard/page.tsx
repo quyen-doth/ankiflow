@@ -93,7 +93,7 @@ export default function DashboardPage() {
                 placeholder="Search cards…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-[200px] h-[38px] pl-9 pr-10 bg-white border border-border rounded-[9px] text-sm text-ink placeholder:text-slate-400/60 focus:border-primary focus:ring-[3px] focus:ring-primary-bg focus:outline-none"
+                className="w-[160px] sm:w-[200px] h-[38px] pl-9 pr-10 bg-white border border-border rounded-[9px] text-sm text-ink placeholder:text-slate-400/60 focus:border-primary focus:ring-[3px] focus:ring-primary-bg focus:outline-none"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-slate-400 border border-border rounded px-1.5 py-0.5">/</kbd>
             </div>
