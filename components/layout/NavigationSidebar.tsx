@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X } from 'lucide-react';
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
+import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
 import { cn } from '@/lib/utils';
 import { verifyAttrs } from '@/verify/core/contract';
 
@@ -24,6 +25,32 @@ export function NavigationSidebar() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [lastPathname, setLastPathname] = useState(pathname);
     const [userName, setUserName] = useState<string>('');
+    const unsyncedCount = useUnsyncedCount();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState<string | null>(null);
+
+    const handleSync = useCallback(async () => {
+        setIsSyncing(true)
+        setSyncResult(null)
+        try {
+            const res = await fetch('/api/entries/sync', { method: 'POST' })
+            const data = await res.json()
+            if (data.synced > 0 && data.failed === 0) {
+                setSyncResult(`Synced ${data.synced} cards`)
+            } else if (data.synced > 0) {
+                setSyncResult(`Synced ${data.synced}, failed ${data.failed}`)
+            } else if (data.failed > 0) {
+                setSyncResult('Sync failed')
+            } else {
+                setSyncResult('Nothing to sync')
+            }
+        } catch {
+            setSyncResult('Sync error')
+        } finally {
+            setIsSyncing(false)
+            setTimeout(() => setSyncResult(null), 4000)
+        }
+    }, [])
 
     useEffect(() => {
         async function fetchUserName() {
@@ -71,6 +98,11 @@ export function NavigationSidebar() {
                             )}
                         />
                         <span>{label}</span>
+                        {label === 'History' && unsyncedCount > 0 && (
+                            <span className="ml-auto bg-amber text-white text-[10px] font-bold leading-none rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                {unsyncedCount > 99 ? '99+' : unsyncedCount}
+                            </span>
+                        )}
                     </Link>
                 );
             })}
@@ -130,7 +162,12 @@ export function NavigationSidebar() {
 
                 {/* Bottom: Anki status + User */}
                 <div className="mt-auto flex flex-col gap-2">
-                    <ConnectedBadge />
+                    <ConnectedBadge
+                        unsyncedCount={unsyncedCount}
+                        onSync={handleSync}
+                        isSyncing={isSyncing}
+                        syncResult={syncResult}
+                    />
                     {userName && (
                         <div className="flex items-center gap-2.5 px-1.5">
                             <div className="w-[26px] h-[26px] rounded-full bg-[#e7e4dd] flex items-center justify-center flex-shrink-0">

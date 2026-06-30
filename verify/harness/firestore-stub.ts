@@ -172,6 +172,22 @@ export function serverTimestamp(): typeof SERVER_TIMESTAMP {
   return SERVER_TIMESTAMP
 }
 
+export function onSnapshot(
+  source: CollectionRef | QueryRef,
+  onNext: (snapshot: { docs: SnapshotDoc[]; empty: boolean; size: number }) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const name = source.__kind === 'query' ? source.collection : source.name
+  const constraints = source.__kind === 'query' ? source.constraints : []
+  try {
+    const docs = applyConstraints(store.get(name) ?? [], constraints).map(toSnapshotDoc)
+    onNext({ docs, empty: docs.length === 0, size: docs.length })
+  } catch (err) {
+    onError?.(err as Error)
+  }
+  return () => {}
+}
+
 export function limit(n: number): OrderByConstraint {
   // no-op constraint — đủ cho mục đích verify
   void n

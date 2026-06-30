@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
-import { ensureAnkiModel, exportEntryToAnki } from '@/hooks/useAnkiExport'
+import { ensureAnkiModel, exportEntryToAnki, saveEntryToFirestore } from '@/hooks/useAnkiExport'
 import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
@@ -25,11 +25,11 @@ interface BatchAnkiExportState {
   confirmOpen: boolean
   setConfirmOpen: React.Dispatch<React.SetStateAction<boolean>>
   isExporting: boolean
+  isSaving: boolean
   progress: { done: number; total: number }
-  /** Validate TẤT CẢ trước; nếu đủ → mở modal xác nhận, nếu thiếu → toast + nhảy tới thẻ lỗi. */
   requestExport: () => void
-  /** Loop export sau khi người dùng xác nhận. */
   handleExportAll: () => Promise<void>
+  handleSaveAll: () => Promise<void>
 }
 
 export function useBatchAnkiExport({
@@ -42,6 +42,7 @@ export function useBatchAnkiExport({
   const toast = useToast()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 })
 
   // Quy tắc: chỉ 1 lỗi validation → KHÔNG tạo thẻ nào. Chặn ngay trước khi mở confirm.
@@ -55,6 +56,50 @@ export function useBatchAnkiExport({
       }
     }
     setConfirmOpen(true)
+  }
+
+  const handleSaveAll = async () => {
+    for (let i = 0; i < entries.length; i++) {
+      const errs = validateCardEntry(entries[i], selectedCardTypeIds)
+      if (errs.length > 0) {
+        toast.error(`Card #${i + 1} — ${formatValidationMessage(errs)}`)
+        onInvalid(i)
+        return
+      }
+    }
+
+    setIsSaving(true)
+    try {
+      const selectedTypes = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id))
+      let saved = 0
+      const failed: number[] = []
+
+      for (let i = 0; i < entries.length; i++) {
+        const result = await saveEntryToFirestore(entries[i], selectedTypes)
+        if (result.ok) {
+          saved++
+        } else {
+          console.error(`Save failed for card #${i + 1}:`, result.error)
+          failed.push(i + 1)
+        }
+      }
+
+      if (failed.length === entries.length) {
+        toast.error('Save failed for all cards.')
+        return
+      }
+      if (failed.length > 0) {
+        toast.warning(`Saved ${saved}/${entries.length} cards. Failed: #${failed.join(', #')}`)
+      } else {
+        toast.success(`Saved ${saved} cards. Sync to Anki later.`)
+      }
+      router.push(`/create?saved=1&count=${saved}`)
+    } catch (err) {
+      console.error('Batch save error:', err)
+      toast.error('Save failed. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleExportAll = async () => {
@@ -98,5 +143,5 @@ export function useBatchAnkiExport({
     }
   }
 
-  return { confirmOpen, setConfirmOpen, isExporting, progress, requestExport, handleExportAll }
+  return { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, requestExport, handleExportAll, handleSaveAll }
 }

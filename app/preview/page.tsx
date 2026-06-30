@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCheck } from "lucide-react";
+import { ArrowLeft, CheckCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
 import { MotionPage } from "@/components/ui/MotionPage";
 import { usePreviewEntry } from "@/hooks/usePreviewEntry";
-import { useAnkiExport } from "@/hooks/useAnkiExport";
+import { useAnkiExport, saveEntryToFirestore } from "@/hooks/useAnkiExport";
+import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useToast } from "@/components/ui/Toast";
 import { validateCardEntry, formatValidationMessage } from "@/lib/cardValidation";
@@ -59,8 +60,31 @@ export default function PreviewPage() {
         cardTypes,
     });
 
+    const ankiConnected = useAnkiConnection();
+    const [isSaving, setIsSaving] = useState(false);
     const media = useCardMedia(entry, setEntry, !isLoading && !error);
     const toast = useToast();
+
+    const handleSaveOnly = useCallback(async () => {
+        const errors = validateCardEntry(entry, selectedCardTypeIds);
+        if (errors.length > 0) {
+            toast.error(formatValidationMessage(errors));
+            return;
+        }
+        setIsSaving(true);
+        try {
+            const selectedTypes = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id));
+            const result = await saveEntryToFirestore(entry, selectedTypes);
+            if (result.ok) {
+                toast.success('Card saved. Sync to Anki later.');
+                router.push('/create?saved=1&count=1');
+            } else {
+                toast.error(result.error || 'Save failed');
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    }, [entry, selectedCardTypeIds, cardTypes, toast, router]);
 
     // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi.
     const requestConfirm = useCallback(() => {
@@ -138,12 +162,21 @@ export default function PreviewPage() {
                             Back
                         </Button>
                         <Button
+                            variant="secondary"
+                            onClick={handleSaveOnly}
+                            disabled={isSaving || isExporting}
+                            leftIcon={<Save className="w-4 h-4" />}
+                        >
+                            {isSaving ? "Saving..." : "Save"}
+                        </Button>
+                        <Button
                             variant="primary"
                             onClick={requestConfirm}
-                            disabled={isExporting}
+                            disabled={isExporting || isSaving || !ankiConnected}
                             leftIcon={<CheckCheck className="w-4 h-4" />}
+                            title={ankiConnected ? undefined : "Anki is not connected"}
                         >
-                            {isExporting ? "Exporting..." : "Confirm & Create"}
+                            {isExporting ? "Exporting..." : "Save & Export"}
                             {!isExporting && (
                                 <kbd className="ml-1.5 text-[10px] opacity-60 font-mono">&#8984;&#9166;</kbd>
                             )}
@@ -173,8 +206,8 @@ export default function PreviewPage() {
             <Modal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
-                title="Confirm Export to Anki"
-                description={`Export "${wordLabel}" with ${selectedCardTypeIds.length} card type(s) to Anki?`}
+                title="Save & Export to Anki"
+                description={`Save "${wordLabel}" and export ${selectedCardTypeIds.length} card type(s) to Anki?`}
             >
                 <div className="flex gap-3 justify-end mt-2">
                     <Button variant="ghost" onClick={() => setConfirmOpen(false)}>

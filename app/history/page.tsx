@@ -18,12 +18,16 @@ import { FormType, type Entry } from '@/types'
 const LANG_FILTERS = ['All', 'English', 'Japanese', 'IT'] as const
 type LangFilter = (typeof LANG_FILTERS)[number]
 
+const SYNC_FILTERS = ['All', 'Unsynced', 'Synced'] as const
+type SyncFilter = (typeof SYNC_FILTERS)[number]
+
 export default function HistoryPage() {
   const router = useRouter()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [langFilter, setLangFilter] = useState<LangFilter>('All')
+  const [syncFilter, setSyncFilter] = useState<SyncFilter>('All')
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const { saveEntry } = useEntryEdit()
 
@@ -49,7 +53,12 @@ export default function HistoryPage() {
 
   const totalCards = entries.reduce((sum, e) => sum + (e.card_type_ids?.length || 0), 0)
 
+  const unsyncedCount = entries.filter(e => e.status === 'reviewed').length
+
   const filteredEntries = entries.filter(entry => {
+    if (syncFilter === 'Unsynced' && entry.status !== 'reviewed') return false
+    if (syncFilter === 'Synced' && entry.status !== 'synced') return false
+
     if (langFilter !== 'All') {
       if (langFilter === 'IT') {
         if (entry.form_type !== FormType.IT) return false
@@ -103,6 +112,23 @@ export default function HistoryPage() {
                 )}
               >
                 {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            {SYNC_FILTERS.map(f => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setSyncFilter(f)}
+                className={cn(
+                  'px-3.5 py-1.5 rounded-pill text-[12.5px] font-semibold transition-colors',
+                  syncFilter === f
+                    ? 'bg-amber text-white'
+                    : 'text-slate-600 hover:bg-surface'
+                )}
+              >
+                {f}{f === 'Unsynced' && unsyncedCount > 0 ? ` (${unsyncedCount})` : ''}
               </button>
             ))}
           </div>

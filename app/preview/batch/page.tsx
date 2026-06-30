@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
@@ -10,6 +10,7 @@ import { BatchNavStrip } from "@/components/review/BatchNavStrip";
 import { MotionPage } from "@/components/ui/MotionPage";
 import { usePreviewBatch } from "@/hooks/usePreviewBatch";
 import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
+import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -144,13 +145,15 @@ export default function BatchPreviewPage() {
         setEntries((prev) => prev.map((e) => ({ ...e, anki_deck: "" })));
     }, [setEntries, setSelectedDeckId]);
 
-    const { confirmOpen, setConfirmOpen, isExporting, progress, requestExport, handleExportAll } =
+    const { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, requestExport, handleExportAll, handleSaveAll } =
         useBatchAnkiExport({
             entries,
             selectedCardTypeIds,
             cardTypes,
             onInvalid: setActiveIndex,
         });
+
+    const ankiConnected = useAnkiConnection();
 
     const goPrev = useCallback(() => setActiveIndex((i) => Math.max(0, i - 1)), []);
     const goNext = useCallback(() => setActiveIndex((i) => Math.min(total - 1, i + 1)), [total]);
@@ -225,12 +228,21 @@ export default function BatchPreviewPage() {
                 Next
             </Button>
             <Button
+                variant="secondary"
+                onClick={handleSaveAll}
+                disabled={isSaving || isExporting}
+                leftIcon={<Save className="w-4 h-4" />}
+            >
+                {isSaving ? "Saving..." : `Save all (${total})`}
+            </Button>
+            <Button
                 variant="primary"
                 onClick={requestExport}
-                disabled={isExporting}
+                disabled={isExporting || isSaving || !ankiConnected}
                 leftIcon={<CheckCheck className="w-4 h-4" />}
+                title={ankiConnected ? undefined : "Anki is not connected"}
             >
-                {isExporting ? `Exporting ${progress.done}/${progress.total}...` : `Export all (${total})`}
+                {isExporting ? `Exporting ${progress.done}/${progress.total}...` : `Save & Export (${total})`}
                 {!isExporting && <kbd className="ml-1.5 text-[10px] opacity-60 font-mono">&#8984;&#9166;</kbd>}
             </Button>
         </>
@@ -274,8 +286,8 @@ export default function BatchPreviewPage() {
             <Modal
                 open={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
-                title="Confirm Export to Anki"
-                description={`Export all ${total} card(s) with ${selectedCardTypeIds.length} card type(s) each to Anki?`}
+                title="Save & Export to Anki"
+                description={`Save and export all ${total} card(s) with ${selectedCardTypeIds.length} card type(s) each to Anki?`}
             >
                 <div className="flex gap-3 justify-end mt-2">
                     <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
