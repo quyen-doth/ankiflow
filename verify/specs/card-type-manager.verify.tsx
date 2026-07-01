@@ -73,14 +73,13 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-create',
-      description: 'Act: mở modal → điền Code + Name → Save → addDoc (form_type enum), bảng +1 row.',
+      description: 'Act: mở modal → điền Name → code tự sinh (slugify) → Save → addDoc (form_type enum), bảng +1 row.',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
         await ctx.wait(50)
         clickButtonByText(ctx.root, 'Add card type')
         await ctx.wait(0)
-        setFieldValue(ctx.root, 'Code', 'cloze')
         setFieldValue(ctx.root, 'Name', 'Cloze')
         clickButtonByText(ctx.root, 'Save')
         await ctx.wait(80)

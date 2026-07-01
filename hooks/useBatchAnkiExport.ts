@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import { ensureAnkiModel, exportEntryToAnki, saveEntryToFirestore } from '@/hooks/useAnkiExport'
-import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
+import { collectInvalidCards, type InvalidCard } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
 interface CardTypeItem {
@@ -27,6 +27,8 @@ interface BatchAnkiExportState {
   isExporting: boolean
   isSaving: boolean
   progress: { done: number; total: number }
+  invalid: InvalidCard[]
+  clearInvalid: () => void
   requestExport: () => void
   handleExportAll: () => Promise<void>
   handleSaveAll: () => Promise<void>
@@ -44,29 +46,28 @@ export function useBatchAnkiExport({
   const [isExporting, setIsExporting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 })
+  const [invalid, setInvalid] = useState<InvalidCard[]>([])
 
-  // Quy tắc: chỉ 1 lỗi validation → KHÔNG tạo thẻ nào. Chặn ngay trước khi mở confirm.
-  const requestExport = () => {
-    for (let i = 0; i < entries.length; i++) {
-      const errs = validateCardEntry(entries[i], selectedCardTypeIds)
-      if (errs.length > 0) {
-        toast.error(`Card #${i + 1} — ${formatValidationMessage(errs)}`)
-        onInvalid(i)
-        return
-      }
+  const clearInvalid = () => setInvalid([])
+
+  // Quy tắc: BẤT KỲ thẻ nào lỗi → KHÔNG tạo thẻ nào. Gom hết lỗi để hiện banner + đánh dấu nav strip.
+  const checkAll = (): boolean => {
+    const bad = collectInvalidCards(entries, selectedCardTypeIds)
+    setInvalid(bad)
+    if (bad.length > 0) {
+      onInvalid(bad[0].index)
+      return false
     }
+    return true
+  }
+
+  const requestExport = () => {
+    if (!checkAll()) return
     setConfirmOpen(true)
   }
 
   const handleSaveAll = async () => {
-    for (let i = 0; i < entries.length; i++) {
-      const errs = validateCardEntry(entries[i], selectedCardTypeIds)
-      if (errs.length > 0) {
-        toast.error(`Card #${i + 1} — ${formatValidationMessage(errs)}`)
-        onInvalid(i)
-        return
-      }
-    }
+    if (!checkAll()) return
 
     setIsSaving(true)
     try {
@@ -143,5 +144,5 @@ export function useBatchAnkiExport({
     }
   }
 
-  return { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, requestExport, handleExportAll, handleSaveAll }
+  return { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, invalid, clearInvalid, requestExport, handleExportAll, handleSaveAll }
 }

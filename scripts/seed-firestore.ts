@@ -70,24 +70,37 @@ async function seedCategories() {
 async function seedCardTypes() {
   console.log('\n🃏 Seeding card_types...');
 
+  const T = {
+    word_to_meaning:  { front: ['word', 'reading'],         back: ['meaning', 'word_type', 'image', 'audio'] },
+    meaning_to_word:  { front: ['meaning'],                 back: ['word', 'reading', 'audio'] },
+    audio_to_word:    { front: ['audio'],                   back: ['word', 'reading', 'meaning'] },
+    image_to_word:    { front: ['image'],                   back: ['word', 'reading', 'meaning', 'audio'] },
+    fill_in_blank:    { front: ['example_blank'],           back: ['example', 'translation', 'word', 'audio'] },
+    reading_to_word:  { front: ['reading'],                 back: ['word', 'meaning', 'audio'] },
+    word_to_reading:  { front: ['word'],                    back: ['reading', 'meaning', 'audio'] },
+    concept_to_def:   { front: ['word'],                    back: ['meaning', 'example', 'translation', 'audio'] },
+    def_to_concept:   { front: ['meaning'],                 back: ['word', 'example', 'audio'] },
+    front_to_back:    { front: ['word'],                    back: ['meaning', 'example', 'translation', 'audio'] },
+  } as const;
+
   const cardTypes = [
-    // Language — dùng cho tất cả ngôn ngữ
-    { id: 'ct_word_meaning',  code: 'word_to_meaning',  name: 'Từ → Nghĩa VN',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 1 },
-    { id: 'ct_meaning_word',  code: 'meaning_to_word',  name: 'Nghĩa VN → Từ',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 2 },
-    { id: 'ct_audio_word',    code: 'audio_to_word',    name: 'Nghe → Đoán từ',        form_type: 'form_language', language: null,      is_default: true,  sort_order: 3 },
-    { id: 'ct_image_word',    code: 'image_to_word',    name: 'Ảnh → Đoán từ',         form_type: 'form_language', language: null,      is_default: true,  sort_order: 4 },
-    { id: 'ct_fill_blank',    code: 'fill_in_blank',    name: 'Điền vào chỗ trống',    form_type: 'language', language: null,      is_default: true,  sort_order: 5 },
+    // Language — all languages
+    { id: 'ct_word_meaning', code: 'word_to_meaning', name: 'Word → Meaning',      form_type: 'form_language', language: null,       is_default: true,  sort_order: 1, template: T.word_to_meaning },
+    { id: 'ct_meaning_word', code: 'meaning_to_word', name: 'Meaning → Word',      form_type: 'form_language', language: null,       is_default: true,  sort_order: 2, template: T.meaning_to_word },
+    { id: 'ct_audio_word',   code: 'audio_to_word',   name: 'Audio → Word',        form_type: 'form_language', language: null,       is_default: true,  sort_order: 3, template: T.audio_to_word },
+    { id: 'ct_image_word',   code: 'image_to_word',   name: 'Image → Word',        form_type: 'form_language', language: null,       is_default: true,  sort_order: 4, template: T.image_to_word },
+    { id: 'ct_fill_blank',   code: 'fill_in_blank',   name: 'Fill in the Blank',   form_type: 'form_language', language: null,       is_default: true,  sort_order: 5, template: T.fill_in_blank },
     // Chinese specific
-    { id: 'ct_pinyin_char',   code: 'reading_to_word',  name: 'Pinyin → Chữ Hán',      form_type: 'form_language', language: 'chinese', is_default: false, sort_order: 6 },
-    { id: 'ct_char_pinyin',   code: 'word_to_reading',  name: 'Chữ Hán → Pinyin',      form_type: 'form_language', language: 'chinese', is_default: false, sort_order: 7 },
+    { id: 'ct_pinyin_char',  code: 'reading_to_word', name: 'Pinyin → Character',  form_type: 'form_language', language: 'zh',       is_default: false, sort_order: 6, template: T.reading_to_word },
+    { id: 'ct_char_pinyin',  code: 'word_to_reading', name: 'Character → Pinyin',  form_type: 'form_language', language: 'zh',       is_default: false, sort_order: 7, template: T.word_to_reading },
     // Japanese specific
-    { id: 'ct_hira_kanji',    code: 'reading_to_word',  name: 'Hiragana → Kanji',      form_type: 'form_language', language: 'japanese',is_default: false, sort_order: 6 },
-    { id: 'ct_kanji_hira',    code: 'word_to_reading',  name: 'Kanji → Hiragana',      form_type: 'form_language', language: 'japanese',is_default: false, sort_order: 7 },
+    { id: 'ct_hira_kanji',   code: 'reading_to_word', name: 'Hiragana → Kanji',   form_type: 'form_language', language: 'ja',       is_default: false, sort_order: 6, template: T.reading_to_word },
+    { id: 'ct_kanji_hira',   code: 'word_to_reading', name: 'Kanji → Hiragana',   form_type: 'form_language', language: 'ja',       is_default: false, sort_order: 7, template: T.word_to_reading },
     // IT Vocabulary
-    { id: 'ct_concept_def',   code: 'concept_to_def',   name: 'Khái niệm → Định nghĩa',form_type: 'form_it',       language: null,      is_default: true,  sort_order: 1 },
-    { id: 'ct_def_concept',   code: 'def_to_concept',   name: 'Định nghĩa → Khái niệm',form_type: 'form_it',       language: null,      is_default: true,  sort_order: 2 },
+    { id: 'ct_concept_def',  code: 'concept_to_def',  name: 'Concept → Definition',form_type: 'form_it',      language: null,       is_default: true,  sort_order: 1, template: T.concept_to_def },
+    { id: 'ct_def_concept',  code: 'def_to_concept',  name: 'Definition → Concept',form_type: 'form_it',      language: null,       is_default: true,  sort_order: 2, template: T.def_to_concept },
     // General
-    { id: 'ct_front_back',    code: 'front_to_back',    name: 'Mặt trước → Mặt sau',   form_type: 'form_general',  language: null,      is_default: true,  sort_order: 1 },
+    { id: 'ct_front_back',   code: 'front_to_back',   name: 'Front → Back',        form_type: 'form_general', language: null,       is_default: true,  sort_order: 1, template: T.front_to_back },
   ];
 
   for (const ct of cardTypes) {
@@ -100,6 +113,7 @@ async function seedCardTypes() {
       is_default: ct.is_default,
       is_active: true,
       sort_order: ct.sort_order,
+      template: ct.template,
       created_at: now,
     });
   }

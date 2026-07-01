@@ -23,6 +23,8 @@ interface FlashcardReviewLayoutProps {
   headerActions: React.ReactNode
   /** Nội dung tùy chọn hiển thị ngay dưới thanh header sticky (vd dải điều hướng batch). */
   subHeader?: React.ReactNode
+  /** Banner cảnh báo (vd lỗi validation) hiển thị trên cùng vùng nội dung. */
+  banner?: React.ReactNode
   entry: Partial<Entry>
   updateField: (field: keyof Entry, value: unknown) => void
   // Media
@@ -53,6 +55,7 @@ export function FlashcardReviewLayout({
   headerLabel,
   headerActions,
   subHeader,
+  banner,
   entry,
   updateField,
   images,
@@ -83,6 +86,10 @@ export function FlashcardReviewLayout({
         </div>
         <div className="flex items-center gap-3">{headerActions}</div>
       </div>
+
+      {banner && (
+        <div className="max-w-[1280px] mx-auto w-full">{banner}</div>
+      )}
 
       {subHeader && (
         <div className="max-w-[1280px] mx-auto w-full mb-6">{subHeader}</div>

@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase'
 import { loadPendingBatch, clearPendingBatch } from '@/lib/pendingBatch'
 import type { Entry, CardTypeConfig } from '@/types'
 
-type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code'>
+type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
 
 interface PreviewBatchState {
   entries: Partial<Entry>[]
@@ -88,6 +88,7 @@ export function usePreviewBatch(): PreviewBatchState {
           sort_order?: number
           is_active?: boolean
           language?: string | null
+          template?: CardTypeConfig['template']
         }
 
         const fetched: FetchedCardType[] = snapshot.docs
@@ -104,6 +105,7 @@ export function usePreviewBatch(): PreviewBatchState {
           name: ct.name,
           description: ct.description,
           code: (ct as Record<string, unknown>).code as string || ct.id,
+          template: ct.template,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0

@@ -15,6 +15,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
 import { FormType } from '@/types'
@@ -103,6 +104,8 @@ export function ContentTypeManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<ContentType>('content_types', setContentTypes, refresh)
+  const canReorder = !search && !filterStatus
 
   const filteredContentTypes = useMemo(() => {
     let result = contentTypes
@@ -285,6 +288,7 @@ export function ContentTypeManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading content types...'

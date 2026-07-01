@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import { buildNotes } from '@/lib/buildNotes';
-import type { Entry } from '@/types';
+import type { Entry, CardTemplate } from '@/types';
 
 export { buildNotes };
 
@@ -12,6 +12,7 @@ interface CardTypeItem {
     id: string;
     name: string;
     code?: string;
+    template?: CardTemplate;
 }
 
 interface AnkiExportOptions {

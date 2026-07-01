@@ -46,7 +46,9 @@ export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSel
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors max-w-[180px]',
               isActive
                 ? 'border-primary bg-primary-bg text-primary'
-                : 'border-border bg-white text-slate-600 hover:border-primary/40',
+                : isValid
+                  ? 'border-border bg-white text-slate-600 hover:border-primary/40'
+                  : 'border-danger/50 bg-danger-bg/40 text-danger hover:border-danger',
             )}
           >
             <span

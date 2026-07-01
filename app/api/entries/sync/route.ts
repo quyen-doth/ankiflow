@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { flashcardService } from '@/lib/flashcard-service'
 import { buildNotes } from '@/lib/buildNotes'
-import type { Entry } from '@/types'
+import type { Entry, CardTemplate } from '@/types'
 
 export async function POST() {
   const db = getAdminDb()
@@ -38,14 +38,14 @@ export async function POST() {
 
     try {
       const cardTypeIds = entry.card_type_ids || []
-      let cardTypes: { id: string; name: string; code?: string }[] = []
+      let cardTypes: { id: string; name: string; code?: string; template?: CardTemplate }[] = []
       if (cardTypeIds.length > 0) {
         const ctSnaps = await Promise.all(
           cardTypeIds.map(id => db.collection('card_types').doc(id).get()),
         )
         cardTypes = ctSnaps
           .filter(s => s.exists)
-          .map(s => ({ id: s.id, ...(s.data() as { name: string; code?: string }) }))
+          .map(s => ({ id: s.id, ...(s.data() as { name: string; code?: string; template?: CardTemplate }) }))
       }
 
       if (cardTypes.length === 0) {

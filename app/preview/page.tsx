@@ -12,7 +12,8 @@ import { useAnkiExport, saveEntryToFirestore } from "@/hooks/useAnkiExport";
 import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useToast } from "@/components/ui/Toast";
-import { validateCardEntry, formatValidationMessage } from "@/lib/cardValidation";
+import { ValidationBanner } from "@/components/review/ValidationBanner";
+import { validateCardEntry, type InvalidCard } from "@/lib/cardValidation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry } from "@/types";
@@ -62,15 +63,17 @@ export default function PreviewPage() {
 
     const ankiConnected = useAnkiConnection();
     const [isSaving, setIsSaving] = useState(false);
+    const [invalid, setInvalid] = useState<InvalidCard[]>([]);
     const media = useCardMedia(entry, setEntry, !isLoading && !error);
     const toast = useToast();
 
     const handleSaveOnly = useCallback(async () => {
         const errors = validateCardEntry(entry, selectedCardTypeIds);
         if (errors.length > 0) {
-            toast.error(formatValidationMessage(errors));
+            setInvalid([{ index: 0, errors }]);
             return;
         }
+        setInvalid([]);
         setIsSaving(true);
         try {
             const selectedTypes = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id));
@@ -86,15 +89,16 @@ export default function PreviewPage() {
         }
     }, [entry, selectedCardTypeIds, cardTypes, toast, router]);
 
-    // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi.
+    // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi / ảnh quá lớn.
     const requestConfirm = useCallback(() => {
         const errors = validateCardEntry(entry, selectedCardTypeIds);
         if (errors.length > 0) {
-            toast.error(formatValidationMessage(errors));
+            setInvalid([{ index: 0, errors }]);
             return;
         }
+        setInvalid([]);
         setConfirmOpen(true);
-    }, [entry, selectedCardTypeIds, toast, setConfirmOpen]);
+    }, [entry, selectedCardTypeIds, setConfirmOpen]);
 
     // Keyboard shortcut: Cmd+Enter / Ctrl+Enter to open confirm modal
     useEffect(() => {
@@ -182,6 +186,11 @@ export default function PreviewPage() {
                             )}
                         </Button>
                     </>
+                }
+                banner={
+                    invalid.length > 0 ? (
+                        <ValidationBanner invalid={invalid} onJump={() => {}} onDismiss={() => setInvalid([])} singleCard />
+                    ) : null
                 }
                 entry={entry}
                 updateField={updateField}

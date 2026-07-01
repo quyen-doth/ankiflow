@@ -22,6 +22,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField';
 import { Plus, Pencil, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useSortableList } from '@/hooks/useSortableList';
 import { verifyAttrs } from '@/verify/core/contract';
 import { FormType, LanguageType } from '@/types';
 import type { DeckConfig } from '@/types';
@@ -139,6 +140,8 @@ export function DeckManager() {
     }, [refreshKey]);
 
     const refresh = () => setRefreshKey((k) => k + 1);
+    const handleReorder = useSortableList<DeckConfig>('decks', setDecks, refresh);
+    const canReorder = !search && activeFilters.length === 0;
 
     const openCreate = () => {
         setEditing(null);
@@ -465,6 +468,7 @@ export function DeckManager() {
                 columns={columns}
                 keyField="id"
                 onRowClick={(row) => openEdit(row)}
+                onReorder={canReorder ? handleReorder : undefined}
                 emptyMessage={
                     loading
                         ? 'Loading decks...'

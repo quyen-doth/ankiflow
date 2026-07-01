@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
 import { BatchNavStrip } from "@/components/review/BatchNavStrip";
+import { ValidationBanner } from "@/components/review/ValidationBanner";
 import { MotionPage } from "@/components/ui/MotionPage";
 import { usePreviewBatch } from "@/hooks/usePreviewBatch";
 import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
@@ -35,6 +36,7 @@ interface BatchCardReviewerProps {
     headerLabel: string;
     headerActions: React.ReactNode;
     subHeader: React.ReactNode;
+    banner?: React.ReactNode;
 }
 
 function BatchCardReviewer({
@@ -50,6 +52,7 @@ function BatchCardReviewer({
     headerLabel,
     headerActions,
     subHeader,
+    banner,
 }: BatchCardReviewerProps) {
     const media = useCardMedia(entry, setEntry, !!entry);
 
@@ -58,6 +61,7 @@ function BatchCardReviewer({
             headerLabel={headerLabel}
             headerActions={headerActions}
             subHeader={subHeader}
+            banner={banner}
             entry={entry}
             updateField={updateField}
             images={media.images}
@@ -145,7 +149,7 @@ export default function BatchPreviewPage() {
         setEntries((prev) => prev.map((e) => ({ ...e, anki_deck: "" })));
     }, [setEntries, setSelectedDeckId]);
 
-    const { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, requestExport, handleExportAll, handleSaveAll } =
+    const { confirmOpen, setConfirmOpen, isExporting, isSaving, progress, invalid, clearInvalid, requestExport, handleExportAll, handleSaveAll } =
         useBatchAnkiExport({
             entries,
             selectedCardTypeIds,
@@ -281,6 +285,11 @@ export default function BatchPreviewPage() {
                 headerLabel="Review Batch"
                 headerActions={headerActions}
                 subHeader={subHeader}
+                banner={
+                    invalid.length > 0 ? (
+                        <ValidationBanner invalid={invalid} onJump={setActiveIndex} onDismiss={clearInvalid} />
+                    ) : null
+                }
             />
 
             <Modal

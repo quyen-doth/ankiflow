@@ -42,7 +42,7 @@ describe('buildNotes — audio in all card types', () => {
 
   it('audio_to_word: audio on front, NOT on back', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')], AUDIO_FILENAME)
-    expect(notes[0].fields.Front).toBe(`[sound:${AUDIO_FILENAME}]`)
+    expect(notes[0].fields.Front).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Back).not.toContain('[sound:')
   })
 
@@ -83,9 +83,9 @@ describe('buildNotes — audio in all card types', () => {
     }
   })
 
-  it('audio_to_word without filename falls back to word text', () => {
+  it('audio_to_word without filename: front is empty (no fallback)', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')], undefined)
-    expect(notes[0].fields.Front).toBe('hello')
+    expect(notes[0].fields.Front).toBe('')
   })
 
   it('multiple card types: each gets correct audio placement', () => {
@@ -99,7 +99,7 @@ describe('buildNotes — audio in all card types', () => {
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Front).not.toContain('[sound:')
 
-    expect(notes[1].fields.Front).toBe(`[sound:${AUDIO_FILENAME}]`)
+    expect(notes[1].fields.Front).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[1].fields.Back).not.toContain('[sound:')
 
     expect(notes[2].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
@@ -138,5 +138,25 @@ describe('buildNotes — audio in all card types', () => {
   it('ảnh URL http (Unsplash) vẫn nhúng trực tiếp khi không có imageFilename', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')])
     expect(notes[0].fields.Back).toContain('<img src="https://images.unsplash.com/photo-hello"')
+  })
+
+  it('dùng template được truyền vào (admin cấu hình), KHÔNG rơi về DEFAULT_TEMPLATES', () => {
+    // fill_in_blank DEFAULT back = example/translation/word/audio (không có reading/image).
+    // Truyền template tùy biến có reading + image → phải xuất hiện trong output.
+    const customType = {
+      id: 'ct_custom',
+      code: 'fill_in_blank',
+      name: 'Fill in the blank',
+      template: {
+        front: ['example_blank' as const],
+        back: ['reading' as const, 'image' as const],
+      },
+    }
+    const notes = buildNotes(makeEntry(), [customType], undefined, 'ankiflow_img_hello.png')
+    expect(notes[0].fields.Back).toContain('class="reading"')
+    expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
+    // Không có example/translation (vốn thuộc DEFAULT) trong back tùy biến này.
+    expect(notes[0].fields.Back).not.toContain('class="example"')
+    expect(notes[0].fields.Back).not.toContain('class="translation"')
   })
 })

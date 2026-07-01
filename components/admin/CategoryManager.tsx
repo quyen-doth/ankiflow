@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Category } from '@/types'
@@ -66,6 +67,8 @@ export function CategoryManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<Category>('categories', setCategories, refresh)
+  const canReorder = !search && !filterFormType && !filterStatus
 
   const filteredCategories = useMemo(() => {
     let result = categories
@@ -242,6 +245,7 @@ export function CategoryManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading categories...'

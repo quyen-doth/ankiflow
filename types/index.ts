@@ -114,6 +114,25 @@ export interface Category {
   updated_at: FirestoreTimestamp;
 }
 
+// ─── Card Template (Anki) ─────────────────────────────
+
+export type CardFieldSource =
+  | 'word'
+  | 'reading'
+  | 'meaning'
+  | 'word_type'
+  | 'example'
+  | 'example_blank'
+  | 'translation'
+  | 'collocations'
+  | 'image'
+  | 'audio'
+
+export interface CardTemplate {
+  front: CardFieldSource[]
+  back: CardFieldSource[]
+}
+
 // ─── Collection: card_types ───────────────────────────
 
 /**
@@ -129,6 +148,7 @@ export interface CardTypeConfig {
   is_default: boolean;
   is_active: boolean;
   sort_order: number;
+  template?: CardTemplate;
   created_at: FirestoreTimestamp;
 }
 
