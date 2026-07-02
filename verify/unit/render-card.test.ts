@@ -30,6 +30,20 @@ describe('renderSide — audio rendering', () => {
   })
 })
 
+describe('renderSide — han_viet', () => {
+  it('render block han-viet khi có giá trị', () => {
+    const html = renderSide(['word', 'han_viet'], { ...ENTRY, han_viet: 'thực' }, { side: 'front' })
+    expect(html).toContain('class="han-viet"')
+    expect(html).toContain('thực')
+  })
+
+  it('block han_viet rỗng (không có giá trị) bị ẩn', () => {
+    const html = renderSide(['word', 'han_viet'], ENTRY, { side: 'front' })
+    expect(html).toContain('hello')
+    expect(html).not.toContain('han-viet')
+  })
+})
+
 describe('renderSide — core', () => {
   it('bọc đúng class mặt (front/back) và class field', () => {
     const html = renderSide(['word', 'reading'], ENTRY, { side: 'front' })

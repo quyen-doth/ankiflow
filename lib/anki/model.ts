@@ -45,6 +45,14 @@ export const ANKI_CARD_CSS = `
   letter-spacing: 0.05em;
 }
 
+.han-viet {
+  font-size: 13px;
+  font-weight: 700;
+  color: #B87514;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .pos {
   display: inline-block;
   font-size: 11px;
@@ -119,6 +127,7 @@ hr#answer {
 }
 
 .nightMode .word { color: #E8E8E3; }
+.nightMode .han-viet { color: #D4A054; }
 .nightMode .meaning { color: #E8E8E3; }
 .nightMode .example { color: #B4B6BE; }
 .nightMode .translation { color: #7C8090; }

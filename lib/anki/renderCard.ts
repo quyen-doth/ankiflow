@@ -17,6 +17,7 @@ type FieldRenderer = {
 export const FIELD_LABELS: Record<CardFieldSource, string> = {
   word: 'Word / Term',
   reading: 'Reading',
+  han_viet: 'Hán Việt',
   meaning: 'Meaning',
   word_type: 'Word type',
   example: 'Example',
@@ -28,7 +29,7 @@ export const FIELD_LABELS: Record<CardFieldSource, string> = {
 }
 
 export const ALL_FIELD_SOURCES: CardFieldSource[] = [
-  'word', 'reading', 'meaning', 'word_type', 'example', 'example_blank',
+  'word', 'reading', 'han_viet', 'meaning', 'word_type', 'example', 'example_blank',
   'translation', 'collocations', 'image', 'audio',
 ]
 
@@ -42,6 +43,11 @@ const FIELD_RENDERERS: Record<CardFieldSource, FieldRenderer> = {
     label: 'Reading',
     getValue: (e) => e.hiragana || e.pinyin || e.ipa || '',
     render: (v) => `<div class="reading">${v}</div>`,
+  },
+  han_viet: {
+    label: 'Hán Việt',
+    getValue: (e) => e.han_viet || '',
+    render: (v) => `<div class="han-viet">${v}</div>`,
   },
   meaning: {
     label: 'Meaning',
@@ -126,20 +132,20 @@ export function renderSide(
 
 export const DEFAULT_TEMPLATES: Record<string, CardTemplate> = {
   word_to_meaning: {
-    front: ['word', 'reading'],
+    front: ['word', 'reading', 'han_viet'],
     back: ['meaning', 'word_type', 'image', 'audio'],
   },
   meaning_to_word: {
     front: ['meaning'],
-    back: ['word', 'reading', 'audio'],
+    back: ['word', 'reading', 'han_viet', 'audio'],
   },
   audio_to_word: {
     front: ['audio'],
-    back: ['word', 'reading', 'meaning'],
+    back: ['word', 'reading', 'han_viet', 'meaning'],
   },
   image_to_word: {
     front: ['image'],
-    back: ['word', 'reading', 'meaning', 'audio'],
+    back: ['word', 'reading', 'han_viet', 'meaning', 'audio'],
   },
   fill_in_blank: {
     front: ['example_blank'],
@@ -147,10 +153,10 @@ export const DEFAULT_TEMPLATES: Record<string, CardTemplate> = {
   },
   reading_to_word: {
     front: ['reading'],
-    back: ['word', 'meaning', 'audio'],
+    back: ['word', 'han_viet', 'meaning', 'audio'],
   },
   word_to_reading: {
-    front: ['word'],
+    front: ['word', 'han_viet'],
     back: ['reading', 'meaning', 'audio'],
   },
   concept_to_def: {

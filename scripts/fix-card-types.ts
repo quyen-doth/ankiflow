@@ -23,13 +23,13 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 const T = {
-  word_to_meaning:  { front: ['word', 'reading'],         back: ['meaning', 'word_type', 'image', 'audio'] },
-  meaning_to_word:  { front: ['meaning'],                 back: ['word', 'reading', 'audio'] },
-  audio_to_word:    { front: ['audio'],                   back: ['word', 'reading', 'meaning'] },
-  image_to_word:    { front: ['image'],                   back: ['word', 'reading', 'meaning', 'audio'] },
+  word_to_meaning:  { front: ['word', 'reading', 'han_viet'], back: ['meaning', 'word_type', 'image', 'audio'] },
+  meaning_to_word:  { front: ['meaning'],                 back: ['word', 'reading', 'han_viet', 'audio'] },
+  audio_to_word:    { front: ['audio'],                   back: ['word', 'reading', 'han_viet', 'meaning'] },
+  image_to_word:    { front: ['image'],                   back: ['word', 'reading', 'han_viet', 'meaning', 'audio'] },
   fill_in_blank:    { front: ['example_blank'],           back: ['example', 'translation', 'word', 'audio'] },
-  reading_to_word:  { front: ['reading'],                 back: ['word', 'meaning', 'audio'] },
-  word_to_reading:  { front: ['word'],                    back: ['reading', 'meaning', 'audio'] },
+  reading_to_word:  { front: ['reading'],                 back: ['word', 'han_viet', 'meaning', 'audio'] },
+  word_to_reading:  { front: ['word', 'han_viet'],        back: ['reading', 'meaning', 'audio'] },
   concept_to_def:   { front: ['word'],                    back: ['meaning', 'example', 'translation', 'audio'] },
   def_to_concept:   { front: ['meaning'],                 back: ['word', 'example', 'audio'] },
   front_to_back:    { front: ['word'],                    back: ['meaning', 'example', 'translation', 'audio'] },

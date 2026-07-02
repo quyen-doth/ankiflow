@@ -10,12 +10,13 @@ import { AudioPlayer } from '@/components/preview/AudioPlayer'
 import { CardPreview } from '@/components/preview/CardPreview'
 import { CardList } from '@/components/preview/CardList'
 import { DeckCreatableField } from '@/components/create/DeckCreatableField'
-import type { Entry, LanguageType } from '@/types'
+import type { Entry, LanguageType, CardTemplate } from '@/types'
 
 interface CardTypeItem {
   id: string
   name: string
   description?: string
+  template?: CardTemplate
 }
 
 interface FlashcardReviewLayoutProps {
@@ -75,6 +76,7 @@ export function FlashcardReviewLayout({
   onCardTypesChange,
 }: FlashcardReviewLayoutProps) {
   const reading = entry.hiragana || entry.pinyin || entry.ipa || ''
+  const showHanViet = entry.language === 'zh' || entry.language === 'ja'
 
   return (
     <>
@@ -131,6 +133,16 @@ export function FlashcardReviewLayout({
                     placeholder="reading…"
                   />
                 </div>
+                {showHanViet && (
+                  <div className="mt-1.5">
+                    <EditableField
+                      value={entry.han_viet || ''}
+                      onSave={(v) => updateField('han_viet', v)}
+                      className="text-[13px] font-bold uppercase tracking-[0.08em] text-[#b87514]"
+                      placeholder="Hán Việt…"
+                    />
+                  </div>
+                )}
               </div>
               {entry.word_type && (
                 <EditableField
@@ -219,7 +231,12 @@ export function FlashcardReviewLayout({
 
         {/* ── RIGHT ── */}
         <div className="lg:sticky lg:top-24 flex flex-col gap-[18px]">
-          <CardPreview entry={entry} audioUrl={audioUrl} />
+          <CardPreview
+            entry={entry}
+            audioUrl={audioUrl}
+            cardTypes={cardTypes}
+            selectedCardTypeIds={selectedCardTypeIds}
+          />
 
           {/* Target deck */}
           <section className="bg-white border border-border rounded-[14px] p-5">

@@ -1,12 +1,11 @@
 'use client'
 
-import { useRef, useState } from 'react'
 import { Reorder } from 'framer-motion'
 import { GripVertical, X, ChevronDown, Plus } from 'lucide-react'
 import { LanguageType } from '@/types'
 import type { CardFieldSource, CardTemplate, Entry } from '@/types'
-import { ANKI_CARD_CSS } from '@/lib/anki/model'
 import { renderSide, DEFAULT_TEMPLATES, FIELD_LABELS, ALL_FIELD_SOURCES } from '@/lib/anki/renderCard'
+import { buildCardHtml, CardIframe } from '@/components/preview/CardHtmlPreview'
 
 const SAMPLE_ENTRIES: Record<LanguageType | 'default', Partial<Entry>> = {
   default: {
@@ -32,6 +31,7 @@ const SAMPLE_ENTRIES: Record<LanguageType | 'default', Partial<Entry>> = {
   [LanguageType.CHINESE]: {
     word: '你好',
     pinyin: 'nǐ hǎo',
+    han_viet: 'nhĩ hảo',
     meaning_vi: 'Xin chào',
     word_type: 'thán từ',
     example_sentence: '你好，很高兴认识你。',
@@ -42,6 +42,7 @@ const SAMPLE_ENTRIES: Record<LanguageType | 'default', Partial<Entry>> = {
   [LanguageType.JAPANESE]: {
     word: '言葉',
     hiragana: 'ことば',
+    han_viet: 'ngôn diệp',
     meaning_vi: 'Ngôn ngữ, từ ngữ',
     word_type: 'danh từ',
     example_sentence: '言葉を大切にしてください。',
@@ -173,51 +174,7 @@ export function CardPreview({ template, language }: CardPreviewProps) {
 
   const previewFront = renderSide(template.front, sample, { side: 'front', audioFilename: 'preview', audioIcon: true })
   const previewBack = renderSide(template.back, sample, { side: 'back', audioFilename: 'preview', audioIcon: true })
-
-  const empty = '<div style="color:#aaa;text-align:center;padding:12px;font-size:13px">No fields</div>'
-
-  const previewHtml = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-body { margin: 0; padding: 16px; background: #f0f0ec; }
-${ANKI_CARD_CSS}
-.card { border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-.audio-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 13px; font-weight: 600; color: #316342;
-  background: #E6F0EA; padding: 4px 12px; border-radius: 20px;
-}
-</style>
-</head>
-<body>
-<div class="card">
-${previewFront || empty}
-<hr id="answer">
-${previewBack || empty}
-</div>
-</body>
-</html>`
-
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [height, setHeight] = useState(200)
-
-  // Đo chiều cao thật của nội dung iframe để hiển thị trọn card (không cắt ở chiều cao cố định).
-  const handleLoad = () => {
-    const iframe = iframeRef.current
-    const doc = iframe?.contentDocument
-    if (!doc) return
-    const measure = () => {
-      const h = doc.documentElement.scrollHeight || doc.body.scrollHeight
-      if (h) setHeight(h)
-    }
-    measure()
-    // Ảnh (Unsplash) có thể load sau onLoad → đo lại khi ảnh xong để không thiếu chiều cao.
-    doc.querySelectorAll('img').forEach(img => {
-      if (!img.complete) img.addEventListener('load', measure, { once: true })
-    })
-  }
+  const previewHtml = buildCardHtml(previewFront, previewBack)
 
   return (
     <div className="flex flex-col gap-2">
@@ -225,14 +182,7 @@ ${previewBack || empty}
         Preview
       </span>
       <div className="rounded-[10px] overflow-hidden border border-[#e3e3de]">
-        <iframe
-          ref={iframeRef}
-          onLoad={handleLoad}
-          srcDoc={previewHtml}
-          style={{ width: '100%', height: `${height}px`, minHeight: '160px', border: 'none', display: 'block' }}
-          title="Card preview"
-          sandbox="allow-same-origin"
-        />
+        <CardIframe html={previewHtml} />
       </div>
     </div>
   )

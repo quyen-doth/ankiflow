@@ -119,6 +119,7 @@ export interface Category {
 export type CardFieldSource =
   | 'word'
   | 'reading'
+  | 'han_viet'
   | 'meaning'
   | 'word_type'
   | 'example'
