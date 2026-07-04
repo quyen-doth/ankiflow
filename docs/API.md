@@ -1,6 +1,8 @@
 # 📚 API Reference — AnkiFlow Backend
 
-Tài liệu này cung cấp đặc tả chi tiết về các backend API routes được sử dụng trong dự án AnkiFlow. Hệ thống được xây dựng trên Next.js App Router, đóng vai trò làm trung gian kết nối giữa Client (React UI) và các External Services (Firestore, AnkiConnect, Claude, Google TTS, Unsplash).
+Tài liệu này cung cấp đặc tả chi tiết về các backend API routes được sử dụng trong dự án AnkiFlow. Hệ thống được xây dựng trên Next.js App Router, đóng vai trò làm trung gian kết nối giữa Client (React UI) và các External Services (Firestore, Claude, Google TTS, Unsplash).
+
+> **⚡ Kiến trúc AnkiConnect (từ 2026-07-04):** Mọi lệnh AnkiConnect chạy **client-side** — browser của user gọi trực tiếp `localhost:8765` của chính họ qua `lib/flashcard-service/client.ts` + `client-ops.ts`. **Server KHÔNG BAO GIỜ gọi AnkiConnect** (localhost của server trên Vercel không phải máy user). Các route `/api/anki/*` còn lại chỉ đọc/ghi Firestore và trả dữ liệu để client tự thao tác với Anki. User phải thêm origin của app vào `webCorsOriginList` trong config AnkiConnect addon (xem `docs/REFERENCE.md`).
 
 ---
 
@@ -8,42 +10,43 @@ Tài liệu này cung cấp đặc tả chi tiết về các backend API routes 
 
 ```mermaid
 graph TD
-    Client[Client (Next.js UI)]
+    Client[Client (Next.js UI / Browser)]
     
-    subgraph "Next.js API Routes (Server)"
-        AnkiAPI[/api/anki/*]
+    subgraph "Next.js API Routes (Server — Firestore only)"
+        EntriesAPI[/api/entries/*]
+        AnkiDataAPI[/api/anki/update, resync, sync-srs]
         GenAPI[/api/generate]
-        MediaAPI[/api/audio, /api/image]
+        MediaAPI[/api/audio/generate, /api/image]
         HistoryAPI[/api/history/*]
         AdminAPI[/api/admin/*]
     end
     
     subgraph "External Services"
-        AnkiConnect[AnkiConnect plugin localhost:8765]
+        AnkiConnect[AnkiConnect plugin — localhost:8765 CỦA USER]
         Claude[Anthropic Claude API]
         TTS[Google Cloud TTS]
         Unsplash[Unsplash API]
         Firestore[(Firebase Firestore)]
     end
     
-    Client <-->|REST| AnkiAPI
+    Client <-->|Direct HTTP POST + CORS| AnkiConnect
+    Client <-->|REST| EntriesAPI
+    Client <-->|REST| AnkiDataAPI
     Client <-->|REST| GenAPI
     Client <-->|REST| MediaAPI
     Client <-->|REST| HistoryAPI
     Client <-->|REST| AdminAPI
     
-    AnkiAPI <-->|Local HTTP POST| AnkiConnect
-    AnkiAPI -->|Admin SDK| Firestore
-    
+    EntriesAPI <-->|Admin SDK| Firestore
+    AnkiDataAPI <-->|Admin SDK| Firestore
     GenAPI <-->|SDK| Claude
-    
     MediaAPI <-->|SDK| TTS
     MediaAPI <-->|HTTP GET| Unsplash
-    MediaAPI -->|Local HTTP POST| AnkiConnect
-    
     HistoryAPI <-->|Admin SDK| Firestore
     AdminAPI <-->|Admin SDK| Firestore
 ```
+
+**Pattern chung cho thao tác Anki:** server trả data (GET/POST) → browser thực hiện lệnh AnkiConnect → browser báo kết quả về server để cập nhật Firestore.
 
 ---
 
@@ -99,12 +102,13 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | Biến môi trường | Dịch vụ tương ứng | Routes sử dụng |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Anthropic Claude API | `/api/generate` |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud Service Account (TTS) | `/api/audio` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud Service Account (TTS) | `/api/audio/generate` |
 | `UNSPLASH_ACCESS_KEY` | Unsplash Developer API | `/api/image` |
-| `ANKI_CONNECT_URL` | Cổng HTTP của AnkiConnect | `/api/anki/*` , `/api/audio` |
-| `FIREBASE_ADMIN_PROJECT_ID` | Firebase Admin SDK | `/api/admin/*`, `/api/history/*`, `/api/anki/create` |
-| `FIREBASE_ADMIN_CLIENT_EMAIL` | Firebase Admin SDK | `/api/admin/*`, `/api/history/*`, `/api/anki/create` |
-| `FIREBASE_ADMIN_PRIVATE_KEY` | Firebase Admin SDK | `/api/admin/*`, `/api/history/*`, `/api/anki/create` |
+| `FIREBASE_ADMIN_PROJECT_ID` | Firebase Admin SDK | `/api/admin/*`, `/api/history/*`, `/api/entries/*`, `/api/anki/*` |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | Firebase Admin SDK | (như trên) |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | Firebase Admin SDK | (như trên) |
+
+> `ANKI_CONNECT_URL` (env server) đã bị loại bỏ — URL AnkiConnect giờ là per-user, đọc từ `settings.anki_connect_url` phía client (fallback `http://localhost:8765`).
 
 ---
 
@@ -112,16 +116,15 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 
 | HTTP Method | Endpoint | Chức năng chính |
 |---|---|---|
-| **GET** | `/api/anki/connect` | Kiểm tra kết nối với Anki Desktop |
-| **GET** | `/api/anki/decks` | Fetch danh sách deck từ Anki |
-| **POST** | `/api/anki/create` | Đẩy notes vào Anki & Lưu Entry log vào Firestore |
-| **PUT** | `/api/anki/update` | Cập nhật notes trong Anki & Entry trong Firestore |
-| **POST** | `/api/generate` | AI (Claude agent) sinh nội dung flashcard |
-| **POST** | `/api/audio` | TTS + store vào Anki (combined, backward-compatible) |
-| **POST** | `/api/audio/generate` | Chỉ render TTS → trả về base64 |
-| **POST** | `/api/audio/store` | Chỉ store base64 vào Anki media folder |
-| **GET** | `/api/image` | Tìm kiếm ảnh minh hoạ trên Unsplash |
+| **POST** | `/api/entries/save` | Lưu Entry vào Firestore (deferred `reviewed` hoặc `synced` kèm note ids) |
+| **GET, POST** | `/api/entries/sync` | GET: jobs (entries `reviewed` + card_types) để client tạo notes; POST: nhận kết quả → update `synced` |
 | **POST** | `/api/entries/check-duplicate` | Kiểm tra từ/thuật ngữ trùng lặp |
+| **PUT** | `/api/anki/update` | Update Entry Firestore + trả regen payload để client tự cập nhật note Anki |
+| **POST** | `/api/anki/resync` | Trả entries `synced` + card_types (theo filter) để client regenerate notes |
+| **GET, POST** | `/api/anki/sync-srs` | GET: noteIds để client đọc SRS từ Anki; POST: nhận cardsInfo → update review_state |
+| **POST** | `/api/generate` | AI (Claude agent) sinh nội dung flashcard |
+| **POST** | `/api/audio/generate` | Render TTS → trả về base64 (client tự store vào Anki media nếu cần) |
+| **GET** | `/api/image` | Tìm kiếm ảnh minh hoạ trên Unsplash |
 | **GET, POST** | `/api/history` | Truy xuất danh sách / Thêm mới Entry lịch sử tạo card |
 | **GET, PUT, DEL** | `/api/history/[id]` | Đọc chi tiết, cập nhật, xóa 1 Entry lịch sử |
 | **CRUD** | `/api/admin/categories` | Quản lý Categories phân loại thẻ |
@@ -130,65 +133,78 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | **CRUD** | `/api/admin/decks` | Quản lý mapping giữa Anki Deck & Form type mặc định |
 | **GET, PUT** | `/api/admin/content-types` | Quản lý cấu hình meta (form fields list) cho các Form type |
 
+**Đã xóa (2026-07-04, chuyển sang client-side qua `lib/flashcard-service/client-ops.ts`):** `GET /api/anki/connect` (→ client `ping()`), `GET+POST /api/anki/decks` (→ `ensureDeck`/`renameDeck`/`deleteDeckWithCleanup`/`setDeckSuspended`/`syncAllDecks`), `POST /api/anki/create` (→ `createNotesForEntry` + `/api/entries/save`), `POST /api/anki/ensure-model` (→ `ensureModel`), `POST /api/audio` , `POST /api/audio/store`, `POST /api/image/store` (→ client `storeMediaFile`).
+
 ---
 
 ## 6. 📖 Chi tiết API (Endpoint Reference)
 
-### 6.1 AnkiConnect Routes
+### 6.1 Entries & Anki-data Routes (server = Firestore only)
 
-#### `GET /api/anki/connect`
-Kiểm tra xem ứng dụng Anki Desktop đã được mở và AnkiConnect plugin có đang phản hồi hay không.
+> Lệnh AnkiConnect thực thi trong browser (`lib/flashcard-service/client-ops.ts`). Các route dưới đây chỉ cung cấp/nhận data.
 
-*   **Query Params:** N/A
-*   **Response (200 OK):**
-    ```json
-    { "status": "connected", "version": 6 }
-    ```
-*   **Response (503 Service Unavailable):**
-    ```json
-    { "status": "disconnected", "error": "Cannot connect to Anki..." }
-    ```
+#### `POST /api/entries/save`
+Lưu Entry vào Firestore. Dùng cho cả 2 luồng: **deferred** (Save khi Anki đóng — status mặc định `reviewed`) và **synced** (client vừa tạo notes trong Anki xong).
 
-#### `GET /api/anki/decks`
-Lấy mảng tên các deck hiện có trong Anki.
-
-*   **Query Params:** N/A
-*   **Response (200 OK):**
-    ```json
-    { "decks": ["Default", "Language::Chinese::HSK1"] }
-    ```
-
-#### `POST /api/anki/create`
-Thêm note mới vào Anki. Sau khi Anki Connect báo tạo thành công, tiến hành insert bản ghi log Entry vào Firestore.
-
-*   **Body Params:**
+*   **Body Params (zod-validated):**
     ```ts
     {
-      "notes": array, // Danh sách các note object đúng chuẩn AnkiConnect (deckName, modelName, fields, tags...)
-      "entryData"?: object // [Optional] Dữ liệu Entry để lưu vào Firestore (category, form_type, word...)
+      "entryData": object,          // Bắt buộc — dữ liệu Entry
+      "anki_note_ids"?: number[],   // Optional — note ids client vừa tạo trong Anki
+      "status"?: "draft" | "reviewed" | "synced"  // Optional — mặc định "reviewed"
     }
     ```
+*   **Response (200 OK):** `{ "success": true, "entryId": "firestoreDocId123" }`
+*   **Response (400):** `{ "error": "Invalid request body", "issues": [...] }`
+
+#### `GET /api/entries/sync`
+Trả các entry `status == 'reviewed'` kèm card_types (có template) để client tự `buildNotes` → tạo notes trong Anki. Entry giữ nguyên `audio_url`/`image_url` (data-URL) — client cần chúng để `storeMediaFile` vào Anki media.
+
 *   **Response (200 OK):**
     ```json
-    { "success": true, "noteIds": [1682490000000], "entryId": "firestoreDocId123" }
+    { "jobs": [ { "entryId": "doc123", "entry": { "...": "..." }, "cardTypes": [ { "id": "ct1", "name": "...", "code": "...", "template": {} } ] } ] }
     ```
+
+#### `POST /api/entries/sync`
+Client báo kết quả tạo notes; server update từng entry sang `synced` (Promise.allSettled — 1 entry hỏng không fail cả batch). **Client PHẢI kiểm tra response** — nếu bỏ qua, notes đã nằm trong Anki nhưng status chưa ghi → sync lại sẽ tạo notes trùng.
+
+*   **Body Params (zod-validated):** `{ "results": [ { "entryId": "doc123", "noteIds": [1682490000000] } ] }`
+*   **Response (200 OK):** `{ "synced": 3, "failed": 0 }`
 
 #### `PUT /api/anki/update`
-Cập nhật note đã tồn tại trong Anki và/hoặc Entry trong Firestore.
+Cập nhật Entry trong Firestore, rồi TRẢ VỀ dữ liệu để client tự sinh lại note trong Anki (best-effort — Anki offline không chặn việc lưu).
 
 *   **Body Params:**
     ```ts
     {
-      "entryId": string,          // Bắt buộc — Firestore document ID
-      "updates"?: object,         // Partial Entry update cho Firestore
-      "noteUpdates"?: array       // Array { noteId: number, fields: Record<string,string> } cho AnkiConnect
+      "entryId": string,   // Bắt buộc — Firestore document ID
+      "updates"?: object   // Partial Entry update cho Firestore
     }
     ```
 *   **Response (200 OK):**
     ```json
-    { "success": true, "ankiResults": [{ "noteId": 123, "success": true }] }
+    { "success": true, "entry": { "...": "..." }, "cardTypes": [], "noteIds": [123] }
     ```
 *   **Response (400):** `{ "error": "Missing entryId" }`
+*   Client flow (`hooks/useEntryEdit.ts`): PUT → `regenerateNotesForEntry(client, entry, cardTypes)`.
+
+#### `POST /api/anki/resync`
+Trả entries `synced` (lọc theo filter, đã strip `audio_url`/`audio_example_url` để tránh response nhiều MB) + card_types để client regenerate Front/Back trong Anki. Không ghi lại Firestore.
+
+*   **Body Params:** `{ "formType"?: string, "deckName"?: string, "cardTypeId"?: string }`
+*   **Response (200 OK):** `{ "entries": [...], "cardTypes": [...] }`
+*   Client flow (`components/settings/ResyncCards.tsx`): POST → loop `regenerateNotesForEntry(...)`.
+
+#### `GET /api/anki/sync-srs`
+Trả toàn bộ `anki_note_ids` của entries `synced` để client truy vấn SRS state từ Anki (`findCards('nid:a,b,...')` theo chunk → `cardsInfo`).
+
+*   **Response (200 OK):** `{ "noteIds": [123, 456] }`
+
+#### `POST /api/anki/sync-srs`
+Client gửi cardsInfo từ Anki; server map sang `ReviewState` (ANKI_QUEUE_MAP, ease/1000, due×1000) + batch update `review_state`.
+
+*   **Body Params (zod-validated):** `{ "cards": [ { "noteId": 123, "interval": 5, "ease": 2500, "due": 1750000000, "lapses": 0, "queue": 2 } ] }`
+*   **Response (200 OK):** `{ "success": true, "synced": 10, "total": 12 }`
 
 ---
 
@@ -230,53 +246,23 @@ Gọi Claude (AI agent, tool-based) để sinh thông tin từ vựng hoặc IT 
 
 ### 6.3 Media Services
 
-#### `POST /api/audio`
-Sử dụng Google Cloud TTS để render giọng đọc, encode sang base64, sau đó gửi thẳng cho AnkiConnect để lưu vào thư mục `collection.media`.
-
-*   **Body Params:**
-    ```ts
-    {
-      "text": "string",
-      "language": "zh" | "ja" | "en",
-      "filename": "string" // Tên file muốn lưu (vd: zh_shu_123.mp3)
-    }
-    ```
-*   **Response (200 OK):**
-    ```json
-    { "success": true, "filename": "zh_shu_123.mp3" }
-    ```
+> Việc store media vào Anki (`storeMediaFile`) giờ chạy client-side trong `createNotesForEntry`/`storeAudioMedia`/`storeImageMedia` (`lib/flashcard-service/client-ops.ts`) — các route `/api/audio` (combined) và `/api/audio/store`, `/api/image/store` đã bị xóa.
 
 #### `POST /api/audio/generate`
-Chỉ render TTS — trả về base64 audio mà không lưu vào Anki. Dùng khi cần preview audio trước.
+Render TTS — trả về base64 audio. Audio được giữ dạng data-URL trong entry (`audio_url`); client store vào Anki media lúc export/sync.
 
 *   **Body Params:**
     ```ts
     {
       "text": "string",       // Bắt buộc
       "language": "zh" | "ja" | "en",  // Bắt buộc
-      "filename": "string"    // Bắt buộc — tên file dự kiến
+      "filename": "string"    // Bắt buộc — echo lại trong response (server không lưu file)
     }
     ```
 *   **Response (200 OK):**
     ```json
     { "success": true, "base64": "<base64-encoded-mp3>", "filename": "zh_shu_123.mp3" }
     ```
-
-#### `POST /api/audio/store`
-Chỉ store base64 audio vào Anki media folder qua AnkiConnect. Dùng sau khi đã generate.
-
-*   **Body Params:**
-    ```ts
-    {
-      "base64": "string",     // Bắt buộc — base64-encoded audio
-      "filename": "string"    // Bắt buộc — tên file lưu trong Anki
-    }
-    ```
-*   **Response (200 OK):**
-    ```json
-    { "success": true, "filename": "zh_shu_123.mp3" }
-    ```
-*   **Response (503):** AnkiConnect không phản hồi
 
 #### `GET /api/image`
 Tìm kiếm và trả về danh sách ảnh vuông (squarish) trên Unsplash dựa theo từ khoá.

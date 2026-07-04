@@ -9,9 +9,8 @@ import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X } from 
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
 import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
-import { buildNotes } from '@/lib/buildNotes';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
-import { ensureModel } from '@/lib/flashcard-service/client-ops';
+import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
 import { verifyAttrs } from '@/verify/core/contract';
 
@@ -45,34 +44,41 @@ export function NavigationSidebar() {
             }
 
             // 2. Tạo note trong Anki của user (browser → localhost:8765).
+            //    createNotesForEntry dùng chung với export trực tiếp — kèm store audio/image.
             const client = await getAnkiClientFromSettings()
             await ensureModel(client)
 
             const results: { entryId: string; noteIds: number[] }[] = []
-            let synced = 0
-            let failed = 0
+            let ankiFailed = 0
             for (const job of jobs) {
                 try {
-                    const notes = buildNotes(job.entry, job.cardTypes)
-                    const deckNames = [...new Set(notes.map((n: { deckName?: string }) => n.deckName).filter(Boolean))] as string[]
-                    for (const deckName of deckNames) await client.createDeck(deckName)
-                    const noteIds = await client.addNotes(notes)
+                    const noteIds = await createNotesForEntry(client, job.entry, job.cardTypes)
                     results.push({ entryId: job.entryId, noteIds })
-                    synced++
                 } catch {
-                    failed++
+                    ankiFailed++
                 }
             }
 
-            // 3. Báo kết quả về server để cập nhật status → synced.
-            if (results.length > 0) {
-                await fetch('/api/entries/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ results }),
-                })
+            if (results.length === 0) {
+                setSyncResult('Sync failed')
+                return
             }
 
+            // 3. Báo kết quả về server để cập nhật status → synced.
+            //    PHẢI kiểm tra kết quả: notes đã nằm trong Anki — nếu status không được
+            //    ghi thì lần sync sau sẽ tạo notes trùng lặp.
+            const postRes = await fetch('/api/entries/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ results }),
+            })
+            if (!postRes.ok) {
+                setSyncResult('Sync incomplete — status not saved')
+                return
+            }
+            const { synced = 0, failed: persistFailed = 0 } = await postRes.json()
+
+            const failed = ankiFailed + persistFailed
             if (synced > 0 && failed === 0) {
                 setSyncResult(`Synced ${synced} cards`)
             } else if (synced > 0) {

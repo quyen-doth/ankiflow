@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
-import type { Entry, CardTemplate } from '@/types'
+import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
+import type { Entry } from '@/types'
 
 interface ResyncBody {
   formType?: string
   deckName?: string
   cardTypeId?: string
-}
-
-interface RegenCardType {
-  id: string
-  name: string
-  code?: string
-  template?: CardTemplate
 }
 
 type EntryDoc = Partial<Entry> & {
@@ -32,9 +26,16 @@ export async function POST(request: Request) {
     const db = getAdminDb()
 
     // Lấy entry đã export, lọc trong bộ nhớ (tránh composite index).
+    // Strip audio_url/audio_example_url (base64 data-URL có thể ~1MB/entry): resync
+    // giữ media cũ từ notesInfo trong Anki, không cần audio → tránh response nhiều MB.
     const snapshot = await db.collection('entries').where('status', '==', 'synced').get()
     const entries: EntryDoc[] = snapshot.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Omit<EntryDoc, 'id'>) }))
+      .map((d) => {
+        const { audio_url: _audio, audio_example_url: _audioEx, ...rest } = d.data() as Omit<EntryDoc, 'id'>
+        void _audio
+        void _audioEx
+        return { id: d.id, ...rest }
+      })
       .filter((e) => Array.isArray(e.anki_note_ids) && e.anki_note_ids.length > 0)
       .filter((e) => !deckName || e.anki_deck === deckName)
       .filter((e) => !formType || e.form_type === formType)
@@ -45,14 +46,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch 1 lượt mọi card type cần dùng (kèm template).
-    const neededIds = [...new Set(entries.flatMap((e) => e.card_type_ids || []))]
-    const ctSnaps = await Promise.all(neededIds.map((id) => db.collection('card_types').doc(id).get()))
-    const cardTypes: RegenCardType[] = ctSnaps
-      .filter((s) => s.exists)
-      .map((s) => {
-        const data = s.data() as { name?: string; code?: string; template?: CardTemplate }
-        return { id: s.id, name: data.name || s.id, code: data.code, template: data.template }
-      })
+    const cardTypes = await fetchCardTypesByIds(db, entries.flatMap((e) => e.card_type_ids || []))
 
     return NextResponse.json({ entries, cardTypes })
   } catch (error) {

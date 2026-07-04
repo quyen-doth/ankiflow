@@ -211,6 +211,55 @@ export default function SettingsPage() {
         fetchSettings();
     }, []);
 
+    const handleSyncSrs = useCallback(async () => {
+        setSyncingSRS(true);
+        try {
+            // 1. Lấy note ids của entry đã synced (server không đụng Anki).
+            const getRes = await fetch('/api/anki/sync-srs', { cache: 'no-store' });
+            const { noteIds } = await getRes.json();
+            if (!noteIds || noteIds.length === 0) {
+                toast.success('No cards to sync');
+                return;
+            }
+
+            // 2. Đọc trạng thái SRS từ Anki của user (browser → AnkiConnect).
+            //    Anki search hỗ trợ nid:id1,id2,... → gộp query theo chunk thay vì
+            //    1 round-trip mỗi note (500 thẻ = 1-2 request thay vì 500).
+            const client = await getAnkiClientFromSettings();
+            const CHUNK = 500;
+            const chunks: number[][] = [];
+            for (let i = 0; i < noteIds.length; i += CHUNK) {
+                chunks.push(noteIds.slice(i, i + CHUNK));
+            }
+            const cardIdChunks = await Promise.all(
+                chunks.map((chunk) => client.findCards(`nid:${chunk.join(',')}`)),
+            );
+            const allCardIds = cardIdChunks.flat();
+            if (allCardIds.length === 0) {
+                toast.success('No cards found in Anki');
+                return;
+            }
+            const cardsInfo = await client.cardsInfo(allCardIds);
+
+            // 3. Gửi về server để map ReviewState + cập nhật Firestore.
+            const postRes = await fetch('/api/anki/sync-srs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cards: cardsInfo }),
+            });
+            const data = await postRes.json();
+            if (data.success) {
+                toast.success(`Synced ${data.synced} of ${data.total} entries`);
+            } else {
+                toast.error(data.error ?? 'Sync failed');
+            }
+        } catch {
+            toast.error('Failed to sync SRS data.');
+        } finally {
+            setSyncingSRS(false);
+        }
+    }, [toast]);
+
     // Recheck dùng cho nút trong callout — KHÔNG bật checkingAnki (tránh unmount callout giữa chừng).
     const recheckAnki = useCallback(async (): Promise<boolean> => {
         try {
@@ -303,48 +352,7 @@ export default function SettingsPage() {
                         size="sm"
                         leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
                         disabled={syncingSRS || !ankiConnected}
-                        onClick={async () => {
-                            setSyncingSRS(true);
-                            try {
-                                // 1. Lấy note ids của entry đã synced (server không đụng Anki).
-                                const getRes = await fetch('/api/anki/sync-srs', { cache: 'no-store' });
-                                const { noteIds } = await getRes.json();
-                                if (!noteIds || noteIds.length === 0) {
-                                    toast.success('No cards to sync');
-                                    return;
-                                }
-
-                                // 2. Đọc trạng thái SRS từ Anki của user (browser → AnkiConnect).
-                                const client = await getAnkiClientFromSettings();
-                                const allCardIds: number[] = [];
-                                for (const noteId of noteIds) {
-                                    const cards = await client.findCards(`nid:${noteId}`);
-                                    allCardIds.push(...cards);
-                                }
-                                if (allCardIds.length === 0) {
-                                    toast.success('No cards found in Anki');
-                                    return;
-                                }
-                                const cardsInfo = await client.cardsInfo(allCardIds);
-
-                                // 3. Gửi về server để map ReviewState + cập nhật Firestore.
-                                const postRes = await fetch('/api/anki/sync-srs', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ cards: cardsInfo }),
-                                });
-                                const data = await postRes.json();
-                                if (data.success) {
-                                    toast.success(`Synced ${data.synced} of ${data.total} entries`);
-                                } else {
-                                    toast.error(data.error ?? 'Sync failed');
-                                }
-                            } catch {
-                                toast.error('Failed to sync SRS data.');
-                            } finally {
-                                setSyncingSRS(false);
-                            }
-                        }}
+                        onClick={handleSyncSrs}
                     >
                         {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
                     </Button>

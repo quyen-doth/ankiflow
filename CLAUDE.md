@@ -85,7 +85,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 ## Gotchas
 
-- **AnkiConnect is local** — only works when Anki Desktop is open. All AnkiConnect calls need explicit error handling for the disconnected case.
+- **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/REFERENCE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
 - **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`, etc. only exist when `language` matches. Never assume these fields have values.
 - **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Mismatched `form_type` causes silent wrong behavior.
 - **No JOIN in Firestore** — related documents must be fetched with `Promise.all()`, never sequentially in a loop.

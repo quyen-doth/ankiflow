@@ -7,6 +7,7 @@ import {
   setDeckSuspended,
   syncAllDecks,
   regenerateNotesForEntry,
+  createNotesForEntry,
 } from '@/lib/flashcard-service/client-ops'
 import { ANKI_MODEL_NAME } from '@/lib/anki/model'
 import type { IFlashcardService, AnkiNoteInfo } from '@/lib/flashcard-service/types'
@@ -177,6 +178,65 @@ describe('syncAllDecks', () => {
     expect(result.synced).toBe(1)
     expect(result.success).toBe(false)
     expect(result.failed).toEqual([{ name: 'Bad', error: 'boom' }])
+  })
+})
+
+describe('createNotesForEntry', () => {
+  const cardTypes: CardTypeItem[] = [
+    { id: 'ct1', name: 'Word → Meaning', code: 'word_to_meaning' },
+    { id: 'ct2', name: 'Meaning → Word', code: 'meaning_to_word' },
+  ]
+
+  it('store audio data-URL vào Anki media rồi tạo deck + addNotes', async () => {
+    const client = makeClient({ addNotes: vi.fn(async () => [11, 22]) })
+    const entry = {
+      word: 'resilient',
+      anki_deck: 'MyDeck',
+      tags: [],
+      audio_url: 'data:audio/mp3;base64,QUJD',
+    }
+
+    const noteIds = await createNotesForEntry(client, entry, cardTypes)
+
+    expect(noteIds).toEqual([11, 22])
+    expect(client.storeMediaFile).toHaveBeenCalledWith(expect.stringContaining('ankiflow_resilient'), 'QUJD')
+    // 2 notes cùng 1 deck → createDeck đúng 1 lần (dedupe)
+    expect(client.createDeck).toHaveBeenCalledTimes(1)
+    expect(client.createDeck).toHaveBeenCalledWith('MyDeck')
+    expect(client.addNotes).toHaveBeenCalledOnce()
+  })
+
+  it('audio http URL (không phải data-URL) → KHÔNG store media', async () => {
+    const client = makeClient()
+    const entry = { word: 'x', anki_deck: 'D', tags: [], audio_url: 'https://cdn/x.mp3' }
+
+    await createNotesForEntry(client, entry, cardTypes)
+
+    expect(client.storeMediaFile).not.toHaveBeenCalled()
+  })
+
+  it('storeMediaFile lỗi → best-effort, vẫn addNotes (không throw)', async () => {
+    const client = makeClient({
+      storeMediaFile: vi.fn(async () => {
+        throw new Error('anki down mid-way')
+      }),
+      addNotes: vi.fn(async () => [1]),
+    })
+    const entry = { word: 'x', anki_deck: 'D', tags: [], audio_url: 'data:audio/mp3;base64,QUJD' }
+
+    await expect(createNotesForEntry(client, entry, [cardTypes[0]])).resolves.toEqual([1])
+  })
+
+  it('addNotes throw (Anki đóng) → propagate cho caller xử lý', async () => {
+    const client = makeClient({
+      addNotes: vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      }),
+    })
+
+    await expect(
+      createNotesForEntry(client, { word: 'x', anki_deck: 'D', tags: [] }, cardTypes),
+    ).rejects.toThrow('Failed to fetch')
   })
 })
 

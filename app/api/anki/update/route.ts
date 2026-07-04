@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
-import type { Entry, CardTemplate } from '@/types'
-
-interface RegenCardType {
-  id: string
-  name: string
-  code?: string
-  template?: CardTemplate
-}
+import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
+import type { CardTypeItem } from '@/lib/buildNotes'
+import type { Entry } from '@/types'
 
 /**
  * PUT — cập nhật entry trong Firestore, rồi TRẢ VỀ dữ liệu để CLIENT tự sinh lại note
@@ -42,16 +37,9 @@ export async function PUT(request: Request) {
     }
     const noteIds = entry.anki_note_ids || []
 
-    let cardTypes: RegenCardType[] = []
+    let cardTypes: CardTypeItem[] = []
     if (noteIds.length > 0) {
-      const ctIds = [...new Set(entry.card_type_ids || [])]
-      const ctSnaps = await Promise.all(ctIds.map((id) => db.collection('card_types').doc(id).get()))
-      cardTypes = ctSnaps
-        .filter((s) => s.exists)
-        .map((s) => {
-          const data = s.data() as { name?: string; code?: string; template?: CardTemplate }
-          return { id: s.id, name: data.name || s.id, code: data.code, template: data.template }
-        })
+      cardTypes = await fetchCardTypesByIds(db, entry.card_type_ids || [])
     }
 
     return NextResponse.json({ success: true, entry, cardTypes, noteIds })
