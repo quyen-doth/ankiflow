@@ -7,6 +7,12 @@ export const LOCAL_USER_ID = 'local-user' as const
 
 export const DEFAULT_STATUS = 'draft' as const
 
+/**
+ * Document ID của settings singleton trong Firestore.
+ * `settings` chỉ có 1 document duy nhất — không bao giờ tạo mới, chỉ update.
+ */
+export const SETTINGS_DOC_ID = 'default' as const
+
 // ─── Form Type Mapping ───────────────────────────────────────────────────────
 import { FormType, LanguageType } from '@/types'
 

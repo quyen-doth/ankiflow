@@ -24,9 +24,9 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
 import { cn } from '@/lib/utils';
+import { SETTINGS_DOC_ID } from '@/lib/constants';
+import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
 import type { Settings } from '@/types';
-
-const SETTINGS_DOC_ID = 'default';
 
 const CLAUDE_MODEL_OPTIONS = [
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
@@ -143,8 +143,9 @@ export default function SettingsPage() {
     useEffect(() => {
         async function checkAnki() {
             try {
-                const res = await fetch('/api/anki/connect', { cache: 'no-store' });
-                setAnkiConnected(res.ok);
+                const client = await getAnkiClientFromSettings();
+                const { connected } = await client.ping();
+                setAnkiConnected(connected);
             } catch {
                 setAnkiConnected(false);
             } finally {
@@ -164,6 +165,7 @@ export default function SettingsPage() {
         try {
             const ref = doc(db, 'settings', SETTINGS_DOC_ID);
             await setDoc(ref, { ...settings, updated_at: serverTimestamp() }, { merge: true });
+            resetAnkiClientCache();
             setSavedAt(Date.now());
             toast.success('Settings saved');
         } catch (error) {

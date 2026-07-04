@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface ConnectedBadgeProps {
@@ -21,8 +22,9 @@ export function ConnectedBadge({ connected: propConnected, unsyncedCount = 0, on
 
     async function checkAnki() {
       try {
-        const res = await fetch('/api/anki/connect', { cache: 'no-store' })
-        setPolledConnected(res.ok)
+        const client = await getAnkiClientFromSettings()
+        const { connected: isConnected } = await client.ping()
+        setPolledConnected(isConnected)
       } catch {
         setPolledConnected(false)
       }
