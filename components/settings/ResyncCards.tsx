@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { RefreshCw } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
+import { regenerateNotesForEntry } from '@/lib/flashcard-service/client-ops'
+import type { CardTypeItem } from '@/lib/buildNotes'
+import type { Entry } from '@/types'
 
 interface Option {
   value: string
@@ -64,6 +68,7 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
     setConfirmOpen(false)
     setRunning(true)
     try {
+      // 1. Lấy entry đã synced (theo filter) + card_types từ server (server không đụng Anki).
       const res = await fetch('/api/anki/resync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,14 +81,40 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error || 'Re-sync failed')
-      } else if (data.updated === 0 && data.scanned === 0) {
-        toast.success('No exported cards matched the filters')
-      } else {
-        const parts = [`Updated ${data.updated}`]
-        if (data.skipped) parts.push(`skipped ${data.skipped}`)
-        if (data.failed) parts.push(`failed ${data.failed}`)
-        toast.success(parts.join(', '))
+        return
       }
+
+      const entries = (data.entries || []) as (Partial<Entry> & {
+        anki_note_ids?: number[]
+        card_type_ids?: string[]
+      })[]
+      const cardTypes = (data.cardTypes || []) as CardTypeItem[]
+
+      if (entries.length === 0) {
+        toast.success('No exported cards matched the filters')
+        return
+      }
+
+      // 2. Sinh lại note trong Anki (browser → AnkiConnect) cho từng entry.
+      const client = await getAnkiClientFromSettings()
+      let updated = 0
+      let skipped = 0
+      let failed = 0
+      for (const entry of entries) {
+        try {
+          const r = await regenerateNotesForEntry(client, entry, cardTypes, cardTypeId || undefined)
+          updated += r.updated
+          skipped += r.skipped
+          failed += r.failed
+        } catch {
+          failed += entry.anki_note_ids?.length || 0
+        }
+      }
+
+      const parts = [`Updated ${updated}`]
+      if (skipped) parts.push(`skipped ${skipped}`)
+      if (failed) parts.push(`failed ${failed}`)
+      toast.success(parts.join(', '))
     } catch {
       toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.')
     } finally {

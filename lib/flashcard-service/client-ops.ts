@@ -13,6 +13,9 @@ import {
   ANKI_CARD_TEMPLATES,
   ANKI_CARD_CSS,
 } from '@/lib/anki/model'
+import { regenerateEntryNotes } from '@/lib/anki/regenerateEntryNotes'
+import type { CardTypeItem } from '@/lib/buildNotes'
+import type { Entry } from '@/types'
 
 /**
  * Đảm bảo model AnkiFlow-Basic tồn tại. Nếu đã có → đồng bộ CSS + template
@@ -132,4 +135,53 @@ export async function syncAllDecks(
   }
 
   return { success: failed.length === 0, synced, total: decks.length, failed }
+}
+
+// ─── Note regeneration (dùng chung cho update entry + resync) ─────────────────
+
+type RegenEntry = Partial<Entry> & { anki_note_ids?: number[]; card_type_ids?: string[] }
+
+export interface RegenResult {
+  updated: number
+  skipped: number
+  failed: number
+  errors: string[]
+}
+
+/**
+ * Sinh lại Front/Back của mọi note thuộc 1 entry theo template hiện tại (giữ media cũ),
+ * rồi `updateNoteFields` từng note qua AnkiConnect. Trả về thống kê.
+ *
+ * `notesInfo` (đọc media cũ) có thể throw nếu Anki offline — caller quyết định xử lý
+ * (update entry: best-effort nuốt lỗi; resync: đếm failed).
+ */
+export async function regenerateNotesForEntry(
+  client: IFlashcardService,
+  entry: RegenEntry,
+  cardTypes: CardTypeItem[],
+  onlyCardTypeId?: string,
+): Promise<RegenResult> {
+  const noteIds = entry.anki_note_ids || []
+  if (noteIds.length === 0) return { updated: 0, skipped: 0, failed: 0, errors: [] }
+
+  const infos = await client.notesInfo(noteIds)
+  const infoById = new Map(infos.map((n) => [n.noteId, n]))
+  const cardTypeMap = new Map(cardTypes.map((ct) => [ct.id, ct]))
+
+  const { updates, skipped } = regenerateEntryNotes(entry, cardTypeMap, infoById, onlyCardTypeId)
+
+  let updated = 0
+  let failed = 0
+  const errors: string[] = []
+  for (const { noteId, fields } of updates) {
+    try {
+      await client.updateNoteFields(noteId, fields)
+      updated += 1
+    } catch (e) {
+      failed += 1
+      errors.push(`updateNoteFields failed for note ${noteId}: ${(e as Error).message}`)
+    }
+  }
+
+  return { updated, skipped, failed, errors }
 }

@@ -9,6 +9,9 @@ import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X } from 
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
 import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
+import { buildNotes } from '@/lib/buildNotes';
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ensureModel } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
 import { verifyAttrs } from '@/verify/core/contract';
 
@@ -33,16 +36,49 @@ export function NavigationSidebar() {
         setIsSyncing(true)
         setSyncResult(null)
         try {
-            const res = await fetch('/api/entries/sync', { method: 'POST' })
-            const data = await res.json()
-            if (data.synced > 0 && data.failed === 0) {
-                setSyncResult(`Synced ${data.synced} cards`)
-            } else if (data.synced > 0) {
-                setSyncResult(`Synced ${data.synced}, failed ${data.failed}`)
-            } else if (data.failed > 0) {
-                setSyncResult('Sync failed')
-            } else {
+            // 1. Lấy các entry reviewed + card_types từ server (server không đụng Anki).
+            const res = await fetch('/api/entries/sync', { cache: 'no-store' })
+            const { jobs } = await res.json()
+            if (!jobs || jobs.length === 0) {
                 setSyncResult('Nothing to sync')
+                return
+            }
+
+            // 2. Tạo note trong Anki của user (browser → localhost:8765).
+            const client = await getAnkiClientFromSettings()
+            await ensureModel(client)
+
+            const results: { entryId: string; noteIds: number[] }[] = []
+            let synced = 0
+            let failed = 0
+            for (const job of jobs) {
+                try {
+                    const notes = buildNotes(job.entry, job.cardTypes)
+                    const deckNames = [...new Set(notes.map((n: { deckName?: string }) => n.deckName).filter(Boolean))] as string[]
+                    for (const deckName of deckNames) await client.createDeck(deckName)
+                    const noteIds = await client.addNotes(notes)
+                    results.push({ entryId: job.entryId, noteIds })
+                    synced++
+                } catch {
+                    failed++
+                }
+            }
+
+            // 3. Báo kết quả về server để cập nhật status → synced.
+            if (results.length > 0) {
+                await fetch('/api/entries/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ results }),
+                })
+            }
+
+            if (synced > 0 && failed === 0) {
+                setSyncResult(`Synced ${synced} cards`)
+            } else if (synced > 0) {
+                setSyncResult(`Synced ${synced}, failed ${failed}`)
+            } else {
+                setSyncResult('Sync failed')
             }
         } catch {
             setSyncResult('Sync error')

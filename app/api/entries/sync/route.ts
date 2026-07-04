@@ -1,75 +1,92 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { flashcardService } from '@/lib/flashcard-service'
-import { buildNotes } from '@/lib/buildNotes'
 import type { Entry, CardTemplate } from '@/types'
 
-export async function POST() {
+interface SyncCardType {
+  id: string
+  name: string
+  code?: string
+  template?: CardTemplate
+}
+
+/**
+ * GET — trả các entry `reviewed` kèm card_types (có template) để CLIENT tự buildNotes
+ * và tạo trong Anki. Server KHÔNG gọi AnkiConnect (chạy được trên Vercel).
+ */
+export async function GET() {
   const db = getAdminDb()
 
-  const snapshot = await db
-    .collection('entries')
-    .where('status', '==', 'reviewed')
-    .get()
-
+  const snapshot = await db.collection('entries').where('status', '==', 'reviewed').get()
   if (snapshot.empty) {
-    return NextResponse.json({ synced: 0, failed: 0, errors: [] })
+    return NextResponse.json({ jobs: [] })
   }
 
-  const models = await flashcardService.getModelNames()
-  if (!models.includes('AnkiFlow-Basic')) {
-    await flashcardService.createModel({
-      modelName: 'AnkiFlow-Basic',
-      inOrderFields: ['Front', 'Back'],
-      css: `.card { font-family: 'Inter', sans-serif; font-size: 20px; text-align: center; }`,
-      cardTemplates: [
-        { Name: 'Card 1', Front: '{{Front}}', Back: '{{FrontSide}}<hr id="answer">{{Back}}' },
-      ],
-    })
-  }
+  // Gom mọi card_type_id cần dùng, fetch 1 lượt (tránh Firestore trong loop).
+  const entries = snapshot.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Partial<Entry> & { card_type_ids?: string[] }),
+  }))
+  const neededIds = [...new Set(entries.flatMap((e) => e.card_type_ids || []))]
+  const ctSnaps = await Promise.all(neededIds.map((id) => db.collection('card_types').doc(id).get()))
+  const ctById = new Map<string, SyncCardType>()
+  ctSnaps.forEach((s) => {
+    if (!s.exists) return
+    const data = s.data() as { name?: string; code?: string; template?: CardTemplate }
+    ctById.set(s.id, { id: s.id, name: data.name || s.id, code: data.code, template: data.template })
+  })
 
-  let synced = 0
-  const failed: string[] = []
-  const errors: string[] = []
-
-  for (const docSnap of snapshot.docs) {
-    const entry = docSnap.data() as Partial<Entry> & { card_type_ids?: string[] }
-    const entryId = docSnap.id
-
-    try {
-      const cardTypeIds = entry.card_type_ids || []
-      let cardTypes: { id: string; name: string; code?: string; template?: CardTemplate }[] = []
-      if (cardTypeIds.length > 0) {
-        const ctSnaps = await Promise.all(
-          cardTypeIds.map(id => db.collection('card_types').doc(id).get()),
-        )
-        cardTypes = ctSnaps
-          .filter(s => s.exists)
-          .map(s => ({ id: s.id, ...(s.data() as { name: string; code?: string; template?: CardTemplate }) }))
-      }
-
-      if (cardTypes.length === 0) {
-        cardTypes = [{ id: 'front_to_back', name: 'Front → Back', code: 'front_to_back' }]
-      }
-
-      const deckName = entry.anki_deck || 'Default'
-      await flashcardService.createDeck(deckName)
-
-      const notes = buildNotes(entry, cardTypes)
-      const noteIds = await flashcardService.addNotes(notes)
-
-      await db.collection('entries').doc(entryId).update({
-        status: 'synced',
-        anki_note_ids: noteIds,
-        updated_at: new Date(),
-      })
-
-      synced++
-    } catch (err) {
-      failed.push(entryId)
-      errors.push(`${entryId}: ${(err as Error).message}`)
+  const jobs = entries.map((entry) => {
+    let cardTypes = (entry.card_type_ids || [])
+      .map((id) => ctById.get(id))
+      .filter((ct): ct is SyncCardType => !!ct)
+    // Fallback giống hành vi cũ: không có card type hợp lệ → dùng front_to_back.
+    if (cardTypes.length === 0) {
+      cardTypes = [{ id: 'front_to_back', name: 'Front → Back', code: 'front_to_back' }]
     }
-  }
+    return { entryId: entry.id, entry, cardTypes }
+  })
 
-  return NextResponse.json({ synced, failed: failed.length, errors })
+  return NextResponse.json({ jobs })
+}
+
+const resultsSchema = z.object({
+  results: z.array(
+    z.object({
+      entryId: z.string(),
+      noteIds: z.array(z.number()),
+    }),
+  ),
+})
+
+/**
+ * POST — CLIENT báo kết quả tạo note trong Anki; server cập nhật entry sang `synced`.
+ */
+export async function POST(request: Request) {
+  try {
+    const parsed = resultsSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body', issues: parsed.error.issues }, { status: 400 })
+    }
+    const { results } = parsed.data
+    if (results.length === 0) {
+      return NextResponse.json({ synced: 0 })
+    }
+
+    const db = getAdminDb()
+    await Promise.all(
+      results.map((r) =>
+        db.collection('entries').doc(r.entryId).update({
+          status: 'synced',
+          anki_note_ids: r.noteIds,
+          updated_at: new Date(),
+        }),
+      ),
+    )
+
+    return NextResponse.json({ synced: results.length })
+  } catch (error) {
+    console.error('Sync persist error:', error)
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
 }

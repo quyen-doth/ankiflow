@@ -276,8 +276,34 @@ export default function SettingsPage() {
                         onClick={async () => {
                             setSyncingSRS(true);
                             try {
-                                const res = await fetch('/api/anki/sync-srs', { method: 'POST' });
-                                const data = await res.json();
+                                // 1. Lấy note ids của entry đã synced (server không đụng Anki).
+                                const getRes = await fetch('/api/anki/sync-srs', { cache: 'no-store' });
+                                const { noteIds } = await getRes.json();
+                                if (!noteIds || noteIds.length === 0) {
+                                    toast.success('No cards to sync');
+                                    return;
+                                }
+
+                                // 2. Đọc trạng thái SRS từ Anki của user (browser → AnkiConnect).
+                                const client = await getAnkiClientFromSettings();
+                                const allCardIds: number[] = [];
+                                for (const noteId of noteIds) {
+                                    const cards = await client.findCards(`nid:${noteId}`);
+                                    allCardIds.push(...cards);
+                                }
+                                if (allCardIds.length === 0) {
+                                    toast.success('No cards found in Anki');
+                                    return;
+                                }
+                                const cardsInfo = await client.cardsInfo(allCardIds);
+
+                                // 3. Gửi về server để map ReviewState + cập nhật Firestore.
+                                const postRes = await fetch('/api/anki/sync-srs', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ cards: cardsInfo }),
+                                });
+                                const data = await postRes.json();
                                 if (data.success) {
                                     toast.success(`Synced ${data.synced} of ${data.total} entries`);
                                 } else {

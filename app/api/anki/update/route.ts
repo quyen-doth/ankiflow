@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
-import { flashcardService } from '@/lib/flashcard-service'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { regenerateEntryNotes } from '@/lib/anki/regenerateEntryNotes'
-import { type CardTypeItem } from '@/lib/buildNotes'
 import type { Entry, CardTemplate } from '@/types'
 
+interface RegenCardType {
+  id: string
+  name: string
+  code?: string
+  template?: CardTemplate
+}
+
+/**
+ * PUT — cập nhật entry trong Firestore, rồi TRẢ VỀ dữ liệu để CLIENT tự sinh lại note
+ * trong Anki (browser → AnkiConnect). Server KHÔNG đụng Anki (chạy được trên Vercel).
+ * Việc lưu Firestore luôn thành công dù Anki offline — client regen là best-effort.
+ */
 export async function PUT(request: Request) {
   try {
     const { entryId, updates } = await request.json()
@@ -22,42 +31,30 @@ export async function PUT(request: Request) {
       })
     }
 
-    // Sinh lại note trong Anki theo template hiện tại (giữ media + SRS) — KHÔNG dùng HTML client gửi.
     const snap = await db.collection('entries').doc(entryId).get()
-    const ankiResults: { noteId: number; success: boolean; error?: string }[] = []
-
-    if (snap.exists) {
-      const entry = { id: snap.id, ...(snap.data() as Partial<Entry> & { anki_note_ids?: number[]; card_type_ids?: string[] }) }
-      const noteIds = entry.anki_note_ids || []
-
-      if (noteIds.length > 0) {
-        // Fetch card types (kèm template) + note hiện tại (để giữ media).
-        const ctIds = [...new Set(entry.card_type_ids || [])]
-        const [ctSnaps, infos] = await Promise.all([
-          Promise.all(ctIds.map(id => db.collection('card_types').doc(id).get())),
-          flashcardService.notesInfo(noteIds).catch(() => []),
-        ])
-        const cardTypeMap = new Map<string, CardTypeItem>()
-        ctSnaps.forEach(s => {
-          if (!s.exists) return
-          const data = s.data() as { name?: string; code?: string; template?: CardTemplate }
-          cardTypeMap.set(s.id, { id: s.id, name: data.name || s.id, code: data.code, template: data.template })
-        })
-        const infoById = new Map(infos.map(n => [n.noteId, n]))
-
-        const { updates: noteUpdates } = regenerateEntryNotes(entry, cardTypeMap, infoById)
-        for (const { noteId, fields } of noteUpdates) {
-          try {
-            await flashcardService.updateNoteFields(noteId, fields)
-            ankiResults.push({ noteId, success: true })
-          } catch (e) {
-            ankiResults.push({ noteId, success: false, error: (e as Error).message })
-          }
-        }
-      }
+    if (!snap.exists) {
+      return NextResponse.json({ success: true, entry: null, cardTypes: [], noteIds: [] })
     }
 
-    return NextResponse.json({ success: true, ankiResults })
+    const entry = {
+      id: snap.id,
+      ...(snap.data() as Partial<Entry> & { anki_note_ids?: number[]; card_type_ids?: string[] }),
+    }
+    const noteIds = entry.anki_note_ids || []
+
+    let cardTypes: RegenCardType[] = []
+    if (noteIds.length > 0) {
+      const ctIds = [...new Set(entry.card_type_ids || [])]
+      const ctSnaps = await Promise.all(ctIds.map((id) => db.collection('card_types').doc(id).get()))
+      cardTypes = ctSnaps
+        .filter((s) => s.exists)
+        .map((s) => {
+          const data = s.data() as { name?: string; code?: string; template?: CardTemplate }
+          return { id: s.id, name: data.name || s.id, code: data.code, template: data.template }
+        })
+    }
+
+    return NextResponse.json({ success: true, entry, cardTypes, noteIds })
   } catch (error) {
     console.error('Update entry error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })

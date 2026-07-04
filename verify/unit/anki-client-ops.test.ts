@@ -6,9 +6,11 @@ import {
   deleteDeckWithCleanup,
   setDeckSuspended,
   syncAllDecks,
+  regenerateNotesForEntry,
 } from '@/lib/flashcard-service/client-ops'
 import { ANKI_MODEL_NAME } from '@/lib/anki/model'
-import type { IFlashcardService } from '@/lib/flashcard-service/types'
+import type { IFlashcardService, AnkiNoteInfo } from '@/lib/flashcard-service/types'
+import type { CardTypeItem } from '@/lib/buildNotes'
 
 /** Mock provider — mọi method là vi.fn(), override khi cần trong từng test. */
 function makeClient(overrides: Partial<Record<keyof IFlashcardService, unknown>> = {}): IFlashcardService {
@@ -175,5 +177,79 @@ describe('syncAllDecks', () => {
     expect(result.synced).toBe(1)
     expect(result.success).toBe(false)
     expect(result.failed).toEqual([{ name: 'Bad', error: 'boom' }])
+  })
+})
+
+describe('regenerateNotesForEntry', () => {
+  const cardTypes: CardTypeItem[] = [
+    { id: 'ct1', name: 'Word → Meaning', code: 'word_to_meaning' },
+    { id: 'ct2', name: 'Meaning → Word', code: 'meaning_to_word' },
+  ]
+  // entry map anki_note_ids[i] ↔ card_type_ids[i] theo thứ tự
+  const entry = { word: 'resilient', anki_deck: 'D', tags: [], anki_note_ids: [11, 22], card_type_ids: ['ct1', 'ct2'] }
+
+  const noteInfo = (noteId: number): AnkiNoteInfo => ({
+    noteId,
+    fields: { Front: { value: '', order: 0 }, Back: { value: '', order: 1 } },
+  })
+
+  it('entry không có note → không gọi Anki, trả zeros', async () => {
+    const client = makeClient()
+    const r = await regenerateNotesForEntry(client, { anki_note_ids: [], card_type_ids: [] }, cardTypes)
+    expect(r).toEqual({ updated: 0, skipped: 0, failed: 0, errors: [] })
+    expect(client.notesInfo).not.toHaveBeenCalled()
+  })
+
+  it('sinh lại + updateNoteFields cho từng note khớp card type', async () => {
+    const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
+
+    const r = await regenerateNotesForEntry(client, entry, cardTypes)
+
+    expect(r.updated).toBe(2)
+    expect(r.failed).toBe(0)
+    expect(client.updateNoteFields).toHaveBeenCalledTimes(2)
+    const calledNoteIds = (client.updateNoteFields as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    expect(calledNoteIds).toEqual([11, 22])
+  })
+
+  it('card type đã xoá (không có trong map) → skipped', async () => {
+    const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
+    // chỉ cung cấp ct1 → note của ct2 bị skip
+    const r = await regenerateNotesForEntry(client, entry, [cardTypes[0]])
+    expect(r.updated).toBe(1)
+    expect(r.skipped).toBe(1)
+    expect(client.updateNoteFields).toHaveBeenCalledTimes(1)
+  })
+
+  it('onlyCardTypeId → chỉ sinh lại note của card type đó', async () => {
+    const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
+    const r = await regenerateNotesForEntry(client, entry, cardTypes, 'ct2')
+    expect(r.updated).toBe(1)
+    const calledNoteIds = (client.updateNoteFields as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    expect(calledNoteIds).toEqual([22])
+  })
+
+  it('updateNoteFields lỗi 1 note → failed + errors, note kia vẫn updated', async () => {
+    const client = makeClient({
+      notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]),
+      updateNoteFields: vi.fn(async (noteId: number) => {
+        if (noteId === 22) throw new Error('anki down')
+      }),
+    })
+
+    const r = await regenerateNotesForEntry(client, entry, cardTypes)
+
+    expect(r.updated).toBe(1)
+    expect(r.failed).toBe(1)
+    expect(r.errors[0]).toContain('note 22')
+  })
+
+  it('số note ≠ số card type → skip toàn bộ (map không an toàn)', async () => {
+    const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
+    const mismatched = { ...entry, card_type_ids: ['ct1'] } // 2 note, 1 card type
+    const r = await regenerateNotesForEntry(client, mismatched, cardTypes)
+    expect(r.updated).toBe(0)
+    expect(r.skipped).toBe(2)
+    expect(client.updateNoteFields).not.toHaveBeenCalled()
   })
 })
