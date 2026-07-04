@@ -118,10 +118,13 @@ function IntegrationCard({
  * Callout hướng dẫn khi Anki không reachable từ trang này. Vì browser giấu chi tiết CORS
  * khỏi JS, "Anki đóng" và "CORS chưa cho phép origin" đều biểu hiện giống nhau → gộp cả hai.
  */
-function AnkiCorsHelp() {
+function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
     // Chỉ mount khi checkingAnki=false (đã client-side) → đọc origin ngay ở lazy init, không cần effect.
     const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
     const [copied, setCopied] = useState(false);
+    const [rechecking, setRechecking] = useState(false);
+
+    const snippet = `{\n  "webCorsOriginList": ["http://localhost", "${origin}"]\n}`;
 
     const handleCopy = async () => {
         try {
@@ -133,6 +136,15 @@ function AnkiCorsHelp() {
         }
     };
 
+    const handleRecheck = async () => {
+        setRechecking(true);
+        try {
+            await onRecheck();
+        } finally {
+            setRechecking(false);
+        }
+    };
+
     return (
         <div className="p-[14px] border border-[#f0e4cc] rounded-[11px] bg-[#fdfbf5]">
             <p className="text-[13px] font-bold text-[#b87514] mb-1.5">Anki not reachable from this page</p>
@@ -140,21 +152,34 @@ function AnkiCorsHelp() {
                 Make sure Anki Desktop is open, and that AnkiConnect allows this page&apos;s origin. In Anki, go
                 to <span className="font-semibold">Tools → Add-ons → AnkiConnect → Config</span>, add your origin
                 to <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">webCorsOriginList</code>,
-                then restart Anki.
+                then restart Anki:
             </p>
-            <div className="flex items-center gap-2">
-                <code className="flex-1 min-w-0 px-2.5 py-2 rounded-[8px] bg-white border border-[#eceae4] font-mono text-[12px] text-ink truncate">
-                    {origin || '—'}
-                </code>
+            <pre className="mb-3 px-3 py-2.5 rounded-[8px] bg-white border border-[#eceae4] font-mono text-[11.5px] text-ink overflow-x-auto whitespace-pre">
+                {snippet}
+            </pre>
+            <div className="flex items-center gap-2 flex-wrap">
                 <Button
                     variant="secondary"
                     size="sm"
                     onClick={handleCopy}
                     leftIcon={copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 >
-                    {copied ? 'Copied' : 'Copy origin'}
+                    {copied ? 'Copied origin' : 'Copy origin'}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRecheck}
+                    disabled={rechecking}
+                    leftIcon={<RefreshCw className={cn('w-3.5 h-3.5', rechecking && 'animate-spin')} />}
+                >
+                    {rechecking ? 'Checking…' : 'Recheck'}
                 </Button>
             </div>
+            <p className="text-[11px] text-slate-400 mt-2.5">
+                Note: Safari blocks requests from HTTPS pages to localhost — use Chrome, Edge, or Firefox for the
+                deployed app.
+            </p>
         </div>
     );
 }
@@ -186,20 +211,25 @@ export default function SettingsPage() {
         fetchSettings();
     }, []);
 
-    useEffect(() => {
-        async function checkAnki() {
-            try {
-                const client = await getAnkiClientFromSettings();
-                const { connected } = await client.ping();
-                setAnkiConnected(connected);
-            } catch {
-                setAnkiConnected(false);
-            } finally {
-                setCheckingAnki(false);
-            }
+    // Recheck dùng cho nút trong callout — KHÔNG bật checkingAnki (tránh unmount callout giữa chừng).
+    const recheckAnki = useCallback(async (): Promise<boolean> => {
+        try {
+            const client = await getAnkiClientFromSettings();
+            const { connected } = await client.ping();
+            setAnkiConnected(connected);
+            return connected;
+        } catch {
+            setAnkiConnected(false);
+            return false;
         }
-        checkAnki();
     }, []);
+
+    useEffect(() => {
+        (async () => {
+            await recheckAnki();
+            setCheckingAnki(false);
+        })();
+    }, [recheckAnki]);
 
     const updateField = useCallback(<K extends keyof Settings>(field: K, value: Settings[K]) => {
         setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -386,7 +416,7 @@ export default function SettingsPage() {
                             connected={ankiConnected}
                             checking={checkingAnki}
                         />
-                        {!checkingAnki && !ankiConnected && <AnkiCorsHelp />}
+                        {!checkingAnki && !ankiConnected && <AnkiCorsHelp onRecheck={recheckAnki} />}
                         <IntegrationCard
                             label="Claude API"
                             description={settings.ai_model ?? 'claude-haiku-4-5'}

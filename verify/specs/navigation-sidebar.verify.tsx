@@ -5,10 +5,10 @@ import { registerUnit } from '@/verify/core/registry'
 
 const NAV_HREFS = ['/dashboard', '/create', '/history', '/admin', '/settings']
 
-// Mock fetch cho ConnectedBadge bên trong (poll /api/anki/connect khi mount)
+// Mock fetch cho ConnectedBadge bên trong (ping AnkiConnect localhost:8765 trực tiếp khi mount)
 const ankiConnectMock = {
   fetch: [
-    { match: '/api/anki/connect', response: { status: 200, json: { success: true } } },
+    { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
   ],
 }
 

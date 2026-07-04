@@ -6,6 +6,8 @@
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
+import { ensureDeck, setDeckSuspended } from '@/lib/flashcard-service/client-ops'
 import { FormType, LanguageType } from '@/types'
 
 const LANGUAGE_DECK_PREFIX: Record<string, string> = {
@@ -91,21 +93,14 @@ export async function createDeck(params: {
 
   let ankiSyncFailed = false
   try {
-    await postDeckSync({ op: 'ensure', deckName: anki_deck_name })
-    await postDeckSync({ op: 'unsuspend', deckName: anki_deck_name })
+    // Đồng bộ Anki client-side (browser → AnkiConnect của user), giống DeckManager.
+    const client = await getAnkiClientFromSettings()
+    await ensureDeck(client, anki_deck_name)
+    await setDeckSuspended(client, anki_deck_name, false)
   } catch (e) {
     console.warn('AnkiConnect sync failed when creating deck:', e)
     ankiSyncFailed = true
   }
 
   return { id: ref.id, display_name, anki_deck_name, ankiSyncFailed }
-}
-
-async function postDeckSync(body: Record<string, unknown>): Promise<void> {
-  const res = await fetch('/api/anki/decks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`Deck sync failed: ${res.status}`)
 }
