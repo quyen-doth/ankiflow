@@ -24,19 +24,35 @@ import { Plus, Pencil, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useSortableList } from '@/hooks/useSortableList';
 import { verifyAttrs } from '@/verify/core/contract';
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ensureDeck, renameDeck, deleteDeckWithCleanup, setDeckSuspended, syncAllDecks } from '@/lib/flashcard-service/client-ops';
 import { FormType, LanguageType } from '@/types';
 import type { DeckConfig } from '@/types';
 
-/** Gọi API đồng bộ deck với Anki; throw nếu thất bại (Anki offline / lỗi). */
+/**
+ * Đồng bộ deck với Anki client-side (browser → AnkiConnect của user); throw nếu Anki offline / lỗi.
+ * Giữ chữ ký `{ op, ... }` để không đổi call site.
+ */
 async function postDeckSync(body: Record<string, unknown>): Promise<void> {
-    const res = await fetch('/api/anki/decks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Anki sync failed');
+    const client = await getAnkiClientFromSettings();
+    const op = (body.op as string) ?? 'ensure';
+    switch (op) {
+        case 'rename':
+            await renameDeck(client, body.oldName as string, body.newName as string);
+            break;
+        case 'delete':
+            await deleteDeckWithCleanup(client, body.deckName as string);
+            break;
+        case 'suspend':
+            await setDeckSuspended(client, body.deckName as string, true);
+            break;
+        case 'unsuspend':
+            await setDeckSuspended(client, body.deckName as string, false);
+            break;
+        case 'ensure':
+        default:
+            await ensureDeck(client, body.deckName as string);
+            break;
     }
 }
 
@@ -239,20 +255,12 @@ export function DeckManager() {
         if (decks.length === 0) return;
         setSyncing(true);
         try {
-            const res = await fetch('/api/anki/decks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    op: 'sync-all',
-                    decks: decks.map((d) => ({ name: d.anki_deck_name, is_active: d.is_active })),
-                }),
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || 'Sync failed');
-            }
-            const data = await res.json();
-            if (data.failed?.length) {
+            const client = await getAnkiClientFromSettings();
+            const data = await syncAllDecks(
+                client,
+                decks.map((d) => ({ name: d.anki_deck_name, is_active: d.is_active })),
+            );
+            if (data.failed.length) {
                 toast.warning(`Synced ${data.synced}/${data.total} decks. Some failed — is Anki open?`);
             } else {
                 toast.success(`Synced ${data.synced} decks with Anki`);

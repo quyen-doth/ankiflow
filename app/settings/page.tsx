@@ -20,6 +20,7 @@ import {
     Bell,
     RefreshCw,
     MessageSquare,
+    Copy,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
@@ -109,6 +110,51 @@ function IntegrationCard({
                     {connected ? 'Connected' : 'Offline'}
                 </span>
             )}
+        </div>
+    );
+}
+
+/**
+ * Callout hướng dẫn khi Anki không reachable từ trang này. Vì browser giấu chi tiết CORS
+ * khỏi JS, "Anki đóng" và "CORS chưa cho phép origin" đều biểu hiện giống nhau → gộp cả hai.
+ */
+function AnkiCorsHelp() {
+    // Chỉ mount khi checkingAnki=false (đã client-side) → đọc origin ngay ở lazy init, không cần effect.
+    const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(origin);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            /* clipboard unavailable — bỏ qua */
+        }
+    };
+
+    return (
+        <div className="p-[14px] border border-[#f0e4cc] rounded-[11px] bg-[#fdfbf5]">
+            <p className="text-[13px] font-bold text-[#b87514] mb-1.5">Anki not reachable from this page</p>
+            <p className="text-[12.5px] text-slate-600 leading-relaxed mb-3">
+                Make sure Anki Desktop is open, and that AnkiConnect allows this page&apos;s origin. In Anki, go
+                to <span className="font-semibold">Tools → Add-ons → AnkiConnect → Config</span>, add your origin
+                to <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">webCorsOriginList</code>,
+                then restart Anki.
+            </p>
+            <div className="flex items-center gap-2">
+                <code className="flex-1 min-w-0 px-2.5 py-2 rounded-[8px] bg-white border border-[#eceae4] font-mono text-[12px] text-ink truncate">
+                    {origin || '—'}
+                </code>
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCopy}
+                    leftIcon={copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                >
+                    {copied ? 'Copied' : 'Copy origin'}
+                </Button>
+            </div>
         </div>
     );
 }
@@ -314,6 +360,7 @@ export default function SettingsPage() {
                             connected={ankiConnected}
                             checking={checkingAnki}
                         />
+                        {!checkingAnki && !ankiConnected && <AnkiCorsHelp />}
                         <IntegrationCard
                             label="Claude API"
                             description={settings.ai_model ?? 'claude-haiku-4-5'}

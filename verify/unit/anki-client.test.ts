@@ -58,7 +58,7 @@ describe('ping — browser gọi thẳng AnkiConnect', () => {
     const result = await getAnkiClient().ping()
 
     expect(result).toEqual({ connected: true, version: 6 })
-    const [url, init] = mock.mock.calls[0] as [string, RequestInit]
+    const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe(DEFAULT_ANKI_CONNECT_URL)
     expect(JSON.parse(init.body as string)).toEqual({ action: 'version', version: 6, params: {} })
   })
@@ -115,6 +115,6 @@ describe('resolveAnkiConnectUrl — đọc settings, cache, fallback', () => {
     const client = await getAnkiClientFromSettings()
     await client.ping()
 
-    expect((mock.mock.calls[0] as [string, RequestInit])[0]).toBe('http://127.0.0.1:9999')
+    expect((mock.mock.calls[0] as unknown as [string, RequestInit])[0]).toBe('http://127.0.0.1:9999')
   })
 })

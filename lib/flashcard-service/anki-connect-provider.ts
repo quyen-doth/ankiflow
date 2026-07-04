@@ -34,7 +34,9 @@ export class AnkiConnectProvider implements IFlashcardService {
       
       return data.result;
     } catch (error) {
-      console.error(`AnkiConnect Error (${action}):`, error);
+      // KHÔNG log ở đây: browser gọi trực tiếp AnkiConnect và poll mỗi 30s —
+      // khi Anki đóng / CORS chưa cho phép, mỗi lần fail sẽ spam console.
+      // Callers tự xử lý: ping() nuốt lỗi → {connected:false}; export/deck ops hiện toast.
       throw error;
     }
   }
