@@ -7,11 +7,19 @@
  * default_card_type_ids/default_category_id) chỉ là phép nối chuỗi, seeding
  * idempotent (check tồn tại theo ID), debug dễ (nhìn ID biết gốc + chủ sở hữu).
  *
+ * TEMPLATE (editable defaults — admin control plane): `seedUserDefaults` ưu tiên
+ * đọc docs `user_id == DEFAULTS_OWNER_ID` (template, admin sửa qua /admin ở chế độ
+ * "New-user defaults" — tái dùng chính CategoryManager/CardTypeManager/TopicManager/
+ * DeckManager với prop `ownerId`). Không có template (lần đầu, chưa publish) →
+ * fallback mảng hardcode `DEFAULT_*` bên dưới. `publishTemplateDefaults()` ghi
+ * hardcode thành template lần đầu (id KHÔNG suffix — trùng chính id hardcode).
+ *
  * LƯU Ý: `content_types` KHÔNG per-user — doc ID của nó (form_language/form_it/
  * form_general) chính là giá trị `form_type` mà routing toàn app phụ thuộc.
  * Per-user hóa content_types cần tách `code` khỏi doc id (backlog).
  */
 import type { Firestore } from 'firebase-admin/firestore';
+import { DEFAULTS_OWNER_ID } from '@/lib/constants';
 
 // ─── Default data (nguồn: scripts/seed-firestore.ts gốc) ─────────────────────
 
@@ -290,25 +298,36 @@ export const DEFAULT_USER_PREFS = {
 /** ID per-user từ default ID: `cat_daily` + uid `abc` → `cat_daily__abc`. */
 export const userScopedId = (defaultId: string, uid: string) => `${defaultId}__${uid}`;
 
+async function seedDocIfMissing(db: Firestore, collection: string, id: string, data: Record<string, unknown>) {
+    const ref = db.collection(collection).doc(id);
+    const snap = await ref.get();
+    if (snap.exists) return;
+    await ref.set(data);
+}
+
+interface TemplateDoc {
+    id: string;
+    data: FirebaseFirestore.DocumentData;
+}
+
+/** Đọc docs template (`user_id == DEFAULTS_OWNER_ID`) của 1 collection — rỗng nếu chưa publish. */
+async function fetchTemplates(db: Firestore, collection: string): Promise<TemplateDoc[]> {
+    const snap = await db.collection(collection).where('user_id', '==', DEFAULTS_OWNER_ID).get();
+    return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+}
+
 /**
- * Seed bộ master data default cho 1 user mới (idempotent — doc tồn tại thì bỏ qua).
- * FK trong decks (default_card_type_ids, default_category_id) được re-map sang
- * ID per-user bằng cùng quy tắc `userScopedId`.
+ * Publish bộ hardcode `DEFAULT_*` thành template (`user_id: DEFAULTS_OWNER_ID`, id
+ * KHÔNG suffix — trùng chính id hardcode) để admin sửa qua /admin ("New-user defaults").
+ * Idempotent — chỉ tạo doc chưa tồn tại. Gọi từ `scripts/seed-firestore.ts --defaults`
+ * hoặc lazy-init trong `seedUserDefaults` khi chưa có template nào.
  */
-export async function seedUserDefaults(db: Firestore, uid: string): Promise<void> {
+export async function publishTemplateDefaults(db: Firestore): Promise<void> {
     const now = new Date();
-
-    const seedDoc = async (collection: string, id: string, data: Record<string, unknown>) => {
-        const ref = db.collection(collection).doc(id);
-        const snap = await ref.get();
-        if (snap.exists) return;
-        await ref.set(data);
-    };
-
     await Promise.all([
         ...DEFAULT_CATEGORIES.map((cat) =>
-            seedDoc('categories', userScopedId(cat.id, uid), {
-                user_id: uid,
+            seedDocIfMissing(db, 'categories', cat.id, {
+                user_id: DEFAULTS_OWNER_ID,
                 name: cat.name,
                 form_type: 'form_language',
                 sort_order: cat.sort_order,
@@ -318,8 +337,8 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
             }),
         ),
         ...DEFAULT_CARD_TYPES.map((ct) =>
-            seedDoc('card_types', userScopedId(ct.id, uid), {
-                user_id: uid,
+            seedDocIfMissing(db, 'card_types', ct.id, {
+                user_id: DEFAULTS_OWNER_ID,
                 code: ct.code,
                 name: ct.name,
                 description: '',
@@ -333,8 +352,8 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
             }),
         ),
         ...DEFAULT_TOPICS.map((topic) =>
-            seedDoc('topics', userScopedId(topic.id, uid), {
-                user_id: uid,
+            seedDocIfMissing(db, 'topics', topic.id, {
+                user_id: DEFAULTS_OWNER_ID,
                 name: topic.name,
                 form_type: 'form_it',
                 is_active: true,
@@ -343,7 +362,136 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
             }),
         ),
         ...DEFAULT_DECKS.map((deck) =>
-            seedDoc('decks', userScopedId(deck.id, uid), {
+            seedDocIfMissing(db, 'decks', deck.id, {
+                user_id: DEFAULTS_OWNER_ID,
+                anki_deck_name: deck.anki_deck_name,
+                display_name: deck.display_name,
+                form_type: deck.form_type,
+                language: deck.language,
+                default_card_type_ids: [...deck.default_card_type_ids],
+                default_category_id: deck.default_category_id,
+                is_active: true,
+                sort_order: deck.sort_order,
+                created_at: now,
+            }),
+        ),
+    ]);
+}
+
+interface CategorySourceItem { id: string; name: string; sort_order: number }
+interface CardTypeSourceItem {
+    id: string; code: string; name: string; form_type: string;
+    language: string | null; is_default: boolean; sort_order: number; template: Record<string, unknown>;
+}
+interface TopicSourceItem { id: string; name: string; sort_order: number }
+interface DeckSourceItem {
+    id: string; anki_deck_name: string; display_name: string; form_type: string;
+    language: string | null; default_card_type_ids: string[]; default_category_id: string | null; sort_order: number;
+}
+
+/**
+ * Seed bộ master data cho 1 user mới (idempotent — doc tồn tại thì bỏ qua).
+ * Ưu tiên clone từ TEMPLATE (`user_id == DEFAULTS_OWNER_ID`, admin đã sửa qua /admin);
+ * nếu chưa publish template nào (lần đầu sau khi deploy tính năng này) → lazy-publish
+ * từ hardcode `DEFAULT_*` rồi dùng luôn kết quả đó (user đầu tiên "trả giá" 1 lần,
+ * mọi user sau tự động hưởng template — admin sửa được ngay từ /admin).
+ * FK trong decks (default_card_type_ids, default_category_id) re-map sang ID
+ * per-user bằng `userScopedId`.
+ */
+export async function seedUserDefaults(db: Firestore, uid: string): Promise<void> {
+    const now = new Date();
+
+    let [catTemplates, ctTemplates, topicTemplates, deckTemplates] = await Promise.all([
+        fetchTemplates(db, 'categories'),
+        fetchTemplates(db, 'card_types'),
+        fetchTemplates(db, 'topics'),
+        fetchTemplates(db, 'decks'),
+    ]);
+
+    // Chưa publish template nào — lazy publish từ hardcode rồi đọc lại.
+    if (catTemplates.length === 0 && ctTemplates.length === 0 && topicTemplates.length === 0 && deckTemplates.length === 0) {
+        await publishTemplateDefaults(db);
+        [catTemplates, ctTemplates, topicTemplates, deckTemplates] = await Promise.all([
+            fetchTemplates(db, 'categories'),
+            fetchTemplates(db, 'card_types'),
+            fetchTemplates(db, 'topics'),
+            fetchTemplates(db, 'decks'),
+        ]);
+    }
+
+    const categorySource: CategorySourceItem[] = catTemplates.length > 0
+        ? catTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
+        : DEFAULT_CATEGORIES.map((cat) => ({ ...cat }));
+
+    const cardTypeSource: CardTypeSourceItem[] = ctTemplates.length > 0
+        ? ctTemplates.map((t) => ({
+            id: t.id,
+            code: t.data.code as string,
+            name: t.data.name as string,
+            form_type: t.data.form_type as string,
+            language: (t.data.language as string | null) ?? null,
+            is_default: !!t.data.is_default,
+            sort_order: (t.data.sort_order as number) ?? 0,
+            template: t.data.template as Record<string, unknown>,
+        }))
+        : DEFAULT_CARD_TYPES.map((ct) => ({ ...ct, template: ct.template as Record<string, unknown> }));
+
+    const topicSource: TopicSourceItem[] = topicTemplates.length > 0
+        ? topicTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
+        : DEFAULT_TOPICS.map((topic) => ({ ...topic }));
+
+    const deckSource: DeckSourceItem[] = deckTemplates.length > 0
+        ? deckTemplates.map((t) => ({
+            id: t.id,
+            anki_deck_name: t.data.anki_deck_name as string,
+            display_name: t.data.display_name as string,
+            form_type: t.data.form_type as string,
+            language: (t.data.language as string | null) ?? null,
+            default_card_type_ids: (t.data.default_card_type_ids as string[]) ?? [],
+            default_category_id: (t.data.default_category_id as string | null) ?? null,
+            sort_order: (t.data.sort_order as number) ?? 0,
+        }))
+        : DEFAULT_DECKS.map((deck) => ({ ...deck, default_card_type_ids: [...deck.default_card_type_ids] }));
+
+    await Promise.all([
+        ...categorySource.map((cat) =>
+            seedDocIfMissing(db, 'categories', userScopedId(cat.id, uid), {
+                user_id: uid,
+                name: cat.name,
+                form_type: 'form_language',
+                sort_order: cat.sort_order,
+                is_active: true,
+                created_at: now,
+                updated_at: now,
+            }),
+        ),
+        ...cardTypeSource.map((ct) =>
+            seedDocIfMissing(db, 'card_types', userScopedId(ct.id, uid), {
+                user_id: uid,
+                code: ct.code,
+                name: ct.name,
+                description: '',
+                form_type: ct.form_type,
+                language: ct.language,
+                is_default: ct.is_default,
+                is_active: true,
+                sort_order: ct.sort_order,
+                template: ct.template,
+                created_at: now,
+            }),
+        ),
+        ...topicSource.map((topic) =>
+            seedDocIfMissing(db, 'topics', userScopedId(topic.id, uid), {
+                user_id: uid,
+                name: topic.name,
+                form_type: 'form_it',
+                is_active: true,
+                sort_order: topic.sort_order,
+                created_at: now,
+            }),
+        ),
+        ...deckSource.map((deck) =>
+            seedDocIfMissing(db, 'decks', userScopedId(deck.id, uid), {
                 user_id: uid,
                 anki_deck_name: deck.anki_deck_name,
                 display_name: deck.display_name,
@@ -357,6 +505,6 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
                 created_at: now,
             }),
         ),
-        seedDoc('settings', uid, { ...DEFAULT_USER_PREFS, updated_at: now }),
+        seedDocIfMissing(db, 'settings', uid, { ...DEFAULT_USER_PREFS, updated_at: now }),
     ]);
 }

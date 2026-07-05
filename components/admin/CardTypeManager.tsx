@@ -71,8 +71,15 @@ const EMPTY_DRAFT: CardTypeDraft = {
   template: DEFAULT_TEMPLATES['word_to_meaning'],
 }
 
-export function CardTypeManager() {
+interface CardTypeManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -93,13 +100,12 @@ export function CardTypeManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
-    if (authLoading || !user) return
-    const uid = user.uid
+    if (authLoading || !ownerId) return
     async function fetchCardTypes() {
       setLoading(true)
       try {
         // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
-        const q = query(collection(db, 'card_types'), where('user_id', '==', uid))
+        const q = query(collection(db, 'card_types'), where('user_id', '==', ownerId))
         const snapshot = await getDocs(q)
         setCardTypes(
           snapshot.docs
@@ -113,7 +119,7 @@ export function CardTypeManager() {
       }
     }
     fetchCardTypes()
-  }, [refreshKey, user, authLoading])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<CardTypeConfig>('card_types', setCardTypes, refresh)
@@ -204,7 +210,7 @@ export function CardTypeManager() {
       } else {
         await addDoc(collection(db, 'card_types'), {
           ...base,
-          user_id: user?.uid,
+          user_id: ownerId,
           ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),

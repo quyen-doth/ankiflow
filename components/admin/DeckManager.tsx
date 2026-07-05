@@ -89,8 +89,15 @@ const EMPTY_DRAFT: DeckDraft = {
     sort_order: 0,
 };
 
-export function DeckManager() {
+interface DeckManagerProps {
+    /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+     *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+    ownerId?: string;
+}
+
+export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
     const { user, loading: authLoading } = useAuth();
+    const ownerId = ownerIdProp ?? user?.uid;
     const [decks, setDecks] = useState<DeckConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -142,13 +149,12 @@ export function DeckManager() {
     };
 
     useEffect(() => {
-        if (authLoading || !user) return;
-        const uid = user.uid;
+        if (authLoading || !ownerId) return;
         async function fetchDecks() {
             setLoading(true);
             try {
                 // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
-                const q = query(collection(db, 'decks'), where('user_id', '==', uid));
+                const q = query(collection(db, 'decks'), where('user_id', '==', ownerId));
                 const snapshot = await getDocs(q);
                 setDecks(
                     snapshot.docs
@@ -162,7 +168,7 @@ export function DeckManager() {
             }
         }
         fetchDecks();
-    }, [refreshKey, user, authLoading]);
+    }, [refreshKey, ownerId, authLoading]);
 
     const refresh = () => setRefreshKey((k) => k + 1);
     const handleReorder = useSortableList<DeckConfig>('decks', setDecks, refresh);
@@ -205,7 +211,7 @@ export function DeckManager() {
                 });
             } else {
                 await addDoc(collection(db, 'decks'), {
-                    user_id: user?.uid,
+                    user_id: ownerId,
                     anki_deck_name: draft.anki_deck_name,
                     display_name: draft.display_name,
                     form_type: draft.form_type,

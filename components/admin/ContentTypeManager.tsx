@@ -15,6 +15,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
@@ -72,6 +73,11 @@ const EMPTY_FIELD: FormFieldConfig = {
 }
 
 export function ContentTypeManager() {
+  // ADMIN-ONLY: content_types là SHARED toàn cục (doc id = form_type, routing cốt lõi
+  // toàn app) — sửa ảnh hưởng MỌI user ngay lập tức, không có bản per-user để bảo vệ.
+  const { user } = useAuth()
+  const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -250,6 +256,18 @@ export function ContentTypeManager() {
       ),
     },
   ]
+
+  // Sau khi mọi hooks đã chạy (rules-of-hooks) — user thường thấy thông báo thay vì UI quản lý
+  if (!isAdmin) {
+    return (
+      <Card>
+        <h2 className="text-body font-bold font-semibold text-slate-600 mb-2">Content Types</h2>
+        <p className="text-sm text-slate-600">
+          Form layouts (Language / IT / General) are shared across all accounts and managed by the app owner.
+        </p>
+      </Card>
+    )
+  }
 
   return (
     <Card {...verifyAttrs({ unit: 'ContentTypeManager', rows: contentTypes.length, modalOpen, loading })}>

@@ -28,8 +28,15 @@ interface TopicDraft {
 
 const EMPTY_DRAFT: TopicDraft = { name: '', sort_order: 0, is_active: true }
 
-export function TopicManager() {
+interface TopicManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function TopicManager({ ownerId: ownerIdProp }: TopicManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -45,13 +52,12 @@ export function TopicManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
-    if (authLoading || !user) return
-    const uid = user.uid
+    if (authLoading || !ownerId) return
     async function fetchTopics() {
       setLoading(true)
       try {
         // Sort in-memory thay orderBy — tránh composite index (user_id, form_type, sort_order)
-        const q = query(collection(db, 'topics'), where('user_id', '==', uid), where('form_type', '==', FormType.IT))
+        const q = query(collection(db, 'topics'), where('user_id', '==', ownerId), where('form_type', '==', FormType.IT))
         const snapshot = await getDocs(q)
         setTopics(
           snapshot.docs
@@ -65,7 +71,7 @@ export function TopicManager() {
       }
     }
     fetchTopics()
-  }, [refreshKey, user, authLoading])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<Topic>('topics', setTopics, refresh)
@@ -102,7 +108,7 @@ export function TopicManager() {
       } else {
         await addDoc(collection(db, 'topics'), {
           ...draft,
-          user_id: user?.uid,
+          user_id: ownerId,
           form_type: FormType.IT,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),

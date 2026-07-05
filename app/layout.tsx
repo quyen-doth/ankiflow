@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { ToastProvider } from '@/components/ui/Toast'
 import { MotionProvider } from '@/components/providers/MotionProvider'
 import { AuthProvider } from '@/components/providers/AuthProvider'
+import { GlobalConfigProvider } from '@/components/providers/GlobalConfigProvider'
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: '--font-sans',
@@ -37,11 +38,13 @@ export default function RootLayout({
     >
       <body className="bg-canvas font-sans text-ink min-h-full flex">
         <AuthProvider>
-          <MotionProvider>
-            <ToastProvider>
-              <AppShell>{children}</AppShell>
-            </ToastProvider>
-          </MotionProvider>
+          <GlobalConfigProvider>
+            <MotionProvider>
+              <ToastProvider>
+                <AppShell>{children}</AppShell>
+              </ToastProvider>
+            </MotionProvider>
+          </GlobalConfigProvider>
         </AuthProvider>
       </body>
     </html>

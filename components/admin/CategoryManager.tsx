@@ -35,8 +35,15 @@ interface CategoryDraft {
 
 const EMPTY_DRAFT: CategoryDraft = { name: '', form_type: FormType.LANGUAGE, sort_order: 0, is_active: true }
 
-export function CategoryManager() {
+interface CategoryManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function CategoryManager({ ownerId: ownerIdProp }: CategoryManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -53,13 +60,12 @@ export function CategoryManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
-    if (authLoading || !user) return
-    const uid = user.uid
+    if (authLoading || !ownerId) return
     async function fetchCategories() {
       setLoading(true)
       try {
         // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
-        const q = query(collection(db, 'categories'), where('user_id', '==', uid))
+        const q = query(collection(db, 'categories'), where('user_id', '==', ownerId))
         const snapshot = await getDocs(q)
         setCategories(
           snapshot.docs
@@ -73,7 +79,7 @@ export function CategoryManager() {
       }
     }
     fetchCategories()
-  }, [refreshKey, user, authLoading])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<Category>('categories', setCategories, refresh)
@@ -119,7 +125,7 @@ export function CategoryManager() {
       } else {
         await addDoc(collection(db, 'categories'), {
           ...draft,
-          user_id: user?.uid,
+          user_id: ownerId,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })

@@ -276,6 +276,19 @@ export interface Settings {
   updated_at: FirestoreTimestamp;
 }
 
+/**
+ * `settings/global` — feature flags toàn cục do admin kiểm soát (control plane).
+ * Mọi user đã đăng nhập đọc được (client SDK, không secret); chỉ admin ghi được
+ * (qua POST /api/admin/global-config, verify server-side theo ADMIN_EMAIL).
+ */
+export interface GlobalSettings {
+  ai_model: string;
+  web_search_enabled: boolean;
+  tts_available: boolean;
+  unsplash_available: boolean;
+  updated_at: FirestoreTimestamp;
+}
+
 // ─── Session State (localStorage) ─────────────────────
 
 /**

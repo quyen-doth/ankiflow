@@ -25,39 +25,30 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
-import { SETTINGS_DOC_ID } from '@/lib/constants';
+import { SETTINGS_DOC_ID, GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
 import type { Settings } from '@/types';
 
 /**
- * Tách settings 2 tầng (multi-user):
- * - `settings/default` — SYSTEM config của chủ app: ai_model, web_search_enabled,
- *   LINE credentials, notifications. Chỉ ADMIN (env NEXT_PUBLIC_ADMIN_EMAIL) thấy/sửa.
+ * Settings tách 3 tầng (multi-user + admin control plane):
  * - `settings/{uid}` — preferences của từng user: unsplash/tts/auto_audio/auto_image/
  *   allow_duplicate/anki_connect_url. Save lần đầu tự tạo doc.
+ * - `settings/default` — SECRETS của chủ app: LINE credentials, notifications_enabled.
+ *   CHỈ admin fetch/thấy (non-admin KHÔNG BAO GIỜ đọc doc này — tránh lộ token qua
+ *   network response). Ghi trực tiếp qua client SDK (interim — Phase D Security Rules
+ *   sẽ khóa; xem multi-user-readiness-review).
+ * - `settings/global` — feature flags TOÀN CỤC (ai_model, web_search_enabled,
+ *   tts_available, unsplash_available) ảnh hưởng chi phí API của chủ app cho MỌI user.
+ *   Mọi user đọc được (không secret, qua GlobalConfigProvider realtime); CHỈ ghi được
+ *   qua POST /api/admin/global-config (verify admin server-side — không thể bypass
+ *   bằng cách tự gọi setDoc từ console như settings/default).
  */
-const SYSTEM_FIELDS = [
-    'ai_model',
-    'web_search_enabled',
-    'line_channel_access_token',
-    'line_user_id',
-    'notifications_enabled',
-] as const;
 
-function splitSystemFields(data: Partial<Settings>): {
-    system: Partial<Settings>;
-    prefs: Partial<Settings>;
-} {
-    const system: Record<string, unknown> = {};
-    const prefs: Record<string, unknown> = { ...data };
-    for (const key of SYSTEM_FIELDS) {
-        if (key in prefs) {
-            system[key] = prefs[key];
-            delete prefs[key];
-        }
-    }
-    return { system: system as Partial<Settings>, prefs: prefs as Partial<Settings> };
+interface FeatureFlagsForm {
+    tts_available: boolean;
+    unsplash_available: boolean;
 }
 
 const CLAUDE_MODEL_OPTIONS = [
@@ -217,7 +208,9 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
 
 export default function SettingsPage() {
     const { user, loading: authLoading } = useAuth();
+    const { config: globalConfig } = useGlobalConfig();
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [featureFlags, setFeatureFlags] = useState<FeatureFlagsForm>({ tts_available: true, unsplash_available: true });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -232,23 +225,38 @@ export default function SettingsPage() {
         if (authLoading || !user) return;
         async function fetchSettings(uid: string, admin: boolean) {
             try {
-                const [userSnap, defSnap] = await Promise.all([
+                const [userSnap, globalSnap] = await Promise.all([
                     getDoc(doc(db, 'settings', uid)),
-                    getDoc(doc(db, 'settings', SETTINGS_DOC_ID)),
+                    getDoc(doc(db, 'settings', GLOBAL_SETTINGS_DOC_ID)),
                 ]);
-                const defData = (defSnap.exists() ? defSnap.data() : {}) as Partial<Settings>;
-                const { system, prefs: defPrefs } = splitSystemFields(defData);
+                const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
+                const globalData = (globalSnap.exists() ? globalSnap.data() : {}) as Partial<Settings>;
 
-                // Preferences: doc riêng của user; user mới → template từ default (đã strip system)
-                const prefs = userSnap.exists()
-                    ? splitSystemFields(userSnap.data() as Partial<Settings>).prefs
-                    : defPrefs;
+                // Secrets (LINE) — CHỈ admin fetch. Non-admin không bao giờ đọc settings/default
+                // (tránh lộ token qua network response — đây là fix cho rò rỉ trước đây).
+                let secretFields: Partial<Settings> = {};
+                if (admin) {
+                    const defSnap = await getDoc(doc(db, 'settings', SETTINGS_DOC_ID));
+                    if (defSnap.exists()) {
+                        const d = defSnap.data() as Partial<Settings>;
+                        secretFields = {
+                            notifications_enabled: d.notifications_enabled,
+                            line_channel_access_token: d.line_channel_access_token,
+                            line_user_id: d.line_user_id,
+                        };
+                    }
+                    setFeatureFlags({
+                        tts_available: (globalData as { tts_available?: boolean }).tts_available ?? true,
+                        unsplash_available: (globalData as { unsplash_available?: boolean }).unsplash_available ?? true,
+                    });
+                }
 
-                // System fields: admin thấy đầy đủ (kể cả LINE token); user thường chỉ nhận
-                // ai_model để hiển thị read-only — KHÔNG nhận LINE credentials.
-                const systemView = admin ? system : { ai_model: system.ai_model };
-
-                setSettings({ ...prefs, ...systemView } as Settings);
+                setSettings({
+                    ...prefs,
+                    ...secretFields,
+                    ai_model: globalData.ai_model ?? 'claude-haiku-4-5',
+                    web_search_enabled: globalData.web_search_enabled ?? false,
+                } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
@@ -329,22 +337,56 @@ export default function SettingsPage() {
         setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
     }, []);
 
+    const updateFeatureFlag = useCallback(<K extends keyof FeatureFlagsForm>(field: K, value: boolean) => {
+        setFeatureFlags((prev) => ({ ...prev, [field]: value }));
+    }, []);
+
     const handleSave = async () => {
         if (!settings || !user) return;
         setSaving(true);
         try {
-            const { system, prefs } = splitSystemFields(settings);
+            // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo)
+            const prefsUpdate = {
+                unsplash_enabled: settings.unsplash_enabled,
+                tts_enabled: settings.tts_enabled,
+                auto_audio: settings.auto_audio,
+                auto_image: settings.auto_image,
+                allow_duplicate: settings.allow_duplicate,
+                anki_connect_url: settings.anki_connect_url,
+            };
+            await setDoc(doc(db, 'settings', user.uid), { ...prefsUpdate, updated_at: serverTimestamp() }, { merge: true });
 
-            // Preferences → doc riêng của user (save lần đầu tự tạo)
-            await setDoc(doc(db, 'settings', user.uid), { ...prefs, updated_at: serverTimestamp() }, { merge: true });
-
-            // System fields → settings/default, CHỈ admin được ghi
             if (isAdmin) {
+                // Secrets (LINE) → settings/default — client SDK trực tiếp (interim, xem ghi chú ở đầu file)
                 await setDoc(
                     doc(db, 'settings', SETTINGS_DOC_ID),
-                    { ...system, updated_at: serverTimestamp() },
+                    {
+                        notifications_enabled: settings.notifications_enabled,
+                        line_channel_access_token: settings.line_channel_access_token,
+                        line_user_id: settings.line_user_id,
+                        updated_at: serverTimestamp(),
+                    },
                     { merge: true },
                 );
+
+                // Feature flags TOÀN CỤC → settings/global — BẮT BUỘC qua server API
+                // (verify admin server-side; client không thể tự setDoc doc này thành công
+                // một khi Phase D Security Rules khóa lại, và ngay hiện tại route đã 403
+                // nếu ai đó cố POST trực tiếp mà không phải admin).
+                const res = await fetch('/api/admin/global-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ai_model: settings.ai_model,
+                        web_search_enabled: settings.web_search_enabled,
+                        tts_available: featureFlags.tts_available,
+                        unsplash_available: featureFlags.unsplash_available,
+                    }),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Failed to save global config');
+                }
             }
 
             resetAnkiClientCache();
@@ -488,7 +530,7 @@ export default function SettingsPage() {
                         {!checkingAnki && !ankiConnected && <AnkiCorsHelp onRecheck={recheckAnki} />}
                         <IntegrationCard
                             label="Claude API"
-                            description={settings.ai_model ?? 'claude-haiku-4-5'}
+                            description={globalConfig.ai_model}
                             icon={Sparkles}
                             tone="amber"
                             descMono
@@ -498,23 +540,61 @@ export default function SettingsPage() {
                         <IntegrationCard
                             label="Google Cloud TTS"
                             description={
-                                settings.tts_enabled ? 'Audio generation enabled' : 'Audio generation disabled'
+                                !globalConfig.tts_available
+                                    ? 'Disabled by administrator'
+                                    : settings.tts_enabled ? 'Audio generation enabled' : 'Audio generation disabled'
                             }
                             icon={Volume2}
                             tone="green"
-                            connected={settings.tts_enabled}
+                            connected={globalConfig.tts_available && settings.tts_enabled}
                             checking={false}
                         />
                         <IntegrationCard
                             label="Unsplash"
-                            description={settings.unsplash_enabled ? 'Image search enabled' : 'Image search disabled'}
+                            description={
+                                !globalConfig.unsplash_available
+                                    ? 'Disabled by administrator'
+                                    : settings.unsplash_enabled ? 'Image search enabled' : 'Image search disabled'
+                            }
                             icon={ImageIcon}
                             tone="green"
-                            connected={settings.unsplash_enabled}
+                            connected={globalConfig.unsplash_available && settings.unsplash_enabled}
                             checking={false}
                         />
                     </div>
                 </Card>
+
+                {/* Feature availability — ADMIN ONLY: control plane, ảnh hưởng MỌI user ngay lập tức */}
+                {isAdmin && (
+                    <Card>
+                        <SectionHeader icon={Plug} label="Feature availability (all users)" tone="amber" />
+                        <p className="text-sm text-slate-600 mb-3.5">
+                            Turning a feature off blocks it for every account immediately (enforced server-side).
+                            Turning it back on restores each user&apos;s own preference — it does not force it on for
+                            everyone.
+                        </p>
+                        <div className="flex flex-col">
+                            <div className="py-[15px] border-b border-[#f5f5f1]">
+                                <Toggle
+                                    bare
+                                    label="Text-to-speech available"
+                                    description="Allow any user to generate audio pronunciation via Google Cloud TTS."
+                                    checked={featureFlags.tts_available}
+                                    onChange={(v) => updateFeatureFlag('tts_available', v)}
+                                />
+                            </div>
+                            <div className="py-[15px]">
+                                <Toggle
+                                    bare
+                                    label="Unsplash image search available"
+                                    description="Allow any user to search illustration images via Unsplash."
+                                    checked={featureFlags.unsplash_available}
+                                    onChange={(v) => updateFeatureFlag('unsplash_available', v)}
+                                />
+                            </div>
+                        </div>
+                    </Card>
+                )}
 
                 {/* AI config — ADMIN ONLY: ai_model/web_search ảnh hưởng chi phí API của chủ app */}
                 {isAdmin && (

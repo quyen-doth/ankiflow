@@ -4,6 +4,7 @@ import { AuthContext } from '@/components/providers/AuthProvider'
 import { readContract } from './contract'
 import { verifyGlobals } from './globals'
 import { verifiersFor } from './registry'
+import { TEST_AUTH_USER } from './test-auth-user'
 import type {
   ActContext,
   Check,
@@ -26,12 +27,9 @@ function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-/**
- * User giả cho mọi fixture — components multi-user đọc uid qua useAuth().
- * Firestore-stub tự inject user_id='test-user' vào seed docs (khi thiếu) nên
- * queries có where('user_id'...) khớp mà specs không phải sửa seeds.
- */
-export const TEST_AUTH_USER = { uid: 'test-user', email: 'test@ankiflow.local' } as const
+// User giả cho mọi fixture (định nghĩa ở ./test-auth-user — xem file đó để biết lý do
+// tách riêng). Re-export để code cũ import từ runner.ts không phải đổi đường dẫn.
+export { TEST_AUTH_USER }
 
 // Container hiển thị (UnitPage) tái sử dụng root — tránh createRoot lặp khi
 // React StrictMode chạy effect 2 lần trong dev

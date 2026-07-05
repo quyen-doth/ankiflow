@@ -3,12 +3,17 @@
  * Seed dữ liệu vào Firestore (multi-user era).
  *
  * Cách chạy:
- *   npm run seed                  → seed phần DÙNG CHUNG: content_types (3 form
- *                                   blueprint — doc id = form_type routing) +
- *                                   settings/default (system config của chủ app)
- *   npm run seed -- --user <UID>  → seed thêm bộ master data default PER-USER
- *                                   (categories/card_types/topics/decks + settings/{uid})
- *                                   — thường không cần: signup route tự seed.
+ *   npm run seed                    → seed phần DÙNG CHUNG: content_types (3 form
+ *                                     blueprint — doc id = form_type routing),
+ *                                     settings/default (LINE secrets, admin điền tay),
+ *                                     settings/global (feature flags toàn cục)
+ *   npm run seed -- --defaults      → publish template defaults (categories/card_types/
+ *                                     topics/decks) admin sửa được qua /admin
+ *                                     ("New-user defaults") — KHÔNG bắt buộc: user đầu
+ *                                     tiên đăng ký sẽ tự lazy-publish nếu chưa có.
+ *   npm run seed -- --user <UID>    → seed thêm bộ master data default PER-USER
+ *                                     (categories/card_types/topics/decks + settings/{uid})
+ *                                     — thường không cần: signup route tự seed.
  *
  * Idempotent: chạy nhiều lần không bị lỗi, bỏ qua document đã tồn tại.
  * Data default per-user nằm ở lib/seed-defaults.ts (dùng chung với signup route).
@@ -19,7 +24,8 @@ dotenv.config({ path: '.env' });
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { seedUserDefaults } from '../lib/seed-defaults';
+import { seedUserDefaults, publishTemplateDefaults } from '../lib/seed-defaults';
+import { GLOBAL_SETTINGS_DOC_ID } from '../lib/constants';
 
 // Khởi tạo Firebase Admin
 const app = initializeApp({
@@ -119,19 +125,25 @@ async function seedContentTypes() {
     }
 }
 
-// ─── SETTINGS/DEFAULT (SYSTEM CONFIG của chủ app) ─────────────────
-async function seedSystemSettings() {
-    console.log('\n⚙️  Seeding settings/default (system config)...');
+// ─── SETTINGS/DEFAULT (secrets của chủ app — LINE credentials) ────
+async function seedSecretSettings() {
+    console.log('\n🔒 Seeding settings/default (LINE secrets — điền tay qua /settings)...');
 
     await seedDoc('settings', 'default', {
-        unsplash_enabled: true,
-        tts_enabled: true,
+        notifications_enabled: false,
+        updated_at: now,
+    });
+}
+
+// ─── SETTINGS/GLOBAL (feature flags toàn cục — control plane) ─────
+async function seedGlobalConfig() {
+    console.log('\n🌐 Seeding settings/global (feature flags toàn cục)...');
+
+    await seedDoc('settings', GLOBAL_SETTINGS_DOC_ID, {
         ai_model: 'claude-haiku-4-5',
         web_search_enabled: false,
-        anki_connect_url: 'http://localhost:8765',
-        allow_duplicate: false,
-        auto_audio: true,
-        auto_image: true,
+        tts_available: true,
+        unsplash_available: true,
         updated_at: now,
     });
 }
@@ -142,7 +154,15 @@ async function main() {
     console.log(`   Project: ${process.env.FIREBASE_ADMIN_PROJECT_ID}`);
 
     await seedContentTypes();
-    await seedSystemSettings();
+    await seedSecretSettings();
+    await seedGlobalConfig();
+
+    // Optional: publish template defaults (admin sửa qua /admin → "New-user defaults")
+    if (process.argv.includes('--defaults')) {
+        console.log('\n📐 Publishing template defaults (categories/card_types/topics/decks)...');
+        await publishTemplateDefaults(db);
+        console.log('  ✅ Template defaults đã publish (idempotent).');
+    }
 
     // Optional: seed bộ default per-user (thường signup route tự làm)
     const userFlagIdx = process.argv.indexOf('--user');
