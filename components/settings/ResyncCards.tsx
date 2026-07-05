@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { FieldWrapper, Select } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
@@ -23,6 +24,7 @@ interface ResyncCardsProps {
 }
 
 export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
+  const { user, loading: authLoading } = useAuth()
   const [contentTypes, setContentTypes] = useState<Option[]>([])
   const [decks, setDecks] = useState<Option[]>([])
   const [cardTypes, setCardTypes] = useState<Option[]>([])
@@ -36,12 +38,16 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
   const toast = useToast()
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchOptions() {
       try {
+        // content_types SHARED (doc id = form_type routing); decks/card_types per-user
+        // → sort in-memory để tránh composite index (user_id, sort_order)
         const [ctSnap, deckSnap, cardSnap] = await Promise.all([
           getDocs(query(collection(db, 'content_types'), orderBy('sort_order', 'asc'))),
-          getDocs(query(collection(db, 'decks'), orderBy('sort_order', 'asc'))),
-          getDocs(query(collection(db, 'card_types'), orderBy('sort_order', 'asc'))),
+          getDocs(query(collection(db, 'decks'), where('user_id', '==', uid))),
+          getDocs(query(collection(db, 'card_types'), where('user_id', '==', uid))),
         ])
         // Filter theo form_type của entry — chính là DOC ID của content_type
         // (form_language/form_it/form_general), KHÔNG phải field `code`.
@@ -50,19 +56,19 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
           return { value: d.id, label: data.name || d.id }
         }).filter(o => o.label))
         setDecks(deckSnap.docs.map(d => {
-          const data = d.data() as { anki_deck_name?: string; display_name?: string }
-          return { value: data.anki_deck_name || '', label: data.display_name || data.anki_deck_name || d.id }
-        }).filter(o => o.value))
+          const data = d.data() as { anki_deck_name?: string; display_name?: string; sort_order?: number }
+          return { value: data.anki_deck_name || '', label: data.display_name || data.anki_deck_name || d.id, sort: data.sort_order || 0 }
+        }).filter(o => o.value).sort((a, b) => a.sort - b.sort))
         setCardTypes(cardSnap.docs.map(d => {
-          const data = d.data() as { name?: string }
-          return { value: d.id, label: data.name || d.id }
-        }))
+          const data = d.data() as { name?: string; sort_order?: number }
+          return { value: d.id, label: data.name || d.id, sort: data.sort_order || 0 }
+        }).sort((a, b) => a.sort - b.sort))
       } catch (error) {
         console.error('Error loading resync options:', error)
       }
     }
     fetchOptions()
-  }, [])
+  }, [user, authLoading])
 
   const handleRun = async () => {
     setConfirmOpen(false)

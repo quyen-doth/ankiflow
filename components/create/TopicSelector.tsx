@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Badge } from '@/components/ui/Badge'
 import { FieldWrapper } from '@/components/ui/FormField'
 import { verifyAttrs } from '@/verify/core/contract'
@@ -15,14 +16,18 @@ interface TopicSelectorProps {
 }
 
 export function TopicSelector({ selectedIds, onChange }: TopicSelectorProps) {
+  const { user, loading: authLoading } = useAuth()
   const [topics, setTopics] = useState<Pick<Topic, 'id' | 'name' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchTopics() {
       try {
         const q = query(
           collection(db, 'topics'),
+          where('user_id', '==', uid),
           where('form_type', '==', FormType.IT),
           where('is_active', '==', true)
         )
@@ -38,7 +43,7 @@ export function TopicSelector({ selectedIds, onChange }: TopicSelectorProps) {
       }
     }
     fetchTopics()
-  }, [])
+  }, [user, authLoading])
 
   const toggleTopic = (id: string) => {
     onChange(selectedIds.includes(id)

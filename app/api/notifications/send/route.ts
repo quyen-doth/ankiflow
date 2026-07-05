@@ -1,11 +1,26 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { verifySessionUser } from '@/lib/auth-guard'
 import { pushMessage } from '@/lib/line/client'
 import { buildReviewMessage } from '@/lib/line/flex-message'
 import { createDefaultReviewState } from '@/lib/srs/sm2'
-import type { Entry, ReviewState } from '@/types'
+import type { Entry } from '@/types'
 
+/**
+ * LINE notifications là tính năng ADMIN-ONLY: LINE token/userId là của chủ app (env),
+ * push về LINE của chủ app. Gate theo env ADMIN_EMAIL — user thường bị 403.
+ * (LINE per-user = backlog P2, xem multi-user-readiness-review.)
+ */
 export async function POST(request: Request) {
+  const sessionUser = await verifySessionUser(request)
+  if (!sessionUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail || sessionUser.email !== adminEmail) {
+    return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+  }
+
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
   const userId = process.env.LINE_USER_ID
   if (!token || !userId) {
@@ -22,6 +37,7 @@ export async function POST(request: Request) {
   const nowISO = now.toISOString()
 
   const snapshot = await db.collection('entries')
+    .where('user_id', '==', sessionUser.uid)
     .where('status', '==', 'synced')
     .get()
 

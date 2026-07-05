@@ -24,10 +24,41 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { cn } from '@/lib/utils';
 import { SETTINGS_DOC_ID } from '@/lib/constants';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
 import type { Settings } from '@/types';
+
+/**
+ * Tách settings 2 tầng (multi-user):
+ * - `settings/default` — SYSTEM config của chủ app: ai_model, web_search_enabled,
+ *   LINE credentials, notifications. Chỉ ADMIN (env NEXT_PUBLIC_ADMIN_EMAIL) thấy/sửa.
+ * - `settings/{uid}` — preferences của từng user: unsplash/tts/auto_audio/auto_image/
+ *   allow_duplicate/anki_connect_url. Save lần đầu tự tạo doc.
+ */
+const SYSTEM_FIELDS = [
+    'ai_model',
+    'web_search_enabled',
+    'line_channel_access_token',
+    'line_user_id',
+    'notifications_enabled',
+] as const;
+
+function splitSystemFields(data: Partial<Settings>): {
+    system: Partial<Settings>;
+    prefs: Partial<Settings>;
+} {
+    const system: Record<string, unknown> = {};
+    const prefs: Record<string, unknown> = { ...data };
+    for (const key of SYSTEM_FIELDS) {
+        if (key in prefs) {
+            system[key] = prefs[key];
+            delete prefs[key];
+        }
+    }
+    return { system: system as Partial<Settings>, prefs: prefs as Partial<Settings> };
+}
 
 const CLAUDE_MODEL_OPTIONS = [
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
@@ -149,10 +180,10 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
         <div className="p-[14px] border border-[#f0e4cc] rounded-[11px] bg-[#fdfbf5]">
             <p className="text-[13px] font-bold text-[#b87514] mb-1.5">Anki not reachable from this page</p>
             <p className="text-[12.5px] text-slate-600 leading-relaxed mb-3">
-                Make sure Anki Desktop is open, and that AnkiConnect allows this page&apos;s origin. In Anki, go
-                to <span className="font-semibold">Tools → Add-ons → AnkiConnect → Config</span>, add your origin
-                to <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">webCorsOriginList</code>,
-                then restart Anki:
+                Make sure Anki Desktop is open, and that AnkiConnect allows this page&apos;s origin. In Anki, go to{' '}
+                <span className="font-semibold">Tools → Add-ons → AnkiConnect → Config</span>, add your origin to{' '}
+                <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">webCorsOriginList</code>, then
+                restart Anki:
             </p>
             <pre className="mb-3 px-3 py-2.5 rounded-[8px] bg-white border border-[#eceae4] font-mono text-[11.5px] text-ink overflow-x-auto whitespace-pre">
                 {snippet}
@@ -185,6 +216,7 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
 }
 
 export default function SettingsPage() {
+    const { user, loading: authLoading } = useAuth();
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -194,22 +226,37 @@ export default function SettingsPage() {
     const [syncingSRS, setSyncingSRS] = useState(false);
     const toast = useToast();
 
+    const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
     useEffect(() => {
-        async function fetchSettings() {
+        if (authLoading || !user) return;
+        async function fetchSettings(uid: string, admin: boolean) {
             try {
-                const ref = doc(db, 'settings', SETTINGS_DOC_ID);
-                const snap = await getDoc(ref);
-                if (snap.exists()) {
-                    setSettings(snap.data() as Settings);
-                }
+                const [userSnap, defSnap] = await Promise.all([
+                    getDoc(doc(db, 'settings', uid)),
+                    getDoc(doc(db, 'settings', SETTINGS_DOC_ID)),
+                ]);
+                const defData = (defSnap.exists() ? defSnap.data() : {}) as Partial<Settings>;
+                const { system, prefs: defPrefs } = splitSystemFields(defData);
+
+                // Preferences: doc riêng của user; user mới → template từ default (đã strip system)
+                const prefs = userSnap.exists()
+                    ? splitSystemFields(userSnap.data() as Partial<Settings>).prefs
+                    : defPrefs;
+
+                // System fields: admin thấy đầy đủ (kể cả LINE token); user thường chỉ nhận
+                // ai_model để hiển thị read-only — KHÔNG nhận LINE credentials.
+                const systemView = admin ? system : { ai_model: system.ai_model };
+
+                setSettings({ ...prefs, ...systemView } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
                 setLoading(false);
             }
         }
-        fetchSettings();
-    }, []);
+        fetchSettings(user.uid, isAdmin);
+    }, [user, authLoading, isAdmin]);
 
     const handleSyncSrs = useCallback(async () => {
         setSyncingSRS(true);
@@ -231,9 +278,7 @@ export default function SettingsPage() {
             for (let i = 0; i < noteIds.length; i += CHUNK) {
                 chunks.push(noteIds.slice(i, i + CHUNK));
             }
-            const cardIdChunks = await Promise.all(
-                chunks.map((chunk) => client.findCards(`nid:${chunk.join(',')}`)),
-            );
+            const cardIdChunks = await Promise.all(chunks.map((chunk) => client.findCards(`nid:${chunk.join(',')}`)));
             const allCardIds = cardIdChunks.flat();
             if (allCardIds.length === 0) {
                 toast.success('No cards found in Anki');
@@ -285,11 +330,23 @@ export default function SettingsPage() {
     }, []);
 
     const handleSave = async () => {
-        if (!settings) return;
+        if (!settings || !user) return;
         setSaving(true);
         try {
-            const ref = doc(db, 'settings', SETTINGS_DOC_ID);
-            await setDoc(ref, { ...settings, updated_at: serverTimestamp() }, { merge: true });
+            const { system, prefs } = splitSystemFields(settings);
+
+            // Preferences → doc riêng của user (save lần đầu tự tạo)
+            await setDoc(doc(db, 'settings', user.uid), { ...prefs, updated_at: serverTimestamp() }, { merge: true });
+
+            // System fields → settings/default, CHỈ admin được ghi
+            if (isAdmin) {
+                await setDoc(
+                    doc(db, 'settings', SETTINGS_DOC_ID),
+                    { ...system, updated_at: serverTimestamp() },
+                    { merge: true },
+                );
+            }
+
             resetAnkiClientCache();
             setSavedAt(Date.now());
             toast.success('Settings saved');
@@ -367,50 +424,54 @@ export default function SettingsPage() {
                     <ResyncCards ankiConnected={ankiConnected} />
                 </Card>
 
-                {/* Notifications */}
-                <Card>
-                    <SectionHeader icon={Bell} label="Notifications" tone="amber" />
-                    <div className="flex flex-col gap-3.5">
-                        <div className="py-[15px] border-b border-[#f5f5f1]">
-                            <Toggle
-                                bare
-                                label="Enable notifications"
-                                description="Send vocabulary review reminders via LINE."
-                                checked={settings.notifications_enabled ?? false}
-                                onChange={(v) => updateField('notifications_enabled', v)}
+                {/* Notifications — ADMIN ONLY: LINE credentials là của chủ app */}
+                {isAdmin && (
+                    <Card>
+                        <SectionHeader icon={Bell} label="Notifications" tone="amber" />
+                        <div className="flex flex-col gap-3.5">
+                            <div className="py-[15px] border-b border-[#f5f5f1]">
+                                <Toggle
+                                    bare
+                                    label="Enable notifications"
+                                    description="Send vocabulary review reminders via LINE."
+                                    checked={settings.notifications_enabled ?? false}
+                                    onChange={(v) => updateField('notifications_enabled', v)}
+                                />
+                            </div>
+
+                            <IntegrationCard
+                                label="LINE Messaging"
+                                description={settings.line_channel_access_token ? 'Token configured' : 'Not configured'}
+                                icon={MessageSquare}
+                                tone="amber"
+                                connected={!!settings.line_channel_access_token}
+                                checking={false}
                             />
+
+                            <FieldWrapper label="LINE Channel Access Token">
+                                <input
+                                    type="password"
+                                    value={settings.line_channel_access_token ?? ''}
+                                    onChange={(e) =>
+                                        updateField('line_channel_access_token', e.target.value || undefined)
+                                    }
+                                    placeholder="Paste your LINE Channel Access Token"
+                                    className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
+                                />
+                            </FieldWrapper>
+
+                            <FieldWrapper label="LINE User ID">
+                                <input
+                                    type="text"
+                                    value={settings.line_user_id ?? ''}
+                                    onChange={(e) => updateField('line_user_id', e.target.value || undefined)}
+                                    placeholder="Your LINE User ID"
+                                    className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
+                                />
+                            </FieldWrapper>
                         </div>
-
-                        <IntegrationCard
-                            label="LINE Messaging"
-                            description={settings.line_channel_access_token ? 'Token configured' : 'Not configured'}
-                            icon={MessageSquare}
-                            tone="amber"
-                            connected={!!settings.line_channel_access_token}
-                            checking={false}
-                        />
-
-                        <FieldWrapper label="LINE Channel Access Token">
-                            <input
-                                type="password"
-                                value={settings.line_channel_access_token ?? ''}
-                                onChange={(e) => updateField('line_channel_access_token', e.target.value || undefined)}
-                                placeholder="Paste your LINE Channel Access Token"
-                                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
-                            />
-                        </FieldWrapper>
-
-                        <FieldWrapper label="LINE User ID">
-                            <input
-                                type="text"
-                                value={settings.line_user_id ?? ''}
-                                onChange={(e) => updateField('line_user_id', e.target.value || undefined)}
-                                placeholder="Your LINE User ID"
-                                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
-                            />
-                        </FieldWrapper>
-                    </div>
-                </Card>
+                    </Card>
+                )}
 
                 {/* Integrations */}
                 <Card>
@@ -455,31 +516,33 @@ export default function SettingsPage() {
                     </div>
                 </Card>
 
-                {/* AI config */}
-                <Card>
-                    <SectionHeader icon={Brain} label="AI generation" tone="amber" />
-                    <FieldWrapper label="Claude Model">
-                        <Select
-                            value={settings.ai_model ?? 'claude-haiku-4-5'}
-                            onChange={(e) => updateField('ai_model', e.target.value)}
-                        >
-                            {CLAUDE_MODEL_OPTIONS.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                    {m.name}
-                                </option>
-                            ))}
-                        </Select>
-                    </FieldWrapper>
-                    <div className="mt-3.5 flex items-center p-[14px] border border-[#eceae4] rounded-[11px] bg-[#fcfcfb]">
-                        <Toggle
-                            bare
-                            label="Enable web search"
-                            description="Allow AI agent to search the web for verification (slower and more expensive)"
-                            checked={settings.web_search_enabled ?? false}
-                            onChange={(v) => updateField('web_search_enabled', v)}
-                        />
-                    </div>
-                </Card>
+                {/* AI config — ADMIN ONLY: ai_model/web_search ảnh hưởng chi phí API của chủ app */}
+                {isAdmin && (
+                    <Card>
+                        <SectionHeader icon={Brain} label="AI generation" tone="amber" />
+                        <FieldWrapper label="Claude Model">
+                            <Select
+                                value={settings.ai_model ?? 'claude-haiku-4-5'}
+                                onChange={(e) => updateField('ai_model', e.target.value)}
+                            >
+                                {CLAUDE_MODEL_OPTIONS.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                        {m.name}
+                                    </option>
+                                ))}
+                            </Select>
+                        </FieldWrapper>
+                        <div className="mt-3.5 flex items-center p-[14px] border border-[#eceae4] rounded-[11px] bg-[#fcfcfb]">
+                            <Toggle
+                                bare
+                                label="Enable web search"
+                                description="Allow AI agent to search the web for verification (slower and more expensive)"
+                                checked={settings.web_search_enabled ?? false}
+                                onChange={(v) => updateField('web_search_enabled', v)}
+                            />
+                        </div>
+                    </Card>
+                )}
 
                 {/* Preferences */}
                 <Card>

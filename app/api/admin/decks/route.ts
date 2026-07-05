@@ -1,4 +1,4 @@
-import { withAuthGuard } from '@/lib/auth-guard'
+import { withAuth } from '@/lib/auth-guard'
 import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withTimestamps } from '@/lib/firestore-helpers'
@@ -65,7 +65,7 @@ async function DELETE_handler(request: NextRequest) {
   }
 }
 
-export const GET = withAuthGuard(GET_handler)
-export const POST = withAuthGuard(POST_handler)
-export const PUT = withAuthGuard(PUT_handler)
-export const DELETE = withAuthGuard(DELETE_handler)
+export const GET = withAuth(GET_handler)
+export const POST = withAuth(POST_handler)
+export const PUT = withAuth(PUT_handler)
+export const DELETE = withAuth(DELETE_handler)

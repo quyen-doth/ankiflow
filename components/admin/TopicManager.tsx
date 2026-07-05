@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, where, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -28,6 +29,7 @@ interface TopicDraft {
 const EMPTY_DRAFT: TopicDraft = { name: '', sort_order: 0, is_active: true }
 
 export function TopicManager() {
+  const { user, loading: authLoading } = useAuth()
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -43,12 +45,19 @@ export function TopicManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchTopics() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'topics'), where('form_type', '==', FormType.IT), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, form_type, sort_order)
+        const q = query(collection(db, 'topics'), where('user_id', '==', uid), where('form_type', '==', FormType.IT))
         const snapshot = await getDocs(q)
-        setTopics(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Topic)))
+        setTopics(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Topic))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching topics:', error)
       } finally {
@@ -56,7 +65,7 @@ export function TopicManager() {
       }
     }
     fetchTopics()
-  }, [refreshKey])
+  }, [refreshKey, user, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<Topic>('topics', setTopics, refresh)
@@ -93,6 +102,7 @@ export function TopicManager() {
       } else {
         await addDoc(collection(db, 'topics'), {
           ...draft,
+          user_id: user?.uid,
           form_type: FormType.IT,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),

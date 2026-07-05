@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { collection, query, orderBy, getDocs } from 'firebase/firestore'
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { FilterBar } from '@/components/ui/FilterBar'
@@ -23,6 +24,7 @@ type SyncFilter = (typeof SYNC_FILTERS)[number]
 
 export default function HistoryPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -32,10 +34,13 @@ export default function HistoryPage() {
   const { saveEntry } = useEntryEdit()
 
   useEffect(() => {
-    async function fetchHistory() {
+    // Chưa có user (authLoading hoặc null) → giữ spinner; middleware đảm bảo đã login
+    if (authLoading || !user) return
+    async function fetchHistory(uid: string) {
       try {
         const q = query(
           collection(db, 'entries'),
+          where('user_id', '==', uid),
           orderBy('created_at', 'desc')
         )
         const snapshot = await getDocs(q)
@@ -48,8 +53,8 @@ export default function HistoryPage() {
       }
     }
 
-    fetchHistory()
-  }, [])
+    fetchHistory(user.uid)
+  }, [user, authLoading])
 
   const totalCards = entries.reduce((sum, e) => sum + (e.card_type_ids?.length || 0), 0)
 

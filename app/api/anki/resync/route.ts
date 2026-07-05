@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { withAuth } from '@/lib/auth-guard'
 import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
 import type { Entry } from '@/types'
 
@@ -20,15 +21,19 @@ type EntryDoc = Partial<Entry> & {
  * tự sinh lại Front/Back và `updateNoteFields` trong Anki. Server KHÔNG đụng Anki
  * (chạy được trên Vercel). Resync chỉ đổi note trong Anki, không ghi lại Firestore.
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const { formType, deckName, cardTypeId }: ResyncBody = await request.json().catch(() => ({}))
     const db = getAdminDb()
 
-    // Lấy entry đã export, lọc trong bộ nhớ (tránh composite index).
+    // Lấy entry đã export CỦA USER, lọc trong bộ nhớ (tránh composite index).
     // Strip audio_url/audio_example_url (base64 data-URL có thể ~1MB/entry): resync
     // giữ media cũ từ notesInfo trong Anki, không cần audio → tránh response nhiều MB.
-    const snapshot = await db.collection('entries').where('status', '==', 'synced').get()
+    const snapshot = await db
+      .collection('entries')
+      .where('user_id', '==', uid)
+      .where('status', '==', 'synced')
+      .get()
     const entries: EntryDoc[] = snapshot.docs
       .map((d) => {
         const { audio_url: _audio, audio_example_url: _audioEx, ...rest } = d.data() as Omit<EntryDoc, 'id'>
@@ -53,4 +58,4 @@ export async function POST(request: Request) {
     console.error('Resync data error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
     collection,
     query,
-    orderBy,
+    where,
     getDocs,
     addDoc,
     updateDoc,
@@ -14,6 +14,7 @@ import {
     deleteField,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { Card } from '@/components/ui/Card';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -89,6 +90,7 @@ const EMPTY_DRAFT: DeckDraft = {
 };
 
 export function DeckManager() {
+    const { user, loading: authLoading } = useAuth();
     const [decks, setDecks] = useState<DeckConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -140,12 +142,19 @@ export function DeckManager() {
     };
 
     useEffect(() => {
+        if (authLoading || !user) return;
+        const uid = user.uid;
         async function fetchDecks() {
             setLoading(true);
             try {
-                const q = query(collection(db, 'decks'), orderBy('sort_order', 'asc'));
+                // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+                const q = query(collection(db, 'decks'), where('user_id', '==', uid));
                 const snapshot = await getDocs(q);
-                setDecks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as DeckConfig));
+                setDecks(
+                    snapshot.docs
+                        .map((d) => ({ id: d.id, ...d.data() }) as DeckConfig)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+                );
             } catch (error) {
                 console.error('Error fetching decks:', error);
             } finally {
@@ -153,7 +162,7 @@ export function DeckManager() {
             }
         }
         fetchDecks();
-    }, [refreshKey]);
+    }, [refreshKey, user, authLoading]);
 
     const refresh = () => setRefreshKey((k) => k + 1);
     const handleReorder = useSortableList<DeckConfig>('decks', setDecks, refresh);
@@ -196,6 +205,7 @@ export function DeckManager() {
                 });
             } else {
                 await addDoc(collection(db, 'decks'), {
+                    user_id: user?.uid,
                     anki_deck_name: draft.anki_deck_name,
                     display_name: draft.display_name,
                     form_type: draft.form_type,

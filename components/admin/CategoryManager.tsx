@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -35,6 +36,7 @@ interface CategoryDraft {
 const EMPTY_DRAFT: CategoryDraft = { name: '', form_type: FormType.LANGUAGE, sort_order: 0, is_active: true }
 
 export function CategoryManager() {
+  const { user, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -51,12 +53,19 @@ export function CategoryManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchCategories() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'categories'), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+        const q = query(collection(db, 'categories'), where('user_id', '==', uid))
         const snapshot = await getDocs(q)
-        setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category)))
+        setCategories(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Category))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching categories:', error)
       } finally {
@@ -64,7 +73,7 @@ export function CategoryManager() {
       }
     }
     fetchCategories()
-  }, [refreshKey])
+  }, [refreshKey, user, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<Category>('categories', setCategories, refresh)
@@ -110,6 +119,7 @@ export function CategoryManager() {
       } else {
         await addDoc(collection(db, 'categories'), {
           ...draft,
+          user_id: user?.uid,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })

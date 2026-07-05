@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { withAuth } from '@/lib/auth-guard'
 import type { ReviewState, SRSQueue } from '@/types'
 
 const ANKI_QUEUE_MAP: Record<number, SRSQueue> = {
@@ -14,9 +15,13 @@ const ANKI_QUEUE_MAP: Record<number, SRSQueue> = {
  * GET — trả danh sách anki_note_ids của các entry đã synced để CLIENT truy vấn Anki
  * (`findCards`/`cardsInfo`). Server KHÔNG đụng Anki (chạy được trên Vercel).
  */
-export async function GET() {
+export const GET = withAuth(async (_request, _ctx, uid) => {
   const db = getAdminDb()
-  const snapshot = await db.collection('entries').where('status', '==', 'synced').get()
+  const snapshot = await db
+    .collection('entries')
+    .where('user_id', '==', uid)
+    .where('status', '==', 'synced')
+    .get()
 
   const noteIds = [
     ...new Set(
@@ -25,7 +30,7 @@ export async function GET() {
   ]
 
   return NextResponse.json({ noteIds })
-}
+})
 
 // AnkiCardInfo do client gửi lên — chỉ validate các field dùng cho mapping.
 const cardsSchema = z.object({
@@ -45,7 +50,7 @@ const cardsSchema = z.object({
  * POST — CLIENT gửi cardsInfo lấy từ Anki; server map sang ReviewState + batch update entries.
  * Logic map (ANKI_QUEUE_MAP, ease/interval/due) giữ nguyên như bản server-side cũ.
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const parsed = cardsSchema.safeParse(await request.json())
     if (!parsed.success) {
@@ -54,7 +59,11 @@ export async function POST(request: Request) {
     const { cards } = parsed.data
 
     const db = getAdminDb()
-    const snapshot = await db.collection('entries').where('status', '==', 'synced').get()
+    const snapshot = await db
+      .collection('entries')
+      .where('user_id', '==', uid)
+      .where('status', '==', 'synced')
+      .get()
 
     interface EntryData {
       id: string
@@ -106,4 +115,4 @@ export async function POST(request: Request) {
     console.error('SRS sync error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getAdminAuthInstance } from '@/lib/firebase-admin'
+import { getAdminAuthInstance, getAdminDb } from '@/lib/firebase-admin'
+import { seedUserDefaults } from '@/lib/seed-defaults'
 
 /**
  * Đăng ký tài khoản qua Admin SDK (server-side) — validation tập trung bằng zod,
  * không dựa vào client. Rate limiting: dựa vào bảo vệ built-in của Firebase Auth
  * (in-memory counter vô dụng trên Vercel serverless — đã ghi trong plan).
- *
- * TODO (Phase C + M1 của firebase-auth-plan): sau khi data model per-user hoàn tất,
- * gọi seedUserDefaults(db, uid) tại đây để user mới nhận bộ master data default.
- * KHÔNG seed bây giờ — queries chưa filter theo user_id, seed sẽ tạo bản ghi
- * trùng lặp trong các collection dùng chung.
+ * Sau khi tạo user → seed bộ master data default (decks/categories/card_types/
+ * topics + settings prefs) cho workspace riêng của user.
  */
 const signupSchema = z.object({
   email: z.email('Invalid email address'),
@@ -32,6 +30,14 @@ export async function POST(request: Request) {
 
     const adminAuth = getAdminAuthInstance()
     const user = await adminAuth.createUser({ email, password })
+
+    // Seed master data default cho user mới. Best-effort: seed lỗi không chặn
+    // signup (account đã tạo) — user save settings/tạo deck sau vẫn hoạt động.
+    try {
+      await seedUserDefaults(getAdminDb(), user.uid)
+    } catch (e) {
+      console.error('Seed defaults failed for new user', user.uid, e)
+    }
 
     return NextResponse.json({ success: true, uid: user.uid })
   } catch (error) {

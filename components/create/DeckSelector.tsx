@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { ClearSelectButton } from '@/components/create/ClearSelectButton'
 import { DB_FORM_TYPE_TO_UI } from '@/lib/constants'
@@ -24,13 +25,16 @@ interface DeckSelectorProps {
 }
 
 export function DeckSelector({ value, onChange, onChangeId, onClear, label = 'Anki Deck', filterFormType, filterLanguage }: DeckSelectorProps) {
+  const { user, loading: authLoading } = useAuth()
   const [decks, setDecks] = useState<Pick<DeckConfig, 'id' | 'display_name' | 'form_type' | 'language' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchDecks() {
       try {
-        const q = query(collection(db, 'decks'), where('is_active', '==', true))
+        const q = query(collection(db, 'decks'), where('user_id', '==', uid), where('is_active', '==', true))
         const snapshot = await getDocs(q)
         const data = snapshot.docs
           .map(doc => ({ id: doc.id, ...(doc.data() as Pick<DeckConfig, 'display_name' | 'form_type' | 'language' | 'sort_order'>) }))
@@ -43,7 +47,7 @@ export function DeckSelector({ value, onChange, onChangeId, onClear, label = 'An
       }
     }
     fetchDecks()
-  }, [])
+  }, [user, authLoading])
 
   const filteredDecks = useMemo(() => {
     let result = decks

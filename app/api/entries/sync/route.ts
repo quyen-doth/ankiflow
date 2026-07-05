@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { withAuth } from '@/lib/auth-guard'
 import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
 import type { CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
@@ -11,10 +12,14 @@ import type { Entry } from '@/types'
  * Lưu ý: entry giữ nguyên audio_url/image_url (data-URL) — client cần chúng để
  * storeMediaFile vào Anki media trước khi addNotes (createNotesForEntry).
  */
-export async function GET() {
+export const GET = withAuth(async (_request, _ctx, uid) => {
   const db = getAdminDb()
 
-  const snapshot = await db.collection('entries').where('status', '==', 'reviewed').get()
+  const snapshot = await db
+    .collection('entries')
+    .where('user_id', '==', uid)
+    .where('status', '==', 'reviewed')
+    .get()
   if (snapshot.empty) {
     return NextResponse.json({ jobs: [] })
   }
@@ -38,7 +43,7 @@ export async function GET() {
   })
 
   return NextResponse.json({ jobs })
-}
+})
 
 const resultsSchema = z.object({
   results: z.array(
@@ -51,8 +56,9 @@ const resultsSchema = z.object({
 
 /**
  * POST — CLIENT báo kết quả tạo note trong Anki; server cập nhật entry sang `synced`.
+ * Chỉ update entry THUỘC VỀ user hiện tại (ownership check — multi-user isolation).
  */
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const parsed = resultsSchema.safeParse(await request.json())
     if (!parsed.success) {
@@ -66,13 +72,18 @@ export async function POST(request: Request) {
     // allSettled: 1 entry hỏng (vd bị xóa giữa GET và POST) không làm fail cả batch.
     const db = getAdminDb()
     const settled = await Promise.allSettled(
-      results.map((r) =>
-        db.collection('entries').doc(r.entryId).update({
+      results.map(async (r) => {
+        const ref = db.collection('entries').doc(r.entryId)
+        const snap = await ref.get()
+        if (!snap.exists || snap.data()?.user_id !== uid) {
+          throw new Error(`Entry ${r.entryId} not found or not owned by user`)
+        }
+        await ref.update({
           status: 'synced',
           anki_note_ids: r.noteIds,
           updated_at: new Date(),
-        }),
-      ),
+        })
+      }),
     )
     const synced = settled.filter((s) => s.status === 'fulfilled').length
     const failed = settled.length - synced
@@ -82,4 +93,4 @@ export async function POST(request: Request) {
     console.error('Sync persist error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

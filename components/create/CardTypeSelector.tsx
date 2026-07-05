@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { SquareCheck, Square } from 'lucide-react'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
@@ -19,16 +20,20 @@ interface CardTypeSelectorProps {
 }
 
 export function CardTypeSelector({ formType = 'Language', language, selectedIds, onChange }: CardTypeSelectorProps) {
+  const { user, loading: authLoading } = useAuth()
   const [cardTypes, setCardTypes] = useState<Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'language' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchCardTypes() {
       setLoading(true)
       try {
         const dbFormType = UI_FORM_TYPE_MAP[formType]
         const q = query(
           collection(db, 'card_types'),
+          where('user_id', '==', uid),
           where('form_type', '==', dbFormType),
         )
         const snapshot = await getDocs(q)
@@ -49,7 +54,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
       }
     }
     fetchCardTypes()
-  }, [formType, language])
+  }, [formType, language, user, authLoading])
 
   const handleToggle = (id: string) => {
     onChange(selectedIds.includes(id)

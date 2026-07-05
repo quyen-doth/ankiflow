@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createAIAgentProvider } from '@/lib/ai-agent';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { withAuth } from '@/lib/auth-guard';
 import { FormType } from '@/types';
 
-// Đọc cấu hình AI từ settings singleton (server-side). Lỗi → dùng mặc định an toàn.
+// Đọc cấu hình AI từ settings/default — SYSTEM CONFIG do chủ app quản lý.
+// CỐ Ý không đọc settings/{uid}: ai_model/web_search ảnh hưởng chi phí API của
+// chủ app, user thường không được tự chỉnh (kể cả sửa tay doc của mình).
 async function readAISettings(): Promise<{ model: string | null; webSearchEnabled: boolean }> {
   try {
     const snap = await getAdminDb().collection('settings').doc('default').get();
@@ -18,7 +21,7 @@ async function readAISettings(): Promise<{ model: string | null; webSearchEnable
   }
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json();
     const { word, term, form_type, language, topics, dynamicFields, contentTypeName } = body;
@@ -53,4 +56,4 @@ export async function POST(request: Request) {
     console.error('Generation Error:', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
-}
+})

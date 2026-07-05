@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { withAuth } from '@/lib/auth-guard'
 import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
 import type { CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
@@ -9,7 +10,7 @@ import type { Entry } from '@/types'
  * trong Anki (browser → AnkiConnect). Server KHÔNG đụng Anki (chạy được trên Vercel).
  * Việc lưu Firestore luôn thành công dù Anki offline — client regen là best-effort.
  */
-export async function PUT(request: Request) {
+export const PUT = withAuth(async (request, _ctx, uid) => {
   try {
     const { entryId, updates } = await request.json()
 
@@ -19,7 +20,14 @@ export async function PUT(request: Request) {
 
     const db = getAdminDb()
 
+    // Ownership check TRƯỚC khi update — không cho sửa entry của user khác (404, không lộ tồn tại)
+    const ownedSnap = await db.collection('entries').doc(entryId).get()
+    if (!ownedSnap.exists || ownedSnap.data()?.user_id !== uid) {
+      return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+    }
+
     if (updates && Object.keys(updates).length > 0) {
+      delete updates.user_id // không cho đổi chủ sở hữu
       await db.collection('entries').doc(entryId).update({
         ...updates,
         updated_at: new Date(),
@@ -47,4 +55,4 @@ export async function PUT(request: Request) {
     console.error('Update entry error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

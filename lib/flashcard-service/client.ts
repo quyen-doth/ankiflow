@@ -9,7 +9,7 @@
  * trong config của AnkiConnect addon (Tools → Add-ons → AnkiConnect → Config).
  */
 import { doc, getDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { SETTINGS_DOC_ID } from '@/lib/constants'
 import { AnkiConnectProvider } from './anki-connect-provider'
 
@@ -27,17 +27,28 @@ export function getAnkiClient(url: string = DEFAULT_ANKI_CONNECT_URL): AnkiConne
 }
 
 /**
- * URL AnkiConnect từ `settings.anki_connect_url`, fallback default.
+ * URL AnkiConnect từ settings CỦA USER (`settings/{uid}.anki_connect_url`),
+ * fallback doc `default` (dữ liệu cũ), fallback cuối cùng là localhost:8765.
  * Cache trong session để poll 30s không tốn Firestore read mỗi lần —
  * sau khi user đổi URL trong Settings, gọi `resetAnkiClientCache()` để áp dụng.
  */
 export async function resolveAnkiConnectUrl(): Promise<string> {
   if (cachedUrl) return cachedUrl
   try {
-    const snap = await getDoc(doc(db, 'settings', SETTINGS_DOC_ID))
-    const url = snap.exists()
-      ? (snap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
-      : undefined
+    const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
+    let url: string | undefined
+    if (uid) {
+      const userSnap = await getDoc(doc(db, 'settings', uid))
+      if (userSnap.exists()) {
+        url = (userSnap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
+      }
+    }
+    if (!url) {
+      const defSnap = await getDoc(doc(db, 'settings', SETTINGS_DOC_ID))
+      if (defSnap.exists()) {
+        url = (defSnap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
+      }
+    }
     cachedUrl = url || DEFAULT_ANKI_CONNECT_URL
   } catch {
     cachedUrl = DEFAULT_ANKI_CONNECT_URL

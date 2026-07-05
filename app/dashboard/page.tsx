@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { StatCard } from '@/components/ui/StatCard'
@@ -37,14 +38,22 @@ function isToday(date: Date | null): boolean {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    async function fetchEntries() {
+    // Chưa có user (authLoading hoặc null) → giữ spinner; middleware đảm bảo đã login
+    if (authLoading || !user) return
+    async function fetchEntries(uid: string) {
       try {
-        const q = query(collection(db, 'entries'), orderBy('created_at', 'desc'), limit(50))
+        const q = query(
+          collection(db, 'entries'),
+          where('user_id', '==', uid),
+          orderBy('created_at', 'desc'),
+          limit(50),
+        )
         const snapshot = await getDocs(q)
         setEntries(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Entry)))
       } catch (error) {
@@ -53,8 +62,8 @@ export default function DashboardPage() {
         setLoading(false)
       }
     }
-    fetchEntries()
-  }, [])
+    fetchEntries(user.uid)
+  }, [user, authLoading])
 
   const stats = useMemo(() => {
     const totalCards = entries.reduce((sum, e) => sum + (e.card_type_ids?.length || 0), 0)

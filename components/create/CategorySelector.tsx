@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { ClearSelectButton } from '@/components/create/ClearSelectButton'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
@@ -20,10 +21,13 @@ interface CategorySelectorProps {
 }
 
 export function CategorySelector({ formType, value, onChange, onClear }: CategorySelectorProps) {
+  const { user, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Pick<Category, 'id' | 'name' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchCategories() {
       if (!formType) {
         setCategories([])
@@ -34,6 +38,7 @@ export function CategorySelector({ formType, value, onChange, onClear }: Categor
         const dbFormType: FormType = UI_FORM_TYPE_MAP[formType]
         const q = query(
           collection(db, 'categories'),
+          where('user_id', '==', uid),
           where('form_type', '==', dbFormType),
           where('is_active', '==', true)
         )
@@ -49,7 +54,7 @@ export function CategorySelector({ formType, value, onChange, onClear }: Categor
       }
     }
     fetchCategories()
-  }, [formType])
+  }, [formType, user, authLoading])
 
   return (
     <FieldWrapper

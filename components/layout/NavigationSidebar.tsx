@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X, LogOut } from 'lucide-react';
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
 import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { logout } from '@/lib/auth';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
@@ -24,12 +24,20 @@ const navItems = [
 
 export function NavigationSidebar() {
     const pathname = usePathname();
+    const { user } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [lastPathname, setLastPathname] = useState(pathname);
-    const [userName, setUserName] = useState<string>('');
     const unsyncedCount = useUnsyncedCount();
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState<string | null>(null);
+    const [signingOut, setSigningOut] = useState(false);
+
+    const handleSignOut = useCallback(async () => {
+        setSigningOut(true);
+        await logout();
+        // Full reload: xóa sạch client state + để middleware nhận cookie đã bị xóa
+        window.location.href = '/login';
+    }, []);
 
     const handleSync = useCallback(async () => {
         setIsSyncing(true)
@@ -93,22 +101,6 @@ export function NavigationSidebar() {
             setTimeout(() => setSyncResult(null), 4000)
         }
     }, [])
-
-    useEffect(() => {
-        async function fetchUserName() {
-            try {
-                const ref = doc(db, 'settings', 'default');
-                const snap = await getDoc(ref);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    if (data.user_name) setUserName(data.user_name);
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-        fetchUserName();
-    }, []);
 
     if (pathname !== lastPathname) {
         setLastPathname(pathname);
@@ -210,19 +202,29 @@ export function NavigationSidebar() {
                         isSyncing={isSyncing}
                         syncResult={syncResult}
                     />
-                    {userName && (
+                    {user?.email && (
                         <div className="flex items-center gap-2.5 px-1.5">
                             <div className="w-[26px] h-[26px] rounded-full bg-[#e7e4dd] flex items-center justify-center flex-shrink-0">
                                 <span className="text-[11px] font-bold text-slate-600">
-                                    {userName.charAt(0).toUpperCase()}
+                                    {user.email.charAt(0).toUpperCase()}
                                 </span>
                             </div>
-                            <div className="flex flex-col min-w-0">
+                            <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-[11.5px] font-bold text-ink leading-[1.1] truncate">
-                                    {userName}
+                                    {user.email}
                                 </span>
                                 <span className="text-[10.5px] text-slate-400">Personal workspace</span>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleSignOut}
+                                disabled={signingOut}
+                                aria-label="Sign out"
+                                title="Sign out"
+                                className="p-1.5 rounded-[7px] text-slate-400 hover:text-danger hover:bg-danger-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                            >
+                                <LogOut className="w-3.5 h-3.5" />
+                            </button>
                         </div>
                     )}
                 </div>

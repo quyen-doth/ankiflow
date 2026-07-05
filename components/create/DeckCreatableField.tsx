@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { FieldWrapper } from '@/components/ui/FormField'
 import { CreatableSelect } from './CreatableSelect'
 import { NewDeckModal } from './NewDeckModal'
@@ -38,15 +39,18 @@ export function DeckCreatableField({
   createLanguage,
   fallbackDeckName,
 }: DeckCreatableFieldProps) {
+  const { user, loading: authLoading } = useAuth()
   const [decks, setDecks] = useState<DeckRow[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingName, setPendingName] = useState('')
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchDecks() {
       try {
-        const q = query(collection(db, 'decks'), where('is_active', '==', true))
+        const q = query(collection(db, 'decks'), where('user_id', '==', uid), where('is_active', '==', true))
         const snapshot = await getDocs(q)
         const data = snapshot.docs
           .map(doc => ({ id: doc.id, ...(doc.data() as Omit<DeckRow, 'id'>) }))
@@ -59,7 +63,7 @@ export function DeckCreatableField({
       }
     }
     fetchDecks()
-  }, [])
+  }, [user, authLoading])
 
   const filteredDecks = useMemo(() => {
     let result = decks

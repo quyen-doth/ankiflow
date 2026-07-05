@@ -1,4 +1,6 @@
+import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { AuthContext } from '@/components/providers/AuthProvider'
 import { readContract } from './contract'
 import { verifyGlobals } from './globals'
 import { verifiersFor } from './registry'
@@ -23,6 +25,13 @@ export interface RunOptions {
 function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+/**
+ * User giả cho mọi fixture — components multi-user đọc uid qua useAuth().
+ * Firestore-stub tự inject user_id='test-user' vào seed docs (khi thiếu) nên
+ * queries có where('user_id'...) khớp mà specs không phải sửa seeds.
+ */
+export const TEST_AUTH_USER = { uid: 'test-user', email: 'test@ankiflow.local' } as const
 
 // Container hiển thị (UnitPage) tái sử dụng root — tránh createRoot lặp khi
 // React StrictMode chạy effect 2 lần trong dev
@@ -138,7 +147,13 @@ export async function runFixture<P>(
     } else {
       reactRoot = createRoot(container)
     }
-    reactRoot.render(unit.render(fixture.props))
+    reactRoot.render(
+      createElement(
+        AuthContext.Provider,
+        { value: { user: { ...TEST_AUTH_USER }, loading: false } },
+        unit.render(fixture.props),
+      ),
+    )
     await flush()
 
     // --- Act ---

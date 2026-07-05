@@ -15,7 +15,8 @@ interface AuthContextValue {
   loading: boolean
 }
 
-const AuthContext = createContext<AuthContextValue>({ user: null, loading: true })
+/** Export cho verify harness (runner wrap fixtures với test user) — production dùng AuthProvider. */
+export const AuthContext = createContext<AuthContextValue>({ user: null, loading: true })
 
 /**
  * Theo dõi Firebase Auth state (client SDK) — chạy song song với session cookie:

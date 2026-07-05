@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateAudioBase64 } from '@/lib/audio-service';
+import { withAuth } from '@/lib/auth-guard';
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request) => {
   try {
     const body = await request.json();
     const { text, language, filename } = body;
@@ -17,4 +18,4 @@ export async function POST(request: Request) {
     console.error('Audio Generate Error:', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
-}
+})

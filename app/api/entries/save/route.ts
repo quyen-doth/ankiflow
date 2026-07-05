@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { LOCAL_USER_ID } from '@/lib/constants'
+import { withAuth } from '@/lib/auth-guard'
 
 const saveSchema = z.object({
   entryData: z.record(z.string(), z.unknown()),
@@ -9,7 +9,7 @@ const saveSchema = z.object({
   status: z.enum(['draft', 'reviewed', 'synced']).optional(),
 })
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const parsed = saveSchema.safeParse(await request.json())
     if (!parsed.success) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     const newEntry = {
       ...entryData,
-      user_id: LOCAL_USER_ID,
+      user_id: uid,
       status: status ?? 'reviewed',
       anki_note_ids: anki_note_ids ?? [],
       created_at: new Date(),
@@ -38,4 +38,4 @@ export async function POST(request: Request) {
     console.error('Save entry error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

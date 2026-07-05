@@ -5,10 +5,17 @@
  */
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { ensureDeck, setDeckSuspended } from '@/lib/flashcard-service/client-ops'
 import { FormType, LanguageType } from '@/types'
+
+/** UID của user đang đăng nhập — throw nếu chưa (middleware đảm bảo không xảy ra trong app). */
+function requireUid(): string {
+  const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
+  if (!uid) throw new Error('Not signed in')
+  return uid
+}
 
 const LANGUAGE_DECK_PREFIX: Record<string, string> = {
   [LanguageType.ENGLISH]: 'English',
@@ -48,6 +55,7 @@ export async function createCategory(params: {
 }): Promise<CreatedCategory> {
   const name = params.name.trim()
   const ref = await addDoc(collection(db, 'categories'), {
+    user_id: requireUid(),
     name,
     form_type: params.formType,
     sort_order: 0,
@@ -80,6 +88,7 @@ export async function createDeck(params: {
   const anki_deck_name = params.ankiDeckName.trim()
 
   const ref = await addDoc(collection(db, 'decks'), {
+    user_id: requireUid(),
     anki_deck_name,
     display_name,
     form_type: params.formType,

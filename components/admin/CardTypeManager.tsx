@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -71,6 +72,7 @@ const EMPTY_DRAFT: CardTypeDraft = {
 }
 
 export function CardTypeManager() {
+  const { user, loading: authLoading } = useAuth()
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -91,12 +93,19 @@ export function CardTypeManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchCardTypes() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'card_types'), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+        const q = query(collection(db, 'card_types'), where('user_id', '==', uid))
         const snapshot = await getDocs(q)
-        setCardTypes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CardTypeConfig)))
+        setCardTypes(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as CardTypeConfig))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching card types:', error)
       } finally {
@@ -104,7 +113,7 @@ export function CardTypeManager() {
       }
     }
     fetchCardTypes()
-  }, [refreshKey])
+  }, [refreshKey, user, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<CardTypeConfig>('card_types', setCardTypes, refresh)
@@ -195,6 +204,7 @@ export function CardTypeManager() {
       } else {
         await addDoc(collection(db, 'card_types'), {
           ...base,
+          user_id: user?.uid,
           ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),

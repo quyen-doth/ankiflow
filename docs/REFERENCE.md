@@ -23,18 +23,15 @@ Browser gọi `localhost:8765` bị AnkiConnect chặn CORS theo mặc định (
 
 1. Anki Desktop → **Tools → Add-ons → AnkiConnect → Config**
 2. Thêm origin của app vào `webCorsOriginList`:
-   ```json
-   {
-     "webCorsOriginList": [
-       "http://localhost",
-       "http://localhost:3000",
-       "https://<your-app>.vercel.app"
-     ]
-   }
-   ```
+    ```json
+    {
+        "webCorsOriginList": ["http://localhost", "http://localhost:3000", "https://<your-app>.vercel.app"]
+    }
+    ```
 3. **Restart Anki.**
 
 Lưu ý:
+
 - Thiếu CORS → browser báo `TypeError: Failed to fetch` (không phân biệt được với "Anki đóng" — browser giấu chi tiết CORS khỏi JS). Settings page có callout hướng dẫn khi Anki offline.
 - **Safari** chặn request từ trang HTTPS đến `http://localhost` → dùng Chrome/Edge/Firefox cho bản deploy.
 
@@ -71,8 +68,8 @@ Lưu ý:
 3. Result saved to `localStorage` via `lib/pendingEntry.ts` (`ankiflow_pending_result`)
 4. Browser redirects to `app/preview/page.tsx`, which reads and clears pending entry
 5. User edits card, selects image/audio, then:
-   - **Export (Anki mở):** browser gọi `createNotesForEntry` (store media + buildNotes + createDeck + addNotes trực tiếp qua AnkiConnect) → `POST /api/entries/save` với `status: 'synced'` + note ids
-   - **Save (Anki đóng — deferred):** `POST /api/entries/save` với status mặc định `reviewed`; sync sau qua nút Sync ở sidebar (`GET /api/entries/sync` → browser tạo notes → `POST /api/entries/sync`)
+    - **Export (Anki mở):** browser gọi `createNotesForEntry` (store media + buildNotes + createDeck + addNotes trực tiếp qua AnkiConnect) → `POST /api/entries/save` với `status: 'synced'` + note ids
+    - **Save (Anki đóng — deferred):** `POST /api/entries/save` với status mặc định `reviewed`; sync sau qua nút Sync ở sidebar (`GET /api/entries/sync` → browser tạo notes → `POST /api/entries/sync`)
 
 ### Session Persistence
 
@@ -80,7 +77,7 @@ Lưu ý:
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local`:
+Copy `.env.example` to `.env`:
 
 | Variable                                             | Source                                                                                |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
