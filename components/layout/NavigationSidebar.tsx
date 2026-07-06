@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Shield, Settings, Wrench, Menu, X, LogOut } from 'lucide-react';
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
 import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
@@ -20,6 +20,7 @@ const navItems = [
     { label: 'History', href: '/history', icon: History },
     { label: 'Admin', href: '/admin', icon: Shield },
     { label: 'Settings', href: '/settings', icon: Settings },
+    { label: 'App Settings', href: '/settings/admin', icon: Wrench, adminOnly: true },
 ] as const;
 
 export function NavigationSidebar() {
@@ -107,10 +108,18 @@ export function NavigationSidebar() {
         setMobileOpen(false);
     }
 
+    const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const visibleNavItems = navItems.filter((item) => !('adminOnly' in item && item.adminOnly) || isAdmin);
+
+    // Longest-prefix wins: khi ở /settings/admin, chỉ mục /settings/admin sáng (không phải cả /settings).
+    const activeHref = visibleNavItems
+        .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
+        .reduce<string | null>((best, item) => (best && best.length >= item.href.length ? best : item.href), null);
+
     const nav = (
         <nav className="flex-1 flex flex-col gap-[2px]">
-            {navItems.map(({ label, href, icon: Icon }) => {
-                const isActive = pathname === href || pathname?.startsWith(href + '/');
+            {visibleNavItems.map(({ label, href, icon: Icon }) => {
+                const isActive = href === activeHref;
                 return (
                     <Link
                         key={href}

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
-import { FieldWrapper, Select } from '@/components/ui/FormField';
 import { Button } from '@/components/ui/Button';
 import {
     Monitor,
@@ -15,126 +15,29 @@ import {
     ImageIcon,
     SlidersHorizontal,
     Plug,
-    Brain,
     Check,
-    Bell,
     RefreshCw,
-    MessageSquare,
     Copy,
+    Wrench,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
+import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
-import { SETTINGS_DOC_ID, GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
 import type { Settings } from '@/types';
 
 /**
- * Settings tách 3 tầng (multi-user + admin control plane):
- * - `settings/{uid}` — preferences của từng user: unsplash/tts/auto_audio/auto_image/
- *   allow_duplicate/anki_connect_url. Save lần đầu tự tạo doc.
- * - `settings/default` — SECRETS của chủ app: LINE credentials, notifications_enabled.
- *   CHỈ admin fetch/thấy (non-admin KHÔNG BAO GIỜ đọc doc này — tránh lộ token qua
- *   network response). Ghi trực tiếp qua client SDK (interim — Phase D Security Rules
- *   sẽ khóa; xem multi-user-readiness-review).
- * - `settings/global` — feature flags TOÀN CỤC (ai_model, web_search_enabled,
- *   tts_available, unsplash_available) ảnh hưởng chi phí API của chủ app cho MỌI user.
- *   Mọi user đọc được (không secret, qua GlobalConfigProvider realtime); CHỈ ghi được
- *   qua POST /api/admin/global-config (verify admin server-side — không thể bypass
- *   bằng cách tự gọi setDoc từ console như settings/default).
+ * Trang Settings CÁ NHÂN — mọi user (per-user preferences trong `settings/{uid}`):
+ * SRS sync, cập nhật layout thẻ, trạng thái tích hợp, và các toggle unsplash/tts/
+ * auto_audio/auto_image/allow_duplicate + anki_connect_url. Save lần đầu tự tạo doc.
+ *
+ * Cấu hình TOÀN CỤC của chủ app (feature availability, AI model, LINE notifications)
+ * đã tách sang `/settings/admin` (chỉ admin) — trang này KHÔNG đọc `settings/default`
+ * (tránh lộ LINE token) và KHÔNG ghi `settings/global`.
  */
-
-interface FeatureFlagsForm {
-    tts_available: boolean;
-    unsplash_available: boolean;
-}
-
-const CLAUDE_MODEL_OPTIONS = [
-    { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
-    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
-];
-
-type Tone = 'green' | 'amber';
-
-const HEADER_TONE: Record<Tone, string> = {
-    green: 'text-primary bg-[rgba(49,99,66,0.1)]',
-    amber: 'text-[#b87514] bg-[rgba(184,117,20,0.1)]',
-};
-
-const ICON_TONE: Record<Tone, string> = {
-    green: 'text-primary bg-[rgba(49,99,66,0.08)]',
-    amber: 'text-[#b87514] bg-[rgba(184,117,20,0.08)]',
-};
-
-function SectionHeader({ icon: Icon, label, tone }: { icon: React.ElementType; label: string; tone: Tone }) {
-    return (
-        <div className="flex items-center gap-2 mb-[18px]">
-            <span
-                className={cn(
-                    'w-[26px] h-[26px] rounded-[7px] flex items-center justify-center flex-shrink-0',
-                    HEADER_TONE[tone],
-                )}
-            >
-                <Icon className="w-[15px] h-[15px]" />
-            </span>
-            <span className="text-[12px] font-bold tracking-[0.05em] uppercase font-mono text-slate-600">{label}</span>
-        </div>
-    );
-}
-
-interface IntegrationCardProps {
-    label: string;
-    description: string;
-    icon: React.ElementType;
-    tone: Tone;
-    descMono?: boolean;
-    connected: boolean;
-    checking: boolean;
-}
-
-function IntegrationCard({
-    label,
-    description,
-    icon: Icon,
-    tone,
-    descMono,
-    connected,
-    checking,
-}: IntegrationCardProps) {
-    return (
-        <div className="flex items-center gap-3.5 p-[14px] border border-[#eceae4] rounded-[11px]">
-            <span
-                className={cn(
-                    'w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0',
-                    ICON_TONE[tone],
-                )}
-            >
-                <Icon className="w-[18px] h-[18px]" />
-            </span>
-            <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-bold text-ink">{label}</p>
-                <p className={cn('text-[12.5px] text-slate-400 truncate', descMono && 'font-mono')}>{description}</p>
-            </div>
-            {checking ? (
-                <span className="inline-flex items-center text-[12px] font-bold text-slate-400 bg-canvas px-3 py-1.5 rounded-full">
-                    Checking…
-                </span>
-            ) : (
-                <span
-                    className={cn(
-                        'inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full',
-                        connected ? 'bg-[rgba(49,99,66,0.08)] text-primary' : 'bg-danger-bg text-danger',
-                    )}
-                >
-                    <span className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-primary' : 'bg-danger')} />
-                    {connected ? 'Connected' : 'Offline'}
-                </span>
-            )}
-        </div>
-    );
-}
 
 /**
  * Callout hướng dẫn khi Anki không reachable từ trang này. Vì browser giấu chi tiết CORS
@@ -210,7 +113,6 @@ export default function SettingsPage() {
     const { user, loading: authLoading } = useAuth();
     const { config: globalConfig } = useGlobalConfig();
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [featureFlags, setFeatureFlags] = useState<FeatureFlagsForm>({ tts_available: true, unsplash_available: true });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -223,48 +125,22 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (authLoading || !user) return;
-        async function fetchSettings(uid: string, admin: boolean) {
+        async function fetchSettings(uid: string) {
             try {
-                const [userSnap, globalSnap] = await Promise.all([
-                    getDoc(doc(db, 'settings', uid)),
-                    getDoc(doc(db, 'settings', GLOBAL_SETTINGS_DOC_ID)),
-                ]);
+                // CHỈ đọc prefs cá nhân. Feature flags toàn cục (ai_model/tts_available/
+                // unsplash_available) đã có realtime qua GlobalConfigProvider — không cần
+                // đọc settings/global ở đây. KHÔNG đọc settings/default (secrets của admin).
+                const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
-                const globalData = (globalSnap.exists() ? globalSnap.data() : {}) as Partial<Settings>;
-
-                // Secrets (LINE) — CHỈ admin fetch. Non-admin không bao giờ đọc settings/default
-                // (tránh lộ token qua network response — đây là fix cho rò rỉ trước đây).
-                let secretFields: Partial<Settings> = {};
-                if (admin) {
-                    const defSnap = await getDoc(doc(db, 'settings', SETTINGS_DOC_ID));
-                    if (defSnap.exists()) {
-                        const d = defSnap.data() as Partial<Settings>;
-                        secretFields = {
-                            notifications_enabled: d.notifications_enabled,
-                            line_channel_access_token: d.line_channel_access_token,
-                            line_user_id: d.line_user_id,
-                        };
-                    }
-                    setFeatureFlags({
-                        tts_available: (globalData as { tts_available?: boolean }).tts_available ?? true,
-                        unsplash_available: (globalData as { unsplash_available?: boolean }).unsplash_available ?? true,
-                    });
-                }
-
-                setSettings({
-                    ...prefs,
-                    ...secretFields,
-                    ai_model: globalData.ai_model ?? 'claude-haiku-4-5',
-                    web_search_enabled: globalData.web_search_enabled ?? false,
-                } as Settings);
+                setSettings({ ...prefs } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
                 setLoading(false);
             }
         }
-        fetchSettings(user.uid, isAdmin);
-    }, [user, authLoading, isAdmin]);
+        fetchSettings(user.uid);
+    }, [user, authLoading]);
 
     const handleSyncSrs = useCallback(async () => {
         setSyncingSRS(true);
@@ -337,15 +213,11 @@ export default function SettingsPage() {
         setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
     }, []);
 
-    const updateFeatureFlag = useCallback(<K extends keyof FeatureFlagsForm>(field: K, value: boolean) => {
-        setFeatureFlags((prev) => ({ ...prev, [field]: value }));
-    }, []);
-
     const handleSave = async () => {
         if (!settings || !user) return;
         setSaving(true);
         try {
-            // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo)
+            // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo).
             const prefsUpdate = {
                 unsplash_enabled: settings.unsplash_enabled,
                 tts_enabled: settings.tts_enabled,
@@ -354,40 +226,11 @@ export default function SettingsPage() {
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
             };
-            await setDoc(doc(db, 'settings', user.uid), { ...prefsUpdate, updated_at: serverTimestamp() }, { merge: true });
-
-            if (isAdmin) {
-                // Secrets (LINE) → settings/default — client SDK trực tiếp (interim, xem ghi chú ở đầu file)
-                await setDoc(
-                    doc(db, 'settings', SETTINGS_DOC_ID),
-                    {
-                        notifications_enabled: settings.notifications_enabled,
-                        line_channel_access_token: settings.line_channel_access_token,
-                        line_user_id: settings.line_user_id,
-                        updated_at: serverTimestamp(),
-                    },
-                    { merge: true },
-                );
-
-                // Feature flags TOÀN CỤC → settings/global — BẮT BUỘC qua server API
-                // (verify admin server-side; client không thể tự setDoc doc này thành công
-                // một khi Phase D Security Rules khóa lại, và ngay hiện tại route đã 403
-                // nếu ai đó cố POST trực tiếp mà không phải admin).
-                const res = await fetch('/api/admin/global-config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ai_model: settings.ai_model,
-                        web_search_enabled: settings.web_search_enabled,
-                        tts_available: featureFlags.tts_available,
-                        unsplash_available: featureFlags.unsplash_available,
-                    }),
-                });
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    throw new Error(err.error || 'Failed to save global config');
-                }
-            }
+            await setDoc(
+                doc(db, 'settings', user.uid),
+                { ...prefsUpdate, updated_at: serverTimestamp() },
+                { merge: true },
+            );
 
             resetAnkiClientCache();
             setSavedAt(Date.now());
@@ -426,16 +269,25 @@ export default function SettingsPage() {
         <>
             <PageHeader
                 title="Settings"
-                description="Manage integrations and global preferences."
+                description="Manage your integrations and personal preferences."
                 actions={
-                    <Button
-                        variant="primary"
-                        leftIcon={<Check className="w-4 h-4" />}
-                        onClick={handleSave}
-                        disabled={saving}
-                    >
-                        {saving ? 'Saving...' : 'Save changes'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {isAdmin && (
+                            <Link href="/settings/admin">
+                                <Button variant="ghost" leftIcon={<Wrench className="w-4 h-4" />}>
+                                    App settings
+                                </Button>
+                            </Link>
+                        )}
+                        <Button
+                            variant="primary"
+                            leftIcon={<Check className="w-4 h-4" />}
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? 'Saving...' : 'Save changes'}
+                        </Button>
+                    </div>
                 }
             />
 
@@ -465,55 +317,6 @@ export default function SettingsPage() {
                     <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
                     <ResyncCards ankiConnected={ankiConnected} />
                 </Card>
-
-                {/* Notifications — ADMIN ONLY: LINE credentials là của chủ app */}
-                {isAdmin && (
-                    <Card>
-                        <SectionHeader icon={Bell} label="Notifications" tone="amber" />
-                        <div className="flex flex-col gap-3.5">
-                            <div className="py-[15px] border-b border-[#f5f5f1]">
-                                <Toggle
-                                    bare
-                                    label="Enable notifications"
-                                    description="Send vocabulary review reminders via LINE."
-                                    checked={settings.notifications_enabled ?? false}
-                                    onChange={(v) => updateField('notifications_enabled', v)}
-                                />
-                            </div>
-
-                            <IntegrationCard
-                                label="LINE Messaging"
-                                description={settings.line_channel_access_token ? 'Token configured' : 'Not configured'}
-                                icon={MessageSquare}
-                                tone="amber"
-                                connected={!!settings.line_channel_access_token}
-                                checking={false}
-                            />
-
-                            <FieldWrapper label="LINE Channel Access Token">
-                                <input
-                                    type="password"
-                                    value={settings.line_channel_access_token ?? ''}
-                                    onChange={(e) =>
-                                        updateField('line_channel_access_token', e.target.value || undefined)
-                                    }
-                                    placeholder="Paste your LINE Channel Access Token"
-                                    className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
-                                />
-                            </FieldWrapper>
-
-                            <FieldWrapper label="LINE User ID">
-                                <input
-                                    type="text"
-                                    value={settings.line_user_id ?? ''}
-                                    onChange={(e) => updateField('line_user_id', e.target.value || undefined)}
-                                    placeholder="Your LINE User ID"
-                                    className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
-                                />
-                            </FieldWrapper>
-                        </div>
-                    </Card>
-                )}
 
                 {/* Integrations */}
                 <Card>
@@ -563,66 +366,6 @@ export default function SettingsPage() {
                         />
                     </div>
                 </Card>
-
-                {/* Feature availability — ADMIN ONLY: control plane, ảnh hưởng MỌI user ngay lập tức */}
-                {isAdmin && (
-                    <Card>
-                        <SectionHeader icon={Plug} label="Feature availability (all users)" tone="amber" />
-                        <p className="text-sm text-slate-600 mb-3.5">
-                            Turning a feature off blocks it for every account immediately (enforced server-side).
-                            Turning it back on restores each user&apos;s own preference — it does not force it on for
-                            everyone.
-                        </p>
-                        <div className="flex flex-col">
-                            <div className="py-[15px] border-b border-[#f5f5f1]">
-                                <Toggle
-                                    bare
-                                    label="Text-to-speech available"
-                                    description="Allow any user to generate audio pronunciation via Google Cloud TTS."
-                                    checked={featureFlags.tts_available}
-                                    onChange={(v) => updateFeatureFlag('tts_available', v)}
-                                />
-                            </div>
-                            <div className="py-[15px]">
-                                <Toggle
-                                    bare
-                                    label="Unsplash image search available"
-                                    description="Allow any user to search illustration images via Unsplash."
-                                    checked={featureFlags.unsplash_available}
-                                    onChange={(v) => updateFeatureFlag('unsplash_available', v)}
-                                />
-                            </div>
-                        </div>
-                    </Card>
-                )}
-
-                {/* AI config — ADMIN ONLY: ai_model/web_search ảnh hưởng chi phí API của chủ app */}
-                {isAdmin && (
-                    <Card>
-                        <SectionHeader icon={Brain} label="AI generation" tone="amber" />
-                        <FieldWrapper label="Claude Model">
-                            <Select
-                                value={settings.ai_model ?? 'claude-haiku-4-5'}
-                                onChange={(e) => updateField('ai_model', e.target.value)}
-                            >
-                                {CLAUDE_MODEL_OPTIONS.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                        {m.name}
-                                    </option>
-                                ))}
-                            </Select>
-                        </FieldWrapper>
-                        <div className="mt-3.5 flex items-center p-[14px] border border-[#eceae4] rounded-[11px] bg-[#fcfcfb]">
-                            <Toggle
-                                bare
-                                label="Enable web search"
-                                description="Allow AI agent to search the web for verification (slower and more expensive)"
-                                checked={settings.web_search_enabled ?? false}
-                                onChange={(v) => updateField('web_search_enabled', v)}
-                            />
-                        </div>
-                    </Card>
-                )}
 
                 {/* Preferences */}
                 <Card>
