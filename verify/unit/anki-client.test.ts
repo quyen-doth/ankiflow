@@ -6,12 +6,17 @@ import {
   resetAnkiClientCache,
   resolveAnkiConnectUrl,
 } from '@/lib/flashcard-service/client'
+import { auth } from '@/lib/firebase'
 
 // Seed/reset store của firestore-stub qua global hooks (xem verify/harness/firestore-stub.ts)
 const g = globalThis as unknown as {
   __verifyFirestoreSeed?: (data: Record<string, Record<string, unknown>[]>) => void
   __verifyFirestoreReset?: () => void
 }
+
+// resolveAnkiConnectUrl đọc settings/{uid} theo auth.currentUser — giả lập user đăng nhập.
+const mutableAuth = auth as unknown as { currentUser: { uid: string } | null }
+const TEST_UID = 'test-user'
 
 function stubFetchJson(body: unknown) {
   const mock = vi.fn(
@@ -28,6 +33,7 @@ function stubFetchJson(body: unknown) {
 beforeEach(() => {
   resetAnkiClientCache()
   g.__verifyFirestoreReset?.()
+  mutableAuth.currentUser = { uid: TEST_UID }
   // invoke() log console.error khi fail — im lặng để output test sạch
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -35,6 +41,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  mutableAuth.currentUser = null
 })
 
 describe('getAnkiClient — cache theo URL', () => {
@@ -78,22 +85,40 @@ describe('ping — browser gọi thẳng AnkiConnect', () => {
   })
 })
 
-describe('resolveAnkiConnectUrl — đọc settings, cache, fallback', () => {
-  it('dùng anki_connect_url từ settings doc', async () => {
+describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () => {
+  it('dùng anki_connect_url từ settings/{uid}', async () => {
     g.__verifyFirestoreSeed?.({
-      settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
+      settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })
 
     await expect(resolveAnkiConnectUrl()).resolves.toBe('http://127.0.0.1:9999')
   })
 
-  it('không có settings doc → fallback default URL', async () => {
+  it('không có settings doc của user → fallback default URL', async () => {
+    await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
+  })
+
+  it('KHÔNG đọc settings/default nữa (chỉ per-user) → default dù settings/default có url', async () => {
+    // settings/default là secrets của chủ app — client không đọc; rules cũng chặn non-admin.
+    g.__verifyFirestoreSeed?.({
+      settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
+    })
+
+    await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
+  })
+
+  it('chưa đăng nhập (currentUser null) → default URL, không đọc Firestore', async () => {
+    mutableAuth.currentUser = null
+    g.__verifyFirestoreSeed?.({
+      settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
+    })
+
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
   it('cache URL đã resolve; resetAnkiClientCache() xóa cache', async () => {
     g.__verifyFirestoreSeed?.({
-      settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
+      settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })
     await resolveAnkiConnectUrl()
 
@@ -106,9 +131,9 @@ describe('resolveAnkiConnectUrl — đọc settings, cache, fallback', () => {
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
-  it('getAnkiClientFromSettings ping đúng URL từ settings', async () => {
+  it('getAnkiClientFromSettings ping đúng URL từ settings/{uid}', async () => {
     g.__verifyFirestoreSeed?.({
-      settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
+      settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })
     const mock = stubFetchJson({ result: 6, error: null })
 

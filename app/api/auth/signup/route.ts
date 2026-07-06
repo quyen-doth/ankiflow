@@ -31,6 +31,17 @@ export async function POST(request: Request) {
     const adminAuth = getAdminAuthInstance()
     const user = await adminAuth.createUser({ email, password })
 
+    // Nếu là email admin (env ADMIN_EMAIL) → đặt custom claim admin:true để Firestore
+    // Security Rules nhận diện admin (rules không đọc được env). Client signIn NGAY SAU
+    // đây sẽ mint ID token mang claim, nên admin không phải re-login khi tự signup.
+    if (process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL) {
+      try {
+        await adminAuth.setCustomUserClaims(user.uid, { admin: true })
+      } catch (e) {
+        console.error('Failed to set admin claim for', email, e)
+      }
+    }
+
     // Seed master data default cho user mới. Best-effort: seed lỗi không chặn
     // signup (account đã tạo) — user save settings/tạo deck sau vẫn hoạt động.
     try {

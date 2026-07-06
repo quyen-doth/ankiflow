@@ -10,7 +10,6 @@
  */
 import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
-import { SETTINGS_DOC_ID } from '@/lib/constants'
 import { AnkiConnectProvider } from './anki-connect-provider'
 
 export const DEFAULT_ANKI_CONNECT_URL = 'http://localhost:8765'
@@ -35,18 +34,15 @@ export function getAnkiClient(url: string = DEFAULT_ANKI_CONNECT_URL): AnkiConne
 export async function resolveAnkiConnectUrl(): Promise<string> {
   if (cachedUrl) return cachedUrl
   try {
+    // CHỈ đọc settings/{uid} (per-user). KHÔNG fallback settings/default: doc đó là
+    // secrets của chủ app — Security Rules chặn non-admin đọc, và nó không còn chứa
+    // anki_connect_url nữa. Thiếu field → dùng hằng số mặc định.
     const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
     let url: string | undefined
     if (uid) {
       const userSnap = await getDoc(doc(db, 'settings', uid))
       if (userSnap.exists()) {
         url = (userSnap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
-      }
-    }
-    if (!url) {
-      const defSnap = await getDoc(doc(db, 'settings', SETTINGS_DOC_ID))
-      if (defSnap.exists()) {
-        url = (defSnap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
       }
     }
     cachedUrl = url || DEFAULT_ANKI_CONNECT_URL

@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "//": "dashboard + history: where(user_id ==) + orderBy(created_at desc). Các query per-user KHÁC cố ý sort in-memory (C5b) nên KHÔNG cần composite index.",
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
