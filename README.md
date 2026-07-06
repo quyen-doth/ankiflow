@@ -168,7 +168,8 @@ ankiflow/
 │   ├── preview/     # 生成カードの確認・編集・エクスポート（バッチ対応）
 │   ├── history/     # 作成履歴の一覧・詳細
 │   ├── admin/       # 設定データの管理（CMS / テンプレート編集）
-│   └── settings/    # 連携状態・各種トグル・管理者設定
+│   └── settings/    # 個人設定（連携状態・各種トグル）
+│       └── admin/   # アプリ全体設定（機能可否・AI モデル・LINE 通知、管理者のみ）
 ├── components/      # UI コンポーネント（67 ファイル）
 │   └── providers/   # Auth / GlobalConfig などの React コンテキスト
 ├── hooks/           # カスタムフック

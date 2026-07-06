@@ -48,7 +48,8 @@ Lưu ý:
 | `app/preview/`           | Preview generated card, edit, export to Anki                                            |
 | `app/history/`           | History log of created entries                                                          |
 | `app/history/[id]/`      | History detail — full entry view, recreate/delete                                       |
-| `app/settings/`          | Settings — integration status, AnkiConnect URL, Claude model, feature toggles           |
+| `app/settings/`          | Personal settings (mọi user) — SRS sync, card layout, integration status, preference toggles → `settings/{uid}` |
+| `app/settings/admin/`    | App-wide settings (admin-only) — feature availability, AI model, LINE notifications → `settings/global` + `settings/default` |
 | `app/admin/`             | Admin — CRUD for categories, card types, topics, decks, content types                   |
 | `components/create/`     | Form components per content type                                                        |
 | `components/preview/`    | Card preview + edit components                                                          |
