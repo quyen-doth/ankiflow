@@ -1,23 +1,30 @@
 # Database Structure — AnkiFlow
 
 > **Database:** Google Firestore (NoSQL, document-based)
-> **Phiên bản:** v1.1
+> **Phiên bản:** v2.0 (multi-user — Firebase Auth)
 > **Lưu ý:** Các quan hệ là logical references — không phải foreign key cứng như SQL.
+
+## Multi-user model (v2.0)
+
+- **Per-user collections** (`entries`, `categories`, `card_types`, `topics`, `decks`, `notification_triggers`): mỗi document có field **`user_id`** = Firebase Auth UID. Mọi query (client + server) filter `where('user_id', '==', uid)`. Firestore Security Rules (`firestore.rules`) chặn truy cập chéo ở tầng DB.
+- **`content_types` SHARED**: KHÔNG có `user_id` — dùng chung cho mọi user vì doc ID của nó (`form_language`/`form_it`/`form_general`) chính là giá trị `form_type` (field routing cốt lõi). Chỉ admin sửa được.
+- **Master data ID scheme**: khi seed cho user mới, ID = `{defaultId}__{uid}` (vd `cat_daily__abc123`) — FK trong decks re-map bằng nối chuỗi cùng quy tắc. Xem `lib/seed-defaults.ts`.
+- **Template `__defaults__`**: các doc master-data với `user_id == '__defaults__'` là bản mẫu admin sửa qua `/admin` ("New-user defaults"); `seedUserDefaults` clone chúng cho user mới. Không phải UID thật.
 
 ---
 
 ## Tổng quan Collections
 
-| Collection | Mô tả | Màu |
+| Collection | Mô tả | Scope |
 |---|---|---|
-| `entries` | Từ vựng đã tạo | Indigo |
-| `categories` | Phân loại nội dung | Amber |
-| `card_types` | Loại flashcard Anki | Violet |
-| `topics` | Chủ đề IT | Orange |
-| `decks` | Anki Deck config + Form mapping | Sky |
-| `content_types` | Cấu hình form nhập liệu | Emerald |
-| `form_fields` | Sub-collection embedded trong content_types | Green |
-| `settings` | Cấu hình hệ thống | Slate |
+| `entries` | Từ vựng đã tạo | Per-user |
+| `categories` | Phân loại nội dung | Per-user (+ template) |
+| `card_types` | Loại flashcard Anki | Per-user (+ template) |
+| `topics` | Chủ đề IT | Per-user (+ template) |
+| `decks` | Anki Deck config + Form mapping | Per-user (+ template) |
+| `notification_triggers` | Lịch nhắc LINE (admin) | Per-user |
+| `content_types` | Cấu hình form nhập liệu (doc id = form_type) | **SHARED** — admin-only write |
+| `settings` | 3 loại doc: `{uid}` prefs · `global` flags · `default` secrets | Xem mục Settings |
 
 ---
 
@@ -30,7 +37,7 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 | Field | Type | Mô tả |
 |---|---|---|
 | `id` | string (PK) | Document ID |
-| `user_id` | string | User ID (`local-user` Phase 1, Firebase Auth UID Phase 3) |
+| `user_id` | string | Firebase Auth UID — chủ sở hữu entry (bắt buộc filter trong mọi query) |
 | `category_id` | string (FK) | Tham chiếu tới `categories` (nullable) |
 | `form_type` | string | Loại form đã dùng: `form_language` / `form_it` / `form_general` |
 | `language` | string | Ngôn ngữ: `zh`, `ja`, `en` (nullable, chỉ khi form_type = form_language) |
@@ -63,6 +70,7 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 | `keywords` | string[] | Từ khóa IT (IT vocab specific) |
 | `topic_ids` | string[] | Tham chiếu tới `topics` |
 | `difficulty` | string | Độ khó: `easy` / `medium` / `hard` (IT vocab specific) |
+| `review_state` | object | Trạng thái SRS đồng bộ từ Anki (ease/interval/due_date/queue...) — nullable |
 | `created_at` | timestamp | Thời điểm tạo |
 | `updated_at` | timestamp | Thời điểm cập nhật |
 | `status` | string | Trạng thái: xem enum bên dưới |
@@ -85,10 +93,11 @@ Nhóm entries theo danh mục (ví dụ: Động từ, Danh từ, Thành ngữ..
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `id` | string (PK) | Document ID |
+| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
+| `user_id` | string | Firebase Auth UID (hoặc `__defaults__` cho bản template) |
 | `name` | string | Tên danh mục |
 | `form_type` | string | Thuộc form type nào |
-| `sort_order` | number | Thứ tự hiển thị |
+| `sort_order` | number | Thứ tự hiển thị (sort in-memory — không dùng orderBy để né composite index) |
 | `is_active` | boolean | Đang active hay không |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
@@ -101,8 +110,9 @@ Nhóm entries theo danh mục (ví dụ: Động từ, Danh từ, Thành ngữ..
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `id` | string (PK) | Document ID |
-| `code` | string | Mã định danh (unique) |
+| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
+| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
+| `code` | string | Mã định danh (unique **theo user** — C4b backlog: chưa enforce) |
 | `name` | string | Tên hiển thị |
 | `description` | string | Mô tả |
 | `form_type` | string | Thuộc form type nào |
@@ -110,6 +120,7 @@ Nhóm entries theo danh mục (ví dụ: Động từ, Danh từ, Thành ngữ..
 | `is_default` | boolean | Có được chọn mặc định không |
 | `is_active` | boolean | — |
 | `sort_order` | number | Thứ tự hiển thị |
+| `template` | object | `{ front: string[], back: string[] }` — block layout render Front/Back |
 | `created_at` | timestamp | — |
 
 ---
@@ -120,9 +131,10 @@ Dùng riêng cho IT vocabulary. Entries có thể thuộc nhiều topic.
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `id` | string (PK) | Document ID |
+| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
+| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
 | `name` | string | Tên chủ đề (Networks, Security...) |
-| `form_type` | string | — |
+| `form_type` | string | Luôn `form_it` |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
 | `created_at` | timestamp | — |
@@ -135,30 +147,36 @@ Mapping giữa form type và Anki deck. Lưu cấu hình mặc định cho từn
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `id` | string (PK) | Document ID |
+| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
+| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
 | `anki_deck_name` | string | Tên deck trong Anki |
 | `display_name` | string | Tên hiển thị trên UI |
 | `form_type` | string | Form type tương ứng |
 | `language` | string | Ngôn ngữ |
-| `default_card_type_ids` | string[] | Card types mặc định khi export |
-| `default_category_id` | string | Category mặc định |
+| `default_card_type_ids` | string[] | Card types mặc định (FK re-map theo `{id}__{uid}` khi seed) |
+| `default_category_id` | string | Category mặc định (FK re-map tương tự, nullable) |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
 | `created_at` | timestamp | — |
 
 ---
 
-### `content_types` — Form Configuration
+### `content_types` — Form Configuration (**SHARED**)
 
-Định nghĩa các loại form nhập liệu. Mỗi content type có một bộ `form_fields` riêng.
+Định nghĩa các loại form nhập liệu. **KHÔNG per-user** — doc ID = giá trị `form_type`
+(`form_language`/`form_it`/`form_general`), là field routing cốt lõi toàn app. Dùng chung
+cho mọi user; chỉ admin sửa (đổi form cho tất cả). Field `fields[]` (form_fields) nhúng ngay
+trong document, không phải sub-collection.
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `id` | string (PK) | Document ID |
-| `code` | string | Mã định danh (unique) |
+| `id` | string (PK) | = `form_type` (`form_language`/`form_it`/`form_general`) |
+| `code` | string | Mã định danh |
 | `name` | string | Tên hiển thị |
 | `description` | string | Mô tả |
 | `icon` | string | Icon name |
+| `fields` | object[] | Mảng form_fields (xem dưới) |
+| `default_create_mode` | string | `single` / `batch` |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
 | `created_at` | timestamp | — |
@@ -186,22 +204,55 @@ Mapping giữa form type và Anki deck. Lưu cấu hình mặc định cho từn
 
 ---
 
-### `settings` — Cấu hình hệ thống
+### `notification_triggers` — Lịch nhắc LINE (per-user, admin-only feature)
 
-Single document — lưu config toàn cục của app.
+Cấu hình lịch push LINE. Per-user (`user_id`) nhưng hiện chỉ admin dùng được (LINE token là của chủ app).
 
-| Field | Type | Mô tả | Default |
+| Field | Type | Mô tả |
+|---|---|---|
+| `id` | string (PK) | Document ID |
+| `user_id` | string | Firebase Auth UID |
+| `name` | string | Tên trigger |
+| `schedule_hours` | number[] | Giờ trong ngày để push |
+| `timezone` | string | Múi giờ |
+| `deck_filter` / `language_filter` | string[] | Lọc entry để nhắc |
+| `words_per_notification` | number | Số từ mỗi lần push |
+| `is_active` | boolean | — |
+
+---
+
+### `settings` — 3 loại document (KHÔNG còn singleton)
+
+Từ v2.0, collection `settings` chứa 3 loại doc khác biệt về quyền và mục đích:
+
+**`settings/{uid}`** — preferences của từng user (user tự đọc/ghi doc của mình):
+
+| Field | Type | Default |
+|---|---|---|
+| `unsplash_enabled` / `tts_enabled` | boolean | `true` — lựa chọn cá nhân (kết hợp AND với global flag) |
+| `auto_audio` / `auto_image` | boolean | `true` |
+| `allow_duplicate` | boolean | `false` |
+| `anki_connect_url` | string | `http://localhost:8765` |
+
+**`settings/global`** — feature flags TOÀN CỤC (mọi user đọc; **chỉ admin ghi** qua `POST /api/admin/global-config`; client-read qua `GlobalConfigProvider` realtime):
+
+| Field | Type | Default | Ghi chú |
 |---|---|---|---|
-| `id` | string (PK) | Document ID | — |
-| `unsplash_enabled` | boolean | Bật/tắt tích hợp Unsplash | `true` |
-| `tts_enabled` | boolean | Bật/tắt Text-to-Speech | `true` |
-| `ai_model` | string | Model Claude đang dùng | `claude-haiku-4-5` |
-| `web_search_enabled` | boolean | Cho phép AI agent dùng tool web_search | `false` |
-| `anki_connect_url` | string | URL AnkiConnect local | `http://localhost:8765` |
-| `allow_duplicate` | boolean | Cho phép tạo entry trùng từ | `false` |
-| `auto_audio` | boolean | Tự động tạo audio khi generate | `true` |
-| `auto_image` | boolean | Tự động tìm ảnh khi generate | `true` |
-| `updated_at` | timestamp | Thời điểm cập nhật cuối | — |
+| `ai_model` | string | `claude-haiku-4-5` | Model Claude cho MỌI user (generate route đọc từ đây) |
+| `web_search_enabled` | boolean | `false` | Bật web_search cho AI agent |
+| `tts_available` | boolean | `true` | Cổng chi phí: tắt → mọi user không dùng TTS được |
+| `unsplash_available` | boolean | `true` | Cổng chi phí: tắt → mọi user không dùng Unsplash được |
+
+**`settings/default`** — SECRETS của chủ app (**chỉ admin đọc/ghi** — rules chặn non-admin, tránh lộ token qua network):
+
+| Field | Type | Ghi chú |
+|---|---|---|
+| `line_channel_access_token` / `line_user_id` | string | LINE credentials |
+| `notifications_enabled` | boolean | Bật/tắt tính năng LINE |
+
+> **"Mức trần" (effective flag)**: `effectiveTts = global.tts_available && user.tts_enabled`.
+> Admin tắt global → mọi người không dùng được; bật lại → mỗi user về lựa chọn cá nhân cũ
+> (2 doc tách biệt nên không mất pref). Xem `hooks/useEffectiveMediaFlags.ts`.
 
 ---
 
@@ -243,4 +294,27 @@ Source file: `docs/database-diagram.txt`
 - `entries` là collection lớn nhất và có nhiều optional field —
   các field language-specific (pinyin, hiragana...) chỉ có giá trị
   khi `language` tương ứng.
-- `settings` là singleton document — chỉ có 1 document duy nhất trong collection.
+- `settings` KHÔNG còn singleton — 3 loại doc (`{uid}` / `global` / `default`), xem mục Settings.
+
+---
+
+## Security Rules (`firestore.rules` — đã deploy)
+
+Client SDK đọc/ghi Firestore trực tiếp (bypass middleware + API auth), nên rules là tầng
+phân quyền cuối cùng. Admin SDK (server routes) bypass rules.
+
+| Collection / doc | read | write |
+|---|---|---|
+| `entries`, `notification_triggers` | chủ sở hữu | chủ sở hữu (tạo phải gắn đúng `user_id`) |
+| `decks`/`categories`/`card_types`/`topics` | chủ sở hữu **+ admin cho `__defaults__`** | như read |
+| `content_types` | mọi user đã đăng nhập | **admin only** |
+| `settings/global` | mọi user đã đăng nhập | **admin only** |
+| `settings/default` | **admin only** | **admin only** |
+| `settings/{uid}` | chính chủ | chính chủ |
+| (còn lại) | deny | deny |
+
+- **Admin trong rules** = custom claim `request.auth.token.admin == true` (rules không đọc env
+  → khác với check `ADMIN_EMAIL` phía server). Đặt bằng `scripts/set-admin-claim.ts`, cần re-login.
+- **Composite index**: chỉ `entries (user_id ASC, created_at DESC)` cho dashboard/history +
+  `content_types (is_active ASC, sort_order ASC)` cho create page. Các query per-user khác
+  cố ý sort in-memory để né composite index (xem `firestore.indexes.json`).

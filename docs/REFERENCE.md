@@ -40,6 +40,9 @@ Lưu ý:
 | Path                     | Purpose                                                                                 |
 | ------------------------ | --------------------------------------------------------------------------------------- |
 | `app/api/`               | API routes — all server logic lives here                                                |
+| `app/(auth)/`            | Login / signup pages (sidebar-less layout)                                              |
+| `middleware.ts`          | Route protection — checks `__session` cookie existence                                  |
+| `firestore.rules`        | Firestore Security Rules (per-user isolation; deploy via Firebase CLI)                   |
 | `app/dashboard/`         | Dashboard — stats overview, recent entries, quick actions                               |
 | `app/create/`            | Create card page (form selection + input)                                               |
 | `app/preview/`           | Preview generated card, edit, export to Anki                                            |
@@ -53,10 +56,12 @@ Lưu ý:
 | `components/admin/`      | Admin manager components per resource (CategoryManager, etc.)                           |
 | `components/layout/`     | Navigation sidebar, page header                                                         |
 | `components/ui/`         | Shared UI primitives (Button, Modal, Card, DataTable, etc.)                             |
-| `lib/`                   | Shared utilities: firebase, session, TTS, Unsplash                                      |
+| `lib/`                   | Shared utilities: firebase, auth, auth-guard, seed-defaults, session, TTS, Unsplash     |
 | `lib/ai-agent/`          | Claude AI agent — provider, card schemas (zod), tool orchestration                      |
 | `lib/prompts/`           | Per-language system prompts for the AI agent                                            |
-| `lib/flashcard-service/` | AnkiConnect provider abstraction                                                        |
+| `lib/flashcard-service/` | Client-side AnkiConnect (client.ts + client-ops.ts) — browser → localhost:8765          |
+| `components/providers/`  | React contexts: AuthProvider, GlobalConfigProvider, MotionProvider                      |
+| `scripts/`               | seed-firestore, migrate-user-data, set-admin-claim                                       |
 | `types/index.ts`         | All TypeScript types and enums                                                          |
 | `verify/`                | Runtime verification framework (specs, verifiers, harness — see `docs/VERIFICATION.md`) |
 | `docs/`                  | Source-of-truth documentation                                                           |
@@ -86,14 +91,27 @@ Copy `.env.example` to `.env`:
 | `ANTHROPIC_API_KEY`                                  | Anthropic Console (Claude API)                                                        |
 | `GOOGLE_TTS_API_KEY`                                 | Google Cloud Console                                                                  |
 | `UNSPLASH_ACCESS_KEY`                                | Unsplash Developers                                                                   |
-| `API_SECRET`                                         | Random string — used as `x-api-secret` header for `/api/admin/*` and `/api/history/*` |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_USER_ID`         | LINE Developers (admin notifications)                                                 |
+| `ADMIN_EMAIL`                                        | Server-side admin check (`/api/admin/global-config`, `/api/notifications/send`, signup claim) |
+| `NEXT_PUBLIC_ADMIN_EMAIL`                            | Client-side admin UI gate (visibility only — not security)                            |
 
-> `ANKI_CONNECT_URL` đã bị loại bỏ (2026-07-04) — URL AnkiConnect giờ per-user, đọc client-side từ `settings.anki_connect_url` (fallback `http://localhost:8765`).
+> `ANKI_CONNECT_URL` và `API_SECRET`/`x-api-secret` đã bị loại bỏ. AnkiConnect URL per-user (`settings/{uid}.anki_connect_url`, fallback `http://localhost:8765`); auth chuyển sang Firebase session cookie.
 
-## API Authentication
+## Authentication (Firebase Auth — multi-user)
 
-- `/api/entries/*`, `/api/anki/*` (update/resync/sync-srs) and `/api/generate` — public (safe when running locally; sẽ được bảo vệ bởi Firebase Auth theo `flashcard/plans/firebase-auth-plan-2026-06-30.md`)
-- `/api/admin/*` and `/api/history/*` — require `x-api-secret` header matching `API_SECRET` env var (see `lib/auth-guard.ts`)
+- **Session cookie `__session`** (httpOnly): login đổi Firebase ID token → cookie qua `POST /api/auth/session`; logout `DELETE` (revoke + clear).
+- **Middleware** (`middleware.ts`): check cookie tồn tại → page redirect `/login`, `/api/*` → 401 JSON. KHÔNG verify (Edge). Exclude: `/api/auth/*`, `/api/notifications/line-webhook`, `/verify`, static.
+- **API layer** (`lib/auth-guard.ts`): `withAuth(handler(req, ctx, uid))` verify cookie thật + trả UID. Mọi route data đều wrap. Admin routes thêm check `email === ADMIN_EMAIL`.
+- **Firestore Security Rules** (`firestore.rules`, deployed): client SDK chỉ chạm doc của user; admin = custom claim `admin:true` (`scripts/set-admin-claim.ts`, cần re-login). Deploy: `firebase deploy --only firestore:rules,firestore:indexes`.
+
+## Scripts
+
+```bash
+npm run seed                            # content_types + settings/global + settings/default
+npm run seed -- --defaults              # publish template __defaults__ (không bắt buộc — signup tự lazy-publish)
+npx tsx scripts/set-admin-claim.ts <email>       # đặt admin claim (rồi re-login)
+npx tsx scripts/migrate-user-data.ts <uid> [--dry-run]  # gán data single-user cũ về 1 account
+```
 
 ## Git Conventions
 

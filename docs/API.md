@@ -80,18 +80,25 @@ Tất cả các API route đều tuân theo các quy chuẩn sau:
 
 ---
 
-## 3. 🔐 Authentication & Authorization
+## 3. 🔐 Authentication & Authorization (Firebase Auth — multi-user)
 
-Vì AnkiFlow là một web app **local-first** được thiết kế chạy trên localhost của một người dùng duy nhất, hiện tại hệ thống API chưa tích hợp Identity Provider (IdP).
+AnkiFlow dùng **Firebase Authentication (email/password) + httpOnly session cookie `__session`**.
+Middleware chỉ check cookie tồn tại (Edge không chạy Admin SDK); **verify thật** (`verifySessionCookie`)
+diễn ra ở mỗi API route qua `withAuth`/`verifySessionUser` (`lib/auth-guard.ts`), trả UID làm tham số handler.
 
-| Route Group      | Auth Type             | Ghi chú / Rủi ro                            |
-| ---------------- | --------------------- | ------------------------------------------- |
-| `/api/anki/*`    | Public                | An toàn khi chạy local                      |
-| `/api/generate`  | Public                | API key bảo vệ server-side                  |
-| `/api/history/*` | `x-api-secret` header | ✅ Đã bảo vệ. TODO: Firebase Auth ở Phase 3 |
-| `/api/admin/*`   | `x-api-secret` header | ✅ Đã bảo vệ. TODO: RBAC ở Phase 3          |
+| Route Group | Auth | Ghi chú |
+| --- | --- | --- |
+| `/api/auth/*` | Public | session (login), signup, logout — chạy khi CHƯA đăng nhập |
+| `/api/notifications/line-webhook` | Public (LINE signature) | LINE platform gọi từ ngoài |
+| `/api/entries/*`, `/api/anki/*`, `/api/history/*`, `/api/generate`, `/api/audio/generate`, `/api/image` | **`withAuth`** (session cookie) → 401 nếu thiếu/sai | scope data theo UID |
+| `/api/admin/global-config` (POST), `/api/notifications/send` | session cookie **+ `email === ADMIN_EMAIL`** → 403 nếu không phải admin | control plane |
+| `/api/admin/*` (CRUD legacy) | `withAuth` | không có client caller (UI dùng client SDK) |
 
-**Data isolation:** Mọi Firestore query trên collection `entries` đều filter theo `user_id`. Phase 1 dùng constant `local-user`. Phase 3: thay bằng UID từ Firebase Auth token — không cần migration data vì field đã có sẵn.
+**Data isolation:** mọi query `entries` + master data filter `user_id == uid`; ownership check trên
+mutation (update/delete entry của user khác → 404). Tầng cuối là **Firestore Security Rules** (client SDK).
+
+**Admin (2 cơ chế độc lập):** server dùng env `ADMIN_EMAIL`; Firestore rules dùng custom claim
+`admin:true`. `NEXT_PUBLIC_ADMIN_EMAIL` chỉ gate UI.
 
 ---
 
@@ -104,11 +111,14 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | `ANTHROPIC_API_KEY`              | Anthropic Claude API               | `/api/generate`                                                   |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Google Cloud Service Account (TTS) | `/api/audio/generate`                                             |
 | `UNSPLASH_ACCESS_KEY`            | Unsplash Developer API             | `/api/image`                                                      |
-| `FIREBASE_ADMIN_PROJECT_ID`      | Firebase Admin SDK                 | `/api/admin/*`, `/api/history/*`, `/api/entries/*`, `/api/anki/*` |
+| `FIREBASE_ADMIN_PROJECT_ID`      | Firebase Admin SDK (Auth + Firestore) | tất cả route có `withAuth` + `/api/auth/*`                     |
 | `FIREBASE_ADMIN_CLIENT_EMAIL`    | Firebase Admin SDK                 | (như trên)                                                        |
 | `FIREBASE_ADMIN_PRIVATE_KEY`     | Firebase Admin SDK                 | (như trên)                                                        |
+| `ADMIN_EMAIL`                    | Server-side admin判定             | `/api/admin/global-config`, `/api/notifications/send`, signup (đặt claim) |
+| `NEXT_PUBLIC_ADMIN_EMAIL`        | Client-side admin UI gate          | Settings/Admin components (UI only, không phải bảo mật)           |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_USER_ID` | LINE Messaging API     | `/api/notifications/send`                                         |
 
-> `ANKI_CONNECT_URL` (env server) đã bị loại bỏ — URL AnkiConnect giờ là per-user, đọc từ `settings.anki_connect_url` phía client (fallback `http://localhost:8765`).
+> `ANKI_CONNECT_URL` (env server) và `API_SECRET`/`x-api-secret` đã bị loại bỏ. URL AnkiConnect giờ per-user (`settings/{uid}.anki_connect_url`, fallback `http://localhost:8765`); auth chuyển sang session cookie.
 
 ---
 
@@ -116,6 +126,9 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 
 | HTTP Method       | Endpoint                       | Chức năng chính                                                                                       |
 | ----------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| **POST, DELETE**  | `/api/auth/session`            | POST: đổi Firebase ID token → set session cookie; DELETE: revoke + xóa cookie (logout)                |
+| **POST**          | `/api/auth/signup`             | Tạo user (Admin SDK) + seed defaults + đặt admin claim nếu email == ADMIN_EMAIL                       |
+| **GET, POST**     | `/api/admin/global-config`     | GET: đọc `settings/global`; POST (**admin only**): ghi feature flags (ai_model/tts/unsplash)          |
 | **POST**          | `/api/entries/save`            | Lưu Entry vào Firestore (deferred `reviewed` hoặc `synced` kèm note ids)                              |
 | **GET, POST**     | `/api/entries/sync`            | GET: jobs (entries `reviewed` + card_types) để client tạo notes; POST: nhận kết quả → update `synced` |
 | **POST**          | `/api/entries/check-duplicate` | Kiểm tra từ/thuật ngữ trùng lặp                                                                       |
