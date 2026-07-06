@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { FlashcardReviewLayout } from '@/components/review/FlashcardReviewLayout'
 import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
@@ -11,17 +12,19 @@ import { useCardMedia } from '@/hooks/useCardMedia'
 import { useToast } from '@/components/ui/Toast'
 import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import { ArrowLeft, Check } from 'lucide-react'
-import type { Entry } from '@/types'
+import type { Entry, CardTemplate } from '@/types'
 
 interface CardTypeItem {
   id: string
   name: string
   description?: string
+  template?: CardTemplate
 }
 
 export default function HistoryDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const id = params.id as string
 
   const [entry, setEntry] = useState<Partial<Entry>>({})
@@ -37,27 +40,33 @@ export default function HistoryDetailPage() {
   const toast = useToast()
 
   useEffect(() => {
+    if (authLoading) return
     async function load() {
       if (!id) return
       try {
         const snap = await getDoc(doc(db, 'entries', id))
-        if (!snap.exists()) {
+        // Ownership check: entry của user khác → hiển thị như không tồn tại
+        if (!snap.exists() || snap.data()?.user_id !== user?.uid) {
           setNotFound(true)
           return
         }
         const data = { id: snap.id, ...snap.data() } as Entry
         setEntry(data)
 
-        // Card types theo form_type + language của entry
+        // Card types theo form_type + language của entry (per-user)
         try {
-          const q = query(collection(db, 'card_types'), where('form_type', '==', data.form_type))
+          const q = query(
+            collection(db, 'card_types'),
+            where('user_id', '==', user!.uid),
+            where('form_type', '==', data.form_type),
+          )
           const ctSnap = await getDocs(q)
-          type Fetched = { id: string; name: string; description?: string; sort_order?: number; is_active?: boolean; language?: string | null }
+          type Fetched = { id: string; name: string; description?: string; sort_order?: number; is_active?: boolean; language?: string | null; template?: CardTemplate }
           const fetched: Fetched[] = ctSnap.docs
             .map(d => ({ id: d.id, ...(d.data() as Omit<Fetched, 'id'>) }))
             .filter(ct => ct.is_active !== false && (!data.language || !ct.language || ct.language === data.language))
             .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          setCardTypes(fetched.map(ct => ({ id: ct.id, name: ct.name, description: ct.description })))
+          setCardTypes(fetched.map(ct => ({ id: ct.id, name: ct.name, description: ct.description, template: ct.template })))
           const preset = data.card_type_ids?.length
             ? data.card_type_ids.filter(cid => fetched.some(ct => ct.id === cid))
             : fetched.map(ct => ct.id)
@@ -73,7 +82,7 @@ export default function HistoryDetailPage() {
       }
     }
     load()
-  }, [id])
+  }, [id, user, authLoading])
 
   const handleDeckChange = useCallback(async (deckId: string) => {
     setSelectedDeckId(deckId)
@@ -118,6 +127,7 @@ export default function HistoryDetailPage() {
         word_type: entry.word_type,
         hiragana: entry.hiragana,
         pinyin: entry.pinyin,
+        han_viet: entry.han_viet,
         ipa: entry.ipa,
         example_sentence: entry.example_sentence,
         example_translation: entry.example_translation,

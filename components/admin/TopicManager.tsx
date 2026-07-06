@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, where, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -14,6 +15,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Topic } from '@/types'
@@ -26,7 +28,15 @@ interface TopicDraft {
 
 const EMPTY_DRAFT: TopicDraft = { name: '', sort_order: 0, is_active: true }
 
-export function TopicManager() {
+interface TopicManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function TopicManager({ ownerId: ownerIdProp }: TopicManagerProps = {}) {
+  const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -42,12 +52,18 @@ export function TopicManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !ownerId) return
     async function fetchTopics() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'topics'), where('form_type', '==', FormType.IT), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, form_type, sort_order)
+        const q = query(collection(db, 'topics'), where('user_id', '==', ownerId), where('form_type', '==', FormType.IT))
         const snapshot = await getDocs(q)
-        setTopics(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Topic)))
+        setTopics(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Topic))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching topics:', error)
       } finally {
@@ -55,9 +71,11 @@ export function TopicManager() {
       }
     }
     fetchTopics()
-  }, [refreshKey])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<Topic>('topics', setTopics, refresh)
+  const canReorder = !search && !filterStatus
 
   const filteredTopics = useMemo(() => {
     let result = topics
@@ -90,6 +108,7 @@ export function TopicManager() {
       } else {
         await addDoc(collection(db, 'topics'), {
           ...draft,
+          user_id: ownerId,
           form_type: FormType.IT,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
@@ -207,6 +226,7 @@ export function TopicManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading topics...'

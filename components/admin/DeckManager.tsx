@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
     collection,
     query,
-    orderBy,
+    where,
     getDocs,
     addDoc,
     updateDoc,
@@ -14,6 +14,7 @@ import {
     deleteField,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { Card } from '@/components/ui/Card';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -22,20 +23,37 @@ import { Modal } from '@/components/ui/Modal';
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField';
 import { Plus, Pencil, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useSortableList } from '@/hooks/useSortableList';
 import { verifyAttrs } from '@/verify/core/contract';
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ensureDeck, renameDeck, deleteDeckWithCleanup, setDeckSuspended, syncAllDecks } from '@/lib/flashcard-service/client-ops';
 import { FormType, LanguageType } from '@/types';
 import type { DeckConfig } from '@/types';
 
-/** Gọi API đồng bộ deck với Anki; throw nếu thất bại (Anki offline / lỗi). */
+/**
+ * Đồng bộ deck với Anki client-side (browser → AnkiConnect của user); throw nếu Anki offline / lỗi.
+ * Giữ chữ ký `{ op, ... }` để không đổi call site.
+ */
 async function postDeckSync(body: Record<string, unknown>): Promise<void> {
-    const res = await fetch('/api/anki/decks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Anki sync failed');
+    const client = await getAnkiClientFromSettings();
+    const op = (body.op as string) ?? 'ensure';
+    switch (op) {
+        case 'rename':
+            await renameDeck(client, body.oldName as string, body.newName as string);
+            break;
+        case 'delete':
+            await deleteDeckWithCleanup(client, body.deckName as string);
+            break;
+        case 'suspend':
+            await setDeckSuspended(client, body.deckName as string, true);
+            break;
+        case 'unsuspend':
+            await setDeckSuspended(client, body.deckName as string, false);
+            break;
+        case 'ensure':
+        default:
+            await ensureDeck(client, body.deckName as string);
+            break;
     }
 }
 
@@ -71,7 +89,15 @@ const EMPTY_DRAFT: DeckDraft = {
     sort_order: 0,
 };
 
-export function DeckManager() {
+interface DeckManagerProps {
+    /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+     *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+    ownerId?: string;
+}
+
+export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
+    const { user, loading: authLoading } = useAuth();
+    const ownerId = ownerIdProp ?? user?.uid;
     const [decks, setDecks] = useState<DeckConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -123,12 +149,18 @@ export function DeckManager() {
     };
 
     useEffect(() => {
+        if (authLoading || !ownerId) return;
         async function fetchDecks() {
             setLoading(true);
             try {
-                const q = query(collection(db, 'decks'), orderBy('sort_order', 'asc'));
+                // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+                const q = query(collection(db, 'decks'), where('user_id', '==', ownerId));
                 const snapshot = await getDocs(q);
-                setDecks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as DeckConfig));
+                setDecks(
+                    snapshot.docs
+                        .map((d) => ({ id: d.id, ...d.data() }) as DeckConfig)
+                        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+                );
             } catch (error) {
                 console.error('Error fetching decks:', error);
             } finally {
@@ -136,9 +168,11 @@ export function DeckManager() {
             }
         }
         fetchDecks();
-    }, [refreshKey]);
+    }, [refreshKey, ownerId, authLoading]);
 
     const refresh = () => setRefreshKey((k) => k + 1);
+    const handleReorder = useSortableList<DeckConfig>('decks', setDecks, refresh);
+    const canReorder = !search && activeFilters.length === 0;
 
     const openCreate = () => {
         setEditing(null);
@@ -177,6 +211,7 @@ export function DeckManager() {
                 });
             } else {
                 await addDoc(collection(db, 'decks'), {
+                    user_id: ownerId,
                     anki_deck_name: draft.anki_deck_name,
                     display_name: draft.display_name,
                     form_type: draft.form_type,
@@ -236,20 +271,12 @@ export function DeckManager() {
         if (decks.length === 0) return;
         setSyncing(true);
         try {
-            const res = await fetch('/api/anki/decks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    op: 'sync-all',
-                    decks: decks.map((d) => ({ name: d.anki_deck_name, is_active: d.is_active })),
-                }),
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || 'Sync failed');
-            }
-            const data = await res.json();
-            if (data.failed?.length) {
+            const client = await getAnkiClientFromSettings();
+            const data = await syncAllDecks(
+                client,
+                decks.map((d) => ({ name: d.anki_deck_name, is_active: d.is_active })),
+            );
+            if (data.failed.length) {
                 toast.warning(`Synced ${data.synced}/${data.total} decks. Some failed — is Anki open?`);
             } else {
                 toast.success(`Synced ${data.synced} decks with Anki`);
@@ -465,6 +492,7 @@ export function DeckManager() {
                 columns={columns}
                 keyField="id"
                 onRowClick={(row) => openEdit(row)}
+                onReorder={canReorder ? handleReorder : undefined}
                 emptyMessage={
                     loading
                         ? 'Loading decks...'

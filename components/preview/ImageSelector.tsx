@@ -135,13 +135,13 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
       )}
 
       {loading ? (
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="aspect-square bg-surface rounded-[10px] animate-pulse" />
           ))}
         </div>
       ) : images.length > 0 ? (
-        <div className="grid grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {images.slice(0, 4).map(img => {
             const isSelected = selectedUrl === img.url
             return (

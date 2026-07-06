@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { FieldWrapper } from '@/components/ui/FormField'
 import { CreatableSelect } from './CreatableSelect'
 import { useToast } from '@/components/ui/Toast'
@@ -23,11 +24,14 @@ interface CategoryCreatableFieldProps {
 /** Pulldown category có tìm kiếm + tạo category mới ngay (không cần popup). Dùng trong Create. */
 export function CategoryCreatableField({ formType, value, onChange, onClear }: CategoryCreatableFieldProps) {
   const toast = useToast()
+  const { user, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Pick<Category, 'id' | 'name' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function fetchCategories() {
       if (!formType) {
         setCategories([])
@@ -38,6 +42,7 @@ export function CategoryCreatableField({ formType, value, onChange, onClear }: C
         const dbFormType: FormType = UI_FORM_TYPE_MAP[formType]
         const q = query(
           collection(db, 'categories'),
+          where('user_id', '==', uid),
           where('form_type', '==', dbFormType),
           where('is_active', '==', true),
         )
@@ -53,7 +58,7 @@ export function CategoryCreatableField({ formType, value, onChange, onClear }: C
       }
     }
     fetchCategories()
-  }, [formType])
+  }, [formType, user, authLoading])
 
   const handleCreate = async (name: string) => {
     if (!formType) return

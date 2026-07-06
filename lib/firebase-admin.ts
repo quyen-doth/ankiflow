@@ -4,10 +4,12 @@
 
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth, Auth } from 'firebase-admin/auth';
 
 // Singleton — tránh khởi tạo nhiều lần trong Next.js dev mode (hot reload)
 let adminApp: App;
 let adminDb: Firestore;
+let adminAuth: Auth;
 
 function getAdminApp(): App {
   if (!adminApp) {
@@ -32,4 +34,11 @@ export function getAdminDb(): Firestore {
     adminDb = getFirestore(getAdminApp());
   }
   return adminDb;
+}
+
+export function getAdminAuthInstance(): Auth {
+  if (!adminAuth) {
+    adminAuth = getAuth(getAdminApp());
+  }
+  return adminAuth;
 }

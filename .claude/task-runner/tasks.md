@@ -1,0 +1,46 @@
+# Danh sách Task — AnkiFlow
+
+> **Trạng thái:** `[ ]` Chờ · `[~]` Đang chạy · `[x]` Hoàn thành · `[!]` Lỗi  
+> **Mức ưu tiên:** `Cao` · `Trung` · `Thấp`  
+> **Category:** `UI/UX` · `API/Backend` · `Testing` · `Docs` · `Refactor` · `Bug Fix` `New feature`
+
+---
+
+### 📄 Create
+
+| #   | Category         | Mức ưu tiên | Trạng thái                                          | Tiêu đề                                                             | Yêu cầu chi tiết                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Nhánh |
+| --- | ---------------- | ----------- | --------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | --- |
+| 1   | Bug Fix          | Cao         | [ ]                                                 | GTT khong hoat dong tren moi truong prod sau khi deploy len Vercel  |
+| -   |
+| 2   | New feature      | Trung       | [ ]                                                 | TInh nang dong bo hoa sau                                           | Muc dich: Luu the ngay ca khi khong duoc ket noi voi anki. Y tuong: tao the va luu vao firebase. khi co du lieu chua duoc dong bo thi co cham do thong bao chua dong bo. nguoi dung co the nhan nut dong bo khi da ket noi duoc voi ankiconnect tai local.                                                                                                                                                                                                                                                                                                                      | -     |
+| 4   | New feature      | Cao         | [ ]                                                 | Them tu Han Viet cho tieng Trung va tieng Nhat                      | Them field moi cho 2 ngon ngu nay. dong thoi cung can chinh sua thu tu cac field trong cac content type                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |       |
+| 5   | New feature      | Cao         | [ ]                                                 | Tuy chon ngon ngu dau ra cua flashcard                              | Y tuong: truoc khi tao card co the chon duoc ngon ngu duoc tao cua the, dua vao ngon ngu duoc chon thi response cua AI cung se khac. Toi dang suy nghi ve 3 huong di. 1 la chon ngon ngu tao ngay trong trang create. 2 la cai dat ngon ngu tao trong content type. 3 la cai dat trong trang admin hoac settings. Chu y: Co anh huong den task create-4. toi cung mong muon sau nay mo rong sau ankiflow thanh nhieu nguoi, nhieu quoc gia co the su dung. vay nen hay doc @README.md de biet them chi tiet ve cac tinh nang toi muon co trong tuong lai de thuc hien ke hoach. |       |     |
+| 6   | Refactor         | Trung       | [ ]                                                 | Cache cac thong tin da nhap ma chua tao card, tranh mat khi reload. |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |       |
+| 7   | Bug Fix          | Cao         | [ ]                                                 | Giai quyet hanh vi khong mong muon trong khi tao the bang batch     | Cu the: khi nhan to hop hon enter + Command de tao the theo batch, thi hanh vi hien tai lai la tao field batch tiep theo, sau do moi goi AI de tao the.                                                                                                                                                                                                                                                                                                                                                                                                                         |       |
+| 8   | Refactor         | Cao         | Toc do man hinh popup hien ra khi tao the rat cham. | Yeu cau tim nguyen nhan gay xu ly cham va debug.                    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |       |
+| 9   | Refactor, Design | Trung       | [ ]                                                 | Redesign cho cac thong bao                                          | Chinh sua mau sac cua cac thong bao sao cho match voi system design. tham khao @designs/ankiflow_design_v2/system_design.html va @ankiflow/docs/DESIGN.md Ben canh do chinh sua logic tat thong bao tat sau khi hien thi tu 5-10 giay                                                                                                                                                                                                                                                                                                                                           |       |
+
+| 10 | Refactor | Trung | [ ] | Neu ngon ngu khong duoc chon thi dua tren tu ngu nhap vao de phong doan va hoan thanh cac field khac. |
+
+---
+
+### 📄 Admin
+
+| #   | Category | Mức ưu tiên | Trạng thái | Tiêu đề                                                                      | Yêu cầu chi tiết | Nhánh |
+| --- | -------- | ----------- | ---------- | ---------------------------------------------------------------------------- | ---------------- | ----- |
+| 1   | Refactor | Trung       | [ ]        | Drag & drop de thay doi sort order cho tat ca cac noi dung trong trang admin |                  |       |
+| 2   | Refactor | Trung       | [ ]        | Chinh sua thoi gian trigger gui tin nhan sang gio Nhat                       |                  |       |
+
+---
+
+### 📄 History
+
+| #   | Category | Mức ưu tiên | Trạng thái | Tiêu đề                                                  | Yêu cầu chi tiết | Nhánh |
+| --- | -------- | ----------- | ---------- | -------------------------------------------------------- | ---------------- | ----- |
+| 1   | Debug    | Cao         | [ ]        | Debug cho van de khong the xoa duoc the tu trang history |                  | -     |
+
+### Others
+
+| #   | Category | Mức ưu tiên | Trạng thái | Tiêu đề                                                | Yêu cầu chi tiết | Nhánh |
+| --- | -------- | ----------- | ---------- | ------------------------------------------------------ | ---------------- | ----- |
+| 1   | UI/UX    | Cao         | [ ]        | Chinh sua va sap xep cac field trong tung content type |                  | -     |

@@ -58,7 +58,7 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
 
       {/* Title row */}
       {(displayTitle || description || actions) && (
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
             {displayTitle && (
               <h1 className="text-page-title font-extrabold text-ink leading-tight tracking-[-0.02em]">
@@ -70,7 +70,7 @@ export function PageHeader({ title, crumbs, description, actions, className }: P
             )}
           </div>
           {actions && (
-            <div className="flex items-center gap-3 flex-shrink-0 pt-1">
+            <div className="flex items-center gap-3 flex-wrap sm:flex-shrink-0 sm:pt-1">
               {actions}
             </div>
           )}

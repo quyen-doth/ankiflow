@@ -1,4 +1,4 @@
-import type { IFlashcardService, AnkiNote, AnkiCardInfo, CreateModelParams } from './types'
+import type { IFlashcardService, AnkiNote, AnkiCardInfo, AnkiNoteInfo, CreateModelParams } from './types'
 
 interface AnkiConnectResponse<T> {
   result: T;
@@ -34,7 +34,9 @@ export class AnkiConnectProvider implements IFlashcardService {
       
       return data.result;
     } catch (error) {
-      console.error(`AnkiConnect Error (${action}):`, error);
+      // KHÔNG log ở đây: browser gọi trực tiếp AnkiConnect và poll mỗi 30s —
+      // khi Anki đóng / CORS chưa cho phép, mỗi lần fail sẽ spam console.
+      // Callers tự xử lý: ping() nuốt lỗi → {connected:false}; export/deck ops hiện toast.
       throw error;
     }
   }
@@ -75,6 +77,11 @@ export class AnkiConnectProvider implements IFlashcardService {
 
   async findNotes(query: string): Promise<number[]> {
     return await this.invoke<number[]>('findNotes', { query });
+  }
+
+  async notesInfo(noteIds: number[]): Promise<AnkiNoteInfo[]> {
+    if (noteIds.length === 0) return [];
+    return await this.invoke<AnkiNoteInfo[]>('notesInfo', { notes: noteIds });
   }
 
   async findCards(query: string): Promise<number[]> {
@@ -121,6 +128,27 @@ export class AnkiConnectProvider implements IFlashcardService {
       css: params.css || '',
       isCloze: false,
       cardTemplates: params.cardTemplates,
+    });
+  }
+
+  async updateModelStyling(modelName: string, css: string): Promise<void> {
+    await this.invoke<null>('updateModelStyling', {
+      model: { name: modelName, css },
+    });
+  }
+
+  async updateModelTemplates(modelName: string, templates: { Name: string; Front: string; Back: string }[]): Promise<void> {
+    // AnkiConnect cần `templates` là DICT keyed theo tên card template, value { Front, Back }.
+    // Gửi mảng sẽ gây "'list' object has no attribute 'get'".
+    const templatesDict: Record<string, { Front: string; Back: string }> = {};
+    for (const t of templates) {
+      templatesDict[t.Name] = { Front: t.Front, Back: t.Back };
+    }
+    await this.invoke<null>('updateModelTemplates', {
+      model: {
+        name: modelName,
+        templates: templatesDict,
+      },
     });
   }
 }

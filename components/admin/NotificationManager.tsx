@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -14,6 +14,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper } from '@/components/ui/FormField'
 import { Plus, Pencil, Trash2, Bell, Send } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useAuth } from '@/components/providers/AuthProvider'
 import type { NotificationTrigger, DeckConfig } from '@/types'
 
 interface TriggerDraft {
@@ -45,6 +46,11 @@ const LANGUAGES = [
 ]
 
 export function NotificationManager() {
+  // ADMIN-ONLY: LINE notifications dùng credentials của chủ app (env) — user thường
+  // không thấy UI này; server route /api/notifications/send cũng gate theo ADMIN_EMAIL.
+  const { user } = useAuth()
+  const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+
   const [triggers, setTriggers] = useState<NotificationTrigger[]>([])
   const [decks, setDecks] = useState<DeckConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,15 +65,26 @@ export function NotificationManager() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
+    if (!user) return
+    const uid = user.uid
     async function fetchData() {
       setLoading(true)
       try {
+        // Sort in-memory thay orderBy — tránh composite index với user_id
         const [triggerSnap, deckSnap] = await Promise.all([
-          getDocs(query(collection(db, 'notification_triggers'), orderBy('name', 'asc'))),
-          getDocs(query(collection(db, 'decks'), orderBy('sort_order', 'asc'))),
+          getDocs(query(collection(db, 'notification_triggers'), where('user_id', '==', uid))),
+          getDocs(query(collection(db, 'decks'), where('user_id', '==', uid))),
         ])
-        setTriggers(triggerSnap.docs.map(d => ({ id: d.id, ...d.data() }) as NotificationTrigger))
-        setDecks(deckSnap.docs.map(d => ({ id: d.id, ...d.data() }) as DeckConfig))
+        setTriggers(
+          triggerSnap.docs
+            .map(d => ({ id: d.id, ...d.data() }) as NotificationTrigger)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        )
+        setDecks(
+          deckSnap.docs
+            .map(d => ({ id: d.id, ...d.data() }) as DeckConfig)
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching triggers:', error)
       } finally {
@@ -75,7 +92,7 @@ export function NotificationManager() {
       }
     }
     fetchData()
-  }, [refreshKey])
+  }, [refreshKey, user])
 
   const refresh = () => setRefreshKey(k => k + 1)
 
@@ -111,6 +128,7 @@ export function NotificationManager() {
       } else {
         await addDoc(collection(db, 'notification_triggers'), {
           ...draft,
+          user_id: user?.uid,
           type: 'vocab_review',
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
@@ -262,6 +280,21 @@ export function NotificationManager() {
       ),
     },
   ]
+
+  // Sau khi mọi hooks đã chạy (rules-of-hooks) — user thường thấy thông báo thay vì UI quản lý
+  if (!isAdmin) {
+    return (
+      <Card>
+        <div className="flex items-center gap-2 mb-2">
+          <Bell className="w-4 h-4 text-slate-400" />
+          <h2 className="text-body font-bold font-semibold text-slate-600">Notification Triggers</h2>
+        </div>
+        <p className="text-sm text-slate-600">
+          LINE notifications are managed by the app owner and are not available for this account.
+        </p>
+      </Card>
+    )
+  }
 
   return (
     <Card>

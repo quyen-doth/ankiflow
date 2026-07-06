@@ -1,0 +1,63 @@
+/**
+ * Client-side AnkiConnect — browser gọi thẳng AnkiConnect trên máy của CHÍNH user
+ * (mặc định http://localhost:8765), thay vì đi qua API route server.
+ *
+ * Lý do: trên bản deploy (Vercel), localhost của server không phải máy user —
+ * chỉ có browser của user mới chạm được Anki Desktop của họ.
+ *
+ * Yêu cầu phía user khi dùng bản deploy: thêm domain app vào `webCorsOriginList`
+ * trong config của AnkiConnect addon (Tools → Add-ons → AnkiConnect → Config).
+ */
+import { doc, getDoc } from 'firebase/firestore'
+import { db, auth } from '@/lib/firebase'
+import { AnkiConnectProvider } from './anki-connect-provider'
+
+export const DEFAULT_ANKI_CONNECT_URL = 'http://localhost:8765'
+
+let cachedClient: { url: string; client: AnkiConnectProvider } | null = null
+let cachedUrl: string | null = null
+
+/** Instance AnkiConnect cho browser — cache theo URL. */
+export function getAnkiClient(url: string = DEFAULT_ANKI_CONNECT_URL): AnkiConnectProvider {
+  if (!cachedClient || cachedClient.url !== url) {
+    cachedClient = { url, client: new AnkiConnectProvider(url) }
+  }
+  return cachedClient.client
+}
+
+/**
+ * URL AnkiConnect từ settings CỦA USER (`settings/{uid}.anki_connect_url`),
+ * fallback doc `default` (dữ liệu cũ), fallback cuối cùng là localhost:8765.
+ * Cache trong session để poll 30s không tốn Firestore read mỗi lần —
+ * sau khi user đổi URL trong Settings, gọi `resetAnkiClientCache()` để áp dụng.
+ */
+export async function resolveAnkiConnectUrl(): Promise<string> {
+  if (cachedUrl) return cachedUrl
+  try {
+    // CHỈ đọc settings/{uid} (per-user). KHÔNG fallback settings/default: doc đó là
+    // secrets của chủ app — Security Rules chặn non-admin đọc, và nó không còn chứa
+    // anki_connect_url nữa. Thiếu field → dùng hằng số mặc định.
+    const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
+    let url: string | undefined
+    if (uid) {
+      const userSnap = await getDoc(doc(db, 'settings', uid))
+      if (userSnap.exists()) {
+        url = (userSnap.data() as { anki_connect_url?: string }).anki_connect_url?.trim()
+      }
+    }
+    cachedUrl = url || DEFAULT_ANKI_CONNECT_URL
+  } catch {
+    cachedUrl = DEFAULT_ANKI_CONNECT_URL
+  }
+  return cachedUrl
+}
+
+/** Client AnkiConnect với URL đã resolve từ settings. */
+export async function getAnkiClientFromSettings(): Promise<AnkiConnectProvider> {
+  return getAnkiClient(await resolveAnkiConnectUrl())
+}
+
+export function resetAnkiClientCache(): void {
+  cachedClient = null
+  cachedUrl = null
+}

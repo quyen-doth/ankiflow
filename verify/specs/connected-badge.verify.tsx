@@ -17,7 +17,7 @@ const EXPECTED_CONNECTED: Record<string, boolean> = {
 registerUnit<ConnectedBadgeProps>({
   id: 'ConnectedBadge',
   title: 'ConnectedBadge',
-  description: 'Chỉ báo kết nối Anki: nhận prop hoặc tự poll /api/anki/connect.',
+  description: 'Chỉ báo kết nối Anki: nhận prop hoặc tự ping AnkiConnect (localhost:8765) từ browser.',
   kind: 'component',
   render: props => <ConnectedBadge {...props} />,
   propsSchema: z.object({
@@ -36,11 +36,11 @@ registerUnit<ConnectedBadgeProps>({
     },
     {
       id: 'polled-ok',
-      description: 'Tự poll, mock /api/anki/connect trả 200 → Connected.',
+      description: 'Tự ping, mock AnkiConnect trả version 6 → Connected.',
       props: {},
       mocks: {
         fetch: [
-          { match: '/api/anki/connect', response: { status: 200, json: { success: true } } },
+          { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
         ],
       },
       act: async ctx => {
@@ -49,11 +49,14 @@ registerUnit<ConnectedBadgeProps>({
     },
     {
       id: 'polled-down',
-      description: 'Tự poll, mock trả 503 → Anki offline.',
+      description: 'Tự ping, mock AnkiConnect trả error → Anki offline.',
       props: {},
       mocks: {
         fetch: [
-          { match: '/api/anki/connect', response: { status: 503, json: { success: false } } },
+          {
+            match: 'localhost:8765',
+            response: { status: 200, json: { result: null, error: 'collection is not available' } },
+          },
         ],
       },
       act: async ctx => {
@@ -63,10 +66,10 @@ registerUnit<ConnectedBadgeProps>({
     {
       id: 'probe-fetch-throws',
       probe: true,
-      description: 'Probe: fetch ném lỗi mạng → vẫn hiển thị Anki offline, không crash.',
+      description: 'Probe: fetch ném lỗi mạng (Anki đóng) → vẫn hiển thị Anki offline, không crash.',
       props: {},
       mocks: {
-        fetch: [{ match: '/api/anki/connect', response: { reject: true } }],
+        fetch: [{ match: 'localhost:8765', response: { reject: true } }],
       },
       act: async ctx => {
         await ctx.wait(50)

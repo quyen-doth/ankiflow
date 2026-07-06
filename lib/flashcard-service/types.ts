@@ -10,6 +10,11 @@ export interface AnkiCardInfo {
   type: number
 }
 
+export interface AnkiNoteInfo {
+  noteId: number
+  fields: Record<string, { value: string; order: number }>
+}
+
 export interface IFlashcardService {
   ping(): Promise<{ connected: boolean; version?: number }>
   getDecks(): Promise<string[]>
@@ -17,6 +22,7 @@ export interface IFlashcardService {
   addNotes(notes: AnkiNote[]): Promise<number[]>
   updateNoteFields(noteId: number, fields: Record<string, string>): Promise<void>
   findNotes(query: string): Promise<number[]>
+  notesInfo(noteIds: number[]): Promise<AnkiNoteInfo[]>
   findCards(query: string): Promise<number[]>
   cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]>
   suspend(cardIds: number[]): Promise<boolean>
@@ -26,6 +32,8 @@ export interface IFlashcardService {
   storeMediaFile(filename: string, base64Data: string): Promise<string>
   getModelNames(): Promise<string[]>
   createModel(params: CreateModelParams): Promise<void>
+  updateModelStyling(modelName: string, css: string): Promise<void>
+  updateModelTemplates(modelName: string, templates: { Name: string; Front: string; Back: string }[]): Promise<void>
 }
 
 export interface CreateModelParams {

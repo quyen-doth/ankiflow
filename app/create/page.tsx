@@ -141,14 +141,17 @@ function CreateContent() {
         setIsGenerating(false);
     }, []);
 
-    const handleSelectType = useCallback((code: string) => {
-        setActiveCode(code);
-        // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
-        const next = contentTypes.find((ct) => ct.code === code);
-        setBatchMode(next?.default_create_mode === 'batch');
-        setCanSubmit(false);
-        setBatchCount(0);
-    }, [contentTypes]);
+    const handleSelectType = useCallback(
+        (code: string) => {
+            setActiveCode(code);
+            // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
+            const next = contentTypes.find((ct) => ct.code === code);
+            setBatchMode(next?.default_create_mode === 'batch');
+            setCanSubmit(false);
+            setBatchCount(0);
+        },
+        [contentTypes],
+    );
 
     const handleModeChange = useCallback((batch: boolean) => {
         setBatchMode(batch);
@@ -208,8 +211,8 @@ function CreateContent() {
                         <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
                             <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
                             <p className="text-sm font-medium text-ink flex-1">
-                                Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''} to
-                                Anki!
+                                Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''}{' '}
+                                to Anki!
                             </p>
                             <button
                                 type="button"
@@ -226,56 +229,55 @@ function CreateContent() {
             <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {loadingTypes ? (
-                        <div className="h-[46px] w-72 bg-[#ececea] rounded-[11px] animate-pulse" />
-                    ) : (
-                        <div className="inline-flex flex-wrap gap-1 bg-[#ececea] rounded-[11px] p-1">
-                            {contentTypes.map((ct) => {
-                                const Icon = resolveIcon(ct);
-                                const isActive = activeCode === ct.code;
-                                return (
-                                    <button
-                                        key={ct.id}
-                                        type="button"
-                                        onClick={() => handleSelectType(ct.code)}
-                                        className={cn(
-                                            'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
-                                            'focus-visible:ring-2 focus-visible:ring-primary/30',
-                                            isActive
-                                                ? 'bg-white text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
-                                                : 'bg-transparent text-[#7c7f87] hover:text-ink',
-                                        )}
-                                    >
-                                        <Icon className="w-4 h-4" />
-                                        <span>{ct.name}</span>
-                                    </button>
-                                );
-                            })}
-                            <button
-                                type="button"
-                                onClick={() => router.push('/admin?tab=content-types')}
-                                className={cn(
-                                    'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
-                                    'focus-visible:ring-2 focus-visible:ring-primary/30 bg-transparent text-[#7c7f87] hover:text-ink',
-                                )}
-                            >
-                                <SlidersHorizontal className="w-4 h-4" />
-                                <span>Custom</span>
-                                <ArrowUpRight className="w-3 h-3 text-[#aeb0b7]" />
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {loadingTypes ? (
+                            <div className="h-[46px] w-72 bg-[#ececea] rounded-[11px] animate-pulse" />
+                        ) : (
+                            <div className="inline-flex flex-wrap gap-1 bg-[#ececea] rounded-[11px] p-1">
+                                {contentTypes.map((ct) => {
+                                    const Icon = resolveIcon(ct);
+                                    const isActive = activeCode === ct.code;
+                                    return (
+                                        <button
+                                            key={ct.id}
+                                            type="button"
+                                            onClick={() => handleSelectType(ct.code)}
+                                            className={cn(
+                                                'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
+                                                'focus-visible:ring-2 focus-visible:ring-primary/30',
+                                                isActive
+                                                    ? 'bg-white text-primary shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+                                                    : 'bg-transparent text-[#7c7f87] hover:text-ink',
+                                            )}
+                                        >
+                                            <Icon className="w-4 h-4" />
+                                            <span>{ct.name}</span>
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    type="button"
+                                    onClick={() => router.push('/admin?tab=content-types')}
+                                    className={cn(
+                                        'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
+                                        'focus-visible:ring-2 focus-visible:ring-primary/30 bg-transparent text-[#7c7f87] hover:text-ink',
+                                    )}
+                                >
+                                    <SlidersHorizontal className="w-4 h-4" />
+                                    <span>Custom</span>
+                                    <ArrowUpRight className="w-3 h-3 text-[#aeb0b7]" />
+                                </button>
+                            </div>
+                        )}
 
-                    <ModeToggle batch={batchMode} onChange={handleModeChange} />
-                  </div>
+                        <ModeToggle batch={batchMode} onChange={handleModeChange} />
+                    </div>
 
                     <Button
                         type="submit"
                         form={FORM_ID}
                         size="md"
                         disabled={!canSubmit || isGenerating}
-                        leftIcon={<Sparkles className="w-4 h-4" />}
                         className="shadow-button"
                     >
                         {batchMode ? `Generate ${batchCount} card${batchCount !== 1 ? 's' : ''}` : 'Generate'}
@@ -296,7 +298,9 @@ function CreateContent() {
                             onValidityChange={setCanSubmit}
                             onBatchCountChange={setBatchCount}
                             onBatchProgress={handleBatchProgress}
-                            registerCancel={(fn) => { cancelRef.current = fn; }}
+                            registerCancel={(fn) => {
+                                cancelRef.current = fn;
+                            }}
                             formId={FORM_ID}
                         />
                     )}
@@ -308,10 +312,12 @@ function CreateContent() {
                 title={batchMode ? 'Generating Cards' : 'Generating Cognitive Asset'}
                 steps={
                     batchMode
-                        ? [{
-                            label: `Generating cards ${batchProgress.done}/${batchProgress.total || batchCount}`,
-                            status: 'active' as const,
-                        }]
+                        ? [
+                              {
+                                  label: `Generating cards ${batchProgress.done}/${batchProgress.total || batchCount}`,
+                                  status: 'active' as const,
+                              },
+                          ]
                         : loadingSteps
                 }
                 progress={

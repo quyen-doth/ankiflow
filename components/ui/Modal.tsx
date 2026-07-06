@@ -14,7 +14,7 @@ interface ModalProps {
   title?: string
   description?: string
   children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
@@ -22,6 +22,7 @@ const sizeClasses = {
   sm: 'max-w-sm',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
 }
 
 export function Modal({ open, onClose, onConfirm, title, description, children, size = 'md', className }: ModalProps) {
@@ -61,7 +62,7 @@ export function Modal({ open, onClose, onConfirm, title, description, children, 
           {...verifyAttrs({ unit: 'Modal', open, size })}
         >
           <motion.div
-            className={cn('bg-white rounded-card shadow-modal border border-border w-full flex flex-col', sizeClasses[size], className)}
+            className={cn('bg-white rounded-card shadow-modal border border-border w-full flex flex-col max-h-[90vh]', sizeClasses[size], className)}
             variants={scaleModal}
           >
             {/* Header */}

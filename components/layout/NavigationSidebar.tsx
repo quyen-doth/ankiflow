@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { LayoutDashboard, PlusCircle, History, Shield, Settings, Menu, X } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Shield, Settings, Wrench, Menu, X, LogOut } from 'lucide-react';
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo';
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge';
+import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { logout } from '@/lib/auth';
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
 import { verifyAttrs } from '@/verify/core/contract';
 
@@ -17,39 +20,106 @@ const navItems = [
     { label: 'History', href: '/history', icon: History },
     { label: 'Admin', href: '/admin', icon: Shield },
     { label: 'Settings', href: '/settings', icon: Settings },
+    { label: 'App Settings', href: '/settings/admin', icon: Wrench, adminOnly: true },
 ] as const;
 
 export function NavigationSidebar() {
     const pathname = usePathname();
+    const { user } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [lastPathname, setLastPathname] = useState(pathname);
-    const [userName, setUserName] = useState<string>('');
+    const unsyncedCount = useUnsyncedCount();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState<string | null>(null);
+    const [signingOut, setSigningOut] = useState(false);
 
-    useEffect(() => {
-        async function fetchUserName() {
-            try {
-                const ref = doc(db, 'settings', 'default');
-                const snap = await getDoc(ref);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    if (data.user_name) setUserName(data.user_name);
-                }
-            } catch {
-                /* ignore */
-            }
-        }
-        fetchUserName();
+    const handleSignOut = useCallback(async () => {
+        setSigningOut(true);
+        await logout();
+        // Full reload: xóa sạch client state + để middleware nhận cookie đã bị xóa
+        window.location.href = '/login';
     }, []);
+
+    const handleSync = useCallback(async () => {
+        setIsSyncing(true)
+        setSyncResult(null)
+        try {
+            // 1. Lấy các entry reviewed + card_types từ server (server không đụng Anki).
+            const res = await fetch('/api/entries/sync', { cache: 'no-store' })
+            const { jobs } = await res.json()
+            if (!jobs || jobs.length === 0) {
+                setSyncResult('Nothing to sync')
+                return
+            }
+
+            // 2. Tạo note trong Anki của user (browser → localhost:8765).
+            //    createNotesForEntry dùng chung với export trực tiếp — kèm store audio/image.
+            const client = await getAnkiClientFromSettings()
+            await ensureModel(client)
+
+            const results: { entryId: string; noteIds: number[] }[] = []
+            let ankiFailed = 0
+            for (const job of jobs) {
+                try {
+                    const noteIds = await createNotesForEntry(client, job.entry, job.cardTypes)
+                    results.push({ entryId: job.entryId, noteIds })
+                } catch {
+                    ankiFailed++
+                }
+            }
+
+            if (results.length === 0) {
+                setSyncResult('Sync failed')
+                return
+            }
+
+            // 3. Báo kết quả về server để cập nhật status → synced.
+            //    PHẢI kiểm tra kết quả: notes đã nằm trong Anki — nếu status không được
+            //    ghi thì lần sync sau sẽ tạo notes trùng lặp.
+            const postRes = await fetch('/api/entries/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ results }),
+            })
+            if (!postRes.ok) {
+                setSyncResult('Sync incomplete — status not saved')
+                return
+            }
+            const { synced = 0, failed: persistFailed = 0 } = await postRes.json()
+
+            const failed = ankiFailed + persistFailed
+            if (synced > 0 && failed === 0) {
+                setSyncResult(`Synced ${synced} cards`)
+            } else if (synced > 0) {
+                setSyncResult(`Synced ${synced}, failed ${failed}`)
+            } else {
+                setSyncResult('Sync failed')
+            }
+        } catch {
+            setSyncResult('Sync error')
+        } finally {
+            setIsSyncing(false)
+            setTimeout(() => setSyncResult(null), 4000)
+        }
+    }, [])
 
     if (pathname !== lastPathname) {
         setLastPathname(pathname);
         setMobileOpen(false);
     }
 
+    const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const visibleNavItems = navItems.filter((item) => !('adminOnly' in item && item.adminOnly) || isAdmin);
+
+    // Longest-prefix wins: khi ở /settings/admin, chỉ mục /settings/admin sáng (không phải cả /settings).
+    const activeHref = visibleNavItems
+        .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
+        .reduce<string | null>((best, item) => (best && best.length >= item.href.length ? best : item.href), null);
+
     const nav = (
         <nav className="flex-1 flex flex-col gap-[2px]">
-            {navItems.map(({ label, href, icon: Icon }) => {
-                const isActive = pathname === href || pathname?.startsWith(href + '/');
+            {visibleNavItems.map(({ label, href, icon: Icon }) => {
+                const isActive = href === activeHref;
                 return (
                     <Link
                         key={href}
@@ -71,6 +141,11 @@ export function NavigationSidebar() {
                             )}
                         />
                         <span>{label}</span>
+                        {label === 'History' && unsyncedCount > 0 && (
+                            <span className="ml-auto bg-amber text-white text-[10px] font-bold leading-none rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                {unsyncedCount > 99 ? '99+' : unsyncedCount}
+                            </span>
+                        )}
                     </Link>
                 );
             })}
@@ -104,7 +179,7 @@ export function NavigationSidebar() {
             {/* Sidebar / drawer */}
             <aside
                 className={cn(
-                    'w-[200px] h-screen bg-surface flex flex-col px-3 py-[18px] fixed left-0 top-0 z-50 border-r border-border',
+                    'w-[240px] h-screen bg-surface flex flex-col px-3 py-[18px] fixed left-0 top-0 z-50 border-r border-border',
                     'transition-transform duration-200 md:translate-x-0',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full',
                 )}
@@ -130,20 +205,35 @@ export function NavigationSidebar() {
 
                 {/* Bottom: Anki status + User */}
                 <div className="mt-auto flex flex-col gap-2">
-                    <ConnectedBadge />
-                    {userName && (
+                    <ConnectedBadge
+                        unsyncedCount={unsyncedCount}
+                        onSync={handleSync}
+                        isSyncing={isSyncing}
+                        syncResult={syncResult}
+                    />
+                    {user?.email && (
                         <div className="flex items-center gap-2.5 px-1.5">
                             <div className="w-[26px] h-[26px] rounded-full bg-[#e7e4dd] flex items-center justify-center flex-shrink-0">
                                 <span className="text-[11px] font-bold text-slate-600">
-                                    {userName.charAt(0).toUpperCase()}
+                                    {user.email.charAt(0).toUpperCase()}
                                 </span>
                             </div>
-                            <div className="flex flex-col min-w-0">
+                            <div className="flex flex-col min-w-0 flex-1">
                                 <span className="text-[11.5px] font-bold text-ink leading-[1.1] truncate">
-                                    {userName}
+                                    {user.email}
                                 </span>
                                 <span className="text-[10.5px] text-slate-400">Personal workspace</span>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleSignOut}
+                                disabled={signingOut}
+                                aria-label="Sign out"
+                                title="Sign out"
+                                className="p-1.5 rounded-[7px] text-slate-400 hover:text-danger hover:bg-danger-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                            >
+                                <LogOut className="w-3.5 h-3.5" />
+                            </button>
                         </div>
                     )}
                 </div>

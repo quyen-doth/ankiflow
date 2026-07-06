@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -13,11 +14,24 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select, Textarea } from '@/components/ui/FormField'
-import { Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { Plus, Pencil, Trash2, Search, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType, LanguageType } from '@/types'
-import type { CardTypeConfig } from '@/types'
+import type { CardTypeConfig, CardTemplate } from '@/types'
+import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
+import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
+
+/** Slugify name → code (vd "Word → Meaning" → "word_to_meaning"). */
+function slugifyCode(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/→/g, ' to ')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
 
 const FORM_TYPE_LABELS: Record<FormType, string> = {
   [FormType.LANGUAGE]: 'Language',
@@ -42,6 +56,7 @@ interface CardTypeDraft {
   is_default: boolean
   is_active: boolean
   sort_order: number
+  template: CardTemplate
 }
 
 const EMPTY_DRAFT: CardTypeDraft = {
@@ -53,9 +68,18 @@ const EMPTY_DRAFT: CardTypeDraft = {
   is_default: false,
   is_active: true,
   sort_order: 0,
+  template: DEFAULT_TEMPLATES['word_to_meaning'],
 }
 
-export function CardTypeManager() {
+interface CardTypeManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps = {}) {
+  const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -65,6 +89,9 @@ export function CardTypeManager() {
   const [deleteTarget, setDeleteTarget] = useState<CardTypeConfig | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showErrors, setShowErrors] = useState(false)
+  const [codeEdited, setCodeEdited] = useState(false)
   const toast = useToast()
 
   const [search, setSearch] = useState('')
@@ -73,12 +100,18 @@ export function CardTypeManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !ownerId) return
     async function fetchCardTypes() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'card_types'), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+        const q = query(collection(db, 'card_types'), where('user_id', '==', ownerId))
         const snapshot = await getDocs(q)
-        setCardTypes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CardTypeConfig)))
+        setCardTypes(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as CardTypeConfig))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching card types:', error)
       } finally {
@@ -86,9 +119,11 @@ export function CardTypeManager() {
       }
     }
     fetchCardTypes()
-  }, [refreshKey])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<CardTypeConfig>('card_types', setCardTypes, refresh)
+  const canReorder = !search && !filterFormType && !filterLanguage && !filterStatus
 
   const filteredCardTypes = useMemo(() => {
     let result = cardTypes
@@ -102,9 +137,21 @@ export function CardTypeManager() {
     return result
   }, [cardTypes, search, filterFormType, filterLanguage, filterStatus])
 
+  // Validation: name & code không rỗng, mỗi mặt Front/Back ≥ 1 field.
+  const errors = {
+    name: !draft.name.trim(),
+    code: !draft.code.trim(),
+    front: draft.template.front.length === 0,
+    back: draft.template.back.length === 0,
+  }
+  const hasErrors = errors.name || errors.code || errors.front || errors.back
+
   const openCreate = () => {
     setEditing(null)
     setDraft(EMPTY_DRAFT)
+    setShowAdvanced(false)
+    setShowErrors(false)
+    setCodeEdited(false)
     setModalOpen(true)
   }
 
@@ -119,12 +166,29 @@ export function CardTypeManager() {
       is_default: cardType.is_default,
       is_active: cardType.is_active,
       sort_order: cardType.sort_order,
+      template: cardType.template ?? DEFAULT_TEMPLATES[cardType.code] ?? DEFAULT_TEMPLATES['word_to_meaning'],
     })
+    setShowAdvanced(false)
+    setShowErrors(false)
+    setCodeEdited(true) // card có sẵn: không tự đổi code theo name
     setModalOpen(true)
   }
 
+  // Đổi name → tự sinh code (chỉ khi tạo mới & người dùng chưa sửa tay code).
+  const handleNameChange = (name: string) => {
+    setDraft(d => {
+      if (editing || codeEdited) return { ...d, name }
+      const code = slugifyCode(name)
+      const template = DEFAULT_TEMPLATES[code] ?? d.template
+      return { ...d, name, code, template }
+    })
+  }
+
   const handleSave = async () => {
-    if (!draft.code.trim() || !draft.name.trim()) return
+    if (hasErrors) {
+      setShowErrors(true)
+      return
+    }
     setSaving(true)
     try {
       const base = {
@@ -135,6 +199,7 @@ export function CardTypeManager() {
         is_default: draft.is_default,
         is_active: draft.is_active,
         sort_order: draft.sort_order,
+        template: draft.template,
       }
       if (editing) {
         await updateDoc(doc(db, 'card_types', editing.id), {
@@ -145,6 +210,7 @@ export function CardTypeManager() {
       } else {
         await addDoc(collection(db, 'card_types'), {
           ...base,
+          user_id: ownerId,
           ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
@@ -287,6 +353,7 @@ export function CardTypeManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading card types...'
@@ -296,51 +363,107 @@ export function CardTypeManager() {
         }
       />
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} onConfirm={handleSave} title={editing ? 'Edit Card Type' : 'Add Card Type'} size="md">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldWrapper label="Code">
-              <Input value={draft.code} onChange={(e) => setDraft(d => ({ ...d, code: e.target.value }))} placeholder="e.g. word_meaning" />
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} onConfirm={handleSave} title={editing ? 'Edit Card Type' : 'Add Card Type'} size="xl">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-6">
+          {/* LEFT: metadata + structure */}
+          <div className="flex flex-col gap-4 min-w-0">
+            <FieldWrapper label="Name" error={showErrors && errors.name ? 'Name is required' : undefined}>
+              <Input
+                value={draft.name}
+                error={showErrors && errors.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="e.g. Word → Meaning"
+              />
             </FieldWrapper>
-            <FieldWrapper label="Name">
-              <Input value={draft.name} onChange={(e) => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="e.g. Word → Meaning" />
-            </FieldWrapper>
-          </div>
-          <FieldWrapper label="Description">
-            <Textarea
-              value={draft.description}
-              onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))}
-              placeholder="Optional description"
-              rows={2}
-            />
-          </FieldWrapper>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FieldWrapper label="Form Type">
-              <Select aria-label="Form Type" value={draft.form_type} onChange={(e) => setDraft(d => ({ ...d, form_type: e.target.value as FormType }))}>
-                {Object.values(FormType).map(ft => (<option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>))}
-              </Select>
-            </FieldWrapper>
-            <FieldWrapper label="Language">
-              <Select aria-label="Language" value={draft.language} onChange={(e) => setDraft(d => ({ ...d, language: e.target.value as LanguageType | typeof NO_LANGUAGE }))}>
-                <option value={NO_LANGUAGE}>—</option>
-                {Object.values(LanguageType).map(lang => (<option key={lang} value={lang}>{LANGUAGE_LABELS[lang]}</option>))}
-              </Select>
-            </FieldWrapper>
-          </div>
-          <FieldWrapper label="Sort Order">
-            <Input type="number" aria-label="Sort Order" value={draft.sort_order} onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))} />
-          </FieldWrapper>
-          <div className="flex flex-col gap-3">
-            <Toggle label="Default card type" description="Pre-selected by default when creating a new card" checked={draft.is_default} onChange={(v) => setDraft(d => ({ ...d, is_default: v }))} />
-            <Toggle label="Active" description="Visible and selectable in the Create flow" checked={draft.is_active} onChange={(v) => setDraft(d => ({ ...d, is_active: v }))} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldWrapper label="Form Type">
+                <SegmentedControl
+                  aria-label="Form Type"
+                  value={draft.form_type}
+                  onChange={(v) => setDraft(d => ({ ...d, form_type: v }))}
+                  options={Object.values(FormType).map(ft => ({ value: ft, label: FORM_TYPE_LABELS[ft] }))}
+                />
+              </FieldWrapper>
+              <FieldWrapper label="Language">
+                <SegmentedControl
+                  aria-label="Language"
+                  value={draft.language}
+                  onChange={(v) => setDraft(d => ({ ...d, language: v }))}
+                  options={[
+                    { value: NO_LANGUAGE, label: 'All' },
+                    ...Object.values(LanguageType).map(lang => ({ value: lang, label: LANGUAGE_LABELS[lang] })),
+                  ]}
+                />
+              </FieldWrapper>
+            </div>
+
+            <div className="border-t border-[#eaeae6] pt-4">
+              <CardStructureEditor
+                code={draft.code}
+                template={draft.template}
+                showErrors={showErrors}
+                onChange={template => setDraft(d => ({ ...d, template }))}
+              />
+              {showErrors && (errors.front || errors.back) && (
+                <p className="text-overline text-danger mt-2">
+                  Each side must have at least one field.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-[#eaeae6] pt-4">
+              <Toggle bare label="Default" checked={draft.is_default} onChange={(v) => setDraft(d => ({ ...d, is_default: v }))} />
+              <Toggle bare label="Active" checked={draft.is_active} onChange={(v) => setDraft(d => ({ ...d, is_active: v }))} />
+            </div>
+
+            {/* Advanced (collapsible): code, description, sort order */}
+            <div className="border-t border-[#eaeae6] pt-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(s => !s)}
+                className="flex items-center gap-1.5 text-overline uppercase tracking-[0.05em] text-slate-400 font-mono hover:text-ink transition-colors"
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+                Advanced
+              </button>
+              {showAdvanced && (
+                <div className="flex flex-col gap-4 mt-3">
+                  <FieldWrapper label="Code" error={showErrors && errors.code ? 'Code is required' : undefined}>
+                    <Input
+                      value={draft.code}
+                      error={showErrors && errors.code}
+                      onChange={(e) => { setCodeEdited(true); setDraft(d => ({ ...d, code: e.target.value })) }}
+                      placeholder="e.g. word_to_meaning"
+                    />
+                  </FieldWrapper>
+                  <FieldWrapper label="Description">
+                    <Textarea
+                      value={draft.description}
+                      onChange={(e) => setDraft(d => ({ ...d, description: e.target.value }))}
+                      placeholder="Optional description"
+                      rows={2}
+                    />
+                  </FieldWrapper>
+                  <FieldWrapper label="Sort Order">
+                    <Input type="number" aria-label="Sort Order" value={draft.sort_order} onChange={(e) => setDraft(d => ({ ...d, sort_order: Number(e.target.value) }))} />
+                  </FieldWrapper>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-3 justify-end mt-2">
-            <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving || !draft.code.trim() || !draft.name.trim()}>
-              {saving ? 'Saving...' : 'Save'}
-            </Button>
+          {/* RIGHT: sticky preview */}
+          <div className="md:sticky md:top-0 md:self-start">
+            <CardPreview template={draft.template} language={draft.language === NO_LANGUAGE ? null : draft.language} />
           </div>
+        </div>
+
+        <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-[#eaeae6]">
+          <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
         </div>
       </Modal>
 

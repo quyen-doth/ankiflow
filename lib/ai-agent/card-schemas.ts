@@ -46,6 +46,7 @@ export const japaneseCardSchema = z.object({
   hiragana: z.string().describe('Cách đọc hiragana'),
   katakana: z.string().describe('Katakana nếu là từ ngoại lai, nếu không để rỗng'),
   romaji: z.string().describe('Chuyển tự La-tinh (romaji)'),
+  han_viet: z.string().describe('Âm Hán Việt của Kanji trong từ, để rỗng nếu từ thuần kana'),
   meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
   word_type_vi: z.string().describe('Loại từ bằng tiếng Việt'),
   level: z.string().describe('Cấp độ JLPT nếu xác định được, vd N5'),

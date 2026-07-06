@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
 import type { Entry, CardTypeConfig } from '@/types'
 
-type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code'>
+type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
 
 interface PreviewEntryState {
   entry: Partial<Entry>
@@ -19,6 +20,7 @@ interface PreviewEntryState {
 }
 
 export function usePreviewEntry(): PreviewEntryState {
+  const { user, loading: authLoading } = useAuth()
   const [entry, setEntry] = useState<Partial<Entry>>({})
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
   const [selectedCardTypeIds, setSelectedCardTypeIds] = useState<string[]>([])
@@ -26,6 +28,8 @@ export function usePreviewEntry(): PreviewEntryState {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function init() {
       setIsLoading(true)
       setError(null)
@@ -67,6 +71,7 @@ export function usePreviewEntry(): PreviewEntryState {
       try {
         const q = query(
           collection(db, 'card_types'),
+          where('user_id', '==', uid),
           where('form_type', '==', pending.formType),
         )
         const snapshot = await getDocs(q)
@@ -78,6 +83,7 @@ export function usePreviewEntry(): PreviewEntryState {
           sort_order?: number
           is_active?: boolean
           language?: string | null
+          template?: CardTypeConfig['template']
         }
 
         const fetchedCardTypes: FetchedCardType[] = snapshot.docs
@@ -94,6 +100,7 @@ export function usePreviewEntry(): PreviewEntryState {
           name: ct.name,
           description: ct.description,
           code: (ct as Record<string, unknown>).code as string || ct.id,
+          template: ct.template,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0
@@ -110,7 +117,7 @@ export function usePreviewEntry(): PreviewEntryState {
     }
 
     init()
-  }, [])
+  }, [user, authLoading])
 
   return { entry, setEntry, cardTypes, selectedCardTypeIds, setSelectedCardTypeIds, isLoading, error }
 }

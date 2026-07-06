@@ -1,7 +1,10 @@
+import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { AuthContext } from '@/components/providers/AuthProvider'
 import { readContract } from './contract'
 import { verifyGlobals } from './globals'
 import { verifiersFor } from './registry'
+import { TEST_AUTH_USER } from './test-auth-user'
 import type {
   ActContext,
   Check,
@@ -23,6 +26,10 @@ export interface RunOptions {
 function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+// User giả cho mọi fixture (định nghĩa ở ./test-auth-user — xem file đó để biết lý do
+// tách riêng). Re-export để code cũ import từ runner.ts không phải đổi đường dẫn.
+export { TEST_AUTH_USER }
 
 // Container hiển thị (UnitPage) tái sử dụng root — tránh createRoot lặp khi
 // React StrictMode chạy effect 2 lần trong dev
@@ -138,7 +145,13 @@ export async function runFixture<P>(
     } else {
       reactRoot = createRoot(container)
     }
-    reactRoot.render(unit.render(fixture.props))
+    reactRoot.render(
+      createElement(
+        AuthContext.Provider,
+        { value: { user: { ...TEST_AUTH_USER }, loading: false } },
+        unit.render(fixture.props),
+      ),
+    )
     await flush()
 
     // --- Act ---

@@ -15,6 +15,8 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
 import { FormType } from '@/types'
@@ -71,6 +73,11 @@ const EMPTY_FIELD: FormFieldConfig = {
 }
 
 export function ContentTypeManager() {
+  // ADMIN-ONLY: content_types là SHARED toàn cục (doc id = form_type, routing cốt lõi
+  // toàn app) — sửa ảnh hưởng MỌI user ngay lập tức, không có bản per-user để bảo vệ.
+  const { user } = useAuth()
+  const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -103,6 +110,8 @@ export function ContentTypeManager() {
   }, [refreshKey])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<ContentType>('content_types', setContentTypes, refresh)
+  const canReorder = !search && !filterStatus
 
   const filteredContentTypes = useMemo(() => {
     let result = contentTypes
@@ -248,6 +257,18 @@ export function ContentTypeManager() {
     },
   ]
 
+  // Sau khi mọi hooks đã chạy (rules-of-hooks) — user thường thấy thông báo thay vì UI quản lý
+  if (!isAdmin) {
+    return (
+      <Card>
+        <h2 className="text-body font-bold font-semibold text-slate-600 mb-2">Content Types</h2>
+        <p className="text-sm text-slate-600">
+          Form layouts (Language / IT / General) are shared across all accounts and managed by the app owner.
+        </p>
+      </Card>
+    )
+  }
+
   return (
     <Card {...verifyAttrs({ unit: 'ContentTypeManager', rows: contentTypes.length, modalOpen, loading })}>
       <div className="flex items-center justify-between mb-4">
@@ -285,6 +306,7 @@ export function ContentTypeManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading content types...'
@@ -303,7 +325,7 @@ export function ContentTypeManager() {
       >
         <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-1">
           {/* Metadata */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrapper label="Name">
               <Input
                 aria-label="Content type name"
@@ -330,7 +352,7 @@ export function ContentTypeManager() {
               placeholder="Short description of this content type"
             />
           </FieldWrapper>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FieldWrapper label="Icon">
               <Input
                 aria-label="Icon name"
@@ -404,7 +426,7 @@ export function ContentTypeManager() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <FieldWrapper label="Field Key">
                   <Input
                     aria-label={`Field key ${index}`}
@@ -433,7 +455,7 @@ export function ContentTypeManager() {
                   </Select>
                 </FieldWrapper>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldWrapper label="Placeholder">
                   <Input
                     value={field.placeholder || ''}

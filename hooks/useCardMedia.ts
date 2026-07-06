@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useEffectiveMediaFlags } from '@/hooks/useEffectiveMediaFlags'
 import type { Entry } from '@/types'
 import type { ImageItem } from '@/components/preview/ImageSelector'
 
@@ -18,6 +19,8 @@ export function useCardMedia(
   const [imageLoading, setImageLoading] = useState(false)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [audioLoading, setAudioLoading] = useState(false)
+  // "Mức trần" — admin tắt (chi phí API) AND user tự tắt trong Preferences.
+  const { effectiveTts, effectiveUnsplash } = useEffectiveMediaFlags()
 
   const keywordOf = useCallback(
     () =>
@@ -30,6 +33,7 @@ export function useCardMedia(
 
   const fetchImages = useCallback(
     async (keyword?: string) => {
+      if (!effectiveUnsplash) return
       const searchKeyword = keyword || keywordOf()
       if (!searchKeyword) return
       setImageLoading(true)
@@ -45,10 +49,11 @@ export function useCardMedia(
         setImageLoading(false)
       }
     },
-    [keywordOf],
+    [keywordOf, effectiveUnsplash],
   )
 
   const generateAudio = useCallback(async () => {
+    if (!effectiveTts) return
     const text = entry.word || entry.term || entry.title
     if (!text) return
     setAudioLoading(true)
@@ -73,7 +78,7 @@ export function useCardMedia(
     } finally {
       setAudioLoading(false)
     }
-  }, [entry.word, entry.term, entry.title, entry.language, setEntry])
+  }, [entry.word, entry.term, entry.title, entry.language, setEntry, effectiveTts])
 
   const handleImageSelect = useCallback(
     (img: ImageItem) => {
@@ -107,5 +112,8 @@ export function useCardMedia(
     generateAudio,
     handleImageSelect,
     handleImageUpload,
+    // "Mức trần" hiện tại — UI có thể dùng để ẩn/disable nút (chưa thread qua mọi leaf component).
+    effectiveTts,
+    effectiveUnsplash,
   }
 }

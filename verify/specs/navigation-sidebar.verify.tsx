@@ -4,11 +4,13 @@ import { verifyGlobals } from '@/verify/core/globals'
 import { registerUnit } from '@/verify/core/registry'
 
 const NAV_HREFS = ['/dashboard', '/create', '/history', '/admin', '/settings']
+// Harness coi TEST_AUTH_USER là admin (test-setup) → mục adminOnly "App Settings" hiển thị.
+const ADMIN_NAV_HREF = '/settings/admin'
 
-// Mock fetch cho ConnectedBadge bên trong (poll /api/anki/connect khi mount)
+// Mock fetch cho ConnectedBadge bên trong (ping AnkiConnect localhost:8765 trực tiếp khi mount)
 const ankiConnectMock = {
   fetch: [
-    { match: '/api/anki/connect', response: { status: 200, json: { success: true } } },
+    { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
   ],
 }
 
@@ -31,7 +33,8 @@ function checkActiveLink(root: HTMLElement, expectedHref: string | null): true |
 registerUnit<Record<string, never>>({
   id: 'NavigationSidebar',
   title: 'NavigationSidebar',
-  description: 'Sidebar điều hướng chính: logo, 5 nav link, ConnectedBadge; responsive drawer.',
+  description:
+    'Sidebar điều hướng chính: logo, nav link (5 chung + App Settings admin-only), ConnectedBadge; responsive drawer.',
   kind: 'component',
   render: () => <NavigationSidebar />,
   propsSchema: z.object({}),
@@ -50,6 +53,25 @@ registerUnit<Record<string, never>>({
       description: 'pathname=/create → mục Create Card active (vitest-only).',
       props: {},
       mocks: { pathname: '/create', ...ankiConnectMock },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'settings-active',
+      description: 'pathname=/settings → mục Settings active (không kéo theo App Settings).',
+      props: {},
+      mocks: { pathname: '/settings', ...ankiConnectMock },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'settings-admin-active',
+      description:
+        'pathname=/settings/admin → CHỈ App Settings active (longest-prefix, /settings không sáng theo).',
+      props: {},
+      mocks: { pathname: '/settings/admin', ...ankiConnectMock },
       act: async ctx => {
         await ctx.wait(50)
       },
@@ -78,6 +100,16 @@ registerUnit<Record<string, never>>({
       },
     },
     {
+      id: 'admin-nav-link-present',
+      description: 'Mục adminOnly "App Settings" (/settings/admin) hiện với admin',
+      check: ({ root }) => {
+        const hrefs = Array.from(root.querySelectorAll('aside nav a')).map(a =>
+          a.getAttribute('href')
+        )
+        return hrefs.includes(ADMIN_NAV_HREF) || `thiếu link admin: ${ADMIN_NAV_HREF}`
+      },
+    },
+    {
       id: 'logo-present',
       description: 'Logo AnkiFlow hiện diện',
       check: ({ root }) =>
@@ -97,6 +129,8 @@ registerUnit<Record<string, never>>({
         const expectedByFixture: Record<string, string | null> = {
           'dashboard-active': '/dashboard',
           'create-active': '/create',
+          'settings-active': '/settings',
+          'settings-admin-active': '/settings/admin',
           'probe-unknown-path': null,
         }
         const expected = expectedByFixture[fixture.id]

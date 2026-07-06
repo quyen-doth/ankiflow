@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { LOCAL_USER_ID } from '@/lib/constants'
+import { withAuth } from '@/lib/auth-guard'
 
 interface DuplicateEntry {
   id: string
@@ -10,7 +10,7 @@ interface DuplicateEntry {
   created_at: string | null
 }
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const body = await request.json()
     const { word, words } = body as { word?: string; words?: string[] }
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     // Kiểm tra TOÀN CỤC: quét toàn bộ entries của user, KHÔNG lọc theo deck/ngôn ngữ.
     const snapshot = await db.collection('entries')
-      .where('user_id', '==', LOCAL_USER_ID)
+      .where('user_id', '==', uid)
       .get()
 
     const allEntries = snapshot.docs.map(doc => {
@@ -63,4 +63,4 @@ export async function POST(request: Request) {
     console.error('Check duplicate error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
-}
+})

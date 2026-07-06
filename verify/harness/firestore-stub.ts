@@ -47,7 +47,15 @@ let store = new Map<string, DocSeed[]>()
 let autoId = 0
 
 function seed(data: Record<string, DocSeed[]>): void {
-  store = new Map(Object.entries(data).map(([name, docs]) => [name, docs.map(d => ({ ...d }))]))
+  // Auto-inject user_id='test-user' (khớp TEST_AUTH_USER trong runner) khi seed
+  // không khai báo — components multi-user filter where('user_id'...) vẫn thấy docs.
+  // Seed muốn giả doc của user khác chỉ cần set user_id tường minh.
+  store = new Map(
+    Object.entries(data).map(([name, docs]) => [
+      name,
+      docs.map(d => ({ user_id: 'test-user', ...d })),
+    ]),
+  )
 }
 
 function reset(): void {
@@ -170,6 +178,22 @@ export async function deleteDoc(ref: DocRef): Promise<void> {
 
 export function serverTimestamp(): typeof SERVER_TIMESTAMP {
   return SERVER_TIMESTAMP
+}
+
+export function onSnapshot(
+  source: CollectionRef | QueryRef,
+  onNext: (snapshot: { docs: SnapshotDoc[]; empty: boolean; size: number }) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  const name = source.__kind === 'query' ? source.collection : source.name
+  const constraints = source.__kind === 'query' ? source.constraints : []
+  try {
+    const docs = applyConstraints(store.get(name) ?? [], constraints).map(toSnapshotDoc)
+    onNext({ docs, empty: docs.length === 0, size: docs.length })
+  } catch (err) {
+    onError?.(err as Error)
+  }
+  return () => {}
 }
 
 export function limit(n: number): OrderByConstraint {

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingBatch, clearPendingBatch } from '@/lib/pendingBatch'
 import type { Entry, CardTypeConfig } from '@/types'
 
-type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code'>
+type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
 
 interface PreviewBatchState {
   entries: Partial<Entry>[]
@@ -25,6 +26,7 @@ interface PreviewBatchState {
  * chỉnh sửa, kèm card_types và deck dùng chung. Soi gương usePreviewEntry nhưng cho nhiều thẻ.
  */
 export function usePreviewBatch(): PreviewBatchState {
+  const { user, loading: authLoading } = useAuth()
   const [entries, setEntries] = useState<Partial<Entry>[]>([])
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
   const [selectedCardTypeIds, setSelectedCardTypeIds] = useState<string[]>([])
@@ -33,6 +35,8 @@ export function usePreviewBatch(): PreviewBatchState {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading || !user) return
+    const uid = user.uid
     async function init() {
       setIsLoading(true)
       setError(null)
@@ -77,6 +81,7 @@ export function usePreviewBatch(): PreviewBatchState {
       try {
         const q = query(
           collection(db, 'card_types'),
+          where('user_id', '==', uid),
           where('form_type', '==', pending.formType),
         )
         const snapshot = await getDocs(q)
@@ -88,6 +93,7 @@ export function usePreviewBatch(): PreviewBatchState {
           sort_order?: number
           is_active?: boolean
           language?: string | null
+          template?: CardTypeConfig['template']
         }
 
         const fetched: FetchedCardType[] = snapshot.docs
@@ -104,6 +110,7 @@ export function usePreviewBatch(): PreviewBatchState {
           name: ct.name,
           description: ct.description,
           code: (ct as Record<string, unknown>).code as string || ct.id,
+          template: ct.template,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0
@@ -119,7 +126,7 @@ export function usePreviewBatch(): PreviewBatchState {
     }
 
     init()
-  }, [])
+  }, [user, authLoading])
 
   return {
     entries,

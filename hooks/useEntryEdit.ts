@@ -1,52 +1,43 @@
 'use client'
 
 import { useCallback } from 'react'
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
+import { regenerateNotesForEntry } from '@/lib/flashcard-service/client-ops'
+import type { CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
-
-interface NoteUpdate {
-  noteId: number
-  fields: Record<string, string>
-}
-
-function buildNoteUpdates(entry: Entry, updates: Partial<Entry>): NoteUpdate[] {
-  if (!entry.anki_note_ids || entry.anki_note_ids.length === 0) return []
-
-  const word = (updates.word ?? entry.word) || (updates.term ?? entry.term) || (updates.title ?? entry.title) || ''
-  const reading = (updates.hiragana ?? entry.hiragana) || (updates.pinyin ?? entry.pinyin) || (updates.ipa ?? entry.ipa) || ''
-  const meaning = (updates.meaning_vi ?? entry.meaning_vi) || (updates.definition ?? entry.definition) || ''
-  const wordType = (updates.word_type ?? entry.word_type) || ''
-  const example = (updates.example_sentence ?? entry.example_sentence) || ''
-  const translation = (updates.example_translation ?? entry.example_translation) || ''
-
-  const front = reading ? `${word}<br><small>${reading}</small>` : word
-  const back = `${meaning}${wordType ? `<br><small>${wordType}</small>` : ''}`
-
-  return entry.anki_note_ids.map(noteId => ({
-    noteId,
-    fields: { Front: front, Back: back },
-  }))
-}
 
 export function useEntryEdit() {
   const saveEntry = useCallback(async (entry: Entry, updates: Partial<Entry>) => {
-    const noteUpdates = buildNoteUpdates(entry, updates)
-
+    // 1. Lưu Firestore + lấy dữ liệu để sinh lại note (server không đụng Anki).
     const res = await fetch('/api/anki/update', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entryId: entry.id,
-        updates,
-        noteUpdates,
-      }),
+      body: JSON.stringify({ entryId: entry.id, updates }),
     })
 
     if (!res.ok) {
-      const err = await res.json()
+      const err = await res.json().catch(() => ({}))
       throw new Error(err.error || 'Failed to update')
     }
 
-    return await res.json()
+    const data = (await res.json()) as {
+      success: boolean
+      entry: (Partial<Entry> & { anki_note_ids?: number[]; card_type_ids?: string[] }) | null
+      cardTypes: CardTypeItem[]
+      noteIds: number[]
+    }
+
+    // 2. Sinh lại note trong Anki (browser). Best-effort: Anki offline KHÔNG chặn việc đã lưu.
+    if (data.entry && data.noteIds.length > 0) {
+      try {
+        const client = await getAnkiClientFromSettings()
+        await regenerateNotesForEntry(client, data.entry, data.cardTypes)
+      } catch (e) {
+        console.warn('Anki note regen skipped (Anki offline?):', e)
+      }
+    }
+
+    return data
   }, [])
 
   return { saveEntry }

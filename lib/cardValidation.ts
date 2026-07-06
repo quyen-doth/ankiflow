@@ -7,6 +7,19 @@ export interface CardValidationError {
   label: string
 }
 
+/** Ngưỡng dung lượng ảnh nhúng vào thẻ. Card hiển thị ảnh nhỏ (max-height 220px) nên 800KB là dư. */
+export const MAX_IMAGE_BYTES = 800 * 1024
+
+/** Ước lượng số byte của một data URL từ độ dài phần base64. Trả 0 nếu không phải data URL. */
+export function dataUrlBytes(dataUrl: string | undefined | null): number {
+  if (!dataUrl || !dataUrl.startsWith('data:')) return 0
+  const comma = dataUrl.indexOf(',')
+  if (comma === -1) return 0
+  const b64 = dataUrl.slice(comma + 1)
+  const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0
+  return Math.floor((b64.length * 3) / 4) - padding
+}
+
 /** Getter linh hoạt — khớp khác biệt tên field giữa các content type (English/IT/General/Dynamic). */
 const get = {
   word: (e: Partial<Entry>) => (e.word || e.term || e.title || '').trim(),
@@ -73,10 +86,35 @@ export function validateCardEntry(
     errors.push({ field: 'card_types', label: 'Card type (chọn ít nhất 1)' })
   }
 
+  // Ảnh cục bộ (data URL) quá lớn → chặn export. Ảnh URL http không lưu media nên bỏ qua.
+  const imgBytes = dataUrlBytes(entry.image_url)
+  if (imgBytes > MAX_IMAGE_BYTES) {
+    const mb = (imgBytes / (1024 * 1024)).toFixed(1)
+    errors.push({ field: 'image', label: `Ảnh minh hoạ quá lớn (${mb}MB, tối đa 0.8MB)` })
+  }
+
   return errors
 }
 
 /** Gộp các nhãn lỗi thành 1 dòng để hiển thị toast. */
 export function formatValidationMessage(errors: CardValidationError[]): string {
   return `Thiếu: ${errors.map(e => e.label).join(', ')}. Vui lòng điền đủ trước khi tạo.`
+}
+
+export interface InvalidCard {
+  index: number
+  errors: CardValidationError[]
+}
+
+/** Quét toàn bộ thẻ, trả về danh sách thẻ lỗi (kèm index) để hiện banner + đánh dấu nav strip. */
+export function collectInvalidCards(
+  entries: Partial<Entry>[],
+  selectedCardTypeIds: string[],
+): InvalidCard[] {
+  const result: InvalidCard[] = []
+  for (let i = 0; i < entries.length; i++) {
+    const errors = validateCardEntry(entries[i], selectedCardTypeIds)
+    if (errors.length > 0) result.push({ index: i, errors })
+  }
+  return result
 }

@@ -114,6 +114,26 @@ export interface Category {
   updated_at: FirestoreTimestamp;
 }
 
+// ─── Card Template (Anki) ─────────────────────────────
+
+export type CardFieldSource =
+  | 'word'
+  | 'reading'
+  | 'han_viet'
+  | 'meaning'
+  | 'word_type'
+  | 'example'
+  | 'example_blank'
+  | 'translation'
+  | 'collocations'
+  | 'image'
+  | 'audio'
+
+export interface CardTemplate {
+  front: CardFieldSource[]
+  back: CardFieldSource[]
+}
+
 // ─── Collection: card_types ───────────────────────────
 
 /**
@@ -129,6 +149,7 @@ export interface CardTypeConfig {
   is_default: boolean;
   is_active: boolean;
   sort_order: number;
+  template?: CardTemplate;
   created_at: FirestoreTimestamp;
 }
 
@@ -252,6 +273,19 @@ export interface Settings {
   notifications_enabled: boolean;
   line_channel_access_token?: string;
   line_user_id?: string;
+  updated_at: FirestoreTimestamp;
+}
+
+/**
+ * `settings/global` — feature flags toàn cục do admin kiểm soát (control plane).
+ * Mọi user đã đăng nhập đọc được (client SDK, không secret); chỉ admin ghi được
+ * (qua POST /api/admin/global-config, verify server-side theo ADMIN_EMAIL).
+ */
+export interface GlobalSettings {
+  ai_model: string;
+  web_search_enabled: boolean;
+  tts_available: boolean;
+  unsplash_available: boolean;
   updated_at: FirestoreTimestamp;
 }
 

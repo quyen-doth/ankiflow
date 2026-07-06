@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -14,6 +15,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
+import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { Category } from '@/types'
@@ -33,7 +35,15 @@ interface CategoryDraft {
 
 const EMPTY_DRAFT: CategoryDraft = { name: '', form_type: FormType.LANGUAGE, sort_order: 0, is_active: true }
 
-export function CategoryManager() {
+interface CategoryManagerProps {
+  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
+   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  ownerId?: string
+}
+
+export function CategoryManager({ ownerId: ownerIdProp }: CategoryManagerProps = {}) {
+  const { user, loading: authLoading } = useAuth()
+  const ownerId = ownerIdProp ?? user?.uid
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -50,12 +60,18 @@ export function CategoryManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading || !ownerId) return
     async function fetchCategories() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'categories'), orderBy('sort_order', 'asc'))
+        // Sort in-memory thay orderBy — tránh composite index (user_id, sort_order)
+        const q = query(collection(db, 'categories'), where('user_id', '==', ownerId))
         const snapshot = await getDocs(q)
-        setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category)))
+        setCategories(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as Category))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+        )
       } catch (error) {
         console.error('Error fetching categories:', error)
       } finally {
@@ -63,9 +79,11 @@ export function CategoryManager() {
       }
     }
     fetchCategories()
-  }, [refreshKey])
+  }, [refreshKey, ownerId, authLoading])
 
   const refresh = () => setRefreshKey(k => k + 1)
+  const handleReorder = useSortableList<Category>('categories', setCategories, refresh)
+  const canReorder = !search && !filterFormType && !filterStatus
 
   const filteredCategories = useMemo(() => {
     let result = categories
@@ -107,6 +125,7 @@ export function CategoryManager() {
       } else {
         await addDoc(collection(db, 'categories'), {
           ...draft,
+          user_id: ownerId,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })
@@ -242,6 +261,7 @@ export function CategoryManager() {
         columns={columns}
         keyField="id"
         onRowClick={(row) => openEdit(row)}
+        onReorder={canReorder ? handleReorder : undefined}
         emptyMessage={
           loading
             ? 'Loading categories...'

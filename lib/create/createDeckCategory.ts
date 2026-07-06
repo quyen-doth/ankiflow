@@ -5,8 +5,17 @@
  */
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
+import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
+import { ensureDeck, setDeckSuspended } from '@/lib/flashcard-service/client-ops'
 import { FormType, LanguageType } from '@/types'
+
+/** UID của user đang đăng nhập — throw nếu chưa (middleware đảm bảo không xảy ra trong app). */
+function requireUid(): string {
+  const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
+  if (!uid) throw new Error('Not signed in')
+  return uid
+}
 
 const LANGUAGE_DECK_PREFIX: Record<string, string> = {
   [LanguageType.ENGLISH]: 'English',
@@ -46,6 +55,7 @@ export async function createCategory(params: {
 }): Promise<CreatedCategory> {
   const name = params.name.trim()
   const ref = await addDoc(collection(db, 'categories'), {
+    user_id: requireUid(),
     name,
     form_type: params.formType,
     sort_order: 0,
@@ -78,6 +88,7 @@ export async function createDeck(params: {
   const anki_deck_name = params.ankiDeckName.trim()
 
   const ref = await addDoc(collection(db, 'decks'), {
+    user_id: requireUid(),
     anki_deck_name,
     display_name,
     form_type: params.formType,
@@ -91,21 +102,14 @@ export async function createDeck(params: {
 
   let ankiSyncFailed = false
   try {
-    await postDeckSync({ op: 'ensure', deckName: anki_deck_name })
-    await postDeckSync({ op: 'unsuspend', deckName: anki_deck_name })
+    // Đồng bộ Anki client-side (browser → AnkiConnect của user), giống DeckManager.
+    const client = await getAnkiClientFromSettings()
+    await ensureDeck(client, anki_deck_name)
+    await setDeckSuspended(client, anki_deck_name, false)
   } catch (e) {
     console.warn('AnkiConnect sync failed when creating deck:', e)
     ankiSyncFailed = true
   }
 
   return { id: ref.id, display_name, anki_deck_name, ankiSyncFailed }
-}
-
-async function postDeckSync(body: Record<string, unknown>): Promise<void> {
-  const res = await fetch('/api/anki/decks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`Deck sync failed: ${res.status}`)
 }

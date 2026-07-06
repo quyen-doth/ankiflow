@@ -1,0 +1,105 @@
+rules_version = '2';
+
+// AnkiFlow — Firestore Security Rules (Phase D của firebase-auth-plan-2026-06-30).
+//
+// Tầng bảo vệ CUỐI CÙNG: 20+ file client dùng Firebase client SDK đọc/ghi Firestore
+// TRỰC TIẾP (bypass middleware + API auth). Không có rules, bất kỳ ai mở console
+// đều query thẳng data user khác. Rules dưới đây là "source of truth" cho isolation.
+//
+// Admin SDK (server API routes) BYPASS mọi rule — nên server vẫn ghi settings/global,
+// seed __defaults__, v.v. bình thường. Rules chỉ áp cho client SDK.
+//
+// "Admin" = custom claim `admin:true` (đặt qua scripts/set-admin-claim.ts hoặc tự
+// động khi signup nếu email == ADMIN_EMAIL). Rules KHÔNG đọc được env → phải dùng
+// claim trong ID token (khác với check email server-side ở API routes).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // Doc HIỆN CÓ thuộc về user đang đăng nhập.
+    function owns(rsc) {
+      return isSignedIn() && rsc.data.user_id == request.auth.uid;
+    }
+
+    // Doc SẮP TẠO gắn đúng user_id của user đang đăng nhập (không cho tạo hộ người khác).
+    function creatingOwn() {
+      return isSignedIn() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // ─── Master data per-user + template "__defaults__" (admin sửa qua /admin) ───
+    // decks / categories / card_types / topics: user thao tác bản của mình; admin
+    // thêm sửa bản template (user_id == '__defaults__') mà user mới clone khi signup.
+    match /decks/{id} {
+      allow read, update, delete: if owns(resource)
+        || (isAdmin() && resource.data.user_id == '__defaults__');
+      allow create: if creatingOwn()
+        || (isAdmin() && request.resource.data.user_id == '__defaults__');
+    }
+    match /categories/{id} {
+      allow read, update, delete: if owns(resource)
+        || (isAdmin() && resource.data.user_id == '__defaults__');
+      allow create: if creatingOwn()
+        || (isAdmin() && request.resource.data.user_id == '__defaults__');
+    }
+    match /card_types/{id} {
+      allow read, update, delete: if owns(resource)
+        || (isAdmin() && resource.data.user_id == '__defaults__');
+      allow create: if creatingOwn()
+        || (isAdmin() && request.resource.data.user_id == '__defaults__');
+    }
+    match /topics/{id} {
+      allow read, update, delete: if owns(resource)
+        || (isAdmin() && resource.data.user_id == '__defaults__');
+      allow create: if creatingOwn()
+        || (isAdmin() && request.resource.data.user_id == '__defaults__');
+    }
+
+    // ─── Entries — dữ liệu học của user, KHÔNG có bản template, admin không đặc quyền ───
+    match /entries/{id} {
+      allow read, update, delete: if owns(resource);
+      allow create: if creatingOwn();
+    }
+
+    // ─── Notification triggers — per-user (hiện chỉ admin dùng, nhưng scope theo owner) ───
+    match /notification_triggers/{id} {
+      allow read, update, delete: if owns(resource);
+      allow create: if creatingOwn();
+    }
+
+    // ─── Content types — SHARED toàn cục (doc id = form_type, routing cốt lõi) ───
+    // Mọi user đọc (form blueprint); chỉ admin sửa (đổi form cho tất cả).
+    match /content_types/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── Settings — 3 loại doc trong cùng collection ───
+    // settings/global: feature flags (không secret) — mọi user đọc, admin ghi
+    //   (thực tế ghi qua server API/Admin SDK; cho phép admin client-write để linh hoạt).
+    match /settings/global {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    // settings/default: SECRETS của chủ app (LINE token) — chỉ admin đọc/ghi.
+    match /settings/default {
+      allow read, write: if isAdmin();
+    }
+    // settings/{uid}: preferences của từng user — chỉ chính chủ.
+    // (UID Firebase là chuỗi 28 ký tự — không bao giờ trùng 'global'/'default'.)
+    match /settings/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Mặc định: từ chối mọi thứ chưa khai báo tường minh ở trên.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
