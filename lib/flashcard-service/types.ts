@@ -8,6 +8,10 @@ export interface AnkiCardInfo {
   lapses: number
   queue: number
   type: number
+  /** Unix giây — thời điểm card thay đổi lần cuối bên Anki. Optional: AnkiConnect cũ không trả. */
+  mod?: number
+  /** Tổng số lần review bên Anki. Optional: AnkiConnect cũ không trả. */
+  reps?: number
 }
 
 export interface AnkiNoteInfo {

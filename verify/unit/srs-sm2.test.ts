@@ -29,6 +29,14 @@ describe('lib/srs/sm2', () => {
     })
   })
 
+  describe('processRating — source marking (SRS Phase 0 precedence)', () => {
+    it('rating luôn đánh dấu source builtin — kể cả khi state đến từ anki_sync', () => {
+      const state = makeReviewState({ queue: 'review', interval_days: 5, source: 'anki_sync' })
+      const result = processRating(state, 'good', NOW)
+      expect(result.source).toBe('builtin')
+    })
+  })
+
   describe('processRating — new/learning cards', () => {
     it('again resets to step 0 with 1m delay', () => {
       const state = makeReviewState({ queue: 'new' })

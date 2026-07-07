@@ -29,6 +29,9 @@ export function processRating(state: ReviewState, rating: SRSRating, now: Date =
     total_reviews: state.total_reviews + 1,
     last_reviewed_at: nowISO,
     last_rating: rating,
+    // Rating nội bộ luôn đánh dấu builtin — nếu giữ nguyên source cũ (vd 'anki_sync')
+    // thì precedence guard trong sync-srs không nhận ra state đã được rate qua LINE.
+    source: 'builtin',
   }
 
   if (state.queue === 'new' || state.queue === 'learning') {

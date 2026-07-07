@@ -73,6 +73,14 @@ service cloud.firestore {
       allow create: if creatingOwn();
     }
 
+    // ─── Review events — revlog SRS (SRS Phase 0), append-only ───
+    // CHỈ server ghi (Admin SDK bypass rules): line-webhook + sync-srs.
+    // Client chỉ đọc lịch sử của mình (consumer tương lai: thống kê/FSRS).
+    match /review_events/{id} {
+      allow read: if owns(resource);
+      // không có allow write — client không được ghi/sửa/xóa revlog
+    }
+
     // ─── Content types — SHARED toàn cục (doc id = form_type, routing cốt lõi) ───
     // Mọi user đọc (form blueprint); chỉ admin sửa (đổi form cho tất cả).
     match /content_types/{id} {

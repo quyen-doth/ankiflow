@@ -239,6 +239,27 @@ export interface ReviewState {
   synced_at: string;
 }
 
+// ─── Collection: review_events (append-only, CHỈ server ghi qua Admin SDK) ───
+// Revlog của AnkiFlow: mỗi thay đổi review_state (rate qua LINE hoặc pull từ Anki)
+// được ghi lại 1 event. Nền tảng cho FSRS/thống kê/độc lập SRS sau này — không có
+// log này thì lịch sử review mất vĩnh viễn (chỉ còn snapshot mới nhất).
+
+/** Snapshot các field scheduler quan trọng của ReviewState tại 1 thời điểm. */
+export type ReviewStateSnapshot = Pick<
+  ReviewState,
+  'queue' | 'interval_days' | 'ease_factor' | 'due_date' | 'lapses'
+>;
+
+export interface ReviewEvent {
+  user_id: string;
+  entry_id: string;
+  kind: 'rating' | 'anki_sync'; // rating = LINE/SM-2 nội bộ; anki_sync = pull từ Anki
+  rating?: SRSRating; // chỉ có với kind='rating'
+  prev: ReviewStateSnapshot | null; // null = entry chưa từng có review_state
+  next: ReviewStateSnapshot;
+  created_at: string; // ISO
+}
+
 // ─── Collection: notification_triggers ───────────────────
 
 export interface NotificationTrigger {

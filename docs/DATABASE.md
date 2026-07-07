@@ -23,6 +23,7 @@
 | `topics` | Chủ đề IT | Per-user (+ template) |
 | `decks` | Anki Deck config + Form mapping | Per-user (+ template) |
 | `notification_triggers` | Lịch nhắc LINE (admin) | Per-user |
+| `review_events` | Revlog SRS — lịch sử mọi thay đổi `review_state` (append-only) | Per-user — **server-only write** |
 | `content_types` | Cấu hình form nhập liệu (doc id = form_type) | **SHARED** — admin-only write |
 | `settings` | 3 loại doc: `{uid}` prefs · `global` flags · `default` secrets | Xem mục Settings |
 
@@ -70,7 +71,7 @@ Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho t
 | `keywords` | string[] | Từ khóa IT (IT vocab specific) |
 | `topic_ids` | string[] | Tham chiếu tới `topics` |
 | `difficulty` | string | Độ khó: `easy` / `medium` / `hard` (IT vocab specific) |
-| `review_state` | object | Trạng thái SRS đồng bộ từ Anki (ease/interval/due_date/queue...) — nullable |
+| `review_state` | object | Trạng thái SRS hiện tại (ease/interval/due_date/queue/`source`...) — nullable. 2 writer: Anki sync (`source:'anki_sync'`) và rating LINE (`source:'builtin'`), có **precedence guard** (xem `review_events`) |
 | `created_at` | timestamp | Thời điểm tạo |
 | `updated_at` | timestamp | Thời điểm cập nhật |
 | `status` | string | Trạng thái: xem enum bên dưới |
@@ -221,6 +222,29 @@ Cấu hình lịch push LINE. Per-user (`user_id`) nhưng hiện chỉ admin dù
 
 ---
 
+### `review_events` — Revlog SRS (append-only, SRS Phase 0)
+
+Lịch sử MỌI thay đổi `review_state` — tương đương revlog của Anki. **Chỉ server ghi**
+(Admin SDK: `line-webhook` + `sync-srs`); client chỉ đọc bản của mình. Nền tảng cho
+FSRS/thống kê/độc lập SRS — không có log này thì chỉ còn snapshot mới nhất, lịch sử mất vĩnh viễn.
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `user_id` | string | Firebase Auth UID |
+| `entry_id` | string | Tham chiếu `entries` |
+| `kind` | string | `rating` (rate qua LINE/SM-2 nội bộ) · `anki_sync` (pull từ Anki) |
+| `rating` | string? | `again`/`hard`/`good`/`easy` — chỉ có với `kind='rating'` |
+| `prev` | object \| null | Snapshot state cũ (`queue`/`interval_days`/`ease_factor`/`due_date`/`lapses`); null = chưa từng có |
+| `next` | object | Snapshot state mới (cùng shape) |
+| `created_at` | string (ISO) | Thời điểm event |
+
+> **Precedence guard (2 nguồn ghi `review_state`):** sync-srs **KHÔNG ghi đè** khi entry đã
+> được rate nội bộ (`source:'builtin'`) MỚI HƠN hoạt động bên Anki (so `last_reviewed_at`
+> với `card.mod` từ AnkiConnect; fallback không có `mod`: so với `synced_at` — thiên về giữ
+> tiến độ LINE). Event `anki_sync` chỉ ghi khi state thực sự đổi (tránh noise mỗi lần sync).
+
+---
+
 ### `settings` — 3 loại document (KHÔNG còn singleton)
 
 Từ v2.0, collection `settings` chứa 3 loại doc khác biệt về quyền và mục đích:
@@ -306,6 +330,7 @@ phân quyền cuối cùng. Admin SDK (server routes) bypass rules.
 | Collection / doc | read | write |
 |---|---|---|
 | `entries`, `notification_triggers` | chủ sở hữu | chủ sở hữu (tạo phải gắn đúng `user_id`) |
+| `review_events` | chủ sở hữu | **deny** — chỉ server ghi (Admin SDK) |
 | `decks`/`categories`/`card_types`/`topics` | chủ sở hữu **+ admin cho `__defaults__`** | như read |
 | `content_types` | mọi user đã đăng nhập | **admin only** |
 | `settings/global` | mọi user đã đăng nhập | **admin only** |

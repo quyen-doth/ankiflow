@@ -134,7 +134,7 @@ Bảng mapping các biến môi trường cần thiết để các API hoạt đ
 | **POST**          | `/api/entries/check-duplicate` | Kiểm tra từ/thuật ngữ trùng lặp                                                                       |
 | **PUT**           | `/api/anki/update`             | Update Entry Firestore + trả regen payload để client tự cập nhật note Anki                            |
 | **POST**          | `/api/anki/resync`             | Trả entries `synced` + card_types (theo filter) để client regenerate notes                            |
-| **GET, POST**     | `/api/anki/sync-srs`           | GET: noteIds để client đọc SRS từ Anki; POST: nhận cardsInfo → update review_state                    |
+| **GET, POST**     | `/api/anki/sync-srs`           | GET: noteIds để client đọc SRS từ Anki; POST: nhận cardsInfo → update review_state (precedence guard + revlog `review_events`) |
 | **POST**          | `/api/generate`                | AI (Claude agent) sinh nội dung flashcard                                                             |
 | **POST**          | `/api/audio/generate`          | Render TTS → trả về base64 (client tự store vào Anki media nếu cần)                                   |
 | **GET**           | `/api/image`                   | Tìm kiếm ảnh minh hoạ trên Unsplash                                                                   |
@@ -229,10 +229,12 @@ Trả toàn bộ `anki_note_ids` của entries `synced` để client truy vấn 
 
 #### `POST /api/anki/sync-srs`
 
-Client gửi cardsInfo từ Anki; server map sang `ReviewState` (ANKI_QUEUE_MAP, ease/1000, due×1000) + batch update `review_state`.
+Client gửi cardsInfo từ Anki; server map sang `ReviewState` (ANKI_QUEUE_MAP, ease/1000, due×1000, `total_reviews` từ `reps`) + batch update `review_state` (chunked ≤400 ops).
 
-- **Body Params (zod-validated):** `{ "cards": [ { "noteId": 123, "interval": 5, "ease": 2500, "due": 1750000000, "lapses": 0, "queue": 2 } ] }`
-- **Response (200 OK):** `{ "success": true, "synced": 10, "total": 12 }`
+- **Precedence guard (SRS Phase 0):** entry đã rate qua LINE (`review_state.source === 'builtin'`) và rating MỚI HƠN hoạt động bên Anki (`last_reviewed_at` > `card.mod × 1000`; fallback không có `mod`: > `synced_at`) → **skip, không ghi đè** (giữ tiến độ LINE).
+- **Revlog:** mỗi entry có state thực sự đổi → append 1 doc `review_events` (`kind: 'anki_sync'`, prev/next snapshot).
+- **Body Params (zod-validated):** `{ "cards": [ { "noteId": 123, "interval": 5, "ease": 2500, "due": 1750000000, "lapses": 0, "queue": 2, "mod"?: 1751900000, "reps"?: 12 } ] }` (`mod`/`reps` optional — AnkiConnect cũ không trả)
+- **Response (200 OK):** `{ "success": true, "synced": 10, "skipped": 1, "total": 12 }`
 
 ---
 
