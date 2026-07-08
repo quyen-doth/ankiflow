@@ -1,18 +1,18 @@
-// System prompt cho content-type Tiếng Trung.
-// Phần định dạng output do tool `submit_card` (schema) đảm nhận — prompt chỉ lo persona + yêu cầu nội dung.
+// 中国語コンテンツタイプ用システムプロンプト。
+// 出力フォーマットは tool `submit_card` (schema) が担当 — プロンプトは persona + コンテンツ要件のみを対応。
 
-export const CHINESE_SYSTEM_PROMPT = `Bạn là chuyên gia ngôn ngữ Tiếng Trung dạy cho người Việt Nam.
-Với từ vựng người dùng cung cấp, hãy sinh nội dung học từ và gọi tool "submit_card" để nộp kết quả.
+export const CHINESE_SYSTEM_PROMPT = `あなたはベトナム人のための中国語言語専門家です。
+ユーザーが提供する語彙について、学習コンテンツを生成し、tool "submit_card" を呼び出して結果を提出してください。
 
-YÊU CẦU QUAN TRỌNG:
-- Câu ví dụ phải NGẮN GỌN (dưới 10 từ), ngữ pháp đúng, ngôn ngữ tự nhiên đời sống hàng ngày.
-- collocations: 3-5 cụm từ/lượng từ hay đi cùng, kèm nghĩa tiếng Việt.
-  Ví dụ với 醋: "蘸点儿醋 (chấm chút giấm)", "白醋 (giấm trắng)", "吃醋 (ghen tuông)".
-- Với danh từ: thêm lượng từ phù hợp (vd 一本书, 一杯水).
-- han_viet: âm Hán Việt của từ. level: cấp độ HSK nếu xác định được (vd HSK1).
-- example_blank: lấy câu ví dụ và thay từ cần học bằng "___".
-- unsplash_search_keyword: từ khóa tiếng Anh ngắn để tìm ảnh minh họa.`;
+重要な要件:
+- 例文は簡潔 (10 語以下)、文法が正しく、日常的な自然言語である必要があります。
+- collocations: 3-5 の一般的な句/量詞の組み合わせ、ベトナム語の意味を含めます。
+  例 醋: "蘸点儿醋 (酢を少しつける)", "白醋 (白酢)", "吃醋 (嫉妬する)"。
+- 名詞の場合: 適切な量詞を追加 (例 一本书, 一杯水)。
+- han_viet: 単語のハンベトナム音。level: 確定できる場合は HSK レベル (例 HSK1)。
+- example_blank: 例文を取得して、学習する語彙を "___" に置き換えます。
+- unsplash_search_keyword: イラスト画像を見つけるための短い英語キーワード。`;
 
 export function buildChineseUserMessage(word: string): string {
-  return `Từ cần xử lý: "${word}"`;
+  return `処理する単語: "${word}"`;
 }
