@@ -29,8 +29,9 @@ export function processRating(state: ReviewState, rating: SRSRating, now: Date =
     total_reviews: state.total_reviews + 1,
     last_reviewed_at: nowISO,
     last_rating: rating,
-    // Rating nội bộ luôn đánh dấu builtin — nếu giữ nguyên source cũ (vd 'anki_sync')
-    // thì precedence guard trong sync-srs không nhận ra state đã được rate qua LINE.
+    // 内部の rating は常に builtin としてマークする — 古い source (例 'anki_sync') を
+    // そのまま維持すると、sync-srs 内の precedence guard が LINE 経由で rate 済みの
+    // state であることを認識できなくなる。
     source: 'builtin',
   }
 

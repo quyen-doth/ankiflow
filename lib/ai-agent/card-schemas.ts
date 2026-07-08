@@ -7,10 +7,10 @@ import { IT_VOCAB_SYSTEM_PROMPT, buildItVocabUserMessage } from '@/lib/prompts/i
 import type { GenerateCardInput } from './types'
 
 /**
- * Nguồn sự thật duy nhất cho output thẻ: zod schema cho từng content-type.
- * - Dùng `.describe()` để truyền hướng dẫn từng field cho model.
- * - Mọi field đều bắt buộc (chuỗi/array có thể rỗng) → tool input_schema đơn giản,
- *   hợp với cách model điền đủ field như prompt cũ.
+ * カード出力の唯一の source of truth: content-type ごとの zod schema。
+ * - `.describe()` を使って各フィールドの指示を model に伝える。
+ * - すべてのフィールドが必須 (文字列/配列は空でも可) → tool input_schema がシンプルになり、
+ *   旧 prompt のようにモデルがすべてのフィールドを埋める方式と合致する。
  */
 
 export const englishCardSchema = z.object({
@@ -71,20 +71,20 @@ export const itVocabCardSchema = z.object({
 
 export const TOOL_NAME = 'submit_card'
 
-/** Mô tả một "spec" để chạy agent cho một content-type cụ thể. */
+/** 特定の content-type に対して agent を実行するための "spec" を表す。 */
 export interface CardSpec {
   toolName: string
   toolDescription: string
   systemPrompt: string
   userMessage: string
   schema: z.ZodType<Record<string, unknown>>
-  /** JSON Schema cho `input_schema` của tool Anthropic. */
+  /** Anthropic tool の `input_schema` 用の JSON Schema。 */
   inputSchema: Record<string, unknown>
 }
 
 /**
- * Chuyển zod schema → JSON Schema cho tool input_schema của Anthropic.
- * Ép `additionalProperties: false` và `required` = mọi field để output ổn định.
+ * zod schema → Anthropic tool input_schema 用の JSON Schema に変換。
+ * 出力を安定させるため `additionalProperties: false` と `required` = 全フィールドを強制。
  */
 export function toToolInputSchema(schema: z.ZodType): Record<string, unknown> {
   const json = z.toJSONSchema(schema) as { properties?: Record<string, unknown> }
@@ -114,8 +114,8 @@ function makeSpec(
 }
 
 /**
- * Chọn schema + prompt + user message đúng theo form_type/language.
- * Throw với combo không hỗ trợ (giữ nguyên hành vi cũ).
+ * form_type/language に応じて正しい schema + prompt + user message を選択。
+ * サポートされていない組み合わせでは throw (旧来の動作を維持)。
  */
 export function resolveCardSpec(input: GenerateCardInput): CardSpec {
   if (input.form_type === FormType.LANGUAGE && input.word && input.language) {

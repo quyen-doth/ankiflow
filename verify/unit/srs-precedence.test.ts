@@ -94,7 +94,7 @@ beforeEach(() => {
 })
 
 describe('POST /api/anki/sync-srs — precedence guard', () => {
-  it('Anki mod MỚI HƠN rating builtin → Anki thắng: update + event anki_sync', async () => {
+  it('Anki mod が builtin rating より新しい → Anki が勝つ: update + event anki_sync', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100], review_state: builtinState() } })
 
     const { body } = await callPost([makeCard({ mod: MOD_LATEST })])
@@ -113,7 +113,7 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
     })
   })
 
-  it('rating builtin MỚI HƠN Anki mod → SKIP: không update, không event', async () => {
+  it('builtin rating が Anki mod より新しい → SKIP: update なし、event なし', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100], review_state: builtinState() } })
 
     const { body } = await callPost([makeCard({ mod: MOD_BETWEEN })])
@@ -123,7 +123,7 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
     expect(creates).toHaveLength(0)
   })
 
-  it('không có mod (AnkiConnect cũ) + rated SAU synced_at → SKIP (thiên về giữ tiến độ LINE)', async () => {
+  it('mod がない (古い AnkiConnect) + synced_at より後に rated → SKIP (LINE の進捗保持を優先)', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100], review_state: builtinState() } })
 
     const { body } = await callPost([makeCard()])
@@ -132,7 +132,7 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
     expect(updates).toHaveLength(0)
   })
 
-  it('không có mod + chưa từng sync (synced_at rỗng) → SKIP', async () => {
+  it('mod がない + 未 sync (synced_at が空) → SKIP', async () => {
     entryDocs.push({
       id: 'e1',
       data: { anki_note_ids: [100], review_state: builtinState({ synced_at: '' }) },
@@ -142,7 +142,7 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
     expect(body).toMatchObject({ synced: 0, skipped: 1 })
   })
 
-  it('source anki_sync (chưa rate qua LINE) → luôn ghi đè như cũ', async () => {
+  it('source が anki_sync (LINE で rate されていない) → 常に上書き (旧来通り)', async () => {
     entryDocs.push({
       id: 'e1',
       data: { anki_note_ids: [100], review_state: builtinState({ source: 'anki_sync' }) },
@@ -153,7 +153,7 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
     expect(updates).toHaveLength(1)
   })
 
-  it('entry chưa có review_state → update + event với prev null', async () => {
+  it('entry に review_state がない → update + prev null の event', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100] } })
 
     await callPost([makeCard({ mod: MOD_LATEST })])
@@ -163,8 +163,8 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
   })
 })
 
-describe('POST /api/anki/sync-srs — revlog chỉ ghi khi state đổi', () => {
-  it('state không đổi → update (refresh synced_at) nhưng KHÔNG event', async () => {
+describe('POST /api/anki/sync-srs — revlog は state が変化したときのみ記録', () => {
+  it('state が変化しない → update (synced_at を更新) するが event なし', async () => {
     // Card map ra đúng state hiện tại (due/interval/lapses/queue trùng).
     const due = 1752000000
     entryDocs.push({
@@ -189,8 +189,8 @@ describe('POST /api/anki/sync-srs — revlog chỉ ghi khi state đổi', () => 
   })
 })
 
-describe('POST /api/anki/sync-srs — mapping bớt lossy', () => {
-  it('total_reviews lấy từ reps của Anki khi có', async () => {
+describe('POST /api/anki/sync-srs — mapping の損失を軽減', () => {
+  it('total_reviews は Anki の reps があればそこから取得', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100] } })
 
     await callPost([makeCard({ reps: 42 })])
@@ -200,7 +200,7 @@ describe('POST /api/anki/sync-srs — mapping bớt lossy', () => {
     expect(state.source).toBe('anki_sync')
   })
 
-  it('reps thiếu → total_reviews = 0 (như cũ)', async () => {
+  it('reps がない → total_reviews = 0 (旧来通り)', async () => {
     entryDocs.push({ id: 'e1', data: { anki_note_ids: [100] } })
     await callPost([makeCard()])
     expect((updates[0].data.review_state as ReviewState).total_reviews).toBe(0)

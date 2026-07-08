@@ -38,7 +38,7 @@ afterEach(() => {
 })
 
 describe('ClaudeAgentProvider — forced submit_card', () => {
-  it('ép gọi tool submit_card với đúng model và trả output đã validate', async () => {
+  it('tool submit_card の呼び出しを強制し、正しい model で validate 済み output を返す', async () => {
     createMock.mockResolvedValueOnce(toolUseResponse(validEnglish))
     const provider = new ClaudeAgentProvider('claude-haiku-4-5')
 
@@ -53,7 +53,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     expect(params.tools[0].input_schema.additionalProperties).toBe(false)
   })
 
-  it('retry khi output không hợp lệ rồi thành công ở lần sau', async () => {
+  it('output が無効な場合 retry し、次回成功する', async () => {
     const { ipa, ...invalid } = validEnglish
     void ipa
     createMock
@@ -67,7 +67,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     expect(createMock).toHaveBeenCalledTimes(2)
   })
 
-  it('ném lỗi (sau khi cạn retry) khi model không gọi submit_card', async () => {
+  it('model が submit_card を呼ばない場合 (retry を使い切った後) エラーを throw', async () => {
     createMock.mockResolvedValue({ content: [{ type: 'text', text: 'no tool' }], stop_reason: 'end_turn' })
     const provider = new ClaudeAgentProvider('claude-haiku-4-5')
 

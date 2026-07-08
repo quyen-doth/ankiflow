@@ -35,14 +35,14 @@ afterEach(() => {
 })
 
 describe('password/email schemas', () => {
-  it('password: cần ≥8 ký tự, 1 hoa, 1 số', () => {
+  it('password: ≥8 文字、大文字 1 つ、数字 1 つが必要', () => {
     expect(passwordSchema.safeParse('Abcdef12').success).toBe(true)
     expect(passwordSchema.safeParse('short1A').success).toBe(false) // 7 ký tự
     expect(passwordSchema.safeParse('abcdefg1').success).toBe(false) // thiếu hoa
     expect(passwordSchema.safeParse('Abcdefgh').success).toBe(false) // thiếu số
   })
 
-  it('email: reject chuỗi không phải email', () => {
+  it('email: email でない文字列を reject', () => {
     expect(emailSchema.safeParse('a@b.co').success).toBe(true)
     expect(emailSchema.safeParse('not-an-email').success).toBe(false)
   })
@@ -61,7 +61,7 @@ describe('signIn', () => {
     expect(JSON.parse(init.body as string)).toEqual({ idToken: 'token-123' })
   })
 
-  it('sai mật khẩu → thông điệp thân thiện, không lộ mã lỗi', async () => {
+  it('パスワードが間違っている → フレンドリーなメッセージ、エラーコードは露出しない', async () => {
     signInMock.mockRejectedValueOnce({ code: 'auth/invalid-credential' })
 
     const result = await signIn('a@b.co', 'wrong')
@@ -70,7 +70,7 @@ describe('signIn', () => {
     expect(result.error).toBe('Incorrect email or password')
   })
 
-  it('session route fail → ok:false với error từ server', async () => {
+  it('session route が失敗 → サーバーからの error で ok:false', async () => {
     signInMock.mockResolvedValueOnce({ user: { getIdToken: async () => 't' } })
     stubFetch(() => jsonRes({ error: 'Failed to create session' }, 401))
 
@@ -81,7 +81,7 @@ describe('signIn', () => {
 })
 
 describe('signUp', () => {
-  it('signup thành công → tự động signIn', async () => {
+  it('signup 成功 → 自動的に signIn', async () => {
     signInMock.mockResolvedValueOnce({ user: { getIdToken: async () => 't' } })
     const fetchMock = stubFetch((url) =>
       url === '/api/auth/signup' ? jsonRes({ success: true, uid: 'u1' }) : jsonRes({ success: true }),
@@ -94,7 +94,7 @@ describe('signUp', () => {
     expect(urls).toEqual(['/api/auth/signup', '/api/auth/session'])
   })
 
-  it('email đã tồn tại (409) → trả error, KHÔNG signIn', async () => {
+  it('email が既に存在 (409) → error を返す、signIn しない', async () => {
     stubFetch(() => jsonRes({ error: 'An account with this email already exists' }, 409))
 
     const result = await signUp('a@b.co', 'Abcdef12')
@@ -106,7 +106,7 @@ describe('signUp', () => {
 })
 
 describe('logout + clearLocalData', () => {
-  it('xóa MỌI key ankiflow_* nhưng giữ key khác', () => {
+  it('すべての ankiflow_* key を削除するが他の key は保持', () => {
     localStorage.setItem('ankiflow_session_form_language', '{}')
     localStorage.setItem('ankiflow_pending_result', 'x')
     localStorage.setItem('ankiflow_pending_batch', 'y')
@@ -133,7 +133,7 @@ describe('logout + clearLocalData', () => {
     expect(localStorage.getItem('ankiflow_pending_result')).toBeNull()
   })
 
-  it('logout vẫn dọn local dù DELETE request fail', async () => {
+  it('DELETE request が失敗しても logout はローカルをクリアする', async () => {
     localStorage.setItem('ankiflow_pending_result', 'x')
     stubFetch(() => {
       throw new TypeError('network down')

@@ -14,14 +14,14 @@ interface EntryLike extends Partial<Entry> {
 }
 
 /**
- * Sinh lại Front/Back cho toàn bộ note của 1 entry theo template hiện tại, giữ media cũ.
- * Dùng chung cho re-sync (Settings) và sửa thẻ từ History.
+ * 現在の template に従って 1 つの entry のすべての note の Front/Back を再生成し、既存のメディアを保持する。
+ * re-sync (Settings) と History からのカード編集で共有。
  *
- * Map `anki_note_ids[i] ↔ card_type_ids[i]` theo thứ tự. Bỏ qua (skipped) nếu:
- * - số note ≠ số card type (không map an toàn), hoặc
- * - card type không có trong `cardTypeMap` (đã xoá).
+ * `anki_note_ids[i] ↔ card_type_ids[i]` を順序通りにマップ。以下の場合はスキップ (skipped):
+ * - note 数 ≠ card type 数 (安全にマップできない)、または
+ * - card type が `cardTypeMap` にない (削除済み)。
  *
- * `onlyCardTypeId`: nếu truyền, chỉ sinh lại note của card type đó (dùng cho filter theo card type).
+ * `onlyCardTypeId`: 渡された場合、その card type の note のみを再生成 (card type によるフィルタ用)。
  */
 export function regenerateEntryNotes(
   entry: EntryLike,

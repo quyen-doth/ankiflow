@@ -30,7 +30,7 @@ describe('lib/srs/sm2', () => {
   })
 
   describe('processRating — source marking (SRS Phase 0 precedence)', () => {
-    it('rating luôn đánh dấu source builtin — kể cả khi state đến từ anki_sync', () => {
+    it('rating は常に source builtin としてマークする — state が anki_sync から来た場合でも', () => {
       const state = makeReviewState({ queue: 'review', interval_days: 5, source: 'anki_sync' })
       const result = processRating(state, 'good', NOW)
       expect(result.source).toBe('builtin')

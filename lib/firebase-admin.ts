@@ -1,12 +1,12 @@
 // lib/firebase-admin.ts
-// Khởi tạo Firebase Admin SDK cho server-side (API Routes)
-// Admin SDK bypass Firestore Security Rules — an toàn vì chỉ chạy phía server
+// サーバーサイド (API Routes) 用の Firebase Admin SDK 初期化
+// Admin SDK は Firestore Security Rules をバイパス — サーバー側でのみ実行されるため安全
 
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 
-// Singleton — tránh khởi tạo nhiều lần trong Next.js dev mode (hot reload)
+// Singleton — Next.js dev mode (hot reload) で複数回初期化されるのを防ぐ
 let adminApp: App;
 let adminDb: Firestore;
 let adminAuth: Auth;
@@ -18,7 +18,7 @@ function getAdminApp(): App {
         credential: cert({
           projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
           clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          // Thay \\n thành ký tự xuống dòng thật — cần thiết vì env var lưu dạng chuỗi
+          // \\n を実際の改行文字に置き換える — env var は文字列として保存されるため必要
           privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
       });

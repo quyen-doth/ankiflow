@@ -1,19 +1,19 @@
 /**
  * pendingEntry.ts
- * Quản lý kết quả generate tạm thời giữa Create page và Preview page.
- * Dữ liệu được lưu vào localStorage và xóa sau khi Preview page đã đọc.
+ * Create page と Preview page の間で generate 結果を一時的に管理する。
+ * データは localStorage に保存され、Preview page が読み込んだ後に削除される。
  */
 
 import { FormType, LanguageType } from '@/types'
 
 const STORAGE_KEY = 'ankiflow_pending_result'
 
-/** Cấu trúc dữ liệu pending — kết hợp kết quả AI và metadata từ session */
+/** pending データの構造 — AI 結果とセッションからのメタデータを組み合わせる */
 export interface PendingEntry {
-  /** Kết quả từ Claude AI agent (partial Entry fields) */
+  /** Claude AI agent からの結果 (partial Entry fields) */
   generatedContent: Record<string, unknown>
 
-  /** Metadata từ session của user */
+  /** ユーザーセッションからのメタデータ */
   formType: FormType | string
   language?: LanguageType | null
   deckId?: string
@@ -21,11 +21,11 @@ export interface PendingEntry {
   cardTypeIds: string[]
   tags: string[]
 
-  /** Thời điểm lưu — để phát hiện dữ liệu stale */
+  /** 保存時刻 — stale データを検出するため */
   savedAt: string
 }
 
-/** Lưu pending entry vào localStorage */
+/** pending entry を localStorage に保存 */
 export function savePendingEntry(data: PendingEntry): void {
   if (typeof window === 'undefined') return
   try {
@@ -35,7 +35,7 @@ export function savePendingEntry(data: PendingEntry): void {
   }
 }
 
-/** Đọc pending entry từ localStorage */
+/** localStorage から pending entry を読み込む */
 export function loadPendingEntry(): PendingEntry | null {
   if (typeof window === 'undefined') return null
   try {
@@ -48,13 +48,13 @@ export function loadPendingEntry(): PendingEntry | null {
   }
 }
 
-/** Xóa pending entry khỏi localStorage (gọi sau khi Preview page đã load xong) */
+/** localStorage から pending entry を削除 (Preview page の読み込み完了後に呼ぶ) */
 export function clearPendingEntry(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(STORAGE_KEY)
 }
 
-/** Kiểm tra pending entry có bị stale (quá 30 phút) không */
+/** pending entry が stale (30 分超過) かどうかをチェック */
 export function isPendingEntryStale(entry: PendingEntry): boolean {
   const savedAt = new Date(entry.savedAt).getTime()
   const now = Date.now()

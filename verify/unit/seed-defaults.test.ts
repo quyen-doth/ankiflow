@@ -58,13 +58,13 @@ beforeEach(() => {
 })
 
 describe('userScopedId', () => {
-  it('nối defaultId + uid bằng "__"', () => {
+  it('defaultId + uid を "__" で連結', () => {
     expect(userScopedId('cat_daily', 'abc123')).toBe('cat_daily__abc123')
   })
 })
 
-describe('seedUserDefaults — chưa có template (lazy-publish từ hardcode)', () => {
-  it('publish template rồi seed cho user từ chính template vừa publish', async () => {
+describe('seedUserDefaults — テンプレートがない場合 (hardcode から lazy-publish)', () => {
+  it('template を publish してから、その publish したてのテンプレートから user に seed', async () => {
     const db = makeFakeAdminDb()
 
     await seedUserDefaults(db, 'user1')
@@ -84,7 +84,7 @@ describe('seedUserDefaults — chưa có template (lazy-publish từ hardcode)',
     expect(catTemplates.size).toBe(DEFAULT_CATEGORIES.length * 2)
   })
 
-  it('FK re-map trong decks: default_card_type_ids/default_category_id trỏ đúng bản của user', async () => {
+  it('decks 内の FK re-map: default_card_type_ids/default_category_id が正しく user のバージョンを指す', async () => {
     const db = makeFakeAdminDb()
     await seedUserDefaults(db, 'user1')
 
@@ -105,7 +105,7 @@ describe('seedUserDefaults — chưa có template (lazy-publish từ hardcode)',
     }
   })
 
-  it('idempotent — chạy lại không tạo trùng, không ghi đè doc đã tồn tại', async () => {
+  it('idempotent — 再実行しても重複作成せず、既存 doc を上書きしない', async () => {
     const db = makeFakeAdminDb()
     await seedUserDefaults(db, 'user1')
     const sizeAfterFirst = db._dump('categories').size
@@ -121,8 +121,8 @@ describe('seedUserDefaults — chưa có template (lazy-publish từ hardcode)',
   })
 })
 
-describe('seedUserDefaults — ĐÃ có template (admin đã sửa qua /admin)', () => {
-  it('clone từ template đã sửa, KHÔNG dùng hardcode gốc', async () => {
+describe('seedUserDefaults — テンプレートが既にある場合 (admin が /admin 経由で編集済み)', () => {
+  it('編集済みテンプレートからクローンし、元の hardcode は使わない', async () => {
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
 
@@ -136,7 +136,7 @@ describe('seedUserDefaults — ĐÃ có template (admin đã sửa qua /admin)',
     expect(db._dump('categories').get(userCatId)?.name).toBe('Renamed by admin')
   })
 
-  it('admin thêm 1 category MỚI vào template → user mới nhận luôn, không cần đổi code', async () => {
+  it('admin がテンプレートに新しい category を 1 つ追加 → 新規 user がすぐに受け取る、コード変更不要', async () => {
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
 
@@ -155,7 +155,7 @@ describe('seedUserDefaults — ĐÃ có template (admin đã sửa qua /admin)',
     expect(cloned?.name).toBe('Custom Admin Category')
   })
 
-  it('không lazy-publish lại khi ĐÃ có ít nhất 1 loại template (tránh ghi đè sửa đổi của admin)', async () => {
+  it('少なくとも 1 種類のテンプレートが既にある場合は lazy-publish しない (admin の変更を上書きしないため)', async () => {
     const db = makeFakeAdminDb()
     // Chỉ publish categories (mô phỏng admin mới sửa 1 loại, các loại khác chưa publish)
     await db.collection('categories').doc(DEFAULT_CATEGORIES[0].id).set({
@@ -177,7 +177,7 @@ describe('seedUserDefaults — ĐÃ có template (admin đã sửa qua /admin)',
 })
 
 describe('publishTemplateDefaults', () => {
-  it('idempotent — không ghi đè template đã publish', async () => {
+  it('idempotent — publish 済みのテンプレートを上書きしない', async () => {
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
     db._dump('categories').get(DEFAULT_CATEGORIES[0].id)!.name = 'Admin edited'
@@ -187,7 +187,7 @@ describe('publishTemplateDefaults', () => {
     expect(db._dump('categories').get(DEFAULT_CATEGORIES[0].id)?.name).toBe('Admin edited')
   })
 
-  it('template deck giữ nguyên default_card_type_ids KHÔNG suffix (tham chiếu template khác)', async () => {
+  it('template deck は default_card_type_ids をサフィックスなしのまま保持 (別のテンプレートを参照)', async () => {
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
 

@@ -45,21 +45,21 @@ afterEach(() => {
 })
 
 describe('getAnkiClient — cache theo URL', () => {
-  it('cùng URL trả về cùng instance', () => {
+  it('同じ URL は同じ instance を返す', () => {
     const a = getAnkiClient()
     const b = getAnkiClient()
     expect(a).toBe(b)
   })
 
-  it('URL khác tạo instance mới', () => {
+  it('異なる URL は新しい instance を作成', () => {
     const a = getAnkiClient()
     const b = getAnkiClient('http://127.0.0.1:9999')
     expect(a).not.toBe(b)
   })
 })
 
-describe('ping — browser gọi thẳng AnkiConnect', () => {
-  it('AnkiConnect trả version 6 → connected, gọi đúng URL + action', async () => {
+describe('ping — browser が AnkiConnect を直接呼び出す', () => {
+  it('AnkiConnect が version 6 を返す → connected、正しい URL + action を呼ぶ', async () => {
     const mock = stubFetchJson({ result: 6, error: null })
 
     const result = await getAnkiClient().ping()
@@ -70,7 +70,7 @@ describe('ping — browser gọi thẳng AnkiConnect', () => {
     expect(JSON.parse(init.body as string)).toEqual({ action: 'version', version: 6, params: {} })
   })
 
-  it('fetch ném lỗi mạng (Anki đóng) → connected: false, không throw', async () => {
+  it('fetch がネットワークエラーを投げる (Anki が閉じている) → connected: false、throw しない', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => {
       throw new TypeError('Failed to fetch')
     }))
@@ -78,15 +78,15 @@ describe('ping — browser gọi thẳng AnkiConnect', () => {
     await expect(getAnkiClient().ping()).resolves.toEqual({ connected: false })
   })
 
-  it('AnkiConnect trả error field → invoke throw với message của AnkiConnect', async () => {
+  it('AnkiConnect が error field を返す → invoke は AnkiConnect の message で throw', async () => {
     stubFetchJson({ result: null, error: 'collection is not available' })
 
     await expect(getAnkiClient().getDecks()).rejects.toThrow('collection is not available')
   })
 })
 
-describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () => {
-  it('dùng anki_connect_url từ settings/{uid}', async () => {
+describe('resolveAnkiConnectUrl — settings/{uid} を読み込み、cache、fallback', () => {
+  it('settings/{uid} の anki_connect_url を使用', async () => {
     g.__verifyFirestoreSeed?.({
       settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })
@@ -94,11 +94,11 @@ describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () 
     await expect(resolveAnkiConnectUrl()).resolves.toBe('http://127.0.0.1:9999')
   })
 
-  it('không có settings doc của user → fallback default URL', async () => {
+  it('user の settings doc がない → デフォルト URL にフォールバック', async () => {
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
-  it('KHÔNG đọc settings/default nữa (chỉ per-user) → default dù settings/default có url', async () => {
+  it('settings/default はもう読まない (ユーザーごとのみ) → settings/default に url があってもデフォルト', async () => {
     // settings/default là secrets của chủ app — client không đọc; rules cũng chặn non-admin.
     g.__verifyFirestoreSeed?.({
       settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
@@ -107,7 +107,7 @@ describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () 
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
-  it('chưa đăng nhập (currentUser null) → default URL, không đọc Firestore', async () => {
+  it('未ログイン (currentUser null) → デフォルト URL、Firestore を読まない', async () => {
     mutableAuth.currentUser = null
     g.__verifyFirestoreSeed?.({
       settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
@@ -116,7 +116,7 @@ describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () 
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
-  it('cache URL đã resolve; resetAnkiClientCache() xóa cache', async () => {
+  it('解決済み URL を cache; resetAnkiClientCache() が cache をクリア', async () => {
     g.__verifyFirestoreSeed?.({
       settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })
@@ -131,7 +131,7 @@ describe('resolveAnkiConnectUrl — đọc settings/{uid}, cache, fallback', () 
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })
 
-  it('getAnkiClientFromSettings ping đúng URL từ settings/{uid}', async () => {
+  it('getAnkiClientFromSettings は settings/{uid} からの正しい URL で ping', async () => {
     g.__verifyFirestoreSeed?.({
       settings: [{ id: TEST_UID, anki_connect_url: 'http://127.0.0.1:9999' }],
     })

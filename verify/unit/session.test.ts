@@ -12,7 +12,7 @@ describe('lib/session', () => {
     localStorage.clear()
   })
 
-  it('saveSession → loadSession round-trip theo từng FormType', () => {
+  it('saveSession → loadSession の round-trip (各 FormType ごと)', () => {
     saveSession(FormType.LANGUAGE, { language: 'english', deckId: 'd1', tags: ['n5'] })
     saveSession(FormType.IT, { topicIds: ['t1'], difficulty: 'medium' })
 
@@ -26,23 +26,23 @@ describe('lib/session', () => {
     expect(loadSession(FormType.GENERAL)).toBeNull()
   })
 
-  it('saveSession merge với session đã có thay vì ghi đè toàn bộ', () => {
+  it('saveSession は既存の session と merge し、全体を上書きしない', () => {
     saveSession(FormType.LANGUAGE, { language: 'english' })
     saveSession(FormType.LANGUAGE, { deckId: 'd2' })
 
     expect(loadSession(FormType.LANGUAGE)).toEqual({ language: 'english', deckId: 'd2' })
   })
 
-  it('loadSession trả null khi chưa có dữ liệu', () => {
+  it('データがない場合 loadSession は null を返す', () => {
     expect(loadSession(FormType.LANGUAGE)).toBeNull()
   })
 
-  it('loadSession trả null khi JSON trong localStorage bị hỏng', () => {
+  it('localStorage の JSON が壊れている場合 loadSession は null を返す', () => {
     localStorage.setItem(`ankiflow_session_${FormType.LANGUAGE}`, '{not-json')
     expect(loadSession(FormType.LANGUAGE)).toBeNull()
   })
 
-  it('clearSession xóa đúng session của form_type đó', () => {
+  it('clearSession はその form_type の session を正しく削除する', () => {
     saveSession(FormType.LANGUAGE, { language: 'english' })
     saveSession(FormType.IT, { difficulty: 'easy' })
 
@@ -52,7 +52,7 @@ describe('lib/session', () => {
     expect(loadSession(FormType.IT)).toEqual({ difficulty: 'easy' })
   })
 
-  it('resetContentFields giữ nguyên các config fields đã khai báo', () => {
+  it('resetContentFields は宣言済みの config fields を保持する', () => {
     saveSession(FormType.LANGUAGE, {
       categoryId: 'c1',
       language: 'english',
@@ -73,7 +73,7 @@ describe('lib/session', () => {
     expect(loadSession(FormType.LANGUAGE)).toEqual(preserved)
   })
 
-  it('resetContentFields trả null khi chưa có session', () => {
+  it('session がない場合 resetContentFields は null を返す', () => {
     expect(resetContentFields(FormType.LANGUAGE)).toBeNull()
   })
 })

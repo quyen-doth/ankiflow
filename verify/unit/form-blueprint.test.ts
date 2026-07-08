@@ -34,40 +34,40 @@ describe('resolveBuiltinFormType', () => {
     expect(resolveBuiltinFormType('general')).toBe(FormType.GENERAL)
   })
 
-  it('giữ tương thích ngược với giá trị enum đầy đủ', () => {
+  it('完全な enum 値との後方互換性を維持', () => {
     expect(resolveBuiltinFormType('form_language')).toBe(FormType.LANGUAGE)
     expect(resolveBuiltinFormType('form_it')).toBe(FormType.IT)
     expect(resolveBuiltinFormType('form_general')).toBe(FormType.GENERAL)
   })
 
-  it('trả null cho code không phải built-in', () => {
+  it('built-in でない code に対して null を返す', () => {
     expect(resolveBuiltinFormType('test_1')).toBeNull()
     expect(resolveBuiltinFormType('anything_else')).toBeNull()
   })
 })
 
 describe('getBlueprintForContentType', () => {
-  it('content type seed "Ngôn ngữ" (id form_language / code language) → blueprint Language built-in', () => {
-    const bp = getBlueprintForContentType(makeCt({ id: 'form_language', code: 'language', name: 'Ngôn ngữ' }))
+  it('content type seed "言語" (id form_language / code language) → built-in の Language blueprint', () => {
+    const bp = getBlueprintForContentType(makeCt({ id: 'form_language', code: 'language', name: '言語' }))
     expect(bp).toBe(BUILTIN_BLUEPRINTS[FormType.LANGUAGE])
     expect(bp.formType).toBe(FormType.LANGUAGE)
     expect(bp.uiFormType).toBe('Language')
     expect(bp.coreFields[0].key).toBe('word')
   })
 
-  it('content type seed "IT Vocabulary" (code it) → blueprint IT built-in', () => {
+  it('content type seed "IT Vocabulary" (code it) → built-in の IT blueprint', () => {
     const bp = getBlueprintForContentType(makeCt({ id: 'form_it', code: 'it', name: 'IT Vocabulary' }))
     expect(bp).toBe(BUILTIN_BLUEPRINTS[FormType.IT])
     expect(bp.coreFields[0].key).toBe('term')
   })
 
-  it('content type seed "Kiến thức chung" (code general) → blueprint General built-in', () => {
-    const bp = getBlueprintForContentType(makeCt({ id: 'form_general', code: 'general', name: 'Kiến thức chung' }))
+  it('content type seed "一般知識" (code general) → built-in の General blueprint', () => {
+    const bp = getBlueprintForContentType(makeCt({ id: 'form_general', code: 'general', name: '一般知識' }))
     expect(bp).toBe(BUILTIN_BLUEPRINTS[FormType.GENERAL])
     expect(bp.coreFields[0].key).toBe('title')
   })
 
-  it('content type custom (code test_1) → blueprint dựng từ fields[], không phải built-in', () => {
+  it('content type custom (code test_1) → fields[] から構築された blueprint、built-in ではない', () => {
     const fields: FormFieldConfig[] = [
       { field_key: 'prompt', label: 'Prompt', type: 'text', is_required: true, is_session_persistent: false, sort_order: 1, placeholder: null, data_source: null },
       { field_key: 'answer', label: 'Answer', type: 'textarea', is_required: false, is_session_persistent: false, sort_order: 2, placeholder: null, data_source: null },

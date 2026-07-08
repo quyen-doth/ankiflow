@@ -52,12 +52,12 @@ afterEach(() => {
 })
 
 describe('GET /api/admin/global-config', () => {
-  it('không session → 401', async () => {
+  it('session がない → 401', async () => {
     const res = await GET(makeReq())
     expect(res.status).toBe(401)
   })
 
-  it('có session (không cần admin) → trả config hiện tại', async () => {
+  it('session がある (admin 不要) → 現在の config を返す', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'u1', email: 'someone@else.com' })
     docStore.set('settings/global', { ai_model: 'claude-sonnet-4-6', tts_available: false })
 
@@ -67,20 +67,20 @@ describe('GET /api/admin/global-config', () => {
     expect(await res.json()).toEqual({ config: { ai_model: 'claude-sonnet-4-6', tts_available: false } })
   })
 
-  it('doc chưa tồn tại → config: null (client tự fallback)', async () => {
+  it('doc が存在しない → config: null (client が自動フォールバック)', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'u1', email: 'someone@else.com' })
     const res = await GET(makeReq({ cookie: '__session=ok' }))
     expect(await res.json()).toEqual({ config: null })
   })
 })
 
-describe('POST /api/admin/global-config — chặn user thường (lỗ hổng cốt lõi cần vá)', () => {
-  it('không session → 401, KHÔNG verify admin email', async () => {
+describe('POST /api/admin/global-config — 一般ユーザーをブロック (修正が必要なコアの脆弱性)', () => {
+  it('session がない → 401、admin email を検証しない', async () => {
     const res = await POST(makeReq({ body: { tts_available: false } }))
     expect(res.status).toBe(401)
   })
 
-  it('user thường (email không khớp ADMIN_EMAIL) → 403, KHÔNG ghi Firestore', async () => {
+  it('一般ユーザー (email が ADMIN_EMAIL と一致しない) → 403、Firestore に書き込まない', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'attacker', email: 'attacker@evil.com' })
 
     const res = await POST(makeReq({ cookie: '__session=ok', body: { ai_model: 'claude-opus-4-8' } }))
@@ -89,7 +89,7 @@ describe('POST /api/admin/global-config — chặn user thường (lỗ hổng c
     expect(docStore.has('settings/global')).toBe(false)
   })
 
-  it('ADMIN_EMAIL chưa cấu hình (undefined) → mọi user đều 403 (fail-closed, không fail-open)', async () => {
+  it('ADMIN_EMAIL が未設定 (undefined) → すべての user が 403 (fail-closed、fail-open ではない)', async () => {
     delete process.env.ADMIN_EMAIL
     verifyMock.mockResolvedValueOnce({ uid: 'u1', email: 'owner@ankiflow.dev' })
 
@@ -99,8 +99,8 @@ describe('POST /api/admin/global-config — chặn user thường (lỗ hổng c
   })
 })
 
-describe('POST /api/admin/global-config — admin hợp lệ', () => {
-  it('admin đúng email → ghi thành công vào settings/global', async () => {
+describe('POST /api/admin/global-config — 有効な admin', () => {
+  it('admin の email が正しい → settings/global への書き込み成功', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
 
     const res = await POST(
@@ -117,7 +117,7 @@ describe('POST /api/admin/global-config — admin hợp lệ', () => {
     expect(saved?.tts_available).toBe(false)
   })
 
-  it('merge: chỉ gửi 1 field → các field khác trong doc giữ nguyên', async () => {
+  it('merge: 1 つの field のみ送信 → doc 内の他の field はそのまま維持', async () => {
     docStore.set('settings/global', { ai_model: 'claude-haiku-4-5', tts_available: true, unsplash_available: true })
     verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
 
@@ -129,7 +129,7 @@ describe('POST /api/admin/global-config — admin hợp lệ', () => {
     expect(saved?.unsplash_available).toBe(true)
   })
 
-  it('body rỗng → 400, không ghi gì', async () => {
+  it('body が空 → 400、何も書き込まない', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
 
     const res = await POST(makeReq({ cookie: '__session=ok', body: {} }))
@@ -138,7 +138,7 @@ describe('POST /api/admin/global-config — admin hợp lệ', () => {
     expect(docStore.has('settings/global')).toBe(false)
   })
 
-  it('body sai kiểu (zod reject) → 400', async () => {
+  it('body の型が誤り (zod reject) → 400', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
 
     const res = await POST(makeReq({ cookie: '__session=ok', body: { tts_available: 'yes' } }))

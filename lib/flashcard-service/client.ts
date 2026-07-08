@@ -1,12 +1,13 @@
 /**
- * Client-side AnkiConnect — browser gọi thẳng AnkiConnect trên máy của CHÍNH user
- * (mặc định http://localhost:8765), thay vì đi qua API route server.
+ * Client-side AnkiConnect — ブラウザがサーバー API route を経由せず、ユーザー自身の
+ * マシン上の AnkiConnect (デフォルト http://localhost:8765) を直接呼び出す。
  *
- * Lý do: trên bản deploy (Vercel), localhost của server không phải máy user —
- * chỉ có browser của user mới chạm được Anki Desktop của họ.
+ * 理由: デプロイ版 (Vercel) 上では、サーバーの localhost はユーザーのマシンではない —
+ * ユーザーのブラウザのみが自分の Anki Desktop に到達できる。
  *
- * Yêu cầu phía user khi dùng bản deploy: thêm domain app vào `webCorsOriginList`
- * trong config của AnkiConnect addon (Tools → Add-ons → AnkiConnect → Config).
+ * デプロイ版使用時にユーザー側で必要な作業: AnkiConnect アドオンの config
+ * (Tools → Add-ons → AnkiConnect → Config) にアプリの domain を
+ * `webCorsOriginList` へ追加すること。
  */
 import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
@@ -17,7 +18,7 @@ export const DEFAULT_ANKI_CONNECT_URL = 'http://localhost:8765'
 let cachedClient: { url: string; client: AnkiConnectProvider } | null = null
 let cachedUrl: string | null = null
 
-/** Instance AnkiConnect cho browser — cache theo URL. */
+/** ブラウザ用の AnkiConnect インスタンス — URL ごとにキャッシュ。 */
 export function getAnkiClient(url: string = DEFAULT_ANKI_CONNECT_URL): AnkiConnectProvider {
   if (!cachedClient || cachedClient.url !== url) {
     cachedClient = { url, client: new AnkiConnectProvider(url) }
@@ -26,17 +27,18 @@ export function getAnkiClient(url: string = DEFAULT_ANKI_CONNECT_URL): AnkiConne
 }
 
 /**
- * URL AnkiConnect từ settings CỦA USER (`settings/{uid}.anki_connect_url`),
- * fallback doc `default` (dữ liệu cũ), fallback cuối cùng là localhost:8765.
- * Cache trong session để poll 30s không tốn Firestore read mỗi lần —
- * sau khi user đổi URL trong Settings, gọi `resetAnkiClientCache()` để áp dụng.
+ * ユーザーの settings (`settings/{uid}.anki_connect_url`) から AnkiConnect URL を取得、
+ * doc `default` (古いデータ) にフォールバック、最終フォールバックは localhost:8765。
+ * 30 秒ごとの poll のたびに Firestore read が発生しないよう session 内でキャッシュ —
+ * ユーザーが Settings で URL を変更した後は `resetAnkiClientCache()` を呼んで反映する。
  */
 export async function resolveAnkiConnectUrl(): Promise<string> {
   if (cachedUrl) return cachedUrl
   try {
-    // CHỈ đọc settings/{uid} (per-user). KHÔNG fallback settings/default: doc đó là
-    // secrets của chủ app — Security Rules chặn non-admin đọc, và nó không còn chứa
-    // anki_connect_url nữa. Thiếu field → dùng hằng số mặc định.
+    // settings/{uid} (ユーザーごと) のみを読む。settings/default にはフォールバックしない:
+    // そのドキュメントはアプリ所有者の secrets — Security Rules が非管理者の読み取りを
+    // ブロックしており、もう anki_connect_url も含まれていない。フィールドがなければ
+    // デフォルト定数を使用。
     const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
     let url: string | undefined
     if (uid) {
@@ -52,7 +54,7 @@ export async function resolveAnkiConnectUrl(): Promise<string> {
   return cachedUrl
 }
 
-/** Client AnkiConnect với URL đã resolve từ settings. */
+/** settings から解決した URL を持つ AnkiConnect Client。 */
 export async function getAnkiClientFromSettings(): Promise<AnkiConnectProvider> {
   return getAnkiClient(await resolveAnkiConnectUrl())
 }

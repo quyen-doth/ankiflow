@@ -10,7 +10,7 @@ function makeRequest(path: string, withCookie = false): NextRequest {
   })
 }
 
-describe('middleware — chưa có session cookie', () => {
+describe('middleware — session cookie がない場合', () => {
   it('page → redirect /login', () => {
     const res = middleware(makeRequest('/dashboard'))
     expect(res.status).toBe(307)
@@ -22,14 +22,14 @@ describe('middleware — chưa có session cookie', () => {
     expect(res.headers.get('location')).toBe(`${BASE}/login`)
   })
 
-  it('API route → 401 JSON, KHÔNG redirect (client fetch cần status rõ ràng)', async () => {
+  it('API route → 401 JSON、redirect しない (client fetch には明確な status が必要)', async () => {
     const res = middleware(makeRequest('/api/history'))
     expect(res.status).toBe(401)
     expect(res.headers.get('location')).toBeNull()
     expect(await res.json()).toEqual({ error: 'Unauthorized' })
   })
 
-  it('/login và /signup vẫn truy cập được', () => {
+  it('/login と /signup はアクセス可能', () => {
     for (const path of ['/login', '/signup']) {
       const res = middleware(makeRequest(path))
       expect(res.status, path).toBe(200)
@@ -38,19 +38,19 @@ describe('middleware — chưa có session cookie', () => {
   })
 })
 
-describe('middleware — đã có session cookie', () => {
-  it('page thường đi qua bình thường', () => {
+describe('middleware — session cookie がある場合', () => {
+  it('通常の page は正常に通過', () => {
     const res = middleware(makeRequest('/dashboard', true))
     expect(res.status).toBe(200)
     expect(res.headers.get('location')).toBeNull()
   })
 
-  it('API route đi qua (verify thật ở API layer — Phase C)', () => {
+  it('API route は通過する (実際の検証は API layer — Phase C)', () => {
     const res = middleware(makeRequest('/api/history', true))
     expect(res.status).toBe(200)
   })
 
-  it('vào /login khi đã đăng nhập → redirect /dashboard', () => {
+  it('ログイン済みで /login にアクセス → /dashboard へ redirect', () => {
     const res = middleware(makeRequest('/login', true))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toBe(`${BASE}/dashboard`)
@@ -78,7 +78,7 @@ describe('middleware — matcher exclusions (regex trong config)', () => {
     }
   })
 
-  it('include: pages + API cần bảo vệ', () => {
+  it('include: 保護が必要な pages + API', () => {
     for (const path of ['/', '/dashboard', '/login', '/api/history', '/api/entries/sync', '/api/generate']) {
       expect(pattern.test(path), path).toBe(true)
     }

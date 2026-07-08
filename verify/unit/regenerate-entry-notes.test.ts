@@ -26,7 +26,7 @@ function infoMap(entries: Record<number, string>): Map<number, AnkiNoteInfo> {
 }
 
 describe('regenerateEntryNotes', () => {
-  it('map noteId↔cardType theo index, sinh Front/Back cho từng note', () => {
+  it('noteId↔cardType を index でマップし、各 note の Front/Back を生成', () => {
     const { updates, skipped } = regenerateEntryNotes(ENTRY, cardTypeMap, infoMap({}))
     expect(skipped).toBe(0)
     expect(updates).toHaveLength(2)
@@ -36,19 +36,19 @@ describe('regenerateEntryNotes', () => {
     expect(updates[1].fields.Front).toContain('class="meaning"') // meaning_to_word front = meaning
   })
 
-  it('giữ media cũ: trích [sound:] từ note hiện tại và nhúng lại', () => {
+  it('既存メディアを保持: 現在の note から [sound:] を抽出して再埋め込み', () => {
     const { updates } = regenerateEntryNotes(ENTRY, cardTypeMap, infoMap({ 101: 'x [sound:old.mp3]' }))
     expect(updates[0].fields.Back).toContain('[sound:old.mp3]')
   })
 
-  it('length lệch (note ≠ card type) → skipped, không update', () => {
+  it('length 不一致 (note ≠ card type) → skipped、update なし', () => {
     const bad = { ...ENTRY, anki_note_ids: [101], card_type_ids: ['ct_wm', 'ct_mw'] }
     const { updates, skipped } = regenerateEntryNotes(bad, cardTypeMap, infoMap({}))
     expect(updates).toHaveLength(0)
     expect(skipped).toBe(1)
   })
 
-  it('card type không tồn tại trong map → skip note đó', () => {
+  it('card type が map に存在しない → その note をスキップ', () => {
     const e = { ...ENTRY, card_type_ids: ['ct_wm', 'ct_unknown'] }
     const { updates, skipped } = regenerateEntryNotes(e, cardTypeMap, infoMap({}))
     expect(updates).toHaveLength(1)
@@ -56,13 +56,13 @@ describe('regenerateEntryNotes', () => {
     expect(skipped).toBe(1)
   })
 
-  it('onlyCardTypeId → chỉ sinh note của card type đó', () => {
+  it('onlyCardTypeId → その card type の note のみ生成', () => {
     const { updates } = regenerateEntryNotes(ENTRY, cardTypeMap, infoMap({}), 'ct_mw')
     expect(updates).toHaveLength(1)
     expect(updates[0].noteId).toBe(102)
   })
 
-  it('không có note ids → rỗng', () => {
+  it('note ids がない → 空', () => {
     const e = { ...ENTRY, anki_note_ids: [], card_type_ids: [] }
     const { updates, skipped } = regenerateEntryNotes(e, cardTypeMap, infoMap({}))
     expect(updates).toHaveLength(0)

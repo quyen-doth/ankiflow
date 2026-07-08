@@ -1,20 +1,20 @@
 /**
  * pendingBatch.ts
- * Quản lý kết quả generate hàng loạt (batch) giữa Create page và trang review batch.
- * Soi gương lib/pendingEntry.ts nhưng giữ MẢNG generatedContent + metadata dùng chung.
- * Dữ liệu lưu vào localStorage, xóa sau khi trang review đã đọc.
+ * Create page と batch review ページの間で一括 (batch) generate 結果を管理する。
+ * lib/pendingEntry.ts を鏡写しにしているが、generatedContent の配列 + 共有メタデータを保持。
+ * データは localStorage に保存され、review ページが読み込んだ後に削除される。
  */
 
 import { FormType, LanguageType } from '@/types'
 
 const STORAGE_KEY = 'ankiflow_pending_batch'
 
-/** Cấu trúc batch — N kết quả AI + metadata dùng chung từ session của user. */
+/** batch の構造 — N 個の AI 結果 + ユーザーセッションからの共有メタデータ。 */
 export interface PendingBatch {
-  /** Mỗi phần tử là kết quả từ Claude AI agent cho 1 thẻ (partial Entry fields). */
+  /** 各要素は Claude AI agent による 1 枚のカードの結果 (partial Entry fields)。 */
   items: Record<string, unknown>[]
 
-  /** Metadata dùng chung cho cả batch. */
+  /** batch 全体で共有するメタデータ。 */
   formType: FormType | string
   language?: LanguageType | null
   deckId?: string
@@ -22,11 +22,11 @@ export interface PendingBatch {
   cardTypeIds: string[]
   tags: string[]
 
-  /** Thời điểm lưu — để phát hiện dữ liệu stale. */
+  /** 保存時刻 — stale データを検出するため。 */
   savedAt: string
 }
 
-/** Lưu pending batch vào localStorage. */
+/** pending batch を localStorage に保存。 */
 export function savePendingBatch(data: PendingBatch): void {
   if (typeof window === 'undefined') return
   try {
@@ -36,7 +36,7 @@ export function savePendingBatch(data: PendingBatch): void {
   }
 }
 
-/** Đọc pending batch từ localStorage. */
+/** localStorage から pending batch を読み込む。 */
 export function loadPendingBatch(): PendingBatch | null {
   if (typeof window === 'undefined') return null
   try {
@@ -49,13 +49,13 @@ export function loadPendingBatch(): PendingBatch | null {
   }
 }
 
-/** Xóa pending batch khỏi localStorage (gọi sau khi trang review đã load xong). */
+/** localStorage から pending batch を削除 (review ページの読み込み完了後に呼ぶ)。 */
 export function clearPendingBatch(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(STORAGE_KEY)
 }
 
-/** Kiểm tra pending batch có bị stale (quá 30 phút) không. */
+/** pending batch が stale (30 分超過) かどうかをチェック。 */
 export function isPendingBatchStale(batch: PendingBatch): boolean {
   const savedAt = new Date(batch.savedAt).getTime()
   const now = Date.now()

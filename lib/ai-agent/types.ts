@@ -1,8 +1,8 @@
 import type { FormType, LanguageType } from '@/types'
 
 /**
- * Tham số đầu vào để sinh nội dung một thẻ. Giữ tương thích với contract cũ
- * của `/api/generate` (word/term/form_type/language/topics).
+ * カード 1 枚のコンテンツを生成するための入力パラメータ。`/api/generate` の
+ * 旧 contract (word/term/form_type/language/topics) との互換性を維持。
  */
 export interface GenerateCardInput {
   word?: string
@@ -17,8 +17,9 @@ export interface GenerateCardInput {
 }
 
 /**
- * Abstraction cho provider AI sinh nội dung thẻ — mirror pattern của
- * `IFlashcardService` (lib/flashcard-service). Cho phép thay provider sau này.
+ * カードコンテンツを生成する AI provider の Abstraction — `IFlashcardService`
+ * (lib/flashcard-service) のパターンを鏡写しにしている。将来 provider を
+ * 差し替え可能にする。
  */
 export interface IAIAgentProvider {
   generateCard(input: GenerateCardInput): Promise<Record<string, unknown>>

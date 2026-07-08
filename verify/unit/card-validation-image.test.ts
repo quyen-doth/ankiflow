@@ -19,13 +19,13 @@ function validEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
 }
 
 describe('dataUrlBytes', () => {
-  it('URL http/không data → 0', () => {
+  it('http URL/data でない → 0', () => {
     expect(dataUrlBytes('https://x.com/a.png')).toBe(0)
     expect(dataUrlBytes(undefined)).toBe(0)
     expect(dataUrlBytes('')).toBe(0)
   })
 
-  it('ước lượng byte gần đúng từ base64', () => {
+  it('base64 からバイト数を概算', () => {
     const bytes = dataUrlBytes(makeDataUrl(1000))
     expect(bytes).toBeGreaterThan(900)
     expect(bytes).toBeLessThan(1100)
@@ -33,17 +33,17 @@ describe('dataUrlBytes', () => {
 })
 
 describe('validateCardEntry — image size', () => {
-  it('ảnh data URL > 800KB → có lỗi image', () => {
+  it('画像 data URL が 800KB 超 → image エラーあり', () => {
     const errors = validateCardEntry(validEntry({ image_url: makeDataUrl(MAX_IMAGE_BYTES + 100_000) }), ['ct'])
     expect(errors.some(e => e.field === 'image')).toBe(true)
   })
 
-  it('ảnh data URL nhỏ → không lỗi image', () => {
+  it('画像 data URL が小さい → image エラーなし', () => {
     const errors = validateCardEntry(validEntry({ image_url: makeDataUrl(100_000) }), ['ct'])
     expect(errors.some(e => e.field === 'image')).toBe(false)
   })
 
-  it('ảnh URL http (Unsplash) dù dài → không lỗi image', () => {
+  it('画像 http URL (Unsplash) は長くても → image エラーなし', () => {
     const errors = validateCardEntry(validEntry({ image_url: 'https://images.unsplash.com/photo-x' }), ['ct'])
     expect(errors.some(e => e.field === 'image')).toBe(false)
   })

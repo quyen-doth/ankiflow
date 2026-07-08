@@ -1,6 +1,6 @@
 /**
- * Trả về một mảng mới với phần tử ở `from` được chuyển tới vị trí `to`.
- * Không thay đổi mảng gốc. Index ngoài biên được kẹp về [0, length-1].
+ * `from` の要素を `to` の位置に移動した新しい配列を返す。
+ * 元の配列は変更しない。範囲外の index は [0, length-1] にクランプされる。
  */
 export function arrayMove<T>(list: T[], from: number, to: number): T[] {
   const result = [...list]

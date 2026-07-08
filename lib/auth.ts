@@ -1,16 +1,16 @@
 /**
- * Client-side auth helpers — Firebase Auth (email/password) + httpOnly session cookie.
+ * Client-side auth helpers — Firebase Auth (email/password) + httpOnly session cookie。
  *
  * Flow:
- * - signIn: signInWithEmailAndPassword → lấy ID token → POST /api/auth/session
- *   (server tạo session cookie `__session`, httpOnly — JS không đọc được).
- * - signUp: POST /api/auth/signup (server tạo user qua Admin SDK — kiểm soát
- *   validation tập trung) → tự động signIn.
- * - logout: signOut Firebase client + DELETE /api/auth/session (revoke + xóa cookie)
- *   + clear localStorage (tránh user sau trên cùng máy thấy draft của user trước).
+ * - signIn: signInWithEmailAndPassword → ID token を取得 → POST /api/auth/session
+ *   (サーバーが session cookie `__session` を作成、httpOnly — JS からは読めない)。
+ * - signUp: POST /api/auth/signup (サーバーが Admin SDK 経由でユーザー作成 —
+ *   validation を一元管理) → 自動的に signIn。
+ * - logout: Firebase client の signOut + DELETE /api/auth/session (revoke + クッキー削除)
+ *   + localStorage をクリア (同じマシンの次のユーザーが前のユーザーの draft を見るのを防ぐ)。
  *
- * Firebase client SDK vẫn đăng nhập song song (onAuthStateChanged) vì client
- * đọc Firestore trực tiếp — Security Rules (Phase D) dựa trên request.auth.
+ * Firebase client SDK は並行してログイン状態を保持 (onAuthStateChanged) — クライアントが
+ * Firestore を直接読むため、Security Rules (Phase D) は request.auth に基づく。
  */
 import { z } from 'zod'
 import {
@@ -32,7 +32,7 @@ export interface AuthResult {
   error?: string
 }
 
-/** Map Firebase Auth error codes sang thông điệp thân thiện (English — UI rule). */
+/** Firebase Auth error codes をフレンドリーなメッセージにマップ (English — UI rule)。 */
 function friendlyAuthError(err: unknown): string {
   const code = (err as { code?: string })?.code || ''
   switch (code) {
@@ -49,7 +49,7 @@ function friendlyAuthError(err: unknown): string {
   }
 }
 
-/** Đăng nhập: Firebase client → đổi ID token lấy session cookie từ server. */
+/** ログイン: Firebase client → ID token をサーバーの session cookie と交換。 */
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password)
@@ -70,7 +70,7 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   }
 }
 
-/** Đăng ký qua server (Admin SDK) rồi tự động đăng nhập. */
+/** サーバー (Admin SDK) 経由でサインアップした後、自動的にログイン。 */
 export async function signUp(email: string, password: string): Promise<AuthResult> {
   try {
     const res = await fetch('/api/auth/signup', {
@@ -88,7 +88,7 @@ export async function signUp(email: string, password: string): Promise<AuthResul
   }
 }
 
-/** Xóa mọi dữ liệu cục bộ của app (session form, pending entry/batch). */
+/** アプリのローカルデータをすべて削除 (session form、pending entry/batch)。 */
 export function clearLocalData(): void {
   if (typeof window === 'undefined') return
   const keys: string[] = []
@@ -99,18 +99,18 @@ export function clearLocalData(): void {
   keys.forEach((key) => localStorage.removeItem(key))
 }
 
-/** Đăng xuất: revoke session cookie + signOut client + xóa local data. */
+/** ログアウト: session cookie を revoke + client の signOut + local data 削除。 */
 export async function logout(): Promise<void> {
-  // DELETE trước khi signOut để server còn verify được cookie mà revoke refresh tokens.
+  // signOut の前に DELETE することで、サーバーがまだクッキーを検証できる状態で refresh tokens を revoke できる。
   try {
     await fetch('/api/auth/session', { method: 'DELETE' })
   } catch {
-    /* cookie sẽ hết hạn tự nhiên nếu request fail */
+    /* リクエストが失敗してもクッキーは自然に期限切れになる */
   }
   try {
     await firebaseSignOut(auth)
   } catch {
-    /* client state sẽ được dọn khi reload */
+    /* client state はリロード時にクリアされる */
   }
   clearLocalData()
 }

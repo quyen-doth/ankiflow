@@ -80,7 +80,7 @@ afterEach(() => {
 })
 
 describe('POST /api/notifications/line-webhook — revlog', () => {
-  it('rating hợp lệ → update review_state (source builtin) + append event kind rating', async () => {
+  it('有効な rating → review_state を update (source builtin) + kind rating の event を追加', async () => {
     entryStore.set('e1', { user_id: 'u9', review_state: ankiState() })
 
     const res = await POST(makeReq('e1', 'good'))
@@ -105,7 +105,7 @@ describe('POST /api/notifications/line-webhook — revlog', () => {
     })
   })
 
-  it('entry chưa có review_state → event với prev null', async () => {
+  it('entry に review_state がない → prev null の event', async () => {
     entryStore.set('e2', { user_id: 'u9' })
 
     await POST(makeReq('e2', 'again'))
@@ -113,7 +113,7 @@ describe('POST /api/notifications/line-webhook — revlog', () => {
     expect(addMock.mock.calls[0][0]).toMatchObject({ entry_id: 'e2', prev: null })
   })
 
-  it('entry không tồn tại → không update, không event', async () => {
+  it('entry が存在しない → update なし、event なし', async () => {
     const res = await POST(makeReq('missing', 'good'))
     expect(res.status).toBe(200)
     expect(updateMock).not.toHaveBeenCalled()
