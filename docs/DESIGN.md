@@ -1,65 +1,65 @@
 # AnkiFlow — Design System v2.0
 
-> **Cognitive Sanctuary** — the visual language for a calm, fast tool that turns a single word into a full set of Anki cards.
-> Redesign direction: *neutral & minimal foundation, one confident brand green, a warm amber spark.*
-> Audience: a single technical power-user. Desktop-first. Local-first.
+> **Cognitive Sanctuary** — 1 つの単語を Anki カード一式に変える、静かで速いツールのためのビジュアル言語。
+> リデザインの方向性: *ニュートラル & ミニマルな基盤、自信に満ちたブランドグリーン 1 色、温かみのあるアンバーのスパーク。*
+> 対象: 単一のテクニカルパワーユーザー。Desktop-first。Local-first。
 
 ---
 
-## 1. Design principles
+## 1. デザイン原則
 
-| Principle | What it means in practice |
+| 原則 | 実践における意味 |
 |---|---|
-| **Calm over clever** | Neutral canvas, generous spacing, no decoration without meaning. The content is the interface. |
-| **One clear action** | Each screen has exactly one primary green button. Everything else stays quiet in neutral. |
-| **Built for speed** | Monospace metadata, visible keyboard shortcuts (`⌘N`, `⌘↵`, `/`), dense tables, no onboarding fluff. |
+| **Calm over clever** | ニュートラルなキャンバス、余裕のあるスペーシング、意味のない装飾はしない。コンテンツこそがインターフェース。 |
+| **One clear action** | 各画面には明確なプライマリーグリーンボタンが 1 つだけ。それ以外はすべてニュートラルで静かに保つ。 |
+| **Built for speed** | Monospace メタデータ、可視化されたキーボードショートカット (`⌘N`、`⌘↵`、`/`)、密度の高いテーブル、オンボーディングの余計な演出なし。 |
 
-These directly fix the audited problems: weak hierarchy, low contrast, and washed-out color.
+これらは監査で指摘された問題を直接解決する: 弱い階層構造、低いコントラスト、色あせた色使い。
 
 ---
 
 ## 2. Color
 
-The previous warm-cream palette is replaced by a **cool neutral foundation** so content pops, with the **original brand green kept as the primary accent** and a **new amber** added as a secondary spark.
+以前の温かみのあるクリーム系パレットは **クールなニュートラル基盤** に置き換えられ、コンテンツが際立つようにしている。**元のブランドグリーンはプライマリーアクセントとして維持**し、**新しいアンバー**をセカンダリーのスパークとして追加。
 
 ### Brand — Green (primary accent)
-| Token | Hex | Use |
+| Token | Hex | 用途 |
 |---|---|---|
-| Green 900 | `#23492F` | Pressed / deepest text on light |
-| **Green 700 ★** | **`#316342`** | **Primary buttons, active nav, brand, links, icons, progress** |
-| Green 600 | `#3A7350` | Hover state for primary |
-| Green 100 | `#D8E6DD` | Borders on green surfaces |
-| Green 50 | `#F1F7F3` | Tinted backgrounds, "connected" pill |
+| Green 900 | `#23492F` | Pressed / ライト背景上の最も濃いテキスト |
+| **Green 700 ★** | **`#316342`** | **プライマリーボタン、active nav、ブランド、リンク、アイコン、progress** |
+| Green 600 | `#3A7350` | primary の Hover state |
+| Green 100 | `#D8E6DD` | green surfaces 上の Borders |
+| Green 50 | `#F1F7F3` | ティント背景、"connected" pill |
 
-### Spark — Amber (secondary accent · new)
-| Token | Hex | Use |
+### Spark — Amber (secondary accent · 新規)
+| Token | Hex | 用途 |
 |---|---|---|
-| Amber 800 | `#8A5810` | Text on amber tint |
-| **Amber 600 ★** | **`#B87514`** | **"Today" stat, tips, pending state, JA tag, secondary highlights** |
+| Amber 800 | `#8A5810` | amber tint 上のテキスト |
+| **Amber 600 ★** | **`#B87514`** | **"Today" stat、tips、pending state、JA tag、secondary highlights** |
 | Amber 400 | `#D99A3A` | Decorative / charts |
-| Amber 100 | `#EFE0C6` | Borders on amber surfaces |
-| Amber 50 | `#FAF3E6` | Tinted callout backgrounds, live study-card surface (Preview) |
+| Amber 100 | `#EFE0C6` | amber surfaces 上の Borders |
+| Amber 50 | `#FAF3E6` | ティント callout 背景、Preview のライブ study-card surface |
 
 ### Neutrals — cool gray foundation
-| Token | Hex | Use |
+| Token | Hex | 用途 |
 |---|---|---|
-| Ink | `#15171C` | Primary text, dark fills |
-| Slate 600 | `#5C606A` | Body / secondary text |
-| Slate 400 | `#9396A0` | Muted labels, meta |
+| Ink | `#15171C` | プライマリーテキスト、dark fills |
+| Slate 600 | `#5C606A` | Body / secondary テキスト |
+| Slate 400 | `#9396A0` | Muted labels、meta |
 | Border | `#E8E8E3` | Card & table borders |
-| Surface | `#FBFBFA` | Sidebar, raised rows |
+| Surface | `#FBFBFA` | Sidebar、raised rows |
 | Canvas | `#F4F4F2` | App background |
 
-**Color rule.** Green carries identity, navigation and the single primary action. Amber is a *spark & warmth* — today/tips/pending/language tags and the live study-card surface in Preview — but never the main CTA. Status: green = synced/success, amber = pending, `#C0392B` = destructive only.
+**Color rule。** Green はアイデンティティ、ナビゲーション、そして唯一のプライマリーアクションを担う。Amber は *スパーク & 温かみ* — today/tips/pending/language tags と Preview のライブ study-card surface — だが、決してメイン CTA にはならない。Status: green = synced/success、amber = pending、`#C0392B` = destructive のみ。
 
 ---
 
 ## 3. Typography
 
-Two families, both free (Google Fonts):
+2 つのファミリー、両方とも無料 (Google Fonts):
 
-- **Hanken Grotesk** — UI, headings, body. Clean, slightly warm grotesque.
-- **JetBrains Mono** — labels, metadata, deck paths, IPA readings, code, shortcuts.
+- **Hanken Grotesk** — UI、headings、body。クリーンで少し温かみのある grotesque。
+- **JetBrains Mono** — labels、metadata、deck paths、IPA readings、code、shortcuts。
 
 | Role | Size / weight | Notes |
 |---|---|---|
@@ -70,16 +70,16 @@ Two families, both free (Google Fonts):
 | Overline label | 11 / 700, `0.05em`, UPPERCASE | JetBrains Mono, Slate 400 |
 | Metadata / mono | 12–13 / 500 | JetBrains Mono |
 
-> The old type scale failed to apply, so headings rendered at 16px — the root cause of "content looks washed out". v2 sets explicit sizes/weights on every level.
+> 旧タイプスケールが適用されず、headings が 16px でレンダリングされていた — これが "コンテンツが色あせて見える" の根本原因だった。v2 では全レベルに明示的な sizes/weights を設定。
 
 ---
 
 ## 4. Logo
 
-The mark is a **stacked card with a fold** (`gallery-vertical-end`) — a flashcard mid-flip. Wordmark "AnkiFlow" (Hanken 800) + overline "COGNITIVE SANCTUARY" (JetBrains Mono).
+マークは **折り目のある積み重なったカード** (`gallery-vertical-end`) — フラッシュカードがめくれる瞬間を表現。ワードマーク "AnkiFlow" (Hanken 800) + overline "COGNITIVE SANCTUARY" (JetBrains Mono)。
 
-- Default: white icon on a **Green 700** rounded tile (`border-radius:10–13px`).
-- Variants allowed: green-on-tint, white-on-ink. No other recoloring, no stretching.
+- Default: **Green 700** の角丸タイル (`border-radius:10–13px`) 上に白いアイコン。
+- 許可されるバリエーション: green-on-tint、white-on-ink。それ以外の再配色や引き伸ばしは不可。
 
 ---
 
@@ -87,24 +87,24 @@ The mark is a **stacked card with a fold** (`gallery-vertical-end`) — a flashc
 
 | Component | Spec |
 |---|---|
-| **Primary button** | Green 700 bg, white text, radius 9, `box-shadow:0 2px 6px rgba(49,99,66,.22)`, hover Green 600 |
-| **Secondary button** | White bg, `#E3E3DE` border, Slate 600 text |
-| **Ghost button** | Green text, no fill |
-| **Danger button** | `#FBF0EF` bg, `#C0392B` text |
-| **Input** | Height 42–46, radius 9, bg `#FCFCFB`, border `#E3E3DE`; focus = Green 700 border + 3px green ring |
-| **Status pill** | Tinted bg + matching dot, radius 999 (Synced=green, Pending=amber) |
-| **Language tag** | Mono 10px on tinted square, radius 5 (EN=green, JA=amber) |
-| **Toggle** | 42×24 track, 20px knob; on=Green 700, off=`#DCDCD7` |
-| **Card / panel** | White, border `#E8E8E3`, radius 14, padding 20–24 |
-| **Nav item (active)** | Green-tint bg + 3px left indicator bar + Green 700 text |
+| **Primary button** | Green 700 bg、白テキスト、radius 9、`box-shadow:0 2px 6px rgba(49,99,66,.22)`、hover は Green 600 |
+| **Secondary button** | 白 bg、`#E3E3DE` border、Slate 600 テキスト |
+| **Ghost button** | Green テキスト、fill なし |
+| **Danger button** | `#FBF0EF` bg、`#C0392B` テキスト |
+| **Input** | Height 42–46、radius 9、bg `#FCFCFB`、border `#E3E3DE`; focus = Green 700 border + 3px green ring |
+| **Status pill** | ティント bg + 対応する dot、radius 999 (Synced=green、Pending=amber) |
+| **Language tag** | ティント square 上に Mono 10px、radius 5 (EN=green、JA=amber) |
+| **Toggle** | 42×24 track、20px knob; on=Green 700、off=`#DCDCD7` |
+| **Card / panel** | 白、border `#E8E8E3`、radius 14、padding 20–24 |
+| **Nav item (active)** | Green-tint bg + 3px left indicator bar + Green 700 テキスト |
 
 ---
 
 ## 6. Radius, elevation & icons
 
-- **Radius:** 7 (controls) · 9 (buttons/inputs) · 14 (cards) · 999 (pills).
-- **Elevation:** flat (border only) → button shadow → modal shadow `0 24px 60px rgba(0,0,0,.18)`.
-- **Icons:** Lucide, 2px stroke, sized to adjacent text. Tinted green/amber only when carrying state.
+- **Radius:** 7 (controls) · 9 (buttons/inputs) · 14 (cards) · 999 (pills)。
+- **Elevation:** flat (border のみ) → button shadow → modal shadow `0 24px 60px rgba(0,0,0,.18)`。
+- **Icons:** Lucide、2px stroke、隣接テキストに合わせたサイズ。state を持つ場合のみ green/amber でティント。
 
 ---
 
@@ -112,21 +112,21 @@ The mark is a **stacked card with a fold** (`gallery-vertical-end`) — a flashc
 
 | Screen | Purpose | Key states |
 |---|---|---|
-| **Dashboard** | Library snapshot — stats, recent, language breakdown, tip | — |
-| **Create Card** | Single entry → AI enrich. Tabs: Language / IT & Dev / General | Duplicate-found modal |
-| **Preview** | Review generated content (hero-word hierarchy), live card preview on warm amber surface, pick card types, choose deck | Card flip, type toggles |
-| **History** | Table of created cards + detail drawer | Detail drawer, status filter |
-| **Admin** | CMS for Categories / Card Types / Topics / Decks / Content Types | Tab switching |
-| **Settings** | Integrations + AI + preferences | Toggles, save |
-| **Design System** | This living style guide, in-app | — |
+| **Dashboard** | ライブラリスナップショット — stats、recent、language breakdown、tip | — |
+| **Create Card** | 単一エントリー → AI エンリッチ。タブ: Language / IT & Dev / General | Duplicate-found modal |
+| **Preview** | 生成されたコンテンツをレビュー (hero-word hierarchy)、warm amber surface 上のライブカードプレビュー、card types を選択、deck を選ぶ | Card flip、type toggles |
+| **History** | 作成されたカードのテーブル + detail drawer | Detail drawer、status filter |
+| **Admin** | Categories / Card Types / Topics / Decks / Content Types 用 CMS | Tab switching |
+| **Settings** | Integrations + AI + preferences | Toggles、save |
+| **Design System** | この生きたスタイルガイド、アプリ内 | — |
 
-Persistent shell: fixed 248px left **sidebar** (logo, nav, Anki-connection status, user) + sticky **top header** (breadcrumb/title + primary action).
+永続的なシェル: 固定 248px の左 **sidebar** (logo、nav、Anki-connection status、user) + 固定 **top header** (breadcrumb/title + primary action)。
 
 ---
 
 ## 8. Files
 
-All screens are interactive HTML prototypes with a shared, navigable sidebar:
+すべての画面は共有のナビゲート可能な sidebar を持つインタラクティブな HTML プロトタイプ:
 
 ```
 AnkiFlow Dashboard.dc.html       ← entry point
@@ -138,7 +138,7 @@ AnkiFlow Admin.dc.html
 AnkiFlow Settings.dc.html
 ```
 
-Click any sidebar item to move between screens.
+任意の sidebar item をクリックすると画面間を移動できる。
 
 ---
 
