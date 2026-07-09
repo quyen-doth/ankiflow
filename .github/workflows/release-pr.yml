@@ -1,0 +1,78 @@
+name: Release PR
+
+on:
+    push:
+        branches: [develop]
+    workflow_dispatch: {}
+
+permissions:
+    contents: read
+    pull-requests: write
+
+concurrency:
+    group: release-pr-develop-to-main
+    cancel-in-progress: false
+
+jobs:
+    create-release-pr:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Create or update release PR
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  BASE_BRANCH: main
+                  HEAD_BRANCH: develop
+                  PR_TITLE: "release: develop to main"
+              run: |
+                  set -euo pipefail
+
+                  git fetch origin "$BASE_BRANCH" "$HEAD_BRANCH"
+
+                  if git diff --quiet "origin/$BASE_BRANCH...origin/$HEAD_BRANCH"; then
+                    echo "No changes between $HEAD_BRANCH and $BASE_BRANCH. Skipping release PR."
+                    exit 0
+                  fi
+
+                  existing_pr="$(
+                    gh pr list \
+                      --repo "$REPO" \
+                      --base "$BASE_BRANCH" \
+                      --head "$HEAD_BRANCH" \
+                      --state open \
+                      --json number \
+                      --jq '.[0].number // empty'
+                  )"
+
+                  pr_body="$(
+                    cat <<EOF
+                  Automated release PR from \`$HEAD_BRANCH\` into \`$BASE_BRANCH\`.
+
+                  Triggered by commit: $GITHUB_SHA
+                  Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+                  Review CI status before merging.
+                  EOF
+                  )"
+
+                  if [ -n "$existing_pr" ]; then
+                    gh pr edit "$existing_pr" \
+                      --repo "$REPO" \
+                      --title "$PR_TITLE" \
+                      --body "$pr_body"
+                    echo "Updated release PR #$existing_pr."
+                  else
+                    gh pr create \
+                      --repo "$REPO" \
+                      --base "$BASE_BRANCH" \
+                      --head "$HEAD_BRANCH" \
+                      --title "$PR_TITLE" \
+                      --body "$pr_body"
+                  fi
