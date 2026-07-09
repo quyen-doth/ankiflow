@@ -1,0 +1,58 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node '/Users/hong-quyen/Documents/study/flashcard/ankiflow/.codex/hooks/block-env.mjs'"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); PATH_VAL=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // \"\"'); echo \"$PATH_VAL\" | grep -q '^docs/' && echo 'CLAUDE.md rule: Need user approval before editing docs/' >&2 && exit 2 || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE 'deleteDoc|deleteField|writeBatch.*delete|FieldValue\\.delete|firestore.*\\.delete\\(' && echo 'CLAUDE.md rule: xóa Firestore document cần xác nhận user trước khi thực hiện' >&2 && exit 2 || exit 0"
+          },
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE \"action['\\\"]?\\s*:\\s*['\\\"]?deleteNotes|action['\\\"]?\\s*:\\s*['\\\"]?deleteDecks|ankiconnect.*delete|/api/anki.*delete\" && echo 'CLAUDE.md rule: xóa Anki notes/decks qua AnkiConnect cần xác nhận user trước khi thực hiện' >&2 && exit 2 || exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️ REMINDER — Mandatory Workflow:'; sed -n '/## Mandatory Workflow/,/### Hard Rules/p' CLAUDE.md"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/notify.sh \"✅ Claude Code\" \"Task completed\""
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,88 +1,93 @@
 # AGENTS.md — AnkiFlow
 
-> File này được đọc bởi AI agent ở mỗi session mới.
-> Đây là nguồn thông tin cơ bản về project, convention và quy tắc làm việc.
+> This file is read by the AI agent at the start of each new session.
+> It serves as the primary source of information regarding the project, conventions, and working rules.
 
 ---
 
 ## Project Overview
 
-**AnkiFlow** là web app hỗ trợ tạo và quản lý từ vựng đa ngôn ngữ,
-tích hợp trực tiếp với Anki thông qua AnkiConnect.
+**AnkiFlow** is a web app that helps create and manage multilingual vocabulary,
+integrating directly with Anki via AnkiConnect.
 
-**Người dùng:** Học ngôn ngữ (Anh, Trung, Nhật) và IT vocabulary.
+**Target Users:** Language learners (English, Chinese, Japanese) and IT vocabulary learners.
 
-**Workflow cốt lõi:**
+**Core Workflow:**
+
 ```
-Nhập từ vựng → AI bổ sung thông tin → Export sang Anki → Ôn tập
+Input vocabulary → AI enriches data → Export to Anki → Review
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js (App Router) |
-| Language | TypeScript (strict mode) |
-| Database | Google Firestore (NoSQL) |
-| Styling | Tailwind CSS |
+| Layer            | Technology                   |
+| ---------------- | ---------------------------- |
+| Framework        | Next.js (App Router)         |
+| Language         | TypeScript (strict mode)     |
+| Database         | Google Firestore (NoSQL)     |
+| Styling          | Tailwind CSS                 |
 | Anki Integration | AnkiConnect (local HTTP API) |
-| AI | Gemini API |
-| Media | Unsplash API, TTS |
+| AI               | Gemini API                   |
+| Media            | Unsplash API, TTS            |
 
 ---
 
 ## Docs Structure
 
-Toàn bộ tài liệu nằm trong `docs/`. Đây là source of truth — đọc đúng file trước khi làm việc:
+All documentation is located in `docs/`. This is the source of truth — read the appropriate file before starting work:
 
-| File | Nội dung | Đọc khi |
-|---|---|---|
-| `docs/prd.md` | Product requirement, scope | Bắt đầu feature mới |
-| `docs/tasks.md` | Danh sách task, status | Check việc cần làm |
-| `docs/API.md` | Endpoint, request/response format | Viết hoặc gọi API |
-| `docs/DATABASE.md` | Firestore schema, enum values | Viết query hoặc thêm field |
-| `docs/design/DESIGN.md` | Design system, tokens, spacing | Tạo hoặc sửa UI |
-| `docs/design/COMPONENT.md` | Danh sách component đã có | Trước khi tạo component mới |
+| File                       | Content                            | When to Read                          |
+| -------------------------- | ---------------------------------- | ------------------------------------- |
+| `docs/prd.md`              | Product requirements, scope        | Starting a new feature                |
+| `docs/tasks.md`            | Task list, status                  | Checking pending tasks / things to do |
+| `docs/API.md`              | Endpoints, request/response format | Writing or calling APIs               |
+| `docs/DATABASE.md`         | Firestore schema, enum values      | Writing queries or adding fields      |
+| `docs/design/DESIGN.md`    | Design system, tokens, spacing     | Creating or modifying UI              |
+| `docs/design/COMPONENT.md` | List of existing components        | Before creating a new component       |
 
 ---
 
 ## Skills Available
 
-Dùng các skill sau thay vì tự đoán quy trình:
+Use the following skills instead of guessing the process:
 
-| Skill | Khi nào dùng |
-|---|---|
-| `@init` | Bắt đầu feature mới |
-| `@design` | Tạo hoặc sửa UI component |
-| `@api` | Thêm hoặc sửa API endpoint |
-| `@debug` | Có lỗi cần fix |
-| `@deploy` | Chuẩn bị deploy |
-| `@update-docs` | Sau khi code thay đổi |
-| `@database` | Query Firestore hoặc thêm field |
+| Skill          | When to Use                         |
+| -------------- | ----------------------------------- |
+| `@init`        | Starting a new feature              |
+| `@design`      | Creating or modifying UI components |
+| `@api`         | Adding or modifying API endpoints   |
+| `@debug`       | When there are bugs to fix          |
+| `@deploy`      | Preparing for deployment            |
+| `@update-docs` | After code changes                  |
+| `@database`    | Querying Firestore or adding fields |
 
 ---
 
 ## Code Conventions
 
 ### TypeScript
-- Strict mode bật — không dùng `any`
-- Dùng `interface` cho object shape, `type` cho union/intersection
-- `import type` cho type-only imports
-- Không dùng `default export` cho components — dùng named export
+
+- Strict mode enabled — do not use `any`
+- Use `interface` for object shapes, `type` for unions/intersections
+- `import type` for type-only imports
+- Do not use `default export` for components — use named exports
 
 ### Next.js App Router
-- File route: `app/[feature]/page.tsx`
-- API route: `app/api/[resource]/route.ts` — tên file phải là `route.ts`
-- Server component là mặc định — chỉ thêm `'use client'` khi cần thiết
+
+- Route file: `app/[feature]/page.tsx`
+- API route: `app/api/[resource]/route.ts` — the filename must be `route.ts`
+- Server components by default — only add `'use client'` when necessary
 
 ### Firestore
-- Không gọi Firestore trong vòng lặp — dùng `Promise.all()` để batch fetch
-- Không hardcode string cho `form_type` và `status` — dùng TypeScript enum/type
-- Xem `docs/DATABASE.md` để biết tên field chính xác và enum values
+
+- Do not call Firestore inside loops — use `Promise.all()` for batch fetching
+- Do not hardcode strings for `form_type` and `status` — use TypeScript enums/types
+- Check `docs/DATABASE.md` for exact field names and enum values
 
 ### Naming
+
 - Folder: `kebab-case`
 - Component: `PascalCase.tsx`
 - Utility/hook: `camelCase.ts`
@@ -90,66 +95,63 @@ Dùng các skill sau thay vì tự đoán quy trình:
 
 ---
 
-## Enum Values Quan Trọng
+## Important Enum Values
 
 ### `form_type`
+
 ```
-form_general    Từ vựng tổng quát
-form_it         Từ vựng IT / Công nghệ
-form_language   Từ vựng ngôn ngữ (Anh, Trung, Nhật)
+form_general    General vocabulary
+form_it         IT / Technology vocabulary
+form_language   Language vocabulary (English, Chinese, Japanese)
 ```
 
 ### `status` (entries)
+
 ```
-draft      Đang soạn
-ready      Sẵn sàng export Anki
-exported   Đã export vào Anki
-archived   Đã ẩn / không dùng
+draft      Drafting / In progress
+ready      Ready to export to Anki
+exported   Exported to Anki
+archived   Hidden / Unused
 ```
 
 ---
 
 ## Safety Guardrails
 
-Các hành động sau **bắt buộc phải có xác nhận của user trước khi thực hiện:**
+The following actions **strictly require user confirmation before execution:**
 
-- Ghi hoặc xóa document trong Firestore
-- Gọi AnkiConnect API (tạo/xóa note trong Anki)
-- Deploy lên production
-- Xóa file trong codebase
-- Update bất kỳ file nào trong `docs/`
+- Writing or deleting documents in Firestore
+- Calling the AnkiConnect API (creating/deleting notes in Anki)
+- Deploying to production
+- Deleting files in the codebase
+- Updating any file in `docs/`
 
-> **Nguyên tắc:** Propose trước — apply sau khi user nói "ok" hoặc "apply".
+> **Principle:** Propose first — apply only after the user says "ok" or "apply".
 
 ---
 
 ## Git Conventions
 
 ```
-feat:     Tính năng mới
+feat:     New feature
 fix:      Bug fix
-docs:     Chỉ thay đổi docs
-refactor: Refactor, không thêm tính năng
-chore:    Config, build, dependencies
+docs:     Documentation changes only
+refactor: Refactoring code, no new features added
+chore:    Configuration, builds, dependencies
 ```
 
-Ví dụ: `feat: add POST /api/entries endpoint`
+Example: `feat: add POST /api/entries endpoint`
 
 ---
 
 ## Project-Specific Gotchas
 
-- **AnkiConnect chạy local** — chỉ hoạt động khi Anki đang mở trên máy user.
-  Mọi call tới AnkiConnect cần có error handling rõ ràng cho trường hợp Anki đóng.
+- **AnkiConnect runs locally** — it only works when Anki is open on the user's machine. All calls to AnkiConnect must include clear error handling for cases where Anki is closed.
 
-- **Firestore không có JOIN** — khi cần data từ nhiều collection,
-  phải batch fetch bằng `Promise.all()`, không fetch tuần tự trong vòng lặp.
+- **Firestore does not support JOINs** — when data from multiple collections is required, it must be batch fetched using `Promise.all()`, instead of fetching sequentially within loops.
 
-- **`form_type` là routing field chính** — nhiều component và query filter theo field này.
-  Sai `form_type` → hiển thị sai form, load sai data.
+- **`form_type` is the primary routing field** — many components and queries filter by this field. Incorrect `form_type` → wrong form rendered, incorrect data loaded.
 
-- **Language-specific fields là optional** — `pinyin`, `hiragana`, `ipa`...
-  chỉ có giá trị khi `language` tương ứng. Không assume field này luôn có giá trị.
+- **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`... only hold values when the corresponding `language` matches. Do not assume these fields always have values.
 
-- **`settings` là singleton** — chỉ có 1 document trong collection này.
-  Không tạo document mới, chỉ update document đã có.
+- **`settings` is a singleton** — there is only 1 document within this collection. Do not create new documents; only update the existing one.
