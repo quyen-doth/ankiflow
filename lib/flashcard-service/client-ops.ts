@@ -1,10 +1,11 @@
 /**
- * Thao tác AnkiConnect bậc cao chạy CLIENT-SIDE (trong browser của user).
- * Mirror logic trước đây ở các API route server (`/api/anki/ensure-model`, `/api/anki/decks`)
- * nhưng gọi thẳng AnkiConnect trên máy user thay vì qua server.
+ * CLIENT-SIDE (ユーザーのブラウザ内) で実行される高レベルの AnkiConnect 操作。
+ * 以前サーバー API route (`/api/anki/ensure-model`、`/api/anki/decks`) にあった
+ * ロジックを鏡写しにしているが、サーバー経由ではなくユーザーのマシン上の
+ * AnkiConnect を直接呼び出す。
  *
- * Nhận `client` làm tham số để dễ test (truyền mock) và để caller tự quyết định URL
- * (qua `getAnkiClientFromSettings()`).
+ * テストしやすくする (mock を渡せる) ため、また caller が URL を自分で決定できる
+ * (`getAnkiClientFromSettings()` 経由) ようにするため `client` を引数として受け取る。
  */
 import type { IFlashcardService } from './types'
 import {
@@ -18,8 +19,8 @@ import { buildNotes, type CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
 
 /**
- * Đảm bảo model AnkiFlow-Basic tồn tại. Nếu đã có → đồng bộ CSS + template
- * (cập nhật card cũ); nếu chưa → tạo mới.
+ * model AnkiFlow-Basic の存在を保証する。既にあれば → CSS + template を同期
+ * (既存カードを更新); なければ → 新規作成。
  */
 export async function ensureModel(client: IFlashcardService): Promise<void> {
   const models = await client.getModelNames()
@@ -40,16 +41,16 @@ export async function ensureModel(client: IFlashcardService): Promise<void> {
   })
 }
 
-// ─── Deck operations (mirror app/api/anki/decks POST) ─────────────────────────
+// ─── Deck operations (app/api/anki/decks POST を鏡写し) ─────────────────────────
 
 const deckQuery = (name: string) => `deck:"${name}"`
 
-/** Tạo deck nếu chưa tồn tại (idempotent). */
+/** deck が存在しなければ作成 (idempotent)。 */
 export async function ensureDeck(client: IFlashcardService, deckName: string): Promise<void> {
   await client.createDeck(deckName)
 }
 
-/** Đổi tên deck: tạo deck mới → chuyển toàn bộ card → xóa deck cũ. */
+/** deck 名を変更: 新しい deck を作成 → 全カードを移動 → 古い deck を削除。 */
 export async function renameDeck(
   client: IFlashcardService,
   oldName: string,
@@ -66,8 +67,8 @@ export async function renameDeck(
 }
 
 /**
- * Xóa deck (kèm toàn bộ card), rồi dọn các deck cha rỗng đi lên theo phân cấp `::`.
- * Trả về danh sách deck cha đã dọn.
+ * deck を削除 (全カードごと)、その後 `::` 階層に沿って空になった親 deck を上方向に整理する。
+ * 整理した親 deck のリストを返す。
  */
 export async function deleteDeckWithCleanup(
   client: IFlashcardService,
@@ -95,7 +96,7 @@ export async function deleteDeckWithCleanup(
   return cleanedParents
 }
 
-/** Suspend/unsuspend toàn bộ card trong deck (deck active ↔ inactive). */
+/** deck 内のすべてのカードを Suspend/unsuspend する (deck active ↔ inactive)。 */
 export async function setDeckSuspended(
   client: IFlashcardService,
   deckName: string,
@@ -113,7 +114,7 @@ export interface SyncAllResult {
   failed: { name: string; error: string }[]
 }
 
-/** Push tất cả deck của app sang Anki: đảm bảo tồn tại + suspend/unsuspend theo status. */
+/** アプリのすべての deck を Anki に push: 存在を保証 + status に応じて suspend/unsuspend。 */
 export async function syncAllDecks(
   client: IFlashcardService,
   decks: { name: string; is_active: boolean }[],
@@ -137,11 +138,11 @@ export async function syncAllDecks(
   return { success: failed.length === 0, synced, total: decks.length, failed }
 }
 
-// ─── Note creation (dùng chung cho export trực tiếp + sync-sau) ───────────────
+// ─── Note creation (直接 export + 後で sync で共有) ───────────────
 
 const sanitizeFilename = (s: string) => s.replace(/[\s/\\:*?"<>|]/g, '_')
 
-/** Lưu audio data-URL vào Anki media, trả tên file đã lưu (undefined nếu bỏ qua/lỗi — best-effort). */
+/** audio data-URL を Anki media に保存し、保存したファイル名を返す (スキップ/エラー時は undefined — best-effort)。 */
 export async function storeAudioMedia(
   client: IFlashcardService,
   entry: Partial<Entry>,
@@ -159,7 +160,7 @@ export async function storeAudioMedia(
   }
 }
 
-/** Lưu ảnh cục bộ (data-URL) vào Anki media, trả tên file đã lưu (undefined nếu bỏ qua/lỗi). */
+/** ローカル画像 (data-URL) を Anki media に保存し、保存したファイル名を返す (スキップ/エラー時は undefined)。 */
 export async function storeImageMedia(
   client: IFlashcardService,
   entry: Partial<Entry>,
@@ -180,10 +181,11 @@ export async function storeImageMedia(
 }
 
 /**
- * Tạo toàn bộ note cho 1 entry trong Anki: store media (best-effort) → buildNotes →
- * đảm bảo mọi deck tồn tại (idempotent) → addNotes. Trả về note ids đã tạo.
- * Dùng chung cho export trực tiếp (useAnkiExport) và sync-sau (sidebar) để 2 đường
- * không bao giờ lệch hành vi. KHÔNG ensure model — caller gọi ensureModel 1 lần/batch.
+ * 1 つの entry のすべての note を Anki に作成: メディア保存 (best-effort) → buildNotes →
+ * すべての deck の存在を保証 (idempotent) → addNotes。作成された note ids を返す。
+ * 直接 export (useAnkiExport) と後で sync (sidebar) の両方で共有し、2 つの経路の
+ * 動作が決してずれないようにする。model は ensure しない — caller が batch ごとに
+ * 1 回 ensureModel を呼ぶ。
  */
 export async function createNotesForEntry(
   client: IFlashcardService,
@@ -202,7 +204,7 @@ export async function createNotesForEntry(
   return await client.addNotes(notes)
 }
 
-// ─── Note regeneration (dùng chung cho update entry + resync) ─────────────────
+// ─── Note regeneration (entry の update + resync で共有) ─────────────────
 
 type RegenEntry = Partial<Entry> & { anki_note_ids?: number[]; card_type_ids?: string[] }
 
@@ -214,11 +216,12 @@ export interface RegenResult {
 }
 
 /**
- * Sinh lại Front/Back của mọi note thuộc 1 entry theo template hiện tại (giữ media cũ),
- * rồi `updateNoteFields` từng note qua AnkiConnect. Trả về thống kê.
+ * 現在の template に従って 1 つの entry に属するすべての note の Front/Back を再生成し
+ * (既存のメディアを保持)、AnkiConnect 経由で各 note に `updateNoteFields` を実行する。
+ * 統計を返す。
  *
- * `notesInfo` (đọc media cũ) có thể throw nếu Anki offline — caller quyết định xử lý
- * (update entry: best-effort nuốt lỗi; resync: đếm failed).
+ * `notesInfo` (既存メディアの読み込み) は Anki がオフラインの場合 throw する可能性がある —
+ * caller が処理を決定する (update entry: best-effort でエラーを飲み込む; resync: failed をカウント)。
  */
 export async function regenerateNotesForEntry(
   client: IFlashcardService,

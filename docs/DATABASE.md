@@ -1,140 +1,144 @@
-# Database Structure — AnkiFlow
+# データベース構造 — AnkiFlow
 
-> **Database:** Google Firestore (NoSQL, document-based)
-> **Phiên bản:** v2.0 (multi-user — Firebase Auth)
-> **Lưu ý:** Các quan hệ là logical references — không phải foreign key cứng như SQL.
+> **データベース:** Google Firestore (NoSQL、ドキュメントベース)
+> **バージョン:** v2.0 (マルチユーザー — Firebase Auth)
+> **注記:** 関係は論理的参照 — SQL のようなハードな外部キーではありません。
 
-## Multi-user model (v2.0)
+## マルチユーザーモデル (v2.0)
 
-- **Per-user collections** (`entries`, `categories`, `card_types`, `topics`, `decks`, `notification_triggers`): mỗi document có field **`user_id`** = Firebase Auth UID. Mọi query (client + server) filter `where('user_id', '==', uid)`. Firestore Security Rules (`firestore.rules`) chặn truy cập chéo ở tầng DB.
-- **`content_types` SHARED**: KHÔNG có `user_id` — dùng chung cho mọi user vì doc ID của nó (`form_language`/`form_it`/`form_general`) chính là giá trị `form_type` (field routing cốt lõi). Chỉ admin sửa được.
-- **Master data ID scheme**: khi seed cho user mới, ID = `{defaultId}__{uid}` (vd `cat_daily__abc123`) — FK trong decks re-map bằng nối chuỗi cùng quy tắc. Xem `lib/seed-defaults.ts`.
-- **Template `__defaults__`**: các doc master-data với `user_id == '__defaults__'` là bản mẫu admin sửa qua `/admin` ("New-user defaults"); `seedUserDefaults` clone chúng cho user mới. Không phải UID thật.
+- **ユーザーごとのコレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`notification_triggers`): 各ドキュメントは **`user_id`** フィールド = Firebase Auth UID を持っています。すべてのクエリ (クライアント + サーバー) は `where('user_id', '==', uid)` でフィルタ。Firestore Security Rules (`firestore.rules`) は DB レイヤーでのクロスアクセスをブロック。
+- **`content_types` SHARED**: `user_id` がない — すべてのユーザーで共有されます。そのドキュメント ID (`form_language`/`form_it`/`form_general`) がまさに `form_type` の値 (コアルーティングフィールド) であるため。管理者のみが編集可能。
+- **マスターデータ ID スキーム**: 新しいユーザーに seed を行うとき、ID = `{defaultId}__{uid}` (例 `cat_daily__abc123`) — デッキ内の FK は同じ規則による文字列連結で再マップ。`lib/seed-defaults.ts` を参照。
+- **テンプレート `__defaults__`**: `user_id == '__defaults__'` のマスターデータドキュメントは、管理者が `/admin` ("新規ユーザーのデフォルト") 経由で編集するテンプレート; `seedUserDefaults` は新しいユーザーのためにそれらをクローン。実際の UID ではありません。
 
 ---
 
-## Tổng quan Collections
+## コレクション概要
 
-| Collection | Mô tả | Scope |
+| Collection | 説明 | Scope |
 |---|---|---|
-| `entries` | Từ vựng đã tạo | Per-user |
-| `categories` | Phân loại nội dung | Per-user (+ template) |
-| `card_types` | Loại flashcard Anki | Per-user (+ template) |
-| `topics` | Chủ đề IT | Per-user (+ template) |
-| `decks` | Anki Deck config + Form mapping | Per-user (+ template) |
-| `notification_triggers` | Lịch nhắc LINE (admin) | Per-user |
-| `content_types` | Cấu hình form nhập liệu (doc id = form_type) | **SHARED** — admin-only write |
-| `settings` | 3 loại doc: `{uid}` prefs · `global` flags · `default` secrets | Xem mục Settings |
+| `entries` | 作成された語彙 | ユーザーごと |
+| `categories` | コンテンツ分類 | ユーザーごと (+ テンプレート) |
+| `card_types` | Anki フラッシュカードの種類 | ユーザーごと (+ テンプレート) |
+| `topics` | IT トピック | ユーザーごと (+ テンプレート) |
+| `decks` | Anki Deck config + Form マッピング | ユーザーごと (+ テンプレート) |
+| `notification_triggers` | LINE リマインダースケジュール (管理者) | ユーザーごと |
+| `review_events` | SRS Revlog — `review_state` へのすべての変更履歴 (append-only) | ユーザーごと — **サーバーのみ書き込み** |
+| `content_types` | 入力フォーム設定 (doc id = form_type) | **SHARED** — 管理者のみ書き込み |
+| `settings` | 3 種類の doc: `{uid}` prefs · `global` flags · `default` secrets | Settings セクション参照 |
 
 ---
 
-## Chi tiết Collections
+## コレクション詳細
 
-### `entries` — Từ vựng đã tạo
+### `entries` — 作成された語彙
 
-Document chính của hệ thống. Lưu toàn bộ thông tin từ vựng cho tất cả ngôn ngữ và form type.
+システムの主要ドキュメント。すべての言語と form type の語彙情報を保存。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
 | `id` | string (PK) | Document ID |
-| `user_id` | string | Firebase Auth UID — chủ sở hữu entry (bắt buộc filter trong mọi query) |
-| `category_id` | string (FK) | Tham chiếu tới `categories` (nullable) |
-| `form_type` | string | Loại form đã dùng: `form_language` / `form_it` / `form_general` |
-| `language` | string | Ngôn ngữ: `zh`, `ja`, `en` (nullable, chỉ khi form_type = form_language) |
-| `word` | string | Từ vựng (Language form) |
-| `term` | string | Thuật ngữ (IT form) |
-| `title` | string | Tiêu đề (General form) |
-| `meaning_vi` | string | Nghĩa tiếng Việt |
-| `definition` | string | Định nghĩa (IT form) |
-| `content` | string | Nội dung chi tiết (General form) |
-| `note` | string | Ghi chú cá nhân |
-| `word_type` | string | Danh từ / động từ / tính từ... |
-| `pinyin` | string | Pinyin (Tiếng Trung) |
-| `han_viet` | string | Hán Việt (Tiếng Trung) |
-| `hiragana` | string | Hiragana (Tiếng Nhật) |
-| `katakana` | string | Katakana (Tiếng Nhật) |
-| `romaji` | string | Romaji (Tiếng Nhật) |
-| `ipa` | string | IPA phonetics (Tiếng Anh) |
-| `level` | string | Cấp độ: A1/A2/B1... hoặc N5/N4... |
-| `example_sentence` | string | Câu ví dụ |
-| `example_translation` | string | Dịch câu ví dụ |
-| `collocations` | string[] | Các cụm từ đi kèm |
-| `image_url` | string | URL ảnh minh họa |
-| `image_credit` | string | Nguồn ảnh (Unsplash...) |
-| `audio_url` | string | URL/tên file audio của từ |
-| `audio_example_url` | string | URL/tên file audio câu ví dụ |
-| `anki_deck` | string | Tên deck Anki đã export vào |
-| `anki_note_ids` | number[] | ID các note trong Anki |
-| `card_type_ids` | string[] | Tham chiếu tới `card_types` đã chọn |
-| `tags` | string[] | Tags trong Anki (AI sinh + user custom) |
-| `keywords` | string[] | Từ khóa IT (IT vocab specific) |
-| `topic_ids` | string[] | Tham chiếu tới `topics` |
-| `difficulty` | string | Độ khó: `easy` / `medium` / `hard` (IT vocab specific) |
-| `review_state` | object | Trạng thái SRS đồng bộ từ Anki (ease/interval/due_date/queue...) — nullable |
-| `created_at` | timestamp | Thời điểm tạo |
-| `updated_at` | timestamp | Thời điểm cập nhật |
-| `status` | string | Trạng thái: xem enum bên dưới |
+| `user_id` | string | Firebase Auth UID — entry の所有者 (すべてのクエリで filter 必須) |
+| `category_id` | string (FK) | `categories` への参照 (nullable) |
+| `form_type` | string | 使用された form の種類: `form_language` / `form_it` / `form_general` |
+| `language` | string | 言語: `zh`、`ja`、`en` (nullable、form_type = form_language の場合のみ) |
+| `word` | string | 語彙 (Language form) |
+| `term` | string | 用語 (IT form) |
+| `title` | string | タイトル (General form) |
+| `meaning_vi` | string | ベトナム語の意味 |
+| `definition` | string | 定義 (IT form) |
+| `content` | string | 詳細なコンテンツ (General form) |
+| `note` | string | 個人メモ |
+| `word_type` | string | 名詞 / 動詞 / 形容詞... |
+| `pinyin` | string | ピンイン (中国語) |
+| `han_viet` | string | ハンベトナム音 (中国語) |
+| `hiragana` | string | ひらがな (日本語) |
+| `katakana` | string | カタカナ (日本語) |
+| `romaji` | string | ローマ字 (日本語) |
+| `ipa` | string | IPA 発音記号 (英語) |
+| `level` | string | レベル: A1/A2/B1... または N5/N4... |
+| `example_sentence` | string | 例文 |
+| `example_translation` | string | 例文の翻訳 |
+| `collocations` | string[] | 付随するフレーズ |
+| `image_url` | string | イラスト画像 URL |
+| `image_credit` | string | 画像のソース (Unsplash...) |
+| `audio_url` | string | 単語の音声ファイル URL/名前 |
+| `audio_example_url` | string | 例文の音声ファイル URL/名前 |
+| `anki_deck` | string | エクスポート先の Anki デック名 |
+| `anki_note_ids` | number[] | Anki 内のノート ID |
+| `card_type_ids` | string[] | 選択された `card_types` への参照 |
+| `tags` | string[] | Anki のタグ (AI 生成 + ユーザーカスタム) |
+| `keywords` | string[] | IT キーワード (IT vocab 固有) |
+| `topic_ids` | string[] | `topics` への参照 |
+| `difficulty` | string | 難易度: `easy` / `medium` / `hard` (IT vocab 固有) |
+| `review_state` | object | 現在の SRS 状態 (ease/interval/due_date/queue/`source`/`fsrs`...) — nullable。FSRS (`lib/srs/fsrs.ts`、旧 SM-2 は `sm2.ts.bak` に退避) を使用；`fsrs` block (stability/difficulty/state/reps/scheduled_days/last_review) が正データ、旧フィールドは後方互換の mirror。2 つの writer: Anki sync (`source:'anki_sync'`) と LINE rating (`source:'builtin'`)、**precedence guard** あり (`review_events` 参照) |
+| `integration_source` | string | 外部システム連携元 (例 `'knowledge-hub'`) — `/api/integrations/term-drafts` 経由の entry のみ、nullable |
+| `source_url` / `source_title` | string | 連携元の参照 URL / タイトル — 同上、nullable |
+| `context_quote` | string | 連携元の引用テキスト (≤200 文字) — 同上、nullable |
+| `created_at` | timestamp | 作成日時 |
+| `updated_at` | timestamp | 更新日時 |
+| `status` | string | ステータス: 下の enum 参照 |
 
 ---
 
 **Enum: `status`**
 
-| Value | Ý nghĩa | Transition |
+| Value | 意味 | Transition |
 |---|---|---|
-| `draft` | Đang soạn, chưa hoàn chỉnh | → `reviewed` |
-| `reviewed` | AI đã enriched, sẵn sàng export | → `synced` / `draft` |
-| `synced` | Đã export vào Anki thành công | — |
+| `draft` | 作成中、未完成 | → `reviewed` |
+| `reviewed` | AI がエンリッチ済み、エクスポート準備完了 | → `synced` / `draft` |
+| `synced` | Anki へのエクスポート成功 | — |
 
 ---
 
-### `categories` — Phân loại nội dung
+### `categories` — コンテンツ分類
 
-Nhóm entries theo danh mục (ví dụ: Động từ, Danh từ, Thành ngữ...).
+カテゴリごとに entries をグループ化 (例: 動詞、名詞、慣用句...)。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
-| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
-| `user_id` | string | Firebase Auth UID (hoặc `__defaults__` cho bản template) |
-| `name` | string | Tên danh mục |
-| `form_type` | string | Thuộc form type nào |
-| `sort_order` | number | Thứ tự hiển thị (sort in-memory — không dùng orderBy để né composite index) |
-| `is_active` | boolean | Đang active hay không |
+| `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
+| `user_id` | string | Firebase Auth UID (またはテンプレート版は `__defaults__`) |
+| `name` | string | カテゴリ名 |
+| `form_type` | string | どの form type に属するか |
+| `sort_order` | number | 表示順序 (in-memory ソート — composite index を回避するため orderBy 不使用) |
+| `is_active` | boolean | アクティブかどうか |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
 ---
 
-### `card_types` — Loại flashcard
+### `card_types` — フラッシュカードの種類
 
-Định nghĩa các kiểu card Anki (ví dụ: Word→Meaning, Meaning→Word, Cloze...).
+Anki カードの種類を定義 (例: Word→Meaning、Meaning→Word、Cloze...)。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
-| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
-| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
-| `code` | string | Mã định danh (unique **theo user** — C4b backlog: chưa enforce) |
-| `name` | string | Tên hiển thị |
-| `description` | string | Mô tả |
-| `form_type` | string | Thuộc form type nào |
-| `language` | string | Ngôn ngữ áp dụng |
-| `is_default` | boolean | Có được chọn mặc định không |
+| `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
+| `user_id` | string | Firebase Auth UID (または `__defaults__`) |
+| `code` | string | 識別コード (**ユーザーごとに** unique — C4b backlog: 未強制) |
+| `name` | string | 表示名 |
+| `description` | string | 説明 |
+| `form_type` | string | どの form type に属するか |
+| `language` | string | 適用言語 |
+| `is_default` | boolean | デフォルトで選択されるか |
 | `is_active` | boolean | — |
-| `sort_order` | number | Thứ tự hiển thị |
-| `template` | object | `{ front: string[], back: string[] }` — block layout render Front/Back |
+| `sort_order` | number | 表示順序 |
+| `template` | object | `{ front: string[], back: string[] }` — Front/Back のレンダリングレイアウトブロック |
 | `created_at` | timestamp | — |
 
 ---
 
-### `topics` — Chủ đề IT
+### `topics` — IT トピック
 
-Dùng riêng cho IT vocabulary. Entries có thể thuộc nhiều topic.
+IT ボキャブラリー専用。Entries は複数のトピックに属することができます。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
-| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
-| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
-| `name` | string | Tên chủ đề (Networks, Security...) |
-| `form_type` | string | Luôn `form_it` |
+| `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
+| `user_id` | string | Firebase Auth UID (または `__defaults__`) |
+| `name` | string | トピック名 (Networks、Security...) |
+| `form_type` | string | 常に `form_it` |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
 | `created_at` | timestamp | — |
@@ -143,39 +147,39 @@ Dùng riêng cho IT vocabulary. Entries có thể thuộc nhiều topic.
 
 ### `decks` — Anki Deck Config
 
-Mapping giữa form type và Anki deck. Lưu cấu hình mặc định cho từng deck.
+form type と Anki デックのマッピング。各デックのデフォルト設定を保存。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
-| `id` | string (PK) | Document ID (`{defaultId}__{uid}` khi seed) |
-| `user_id` | string | Firebase Auth UID (hoặc `__defaults__`) |
-| `anki_deck_name` | string | Tên deck trong Anki |
-| `display_name` | string | Tên hiển thị trên UI |
-| `form_type` | string | Form type tương ứng |
-| `language` | string | Ngôn ngữ |
-| `default_card_type_ids` | string[] | Card types mặc định (FK re-map theo `{id}__{uid}` khi seed) |
-| `default_category_id` | string | Category mặc định (FK re-map tương tự, nullable) |
+| `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
+| `user_id` | string | Firebase Auth UID (または `__defaults__`) |
+| `anki_deck_name` | string | Anki 内のデック名 |
+| `display_name` | string | UI 上の表示名 |
+| `form_type` | string | 対応する form type |
+| `language` | string | 言語 |
+| `default_card_type_ids` | string[] | デフォルトの Card types (seed 時 `{id}__{uid}` で FK 再マップ) |
+| `default_category_id` | string | デフォルトの Category (同様に FK 再マップ、nullable) |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
 | `created_at` | timestamp | — |
 
 ---
 
-### `content_types` — Form Configuration (**SHARED**)
+### `content_types` — フォーム設定 (**SHARED**)
 
-Định nghĩa các loại form nhập liệu. **KHÔNG per-user** — doc ID = giá trị `form_type`
-(`form_language`/`form_it`/`form_general`), là field routing cốt lõi toàn app. Dùng chung
-cho mọi user; chỉ admin sửa (đổi form cho tất cả). Field `fields[]` (form_fields) nhúng ngay
-trong document, không phải sub-collection.
+入力フォームの種類を定義。**ユーザーごとではない** — doc ID = `form_type` の値
+(`form_language`/`form_it`/`form_general`)、これはアプリ全体のコアルーティングフィールドです。
+すべてのユーザーで共有; 管理者のみ編集可 (全員のフォームを変更)。フィールド `fields[]` (form_fields) は
+sub-collection ではなくドキュメント内に直接埋め込まれています。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
 | `id` | string (PK) | = `form_type` (`form_language`/`form_it`/`form_general`) |
-| `code` | string | Mã định danh |
-| `name` | string | Tên hiển thị |
-| `description` | string | Mô tả |
+| `code` | string | 識別コード |
+| `name` | string | 表示名 |
+| `description` | string | 説明 |
 | `icon` | string | Icon name |
-| `fields` | object[] | Mảng form_fields (xem dưới) |
+| `fields` | object[] | form_fields の配列 (下記参照) |
 | `default_create_mode` | string | `single` / `batch` |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
@@ -184,79 +188,103 @@ trong document, không phải sub-collection.
 
 ---
 
-### `form_fields` — Field Configuration
+### `form_fields` — フィールド設定
 
-**Sub-collection / embedded document** bên trong `content_types`.
-Định nghĩa từng field sẽ hiển thị trên form nhập liệu.
+`content_types` 内の **Sub-collection / embedded document**。
+入力フォームに表示される各フィールドを定義。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
 | `id` | string (PK) | Document ID |
-| `content_type_id` | string (FK) | Tham chiếu tới `content_types` |
-| `field_key` | string | Key map tới field trong `entries` |
-| `label` | string | Label hiển thị trên form |
+| `content_type_id` | string (FK) | `content_types` への参照 |
+| `field_key` | string | `entries` 内のフィールドへのキーマッピング |
+| `label` | string | フォーム上の表示ラベル |
 | `type` | string | `text` / `select` / `textarea`... |
-| `is_required` | boolean | Bắt buộc nhập hay không |
-| `is_session_persistent` | boolean | Giữ giá trị giữa các session |
-| `sort_order` | number | Thứ tự field trên form |
-| `placeholder` | string | Placeholder text |
-| `data_source` | string | Nguồn dữ liệu nếu là dropdown |
+| `is_required` | boolean | 入力必須かどうか |
+| `is_session_persistent` | boolean | セッション間で値を保持するか |
+| `sort_order` | number | フォーム上のフィールド順序 |
+| `placeholder` | string | Placeholder テキスト |
+| `data_source` | string | dropdown の場合のデータソース |
 
 ---
 
-### `notification_triggers` — Lịch nhắc LINE (per-user, admin-only feature)
+### `notification_triggers` — LINE リマインダースケジュール (ユーザーごと、管理者専用機能)
 
-Cấu hình lịch push LINE. Per-user (`user_id`) nhưng hiện chỉ admin dùng được (LINE token là của chủ app).
+LINE push スケジュール設定。ユーザーごと (`user_id`) だが現在は管理者のみ使用可能 (LINE token はアプリ所有者のもの)。
 
-| Field | Type | Mô tả |
+| Field | Type | 説明 |
 |---|---|---|
 | `id` | string (PK) | Document ID |
 | `user_id` | string | Firebase Auth UID |
-| `name` | string | Tên trigger |
-| `schedule_hours` | number[] | Giờ trong ngày để push |
-| `timezone` | string | Múi giờ |
-| `deck_filter` / `language_filter` | string[] | Lọc entry để nhắc |
-| `words_per_notification` | number | Số từ mỗi lần push |
+| `name` | string | トリガー名 |
+| `schedule_hours` | number[] | push する時間帯 |
+| `timezone` | string | タイムゾーン |
+| `deck_filter` / `language_filter` | string[] | リマインドする entry のフィルタ |
+| `words_per_notification` | number | 1 回の push あたりの単語数 |
 | `is_active` | boolean | — |
 
 ---
 
-### `settings` — 3 loại document (KHÔNG còn singleton)
+### `review_events` — SRS Revlog (append-only、SRS Phase 0)
 
-Từ v2.0, collection `settings` chứa 3 loại doc khác biệt về quyền và mục đích:
+`review_state` へのすべての変更履歴 — Anki の revlog に相当。**サーバーのみ書き込み**
+(Admin SDK: `line-webhook` + `sync-srs`); クライアントは自分の分のみ読み取り。
+FSRS/統計/独立 SRS の基盤 — このログがなければ最新のスナップショットのみが残り、履歴は永久に失われます。
 
-**`settings/{uid}`** — preferences của từng user (user tự đọc/ghi doc của mình):
+| Field | Type | 説明 |
+|---|---|---|
+| `user_id` | string | Firebase Auth UID |
+| `entry_id` | string | `entries` への参照 |
+| `kind` | string | `rating` (LINE/内部 FSRS 経由の rate) · `anki_sync` (Anki からの pull) |
+| `rating` | string? | `again`/`hard`/`good`/`easy` — `kind='rating'` の場合のみ存在 |
+| `prev` | object \| null | 以前の state スナップショット (`queue`/`interval_days`/`ease_factor`/`due_date`/`lapses`); null = 過去に存在しなかった |
+| `next` | object | 新しい state スナップショット (同じ shape) |
+| `created_at` | string (ISO) | イベント発生時刻 |
+
+> **Precedence guard (`review_state` の 2 つの書き込みソース):** sync-srs は entry が
+> Anki 側のアクティビティより新しく内部で rate 済み (`source:'builtin'`) の場合 **上書きしない**
+> (`last_reviewed_at` を AnkiConnect からの `card.mod` と比較; `mod` がない場合のフォールバック:
+> `synced_at` と比較 — LINE の進捗を保持する方向に傾く)。`anki_sync` イベントは state が実際に
+> 変化した場合のみ記録 (同期のたびのノイズを回避)。
+
+---
+
+### `settings` — 3 種類のドキュメント (シングルトンではなくなりました)
+
+v2.0 から、`settings` コレクションは権限と目的が異なる 3 種類の doc を含みます:
+
+**`settings/{uid}`** — 各ユーザーの preferences (ユーザーが自分のドキュメントを読み書き):
 
 | Field | Type | Default |
 |---|---|---|
-| `unsplash_enabled` / `tts_enabled` | boolean | `true` — lựa chọn cá nhân (kết hợp AND với global flag) |
+| `unsplash_enabled` / `tts_enabled` | boolean | `true` — 個人選択 (global flag と AND 結合) |
 | `auto_audio` / `auto_image` | boolean | `true` |
 | `allow_duplicate` | boolean | `false` |
 | `anki_connect_url` | string | `http://localhost:8765` |
 
-**`settings/global`** — feature flags TOÀN CỤC (mọi user đọc; **chỉ admin ghi** qua `POST /api/admin/global-config`; client-read qua `GlobalConfigProvider` realtime):
+**`settings/global`** — グローバルフィーチャーフラグ (全ユーザー読み込み; `POST /api/admin/global-config` 経由で **管理者のみ書き込み**; `GlobalConfigProvider` 経由でクライアントがリアルタイム読み込み):
 
-| Field | Type | Default | Ghi chú |
+| Field | Type | Default | 注記 |
 |---|---|---|---|
-| `ai_model` | string | `claude-haiku-4-5` | Model Claude cho MỌI user (generate route đọc từ đây) |
-| `web_search_enabled` | boolean | `false` | Bật web_search cho AI agent |
-| `tts_available` | boolean | `true` | Cổng chi phí: tắt → mọi user không dùng TTS được |
-| `unsplash_available` | boolean | `true` | Cổng chi phí: tắt → mọi user không dùng Unsplash được |
+| `ai_model` | string | `claude-haiku-4-5` | 全ユーザー共通の Claude モデル (generate ルートがここから読み込み) |
+| `web_search_enabled` | boolean | `false` | AI エージェントの web_search を有効化 |
+| `tts_available` | boolean | `true` | コストゲート: オフ → 全ユーザーが TTS を使用不可 |
+| `unsplash_available` | boolean | `true` | コストゲート: オフ → 全ユーザーが Unsplash を使用不可 |
 
-**`settings/default`** — SECRETS của chủ app (**chỉ admin đọc/ghi** — rules chặn non-admin, tránh lộ token qua network):
+**`settings/default`** — アプリ所有者の SECRETS (**管理者のみ読み書き** — ルールが非管理者をブロック、ネットワーク経由でのトークン漏洩を防止):
 
-| Field | Type | Ghi chú |
+| Field | Type | 注記 |
 |---|---|---|
 | `line_channel_access_token` / `line_user_id` | string | LINE credentials |
-| `notifications_enabled` | boolean | Bật/tắt tính năng LINE |
+| `notifications_enabled` | boolean | LINE 機能のオン/オフ |
 
-> **"Mức trần" (effective flag)**: `effectiveTts = global.tts_available && user.tts_enabled`.
-> Admin tắt global → mọi người không dùng được; bật lại → mỗi user về lựa chọn cá nhân cũ
-> (2 doc tách biệt nên không mất pref). Xem `hooks/useEffectiveMediaFlags.ts`.
+> **「有効フラグ」(effective flag)**: `effectiveTts = global.tts_available && user.tts_enabled`。
+> 管理者が global をオフにする → 全員使用不可; 再度オンにする → 各ユーザーは以前の個人選択に戻る
+> (2 つの doc が分離されているため pref を失わない)。`hooks/useEffectiveMediaFlags.ts` 参照。
 
 ---
 
-## Quan hệ giữa các Collections
+## コレクション間の関係
 
 ```
 entries ──(category_id)──► categories
@@ -269,52 +297,53 @@ decks ──(default_card_type_ids)──► card_types [many-to-many]
 form_fields ──(content_type_id)──► content_types
 ```
 
-> **Lưu ý Firestore:** Không có JOIN. Khi cần resolve quan hệ, phải fetch
-> document tham chiếu thủ công bằng ID, hoặc dùng `Promise.all()` để batch fetch.
+> **Firestore の注記:** JOIN はありません。関係を解決する必要がある場合、
+> ID で参照ドキュメントを手動 fetch するか、`Promise.all()` でバッチ fetch する必要があります。
 
 ---
 
 ## ERD Diagram
 
-Diagram được tạo bằng [eraser.io](https://eraser.io) (diagram-as-code).
+Diagram は [eraser.io](https://eraser.io) (diagram-as-code) で作成。
 Source file: `docs/database-diagram.txt`
 
 ---
 
-## Ghi chú thiết kế
+## 設計ノート
 
-- `form_type` xuất hiện ở nhiều collection — đây là field routing chính,
-  quyết định UI form nào hiển thị và data nào được load.
+- `form_type` は複数のコレクションに登場 — これは主要なルーティングフィールドで、
+  どの UI フォームが表示され、どのデータが読み込まれるかを決定します。
   **Enum values:**
-  | Value | Mô tả |
+  | Value | 説明 |
   |---|---|
-  | `form_general` | Từ vựng tổng quát |
-  | `form_it` | Từ vựng IT / Công nghệ |
-  | `form_language` | Từ vựng ngôn ngữ (Anh, Trung, Nhật) |
-- `entries` là collection lớn nhất và có nhiều optional field —
-  các field language-specific (pinyin, hiragana...) chỉ có giá trị
-  khi `language` tương ứng.
-- `settings` KHÔNG còn singleton — 3 loại doc (`{uid}` / `global` / `default`), xem mục Settings.
+  | `form_general` | 一般語彙 |
+  | `form_it` | IT / テクノロジー語彙 |
+  | `form_language` | 言語語彙 (英語、中国語、日本語) |
+- `entries` は最大のコレクションで、多くの optional フィールドを持ちます —
+  言語固有のフィールド (pinyin、hiragana...) は対応する `language` の場合のみ
+  値を持ちます。
+- `settings` はシングルトンではなくなりました — 3 種類の doc (`{uid}` / `global` / `default`)、Settings セクション参照。
 
 ---
 
-## Security Rules (`firestore.rules` — đã deploy)
+## Security Rules (`firestore.rules` — デプロイ済み)
 
-Client SDK đọc/ghi Firestore trực tiếp (bypass middleware + API auth), nên rules là tầng
-phân quyền cuối cùng. Admin SDK (server routes) bypass rules.
+Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証をバイパス) するため、rules が
+最終的な権限レイヤーです。Admin SDK (サーバールート) は rules をバイパス。
 
 | Collection / doc | read | write |
 |---|---|---|
-| `entries`, `notification_triggers` | chủ sở hữu | chủ sở hữu (tạo phải gắn đúng `user_id`) |
-| `decks`/`categories`/`card_types`/`topics` | chủ sở hữu **+ admin cho `__defaults__`** | như read |
-| `content_types` | mọi user đã đăng nhập | **admin only** |
-| `settings/global` | mọi user đã đăng nhập | **admin only** |
-| `settings/default` | **admin only** | **admin only** |
-| `settings/{uid}` | chính chủ | chính chủ |
-| (còn lại) | deny | deny |
+| `entries`、`notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
+| `review_events` | 所有者 | **deny** — サーバーのみ書き込み (Admin SDK) |
+| `decks`/`categories`/`card_types`/`topics` | 所有者 **+ `__defaults__` は管理者も** | read と同じ |
+| `content_types` | ログイン済みの全ユーザー | **管理者のみ** |
+| `settings/global` | ログイン済みの全ユーザー | **管理者のみ** |
+| `settings/default` | **管理者のみ** | **管理者のみ** |
+| `settings/{uid}` | 本人のみ | 本人のみ |
+| (その他) | deny | deny |
 
-- **Admin trong rules** = custom claim `request.auth.token.admin == true` (rules không đọc env
-  → khác với check `ADMIN_EMAIL` phía server). Đặt bằng `scripts/set-admin-claim.ts`, cần re-login.
-- **Composite index**: chỉ `entries (user_id ASC, created_at DESC)` cho dashboard/history +
-  `content_types (is_active ASC, sort_order ASC)` cho create page. Các query per-user khác
-  cố ý sort in-memory để né composite index (xem `firestore.indexes.json`).
+- **ルール内の管理者** = カスタムクレーム `request.auth.token.admin == true` (ルールは env を読めない
+  → サーバー側の `ADMIN_EMAIL` チェックとは異なる)。`scripts/set-admin-claim.ts` で設定、再ログインが必要。
+- **Composite index**: `entries (user_id ASC, created_at DESC)` (dashboard/history 用) と
+  `content_types (is_active ASC, sort_order ASC)` (create page 用) のみ。その他のユーザーごとのクエリは
+  composite index を回避するため意図的に in-memory ソート (`firestore.indexes.json` 参照)。

@@ -1,7 +1,8 @@
 /**
  * createDeckCategory.ts
- * Helper tạo nhanh Category / Anki Deck ngay trong trang Create (không cần sang admin).
- * Tái dùng pattern của DeckManager/CategoryManager (client SDK + đồng bộ AnkiConnect).
+ * Create ページ内で直接 Category / Anki Deck をすばやく作成するための helper
+ * (admin に移動する必要がない)。DeckManager/CategoryManager のパターン
+ * (client SDK + AnkiConnect 同期) を再利用。
  */
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
@@ -10,7 +11,7 @@ import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { ensureDeck, setDeckSuspended } from '@/lib/flashcard-service/client-ops'
 import { FormType, LanguageType } from '@/types'
 
-/** UID của user đang đăng nhập — throw nếu chưa (middleware đảm bảo không xảy ra trong app). */
+/** ログイン中のユーザーの UID — 未ログインなら throw (middleware がアプリ内で発生しないことを保証)。 */
 function requireUid(): string {
   const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
   if (!uid) throw new Error('Not signed in')
@@ -24,8 +25,8 @@ const LANGUAGE_DECK_PREFIX: Record<string, string> = {
 }
 
 /**
- * Gợi ý tên Anki deck phân cấp (`::`) dựa trên form_type/ngôn ngữ để đồng bộ cây deck.
- * Hàm thuần — dễ kiểm thử.
+ * form_type/言語に基づいて階層的な (`::`) Anki deck 名を提案し、deck ツリーを
+ * 統一する。純粋関数 — テストしやすい。
  */
 export function suggestAnkiDeckName(
   displayName: string,
@@ -48,7 +49,7 @@ export interface CreatedCategory {
   name: string
 }
 
-/** Tạo category mới (chỉ cần name + form_type). */
+/** 新しい category を作成 (name + form_type のみ必要)。 */
 export async function createCategory(params: {
   name: string
   formType: FormType
@@ -70,13 +71,13 @@ export interface CreatedDeck {
   id: string
   display_name: string
   anki_deck_name: string
-  /** true nếu đồng bộ AnkiConnect thất bại (vd Anki chưa mở). */
+  /** AnkiConnect の同期が失敗した場合 true (例 Anki がまだ開いていない)。 */
   ankiSyncFailed: boolean
 }
 
 /**
- * Tạo deck mới: lưu Firestore + đồng bộ Anki (ensure + unsuspend).
- * Nếu Anki không khả dụng → vẫn lưu app, trả `ankiSyncFailed = true`.
+ * 新しい deck を作成: Firestore に保存 + Anki と同期 (ensure + unsuspend)。
+ * Anki が利用不可でも → アプリへの保存は継続し、`ankiSyncFailed = true` を返す。
  */
 export async function createDeck(params: {
   displayName: string
@@ -102,7 +103,7 @@ export async function createDeck(params: {
 
   let ankiSyncFailed = false
   try {
-    // Đồng bộ Anki client-side (browser → AnkiConnect của user), giống DeckManager.
+    // Anki を client-side で同期 (browser → ユーザーの AnkiConnect)、DeckManager と同様。
     const client = await getAnkiClientFromSettings()
     await ensureDeck(client, anki_deck_name)
     await setDeckSuspended(client, anki_deck_name, false)

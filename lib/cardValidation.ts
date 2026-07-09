@@ -7,10 +7,10 @@ export interface CardValidationError {
   label: string
 }
 
-/** Ngưỡng dung lượng ảnh nhúng vào thẻ. Card hiển thị ảnh nhỏ (max-height 220px) nên 800KB là dư. */
+/** カードに埋め込む画像の容量しきい値。カードは小さい画像を表示 (max-height 220px) するので 800KB で十分。 */
 export const MAX_IMAGE_BYTES = 800 * 1024
 
-/** Ước lượng số byte của một data URL từ độ dài phần base64. Trả 0 nếu không phải data URL. */
+/** data URL の base64 部分の長さからバイト数を概算する。data URL でなければ 0 を返す。 */
 export function dataUrlBytes(dataUrl: string | undefined | null): number {
   if (!dataUrl || !dataUrl.startsWith('data:')) return 0
   const comma = dataUrl.indexOf(',')
@@ -20,7 +20,7 @@ export function dataUrlBytes(dataUrl: string | undefined | null): number {
   return Math.floor((b64.length * 3) / 4) - padding
 }
 
-/** Getter linh hoạt — khớp khác biệt tên field giữa các content type (English/IT/General/Dynamic). */
+/** 柔軟な Getter — content type ごとのフィールド名の違い (English/IT/General/Dynamic) を吸収する。 */
 const get = {
   word: (e: Partial<Entry>) => (e.word || e.term || e.title || '').trim(),
   meaning: (e: Partial<Entry>) =>
@@ -49,7 +49,7 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   translation: 'Bản dịch câu ví dụ',
 }
 
-/** Tập field nội dung cốt lõi bắt buộc theo loại content. */
+/** content の種類ごとの必須コアコンテンツフィールドの集合。 */
 function requiredFieldsFor(entry: Partial<Entry>): FieldKey[] {
   const ft = resolveBuiltinFormType(String(entry.form_type ?? ''))
   switch (ft) {
@@ -66,8 +66,8 @@ function requiredFieldsFor(entry: Partial<Entry>): FieldKey[] {
 }
 
 /**
- * Kiểm tra một thẻ trước khi tạo/lưu. Trả về danh sách field còn trống.
- * Rỗng = hợp lệ. Bao gồm cả deck đã chọn và ≥1 card type.
+ * 作成/保存前のカードをチェック。空のフィールドのリストを返す。
+ * 空配列 = 有効。選択された deck と ≥1 個の card type も含む。
  */
 export function validateCardEntry(
   entry: Partial<Entry>,
@@ -86,7 +86,7 @@ export function validateCardEntry(
     errors.push({ field: 'card_types', label: 'Card type (chọn ít nhất 1)' })
   }
 
-  // Ảnh cục bộ (data URL) quá lớn → chặn export. Ảnh URL http không lưu media nên bỏ qua.
+  // ローカル画像 (data URL) が大きすぎる → export をブロック。http URL の画像はメディア保存しないのでスキップ。
   const imgBytes = dataUrlBytes(entry.image_url)
   if (imgBytes > MAX_IMAGE_BYTES) {
     const mb = (imgBytes / (1024 * 1024)).toFixed(1)
@@ -96,7 +96,7 @@ export function validateCardEntry(
   return errors
 }
 
-/** Gộp các nhãn lỗi thành 1 dòng để hiển thị toast. */
+/** エラーラベルを 1 行にまとめて toast に表示する。 */
 export function formatValidationMessage(errors: CardValidationError[]): string {
   return `Thiếu: ${errors.map(e => e.label).join(', ')}. Vui lòng điền đủ trước khi tạo.`
 }
@@ -106,7 +106,7 @@ export interface InvalidCard {
   errors: CardValidationError[]
 }
 
-/** Quét toàn bộ thẻ, trả về danh sách thẻ lỗi (kèm index) để hiện banner + đánh dấu nav strip. */
+/** すべてのカードをスキャンし、エラーのあるカードのリスト (index 付き) を返す — banner 表示 + nav strip のマーク用。 */
 export function collectInvalidCards(
   entries: Partial<Entry>[],
   selectedCardTypeIds: string[],

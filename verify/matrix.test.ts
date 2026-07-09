@@ -28,13 +28,13 @@ const EXPECTED_FAIL = new Set([
 describe('verification matrix', () => {
   const units = allUnits()
 
-  it('có ít nhất một unit được đăng ký', () => {
+  it('少なくとも 1 つの unit が登録されている', () => {
     expect(units.length).toBeGreaterThan(0)
   })
 
   for (const unit of units) {
     describe(unit.id, () => {
-      it('có ít nhất một probe fixture', () => {
+      it('少なくとも 1 つの probe fixture がある', () => {
         expect(
           unit.fixtures.some(f => f.probe),
           `unit "${unit.id}" phải có ≥1 fixture probe:true`

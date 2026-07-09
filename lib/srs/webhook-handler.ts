@@ -1,5 +1,6 @@
-import type { SRSRating, ReviewState } from '@/types'
-import { processRating, createDefaultReviewState } from './sm2'
+import type { SRSRating } from '@/types'
+
+export { applyRating } from './fsrs'
 
 interface PostbackData {
   action: string
@@ -22,13 +23,4 @@ export function parsePostbackData(data: string): PostbackData | null {
   if (!VALID_RATINGS.includes(rating)) return null
 
   return { action, entry_id: entryId, rating }
-}
-
-export function applyRating(
-  currentState: ReviewState | undefined,
-  rating: SRSRating,
-  now: Date = new Date(),
-): ReviewState {
-  const state = currentState ?? createDefaultReviewState(now.toISOString())
-  return processRating(state, rating, now)
 }

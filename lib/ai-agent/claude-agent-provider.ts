@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { resolveCardSpec, type CardSpec } from './card-schemas'
 import type { GenerateCardInput, IAIAgentProvider } from './types'
 
-// Lazy singleton client — tránh khởi tạo lúc import (an toàn cho test/build khi thiếu key).
+// Lazy singleton client — import 時の初期化を回避 (key がない場合の test/build でも安全)。
 let client: Anthropic | null = null
 function getClient(): Anthropic {
   if (!client) {
@@ -19,9 +19,9 @@ const TEMPERATURE = 0.3
 const MAX_SEARCH_TURNS = 6
 
 /**
- * Provider sinh nội dung thẻ bằng Claude theo kiểu "công cụ hóa":
- * model bị ép gọi tool `submit_card` (schema thẻ) để trả structured output.
- * Vòng lặp do code điều phối (workflow), không phải autonomous loop.
+ * "tool 化" 方式で Claude によりカードコンテンツを生成する Provider:
+ * model は tool `submit_card` (カードスキーマ) の呼び出しを強制され、structured output を返す。
+ * ループは code が制御する (workflow) — autonomous loop ではない。
  */
 export class ClaudeAgentProvider implements IAIAgentProvider {
   constructor(
@@ -35,7 +35,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       const raw = this.webSearchEnabled
         ? await this.runWithSearch(spec)
         : await this.runForced(spec)
-      // Validate output đúng schema (provider cũ không validate).
+      // 出力が正しいスキーマか validate (旧 provider は validate していなかった)。
       return spec.schema.parse(raw) as Record<string, unknown>
     } catch (error) {
       if (retries > 0) {
@@ -46,7 +46,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
     }
   }
 
-  /** Đường mặc định: 1 call, ép gọi đúng tool `submit_card`. Deterministic, rẻ. */
+  /** デフォルトの経路: 1 回の call、tool `submit_card` の呼び出しを強制。Deterministic、低コスト。 */
   private async runForced(spec: CardSpec): Promise<unknown> {
     const cardTool: Anthropic.Tool = {
       name: spec.toolName,
@@ -68,8 +68,8 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
   }
 
   /**
-   * Đường tùy chọn (settings.web_search_enabled): agent có thêm tool web_search
-   * để kiểm chứng nghĩa/cách dùng, rồi nộp qua `submit_card`. Code làm chủ vòng lặp.
+   * オプションの経路 (settings.web_search_enabled): agent は web_search tool を追加で持ち、
+   * 意味/使い方を検証してから `submit_card` で提出する。code がループを制御する。
    */
   private async runWithSearch(spec: CardSpec): Promise<unknown> {
     const cardTool: Anthropic.Tool = {
@@ -77,7 +77,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       description: spec.toolDescription,
       input_schema: spec.inputSchema as Anthropic.Tool.InputSchema,
     }
-    // web_search là server-side tool; cast lỏng để không phụ thuộc version SDK.
+    // web_search はサーバーサイド tool; SDK バージョンに依存しないよう緩い cast。
     const webSearchTool = {
       type: 'web_search_20250305',
       name: 'web_search',
@@ -102,13 +102,13 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       )
       if (submit) return submit.input
 
-      // Server tool (web_search) chạm giới hạn vòng → resend để model tiếp tục.
+      // Server tool (web_search) がターン上限に達した → model が続行できるよう resend。
       if ((res.stop_reason as string) === 'pause_turn') {
         messages.push({ role: 'assistant', content: res.content })
         continue
       }
 
-      // Model dừng mà chưa nộp → nhắc nộp rồi thử tiếp.
+      // Model が提出せずに停止 → 提出するよう促してから再試行。
       messages.push({ role: 'assistant', content: res.content })
       messages.push({ role: 'user', content: `Hãy gọi tool ${spec.toolName} để nộp kết quả cuối cùng.` })
     }

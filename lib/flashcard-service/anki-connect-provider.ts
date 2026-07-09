@@ -34,9 +34,9 @@ export class AnkiConnectProvider implements IFlashcardService {
       
       return data.result;
     } catch (error) {
-      // KHÔNG log ở đây: browser gọi trực tiếp AnkiConnect và poll mỗi 30s —
-      // khi Anki đóng / CORS chưa cho phép, mỗi lần fail sẽ spam console.
-      // Callers tự xử lý: ping() nuốt lỗi → {connected:false}; export/deck ops hiện toast.
+      // ここではログを出さない: ブラウザが AnkiConnect を直接呼び出し 30 秒ごとに poll する —
+      // Anki が閉じている / CORS が未許可の場合、失敗のたびに console がスパムされてしまう。
+      // Callers が各自処理: ping() はエラーを飲み込み → {connected:false}; export/deck ops は toast を表示。
       throw error;
     }
   }
@@ -59,8 +59,9 @@ export class AnkiConnectProvider implements IFlashcardService {
   }
 
   async addNotes(notes: AnkiNote[]): Promise<number[]> {
-    // Cho phép tạo note dù Anki coi là trùng (nhiều card type cùng 1 từ, hoặc tạo lại
-    // từ đã tồn tại). Nếu không, một note trùng sẽ khiến cả lệnh addNotes thất bại.
+    // Anki が重複と判定しても note の作成を許可する (同じ単語に複数 card type、または
+    // 既存の単語から再作成する場合)。そうしないと、1 つの重複 note が addNotes コマンド
+    // 全体を失敗させてしまう。
     const notesWithOptions = notes.map((note) => ({
       ...note,
       options: { allowDuplicate: true, duplicateScope: 'deck', ...(note.options ?? {}) },
@@ -138,8 +139,8 @@ export class AnkiConnectProvider implements IFlashcardService {
   }
 
   async updateModelTemplates(modelName: string, templates: { Name: string; Front: string; Back: string }[]): Promise<void> {
-    // AnkiConnect cần `templates` là DICT keyed theo tên card template, value { Front, Back }.
-    // Gửi mảng sẽ gây "'list' object has no attribute 'get'".
+    // AnkiConnect は `templates` が card template 名をキーとする DICT で、値が
+    // { Front, Back } である必要がある。配列を送ると "'list' object has no attribute 'get'" になる。
     const templatesDict: Record<string, { Front: string; Back: string }> = {};
     for (const t of templates) {
       templatesDict[t.Name] = { Front: t.Front, Back: t.Back };

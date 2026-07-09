@@ -43,7 +43,7 @@ beforeEach(() => {
 })
 
 describe('ensureModel', () => {
-  it('tạo model mới khi chưa tồn tại (không sync styling)', async () => {
+  it('model が存在しない場合新規作成 (styling は sync しない)', async () => {
     const client = makeClient({ getModelNames: vi.fn(async () => ['Other']) })
 
     await ensureModel(client)
@@ -57,7 +57,7 @@ describe('ensureModel', () => {
     expect(client.updateModelTemplates).not.toHaveBeenCalled()
   })
 
-  it('đồng bộ CSS + template khi model đã tồn tại (không tạo lại)', async () => {
+  it('model が既に存在する場合 CSS + template を同期 (再作成しない)', async () => {
     const client = makeClient({ getModelNames: vi.fn(async () => [ANKI_MODEL_NAME]) })
 
     await ensureModel(client)
@@ -69,7 +69,7 @@ describe('ensureModel', () => {
 })
 
 describe('ensureDeck', () => {
-  it('gọi createDeck (idempotent)', async () => {
+  it('createDeck を呼ぶ (idempotent)', async () => {
     const client = makeClient()
     await ensureDeck(client, 'AnkiFlow::EN')
     expect(client.createDeck).toHaveBeenCalledWith('AnkiFlow::EN')
@@ -77,7 +77,7 @@ describe('ensureDeck', () => {
 })
 
 describe('renameDeck', () => {
-  it('tên giống nhau → chỉ createDeck, không move/delete', async () => {
+  it('同じ名前 → createDeck のみ、move/delete なし', async () => {
     const client = makeClient()
     await renameDeck(client, 'Same', 'Same')
     expect(client.createDeck).toHaveBeenCalledWith('Same')
@@ -85,7 +85,7 @@ describe('renameDeck', () => {
     expect(client.deleteDecks).not.toHaveBeenCalled()
   })
 
-  it('tên khác → tạo deck mới, chuyển card, xóa deck cũ', async () => {
+  it('異なる名前 → 新しい deck を作成、card を移動、古い deck を削除', async () => {
     const client = makeClient({ findCards: vi.fn(async () => [11, 22]) })
 
     await renameDeck(client, 'Old', 'New')
@@ -98,7 +98,7 @@ describe('renameDeck', () => {
 })
 
 describe('deleteDeckWithCleanup', () => {
-  it('xóa deck + dọn deck cha rỗng sâu nhất theo phân cấp ::', async () => {
+  it('deck を削除 + `::` 階層に沿って最も深い空の親 deck を整理', async () => {
     // getDecks (chụp 1 lần) trả ['A::B', 'A']; sau khi xóa 'A::B::C', 'A::B' rỗng → dọn.
     // Lưu ý: 'A' KHÔNG bị dọn vì hasChildren dùng mảng remaining tĩnh vẫn còn thấy 'A::B' (hành vi nguyên bản).
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A']) })
@@ -109,7 +109,7 @@ describe('deleteDeckWithCleanup', () => {
     expect(cleaned).toEqual(['A::B'])
   })
 
-  it('giữ deck cha nếu còn con khác', async () => {
+  it('他の子がある場合は親 deck を保持', async () => {
     // Còn 'A::B::Sibling' → 'A::B' có con → dừng, không dọn
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A::B::Sibling', 'A']) })
 
@@ -118,7 +118,7 @@ describe('deleteDeckWithCleanup', () => {
     expect(cleaned).toEqual([])
   })
 
-  it('lỗi cleanup không làm fail cả thao tác (best-effort)', async () => {
+  it('cleanup のエラーは操作全体を失敗させない (best-effort)', async () => {
     const client = makeClient({
       getDecks: vi.fn(async () => {
         throw new Error('anki down')
@@ -131,7 +131,7 @@ describe('deleteDeckWithCleanup', () => {
 })
 
 describe('setDeckSuspended', () => {
-  it('suspended=true → suspend các card trong deck', async () => {
+  it('suspended=true → deck 内のカードを suspend', async () => {
     const client = makeClient({ findCards: vi.fn(async () => [1, 2]) })
     await setDeckSuspended(client, 'D', true)
     expect(client.suspend).toHaveBeenCalledWith([1, 2])
@@ -147,7 +147,7 @@ describe('setDeckSuspended', () => {
 })
 
 describe('syncAllDecks', () => {
-  it('đảm bảo deck tồn tại + suspend/unsuspend theo is_active', async () => {
+  it('deck の存在を保証 + is_active に応じて suspend/unsuspend', async () => {
     const client = makeClient()
 
     const result = await syncAllDecks(client, [
@@ -162,7 +162,7 @@ describe('syncAllDecks', () => {
     expect(client.suspend).toHaveBeenCalled()
   })
 
-  it('gom lỗi từng deck, không throw cả batch', async () => {
+  it('各 deck のエラーを集約し、batch 全体は throw しない', async () => {
     const client = makeClient({
       createDeck: vi.fn(async (name: string) => {
         if (name === 'Bad') throw new Error('boom')
@@ -187,7 +187,7 @@ describe('createNotesForEntry', () => {
     { id: 'ct2', name: 'Meaning → Word', code: 'meaning_to_word' },
   ]
 
-  it('store audio data-URL vào Anki media rồi tạo deck + addNotes', async () => {
+  it('audio data-URL を Anki media に store してから deck を作成 + addNotes', async () => {
     const client = makeClient({ addNotes: vi.fn(async () => [11, 22]) })
     const entry = {
       word: 'resilient',
@@ -206,7 +206,7 @@ describe('createNotesForEntry', () => {
     expect(client.addNotes).toHaveBeenCalledOnce()
   })
 
-  it('audio http URL (không phải data-URL) → KHÔNG store media', async () => {
+  it('audio が http URL (data-URL でない) → メディアを store しない', async () => {
     const client = makeClient()
     const entry = { word: 'x', anki_deck: 'D', tags: [], audio_url: 'https://cdn/x.mp3' }
 
@@ -215,7 +215,7 @@ describe('createNotesForEntry', () => {
     expect(client.storeMediaFile).not.toHaveBeenCalled()
   })
 
-  it('storeMediaFile lỗi → best-effort, vẫn addNotes (không throw)', async () => {
+  it('storeMediaFile がエラー → best-effort、addNotes は実行される (throw しない)', async () => {
     const client = makeClient({
       storeMediaFile: vi.fn(async () => {
         throw new Error('anki down mid-way')
@@ -227,7 +227,7 @@ describe('createNotesForEntry', () => {
     await expect(createNotesForEntry(client, entry, [cardTypes[0]])).resolves.toEqual([1])
   })
 
-  it('addNotes throw (Anki đóng) → propagate cho caller xử lý', async () => {
+  it('addNotes が throw (Anki が閉じている) → caller に伝播して処理させる', async () => {
     const client = makeClient({
       addNotes: vi.fn(async () => {
         throw new TypeError('Failed to fetch')
@@ -253,14 +253,14 @@ describe('regenerateNotesForEntry', () => {
     fields: { Front: { value: '', order: 0 }, Back: { value: '', order: 1 } },
   })
 
-  it('entry không có note → không gọi Anki, trả zeros', async () => {
+  it('entry に note がない → Anki を呼ばない、zeros を返す', async () => {
     const client = makeClient()
     const r = await regenerateNotesForEntry(client, { anki_note_ids: [], card_type_ids: [] }, cardTypes)
     expect(r).toEqual({ updated: 0, skipped: 0, failed: 0, errors: [] })
     expect(client.notesInfo).not.toHaveBeenCalled()
   })
 
-  it('sinh lại + updateNoteFields cho từng note khớp card type', async () => {
+  it('card type に一致する各 note を再生成 + updateNoteFields', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
 
     const r = await regenerateNotesForEntry(client, entry, cardTypes)
@@ -272,7 +272,7 @@ describe('regenerateNotesForEntry', () => {
     expect(calledNoteIds).toEqual([11, 22])
   })
 
-  it('card type đã xoá (không có trong map) → skipped', async () => {
+  it('card type が削除済み (map にない) → skipped', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
     // chỉ cung cấp ct1 → note của ct2 bị skip
     const r = await regenerateNotesForEntry(client, entry, [cardTypes[0]])
@@ -281,7 +281,7 @@ describe('regenerateNotesForEntry', () => {
     expect(client.updateNoteFields).toHaveBeenCalledTimes(1)
   })
 
-  it('onlyCardTypeId → chỉ sinh lại note của card type đó', async () => {
+  it('onlyCardTypeId → その card type の note のみ再生成', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
     const r = await regenerateNotesForEntry(client, entry, cardTypes, 'ct2')
     expect(r.updated).toBe(1)
@@ -289,7 +289,7 @@ describe('regenerateNotesForEntry', () => {
     expect(calledNoteIds).toEqual([22])
   })
 
-  it('updateNoteFields lỗi 1 note → failed + errors, note kia vẫn updated', async () => {
+  it('updateNoteFields が 1 つの note でエラー → failed + errors、もう一方の note は updated のまま', async () => {
     const client = makeClient({
       notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]),
       updateNoteFields: vi.fn(async (noteId: number) => {
@@ -304,7 +304,7 @@ describe('regenerateNotesForEntry', () => {
     expect(r.errors[0]).toContain('note 22')
   })
 
-  it('số note ≠ số card type → skip toàn bộ (map không an toàn)', async () => {
+  it('note 数 ≠ card type 数 → すべて skip (安全にマップできない)', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
     const mismatched = { ...entry, card_type_ids: ['ct1'] } // 2 note, 1 card type
     const r = await regenerateNotesForEntry(client, mismatched, cardTypes)

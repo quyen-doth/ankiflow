@@ -79,8 +79,8 @@ describe('generateBatch — api mode', () => {
   })
 })
 
-describe('generateBatch — hủy (abort)', () => {
-  it('không gọi fetch khi signal đã abort từ trước', async () => {
+describe('generateBatch — キャンセル (abort)', () => {
+  it('事前に signal が abort されている場合 fetch を呼ばない', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     const controller = new AbortController()
@@ -98,7 +98,7 @@ describe('generateBatch — hủy (abort)', () => {
     expect(results.filter(Boolean)).toHaveLength(0)
   })
 
-  it('dừng lấy item mới sau khi abort giữa chừng', async () => {
+  it('途中で abort された後、新しい item の取得を停止', async () => {
     const controller = new AbortController()
     let calls = 0
     vi.stubGlobal(

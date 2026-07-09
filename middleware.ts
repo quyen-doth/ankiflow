@@ -2,22 +2,27 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * Route protection bằng session cookie `__session`.
+ * セッションクッキー `__session` によるルート保護。
  *
- * CHỈ kiểm tra cookie TỒN TẠI — không verify chữ ký (Firebase Admin SDK không chạy
- * được trên Edge Runtime). Verify thật sự diễn ra ở API routes (Phase C, withAuth).
- * Cookie giả/hết hạn sẽ qua được middleware nhưng bị API chặn 401.
+ * クッキーが「存在するか」のみをチェック — 署名は検証しない (Firebase Admin SDK は
+ * Edge Runtime 上で実行できないため)。実際の検証は API routes (Phase C、withAuth) で
+ * 行われる。偽造/期限切れのクッキーは middleware を通過するが、API 側で 401 で
+ * ブロックされる。
  *
- * - Thiếu cookie: path `/api/*` → 401 JSON (KHÔNG redirect — client fetch nhận
- *   HTML redirect sẽ lỗi khó hiểu); page → redirect /login.
- * - Có cookie mà vào /login|/signup → redirect /dashboard.
+ * - クッキーがない場合: `/api/*` パス → 401 JSON (redirect しない — client fetch が
+ *   HTML redirect を受け取ると分かりにくいエラーになるため); page → /login へ redirect。
+ * - クッキーがある状態で /login|/signup にアクセス → /dashboard へ redirect。
  *
- * Matcher exclude (không qua middleware):
- * - `_next/*`, favicon, file tĩnh (có dấu chấm)
- * - `/api/auth/*` — login/signup/logout phải chạy được khi CHƯA có session
- * - `/api/notifications/line-webhook` — LINE platform gọi từ ngoài (không có cookie,
- *   tự bảo vệ bằng LINE signature verification)
- * - `/verify` — dev-only dashboard (production tự trả 404)
+ * Matcher exclude (middleware を通らない):
+ * - `_next/*`、favicon、静的ファイル (ドット付き)
+ * - `/api/auth/*` — セッションがまだない状態でも login/signup/logout は実行できる必要がある
+ * - `/api/notifications/line-webhook` — LINE プラットフォームが外部から呼び出す
+ *   (クッキーを持たない、LINE signature verification で自己防御)
+ * - `/api/integrations/*` — 外部システム (Knowledge Hub) が呼び出す。クッキーを持たない、
+ *   `x-integration-token` ヘッダーで自己防御
+ * - `/api/cron/*` — Vercel Cron が呼び出す。クッキーを持たない、
+ *   `Authorization: Bearer CRON_SECRET` で自己防御
+ * - `/verify` — dev-only ダッシュボード (production では自動的に 404)
  */
 const SESSION_COOKIE_NAME = '__session'
 const AUTH_PAGES = ['/login', '/signup']
@@ -47,6 +52,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|verify|.*\\..*).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|api/integrations|api/cron|verify|.*\\..*).*)',
   ],
 }

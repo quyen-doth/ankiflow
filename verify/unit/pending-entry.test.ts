@@ -33,22 +33,22 @@ describe('lib/pendingEntry', () => {
     expect(loadPendingEntry()).toEqual(entry)
   })
 
-  it('loadPendingEntry trả null khi chưa có dữ liệu', () => {
+  it('データがない場合 loadPendingEntry は null を返す', () => {
     expect(loadPendingEntry()).toBeNull()
   })
 
-  it('loadPendingEntry trả null khi JSON bị hỏng', () => {
+  it('JSON が壊れている場合 loadPendingEntry は null を返す', () => {
     localStorage.setItem('ankiflow_pending_result', '{broken')
     expect(loadPendingEntry()).toBeNull()
   })
 
-  it('clearPendingEntry xóa dữ liệu', () => {
+  it('clearPendingEntry はデータを削除する', () => {
     savePendingEntry(makeEntry())
     clearPendingEntry()
     expect(loadPendingEntry()).toBeNull()
   })
 
-  it('isPendingEntryStale: false khi vừa lưu, true khi quá 30 phút', () => {
+  it('isPendingEntryStale: 保存直後は false、30 分超過で true', () => {
     expect(isPendingEntryStale(makeEntry())).toBe(false)
 
     const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000).toISOString()

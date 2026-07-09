@@ -1,10 +1,10 @@
 /**
- * Trích tên file media (audio + ảnh) từ HTML của một note Anki cũ, để tái sử dụng khi sinh lại
- * Front/Back theo template mới — tránh mất audio/ảnh.
+ * 既存の Anki note の HTML からメディアファイル名 (audio + 画像) を抽出し、新しい template で
+ * Front/Back を再生成する際に再利用する — audio/画像の消失を防ぐ。
  *
- * - `audioFilename`: nội dung trong `[sound:FILE]`.
- * - `imageFilename`: `src` của `<img>` NHƯNG chỉ khi là tên file media Anki (không phải URL http),
- *   vì ảnh http để `buildNotes` tự nhúng lại từ `entry.image_url`.
+ * - `audioFilename`: `[sound:FILE]` 内の内容。
+ * - `imageFilename`: `<img>` の `src` だが、Anki メディアファイル名の場合のみ (http URL ではない)、
+ *   http 画像は `buildNotes` が `entry.image_url` から自動的に再埋め込みするため。
  */
 export function extractMedia(html: string): { audioFilename?: string; imageFilename?: string } {
   const result: { audioFilename?: string; imageFilename?: string } = {}

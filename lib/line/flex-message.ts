@@ -1,5 +1,5 @@
 import type { Entry } from '@/types'
-import { calculateNextIntervals } from '@/lib/srs/sm2'
+import { calculateNextIntervals } from '@/lib/srs/fsrs'
 import type { LineFlexMessage } from './client'
 
 const LANG_FLAGS: Record<string, string> = {

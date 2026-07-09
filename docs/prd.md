@@ -1,117 +1,117 @@
-# 📋 PRD — Hệ thống Tự động Tạo Flashcard Anki
+# 📋 PRD — Anki フラッシュカード自動生成システム
 
-**Tên dự án:** AnkiFlow — Personal Flashcard Automation  
-**Phiên bản:** v1.1  
-**Ngày tạo:** 2026-04-15  
-**Cập nhật:** 2026-04-18  
-**Tác giả:** hong-quyen  
-**Trạng thái:** Draft — đã bổ sung feedback v1
+**プロジェクト名:** AnkiFlow — Personal Flashcard Automation  
+**バージョン:** v1.1  
+**作成日:** 2026-04-15  
+**更新日:** 2026-04-18  
+**作者:** hong-quyen  
+**ステータス:** Draft — v1 フィードバック反映済み
 
 ---
 
-## 1. 🎯 Tổng quan & Mục tiêu
+## 1. 🎯 概要 & 目的
 
-### 1.1 Vấn đề cần giải quyết
+### 1.1 解決すべき課題
 
-Việc tạo flashcard thủ công trong Anki tốn nhiều thời gian và công sức:
+Anki でのフラッシュカード手動作成は多くの時間と労力を要します:
 
-- Phải tự tìm nghĩa, ví dụ câu, phát âm, hình ảnh
-- Phải tạo thủ công từng loại card (EN→VN, VN→EN, nghe→đoán...)
-- Không có quy trình nhất quán
-- Không lưu lịch sử từ đã học để tránh trùng lặp
+- 自分で意味、例文、発音、画像を探す必要がある
+- 各種カード (EN→VN、VN→EN、リスニング→推測...) を手動で作成する必要がある
+- 一貫したプロセスがない
+- 重複を避けるための学習済み単語の履歴が保存されない
 
-### 1.2 Giải pháp
+### 1.2 解決策
 
-Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
+MacBook 上でローカル実行する **Admin Web UI** を構築し、以下を可能にする:
 
-- Nhập từ/nội dung học → AI tự động điền thông tin
-- Preview & chỉnh sửa trước khi tạo
-- Tạo nhiều loại card từ một lần nhập
-- Tự động đẩy vào Anki Desktop qua AnkiConnect
-- Lưu lịch sử vào Firebase Firestore
-- Quản lý linh hoạt: categories, card types, templates, form fields qua trang Admin
+- 単語/学習コンテンツを入力 → AI が自動的に情報を入力
+- 作成前にプレビュー & 編集
+- 1 回の入力から複数種類のカードを作成
+- AnkiConnect 経由で Anki Desktop に自動プッシュ
+- Firebase Firestore に履歴を保存
+- Admin ページ経由で柔軟な管理: categories、card types、templates、form fields
 
-### 1.3 Mục tiêu chính
+### 1.3 主要目標
 
-| Mục tiêu                                                              | Đo lường                             |
+| 目標                                                              | 測定方法                             |
 | --------------------------------------------------------------------- | ------------------------------------ |
-| Giảm thời gian tạo 1 card từ ~10 phút → ~30 giây                      | Thời gian từ nhập đến Anki           |
-| Tạo tự động nhiều loại card từ 1 lần nhập                             | ≥ 4 card types/từ (ngôn ngữ)         |
-| Hỗ trợ 3 ngôn ngữ: Anh, Trung, Nhật                                   | Đầy đủ metadata đặc thù mỗi ngôn ngữ |
-| Chi phí $0/tháng trong free tier                                      | Không vượt giới hạn miễn phí         |
-| Workflow mượt mà — chỉ cần nhập từ, không cần chọn lại fields cố định | Session persistence                  |
+| 1 枚のカード作成時間を ~10 分 → ~30 秒に短縮                      | 入力から Anki までの時間           |
+| 1 回の入力から複数種類のカードを自動作成                             | ≥ 4 card types/単語 (言語)         |
+| 3 言語をサポート: 英語、中国語、日本語                                   | 各言語固有のメタデータを完備 |
+| Free tier 内でコスト $0/月                                      | 無料枠を超えない         |
+| スムーズなワークフロー — 単語入力のみ、固定フィールドの再選択不要 | Session persistence                  |
 
 ---
 
-## 2. 👤 Người dùng
+## 2. 👤 利用者
 
-**Duy nhất:** Cá nhân (chủ dự án)
+**単一:** 個人 (プロジェクトオーナー)
 
-**Thiết bị sử dụng:**
+**使用デバイス:**
 
-- **Tạo card:** MacBook (localhost)
-- **Học:** iPad, iPhone (qua AnkiWeb sync)
+- **カード作成:** MacBook (localhost)
+- **学習:** iPad、iPhone (AnkiWeb sync 経由)
 
-**Background kỹ thuật:** Fullstack, trình độ trung cấp (HTML/CSS, React, PHP, JS/TS, SQL)
-
----
-
-## 3. 🗺️ Luồng hoạt động (User Flow)
-
-### 3.1 Flow chính — Tạo card ngôn ngữ
-
-```
-[1] Mở Admin UI (localhost:3000)
-    ↓
-[2] Chọn Ngôn ngữ: "Chinese" (lưu session, lần sau không cần chọn lại)
-    ↓
-[3] Chọn Anki Deck: "Chinese::HSK2" (lưu session)
-    → Khi chọn Deck → hệ thống tự nhận diện form type phù hợp
-    ↓
-[4] Chọn Category: "Đời sống" (dropdown từ DB, lưu session)
-    ↓
-[5] Nhập: Từ vựng "书" ← THAO TÁC CHÍNH, các field khác đã lưu sẵn
-    ↓
-[6] Nhấn "Tạo nháp" → Hệ thống gọi:
-    ├── Claude AI agent → sinh nghĩa VN, Pinyin, Hán Việt, ví dụ câu, collocations, từ loại, cấp độ HSK
-    ├── Google TTS → tạo audio file (lưu vào Anki media folder)
-    └── Unsplash API → tìm ảnh minh họa (lưu URL)
-    ↓
-[7] Hiển thị Preview tất cả card types sẽ được tạo
-    ↓
-[8] User review, chỉnh sửa nếu cần
-    ↓
-[9] Nhấn "Xác nhận & Tạo"
-    ↓
-[10] AnkiConnect API (localhost:8765) → tạo notes trong Anki Desktop
-    ↓
-[11] Lưu lịch sử vào Firebase Firestore
-    ↓
-[12] Quay về form tạo → Từ vựng field được reset, các field khác giữ nguyên
-    ↓
-[13] Anki Desktop sync thủ công → AnkiWeb → iPad/iPhone ✅
-```
-
-### 3.2 Flow phụ — Tạo card chuyên ngành (IT, etc.)
-
-```
-[1] Chọn Anki Deck: "Vocabulary::IT" → hệ thống hiện form IT
-    ↓
-[2] Form nhập liệu hiện fields phù hợp:
-    - Thuật ngữ chính (bắt buộc)
-    - Định nghĩa ngắn (bắt buộc)
-    - Keywords liên quan
-    - Chủ đề: checkbox list từ DB (Database, Frontend, Backend...)
-    - Difficulty (lưu session)
-    ↓
-[3-12] Tương tự flow chính (AI bổ sung phần còn lại)
-```
+**技術的背景:** Fullstack、中級レベル (HTML/CSS、React、PHP、JS/TS、SQL)
 
 ---
 
-## 4. 🏗️ Kiến trúc hệ thống
+## 3. 🗺️ 操作フロー (User Flow)
 
-/api/audio/\* gồm 3 endpoints: /generate (TTS only), /store (AnkiConnect only), / (combined, backward-compatible).
+### 3.1 メインフロー — 言語カードの作成
+
+```
+[1] Admin UI を開く (localhost:3000)
+    ↓
+[2] 言語を選択: "Chinese" (session に保存、次回は再選択不要)
+    ↓
+[3] Anki Deck を選択: "Chinese::HSK2" (session に保存)
+    → Deck 選択時 → システムが適切な form type を自動認識
+    ↓
+[4] Category を選択: "日常生活" (DB からの dropdown、session に保存)
+    ↓
+[5] 入力: 語彙 "书" ← メイン操作、他のフィールドは保存済み
+    ↓
+[6] "下書きを作成" をクリック → システムが呼び出す:
+    ├── Claude AI エージェント → ベトナム語の意味、ピンイン、ハンベトナム音、例文、collocations、品詞、HSK レベルを生成
+    ├── Google TTS → audio ファイルを作成 (Anki media folder に保存)
+    └── Unsplash API → イラスト画像を検索 (URL を保存)
+    ↓
+[7] 作成されるすべての card types のプレビューを表示
+    ↓
+[8] ユーザーがレビュー、必要に応じて編集
+    ↓
+[9] "確認 & 作成" をクリック
+    ↓
+[10] AnkiConnect API (localhost:8765) → Anki Desktop でノートを作成
+    ↓
+[11] Firebase Firestore に履歴を保存
+    ↓
+[12] 作成フォームに戻る → 語彙フィールドがリセット、他のフィールドは維持
+    ↓
+[13] Anki Desktop を手動 sync → AnkiWeb → iPad/iPhone ✅
+```
+
+### 3.2 サブフロー — 専門カードの作成 (IT など)
+
+```
+[1] Anki Deck を選択: "Vocabulary::IT" → システムが IT フォームを表示
+    ↓
+[2] 入力フォームが適切なフィールドを表示:
+    - メイン用語 (必須)
+    - 短い定義 (必須)
+    - 関連 Keywords
+    - トピック: DB からの checkbox list (Database、Frontend、Backend...)
+    - Difficulty (session に保存)
+    ↓
+[3-12] メインフローと同様 (AI が残りを補完)
+```
+
+---
+
+## 4. 🏗️ システムアーキテクチャ
+
+/api/audio/\* は 3 つのエンドポイントから構成: /generate (TTS のみ)、/store (AnkiConnect のみ)、/ (統合、後方互換)。
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -129,10 +129,10 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
           │
           ▼ External APIs
 ┌─────────────────────────────────────────────────┐
-│  Claude Haiku 4.5  → Sinh nội dung card         │
-│  Google Cloud TTS  → Tạo audio phát âm          │
-│  Unsplash API      → Tìm ảnh minh họa           │
-│  Firebase Firestore→ Lưu lịch sử + config data  │
+│  Claude Haiku 4.5  → カードコンテンツを生成         │
+│  Google Cloud TTS  → 発音 audio を作成          │
+│  Unsplash API      → イラスト画像を検索           │
+│  Firebase Firestore→ 履歴 + config データを保存  │
 └─────────────────────────────────────────────────┘
           │
           ▼ Sync
@@ -143,154 +143,154 @@ Xây dựng một **Admin Web UI** chạy local trên MacBook, cho phép:
 
 ---
 
-## 5. 🛠️ Tech Stack
+## 5. 🛠️ テックスタック
 
-| Layer               | Công nghệ                  | Phiên bản               | Lý do chọn                                |
+| レイヤー               | 技術                  | バージョン               | 選定理由                                |
 | ------------------- | -------------------------- | ----------------------- | ----------------------------------------- |
-| **Frontend**        | Next.js                    | 16 (App Router)         | Full-stack trong 1 project, React 19 base |
-| **Language**        | TypeScript                 | 5+ (strict mode)        | Type safety, dễ maintain                  |
-| **Styling**         | Tailwind CSS               | v4                      | Rapid UI development, `@theme` directive  |
-| **Backend**         | Next.js API Routes         | -                       | Serverless, đơn giản                      |
-| **Database**        | Firebase Firestore         | -                       | Free tier rộng, real-time                 |
-| **AI**              | Anthropic Claude Haiku 4.5 | via `@anthropic-ai/sdk` | Tool-use, structured output               |
-| **TTS**             | Google Cloud TTS           | -                       | Free 1M ký tự/tháng                       |
-| **Images**          | Unsplash API               | v1                      | Free, ảnh chất lượng cao                  |
-| **Anki**            | AnkiConnect                | 6+                      | Plugin local, API đầy đủ                  |
+| **Frontend**        | Next.js                    | 16 (App Router)         | 1 プロジェクトで Full-stack、React 19 ベース |
+| **Language**        | TypeScript                 | 5+ (strict mode)        | Type safety、メンテナンスしやすい                  |
+| **Styling**         | Tailwind CSS               | v4                      | 迅速な UI 開発、`@theme` directive  |
+| **Backend**         | Next.js API Routes         | -                       | Serverless、シンプル                      |
+| **Database**        | Firebase Firestore         | -                       | 広い Free tier、real-time                 |
+| **AI**              | Anthropic Claude Haiku 4.5 | via `@anthropic-ai/sdk` | Tool-use、structured output               |
+| **TTS**             | Google Cloud TTS           | -                       | 月間 100 万文字無料                       |
+| **Images**          | Unsplash API               | v1                      | 無料、高品質な画像                  |
+| **Anki**            | AnkiConnect                | 6+                      | ローカルプラグイン、フル API                  |
 | **Runtime**         | Node.js                    | 20+                     | LTS stable                                |
-| **Package Manager** | npm                        | -                       | Đi kèm Node.js, không cần cài thêm        |
+| **Package Manager** | npm                        | -                       | Node.js 付属、追加インストール不要        |
 
 ---
 
-## 6. 📂 Data Model
+## 6. 📂 データモデル
 
 ### 6.1 Firestore Collections
 
-#### Collection: `entries` (Từ vựng đã tạo)
+#### Collection: `entries` (作成された語彙)
 
 ```typescript
 interface Entry {
-    id?: string; // Document ID trong Firestore
-    user_id: string; // Phase 1: 'local-user'. Phase 3: Firebase Auth UID
+    id?: string; // Firestore の Document ID
+    user_id: string; // Phase 1: 'local-user'。Phase 3: Firebase Auth UID
 
-    // Thông tin phân loại
-    category_id: string | null; // Tham chiếu tới collection categories
-    language?: LanguageType | null; // "en" | "zh" | "ja" (nếu là ngôn ngữ)
-    form_type: FormType | string; // Loại form đã dùng
+    // 分類情報
+    category_id: string | null; // categories コレクションへの参照
+    language?: LanguageType | null; // "en" | "zh" | "ja" (言語の場合)
+    form_type: FormType | string; // 使用された form の種類
 
-    // Nội dung chung (tuỳ form_type)
-    word?: string; // Từ vựng (Language)
-    term?: string; // Thuật ngữ (IT)
-    title?: string; // Tiêu đề (General)
-    meaning_vi?: string; // Nghĩa tiếng Việt
-    definition?: string; // Định nghĩa (IT)
-    content?: string; // Nội dung chi tiết (General)
-    note?: string; // Ghi chú cá nhân
-    word_type?: string; // Danh từ, động từ, tính từ...
+    // 共通コンテンツ (form_type に応じる)
+    word?: string; // 語彙 (Language)
+    term?: string; // 用語 (IT)
+    title?: string; // タイトル (General)
+    meaning_vi?: string; // ベトナム語の意味
+    definition?: string; // 定義 (IT)
+    content?: string; // 詳細なコンテンツ (General)
+    note?: string; // 個人メモ
+    word_type?: string; // 名詞、動詞、形容詞...
 
-    // Metadata ngôn ngữ đặc thù
-    pinyin?: string; // Chỉ cho tiếng Trung
-    han_viet?: string; // Chỉ cho tiếng Trung
-    hiragana?: string; // Chỉ cho tiếng Nhật
-    katakana?: string; // Chỉ cho tiếng Nhật
-    romaji?: string; // Chỉ cho tiếng Nhật
-    ipa?: string; // Phiên âm quốc tế (tiếng Anh)
-    level?: string; // HSK1-6, JLPT N5-N1, CEFR A1-C2
+    // 言語固有のメタデータ
+    pinyin?: string; // 中国語のみ
+    han_viet?: string; // 中国語のみ
+    hiragana?: string; // 日本語のみ
+    katakana?: string; // 日本語のみ
+    romaji?: string; // 日本語のみ
+    ipa?: string; // 国際発音記号 (英語)
+    level?: string; // HSK1-6、JLPT N5-N1、CEFR A1-C2
 
-    // Ví dụ & Collocations
-    example_sentence?: string; // Câu ví dụ ngắn gọn, tự nhiên (ngôn ngữ gốc)
-    example_translation?: string; // Dịch câu ví dụ sang tiếng Việt
-    collocations?: string[]; // Các cụm từ hay đi cùng
-    // Ví dụ: ["蘸点儿醋", "白醋", "米醋"]
+    // 例文 & Collocations
+    example_sentence?: string; // 簡潔で自然な例文 (原語)
+    example_translation?: string; // 例文のベトナム語訳
+    collocations?: string[]; // よく共起するフレーズ
+    // 例: ["蘸点儿醋", "白醋", "米醋"]
 
     // Media
     image_url?: string; // Unsplash URL
-    image_credit?: string; // Tên photographer
-    audio_url?: string; // URL/tên file audio từ TTS
-    audio_example_url?: string; // Audio câu ví dụ
+    image_credit?: string; // 写真家名
+    audio_url?: string; // TTS からの audio ファイル URL/名前
+    audio_example_url?: string; // 例文の Audio
 
     // Anki
-    anki_deck: string; // Tên deck trong Anki
-    anki_note_ids?: number[]; // IDs của các notes đã tạo
-    card_type_ids: string[]; // IDs của các card types đã chọn
-    tags: string[]; // Tags trong Anki (AI sinh + user custom)
+    anki_deck: string; // Anki 内のデック名
+    anki_note_ids?: number[]; // 作成された notes の IDs
+    card_type_ids: string[]; // 選択された card types の IDs
+    tags: string[]; // Anki のタグ (AI 生成 + ユーザーカスタム)
 
-    // Chuyên ngành (IT, etc.)
-    keywords?: string[]; // Từ khóa liên quan
-    topic_ids?: string[]; // Tham chiếu tới collection topics
+    // 専門分野 (IT など)
+    keywords?: string[]; // 関連キーワード
+    topic_ids?: string[]; // topics コレクションへの参照
     difficulty?: 'easy' | 'medium' | 'hard';
 
-    // Metadata hệ thống
+    // システムメタデータ
     created_at: Timestamp;
     updated_at: Timestamp;
     status: 'draft' | 'reviewed' | 'synced';
 }
 ```
 
-#### Collection: `categories` (Phân loại nội dung) — MỚI
+#### Collection: `categories` (コンテンツ分類) — 新規
 
 ```typescript
 interface Category {
     id: string;
-    name: string; // Tên hiển thị: "Đời sống", "Kinh doanh", "Du lịch"...
-    form_type: FormType; // Form nào sử dụng category này
-    sort_order: number; // Thứ tự hiển thị
-    is_active: boolean; // Có đang sử dụng không
+    name: string; // 表示名: "日常生活"、"ビジネス"、"旅行"...
+    form_type: FormType; // このカテゴリを使用する form
+    sort_order: number; // 表示順序
+    is_active: boolean; // 使用中かどうか
     created_at: Timestamp;
     updated_at: Timestamp;
 }
 
-// Dữ liệu mẫu:
-// { name: "Đời sống",       form_type: "form_language",  sort_order: 1 }
-// { name: "Kinh doanh",     form_type: "form_language",  sort_order: 2 }
-// { name: "Du lịch",        form_type: "form_language",  sort_order: 3 }
-// { name: "Ẩm thực",        form_type: "form_language",  sort_order: 4 }
-// { name: "Công nghệ",      form_type: "form_language",  sort_order: 5 }
-// { name: "Giáo dục",       form_type: "form_language",  sort_order: 6 }
-// { name: "Y tế",           form_type: "form_language",  sort_order: 7 }
-// { name: "Văn hóa",        form_type: "form_language",  sort_order: 8 }
+// サンプルデータ:
+// { name: "日常生活",       form_type: "form_language",  sort_order: 1 }
+// { name: "ビジネス",     form_type: "form_language",  sort_order: 2 }
+// { name: "旅行",        form_type: "form_language",  sort_order: 3 }
+// { name: "料理",        form_type: "form_language",  sort_order: 4 }
+// { name: "テクノロジー",      form_type: "form_language",  sort_order: 5 }
+// { name: "教育",       form_type: "form_language",  sort_order: 6 }
+// { name: "医療",           form_type: "form_language",  sort_order: 7 }
+// { name: "文化",        form_type: "form_language",  sort_order: 8 }
 ```
 
-#### Collection: `card_types` (Loại card) — MỚI
+#### Collection: `card_types` (カードの種類) — 新規
 
 ```typescript
 interface CardTypeConfig {
     id: string;
-    code: string; // Mã duy nhất: "word_to_meaning", "audio_to_word"...
-    name: string; // Tên hiển thị: "Từ → Nghĩa VN"
-    description: string; // Mô tả ngắn
-    form_type: FormType; // Thuộc form nào
-    language?: LanguageType; // Chỉ áp dụng cho ngôn ngữ cụ thể (null = tất cả)
-    is_default: boolean; // Có được chọn mặc định không
+    code: string; // 一意なコード: "word_to_meaning"、"audio_to_word"...
+    name: string; // 表示名: "単語 → ベトナム語の意味"
+    description: string; // 短い説明
+    form_type: FormType; // どの form に属するか
+    language?: LanguageType; // 特定の言語にのみ適用 (null = すべて)
+    is_default: boolean; // デフォルトで選択されるか
     is_active: boolean;
     sort_order: number;
     created_at: Timestamp;
 }
 
-// Dữ liệu mẫu:
-// { code: "word_to_meaning",   name: "Từ → Nghĩa VN",          form_type: "form_language", language: null,      is_default: true }
-// { code: "meaning_to_word",   name: "Nghĩa VN → Từ",          form_type: "form_language", language: null,      is_default: true }
-// { code: "audio_to_word",     name: "Nghe → Đoán từ",          form_type: "form_language", language: null,      is_default: true }
-// { code: "image_to_word",     name: "Ảnh → Đoán từ",           form_type: "form_language", language: null,      is_default: true }
-// { code: "fill_in_blank",     name: "Điền vào chỗ trống",      form_type: "form_language", language: null,      is_default: true }
-// { code: "reading_to_word",   name: "Pinyin → Chữ Hán",        form_type: "form_language", language: "zh", is_default: false }
-// { code: "word_to_reading",   name: "Chữ Hán → Pinyin",        form_type: "form_language", language: "zh", is_default: false }
-// { code: "concept_to_def",    name: "Khái niệm → Định nghĩa",  form_type: "form_it",      language: null,      is_default: true }
-// { code: "def_to_concept",    name: "Định nghĩa → Khái niệm",  form_type: "form_it",      language: null,      is_default: true }
+// サンプルデータ:
+// { code: "word_to_meaning",   name: "単語 → ベトナム語の意味",          form_type: "form_language", language: null,      is_default: true }
+// { code: "meaning_to_word",   name: "ベトナム語の意味 → 単語",          form_type: "form_language", language: null,      is_default: true }
+// { code: "audio_to_word",     name: "リスニング → 単語当て",          form_type: "form_language", language: null,      is_default: true }
+// { code: "image_to_word",     name: "画像 → 単語当て",           form_type: "form_language", language: null,      is_default: true }
+// { code: "fill_in_blank",     name: "穴埋め",      form_type: "form_language", language: null,      is_default: true }
+// { code: "reading_to_word",   name: "ピンイン → 漢字",        form_type: "form_language", language: "zh", is_default: false }
+// { code: "word_to_reading",   name: "漢字 → ピンイン",        form_type: "form_language", language: "zh", is_default: false }
+// { code: "concept_to_def",    name: "概念 → 定義",  form_type: "form_it",      language: null,      is_default: true }
+// { code: "def_to_concept",    name: "定義 → 概念",  form_type: "form_it",      language: null,      is_default: true }
 ```
 
-#### Collection: `topics` (Chủ đề IT) — MỚI
+#### Collection: `topics` (IT トピック) — 新規
 
 ```typescript
 interface Topic {
     id: string;
-    name: string; // "Database", "Frontend", "Backend", "Algorithm"...
-    form_type: FormType; // Thuộc form nào (hiện tại: "it")
+    name: string; // "Database"、"Frontend"、"Backend"、"Algorithm"...
+    form_type: FormType; // どの form に属するか (現在: "it")
     is_active: boolean;
     sort_order: number;
     created_at: Timestamp;
 }
 
-// Dữ liệu mẫu:
+// サンプルデータ:
 // { name: "Database",         sort_order: 1 }
 // { name: "Frontend",         sort_order: 2 }
 // { name: "Backend",          sort_order: 3 }
@@ -303,72 +303,72 @@ interface Topic {
 // { name: "Data Science",     sort_order: 10 }
 ```
 
-#### Collection: `decks` (Danh sách deck + Mapping)
+#### Collection: `decks` (デックリスト + マッピング)
 
 ```typescript
 interface DeckConfig {
     id: string;
-    anki_deck_name: string; // Tên đầy đủ trong Anki (ví dụ: "Chinese::HSK1")
-    display_name: string; // Tên hiển thị trên UI
-    form_type: FormType; // ← MỚI: liên kết deck → form type
-    language?: LanguageType; // Chỉ khi form_type là "language"
-    default_card_type_ids: string[]; // Card types mặc định cho deck này
-    default_category_id?: string; // Category mặc định (optional)
+    anki_deck_name: string; // Anki 内の完全な名前 (例: "Chinese::HSK1")
+    display_name: string; // UI 上の表示名
+    form_type: FormType; // ← 新規: デック → form type のリンク
+    language?: LanguageType; // form_type が "language" の場合のみ
+    default_card_type_ids: string[]; // このデックのデフォルト Card types
+    default_category_id?: string; // デフォルト Category (optional)
     is_active: boolean;
     sort_order: number;
     created_at: Timestamp;
 }
 
-// Dữ liệu mẫu:
-// { anki_deck_name: "Language::Chinese::HSK1", display_name: "Tiếng Trung HSK1", form_type: "form_language", language: "zh" }
-// { anki_deck_name: "Language::Chinese::HSK2", display_name: "Tiếng Trung HSK2", form_type: "form_language", language: "zh" }
-// { anki_deck_name: "Language::Japanese::N5",  display_name: "Tiếng Nhật N5",    form_type: "form_language", language: "ja" }
-// { anki_deck_name: "Language::English::B1",   display_name: "Tiếng Anh B1",     form_type: "form_language", language: "en" }
+// サンプルデータ:
+// { anki_deck_name: "Language::Chinese::HSK1", display_name: "中国語 HSK1", form_type: "form_language", language: "zh" }
+// { anki_deck_name: "Language::Chinese::HSK2", display_name: "中国語 HSK2", form_type: "form_language", language: "zh" }
+// { anki_deck_name: "Language::Japanese::N5",  display_name: "日本語 N5",    form_type: "form_language", language: "ja" }
+// { anki_deck_name: "Language::English::B1",   display_name: "英語 B1",     form_type: "form_language", language: "en" }
 // { anki_deck_name: "Vocabulary::IT",          display_name: "IT Vocabulary",     form_type: "form_it",      language: null }
-// { anki_deck_name: "Vocabulary::General",     display_name: "Kiến thức chung",   form_type: "form_general", language: null }
+// { anki_deck_name: "Vocabulary::General",     display_name: "一般知識",   form_type: "form_general", language: null }
 ```
 
-#### Collection: `content_types` (Loại nội dung / Form config) — MỚI
+#### Collection: `content_types` (コンテンツタイプ / Form config) — 新規
 
 ```typescript
 interface ContentType {
     id: string;
     code: FormType; // "language" | "it" | "general" | "custom"
-    name: string; // Tên hiển thị: "Ngôn ngữ", "IT Vocabulary", "Kiến thức chung"
+    name: string; // 表示名: "言語"、"IT Vocabulary"、"一般知識"
     description: string;
-    icon: string; // Icon class hoặc emoji
-    fields: FormFieldConfig[]; // Cấu hình các field hiển thị
+    icon: string; // Icon class または emoji
+    fields: FormFieldConfig[]; // 表示するフィールドの設定
     is_active: boolean;
     sort_order: number;
     created_at: Timestamp;
     updated_at: Timestamp;
 }
 
-// Cấu hình field cho mỗi loại form
+// 各 form 種類のフィールド設定
 interface FormFieldConfig {
-    field_key: string; // "word", "meaning", "category_id"...
-    label: string; // "Từ vựng", "Nghĩa tiếng Việt"
+    field_key: string; // "word"、"meaning"、"category_id"...
+    label: string; // "語彙"、"ベトナム語の意味"
     type: 'text' | 'textarea' | 'dropdown' | 'checkbox_group' | 'tags';
     is_required: boolean;
-    is_session_persistent: boolean; // Có lưu session không
+    is_session_persistent: boolean; // session に保存するか
     sort_order: number;
     placeholder?: string;
-    data_source?: string; // "categories" | "topics" | "decks" — nếu lấy options từ DB
+    data_source?: string; // "categories" | "topics" | "decks" — DB から options を取得する場合
 }
 ```
 
-#### Collection: `settings` (Cấu hình)
+#### Collection: `settings` (設定)
 
 ```typescript
 interface Settings {
     unsplash_enabled: boolean;
     tts_enabled: boolean;
-    ai_model: string; // Model Claude (vd claude-haiku-4-5)
-    web_search_enabled: boolean; // Cho phép AI agent dùng tool web_search
-    anki_connect_url: string; // Mặc định: http://localhost:8765
-    allow_duplicate: boolean; // Cho phép tạo entry trùng
-    auto_audio: boolean; // Tự động tạo audio khi generate
-    auto_image: boolean; // Tự động tìm ảnh khi generate
+    ai_model: string; // Claude モデル (例 claude-haiku-4-5)
+    web_search_enabled: boolean; // AI エージェントが web_search tool を使用できるようにする
+    anki_connect_url: string; // デフォルト: http://localhost:8765
+    allow_duplicate: boolean; // 重複エントリの作成を許可
+    auto_audio: boolean; // generate 時に自動で audio を作成
+    auto_image: boolean; // generate 時に自動で画像を検索
     updated_at: Timestamp;
 }
 ```
@@ -391,24 +391,24 @@ enum LanguageType {
 
 ---
 
-## 7. 🔄 Session Persistence Rules — MỚI
+## 7. 🔄 セッション永続化ルール — 新規
 
-### 7.1 Mục đích
+### 7.1 目的
 
-Khi user tạo nhiều card liên tiếp (ví dụ: 20 từ HSK1), họ chỉ cần **nhập từ vựng mới**, tất cả field khác được giữ nguyên từ lần nhập trước.
+ユーザーが連続して複数のカードを作成する場合 (例: HSK1 の単語 20 個)、**新しい語彙のみを入力**すればよく、他のすべてのフィールドは前回の入力から保持されます。
 
-### 7.2 Quy tắc lưu Session theo Form
+### 7.2 Form ごとのセッション保存ルール
 
-| Form Type         | Fields lưu session                              | Fields reset mỗi lần            |
+| Form Type         | セッション保存フィールド                              | 毎回リセットされるフィールド            |
 | ----------------- | ----------------------------------------------- | ------------------------------- |
-| **Language**      | Ngôn ngữ, Anki Deck, Category, Tags, Card Types | Từ vựng, Ghi chú                |
-| **IT Vocabulary** | Anki Deck, Chủ đề (topics), Difficulty          | Thuật ngữ, Định nghĩa, Keywords |
-| **General**       | Anki Deck                                       | Tiêu đề, Nội dung               |
+| **Language**      | 言語、Anki Deck、Category、Tags、Card Types | 語彙、メモ                |
+| **IT Vocabulary** | Anki Deck、トピック (topics)、Difficulty          | 用語、定義、Keywords |
+| **General**       | Anki Deck                                       | タイトル、コンテンツ               |
 
-### 7.3 Cơ chế kỹ thuật
+### 7.3 技術的メカニズム
 
 ```typescript
-// Sử dụng localStorage để persist giữa các session
+// セッション間で永続化するために localStorage を使用
 interface SessionState {
     form_type: FormType;
     language?: LanguageType | null;
@@ -422,153 +422,153 @@ interface SessionState {
 }
 
 // Key: "ankiflow_session_{form_type}"
-// Ví dụ: "ankiflow_session_form_language"
+// 例: "ankiflow_session_form_language"
 ```
 
-### 7.4 Hành vi cụ thể
+### 7.4 具体的な動作
 
-1. **Lần đầu mở app** → tất cả field trống, user chọn đầy đủ
-2. **Sau khi tạo card thành công** → quay về form, field session được giữ, field nội dung reset
-3. **Khi user thay đổi Deck** → nếu deck có `default_category_id` và `default_card_type_ids` → tự động fill
-4. **Khi user đổi form type** (Language ↔ IT) → load session riêng của form đó
+1. **アプリを初めて開いたとき** → すべてのフィールドが空、ユーザーがすべて選択
+2. **カード作成成功後** → フォームに戻る、セッションフィールドは保持、コンテンツフィールドはリセット
+3. **ユーザーが Deck を変更したとき** → デックに `default_category_id` と `default_card_type_ids` があれば → 自動的に fill
+4. **ユーザーが form type を変更したとき** (Language ↔ IT) → その form 固有のセッションを読み込み
 
 ---
 
-## 8. 🎨 Admin UI — Design System & Component Architecture
+## 8. 🎨 Admin UI — デザインシステム & コンポーネントアーキテクチャ
 
-### 8.1 Design System
+### 8.1 デザインシステム
 
-**Triết lý thiết kế:** "Calm Productivity" — giao diện giảm cognitive load để người dùng tập trung vào nội dung. Phong cách Corporate Modern với Tactile Warmth; tông giấy ấm, typography humanist. Tagline bất biến: **COGNITIVE SANCTUARY**.
+**デザイン哲学:** "Calm Productivity" — ユーザーがコンテンツに集中できるよう cognitive load を減らす UI。Tactile Warmth を伴う Corporate Modern スタイル; 温かみのある紙のトーン、humanist typography。不変のタグライン: **COGNITIVE SANCTUARY**。
 
-**Quy tắc "No-Line":** KHÔNG dùng `border 1px` cứng để phân tách section → chỉ dùng tonal shift (thay đổi màu nền/surface).
+**「No-Line」ルール:** セクションを区切るためにハードな `border 1px` を使用しない → tonal shift のみ使用 (背景/surface の色を変更)。
 
-#### Bảng Color Tokens
+#### Color Tokens 表
 
-| Token                    | Hex       | Tailwind key          | Dùng cho                                |
+| Token                    | Hex       | Tailwind key          | 用途                                |
 | ------------------------ | --------- | --------------------- | --------------------------------------- |
-| `primary`                | `#316342` | `primary`             | CTA chính, active state, icon nhấn mạnh |
-| `primary-container`      | `#4a7c59` | `primary-container`   | Hover của primary button                |
-| `on-primary`             | `#ffffff` | —                     | Text trên nền primary                   |
-| `on-primary-container`   | `#e1ffe5` | `primary-text`        | Text nhạt trên primary-container        |
-| `secondary`              | `#655d52` | `secondary`           | Supporting UI, grounding elements       |
-| `secondary-container`    | `#e9ded0` | `secondary-container` | Tonal fills nhạt                        |
-| `tertiary`               | `#6d5622` | `tertiary`            | Flow Tips, AI highlights, Ochre accent  |
-| `tertiary-container`     | `#886e38` | `tertiary-container`  | Background cho AI badges                |
-| `tertiary-fixed`         | `#ffdea0` | `tertiary-fixed`      | Light fill cho AI badges                |
-| `on-tertiary-fixed`      | `#261a00` | `on-tertiary-fixed`   | Text trên tertiary-fixed                |
-| `background`             | `#faf6f0` | `app-bg`              | **Nền page chính — cream ấm**           |
-| `surface`                | `#ffffff` | —                     | Card, modal, elevated surface           |
+| `primary`                | `#316342` | `primary`             | メイン CTA、active state、強調アイコン |
+| `primary-container`      | `#4a7c59` | `primary-container`   | primary button の Hover                |
+| `on-primary`             | `#ffffff` | —                     | primary 背景上のテキスト                   |
+| `on-primary-container`   | `#e1ffe5` | `primary-text`        | primary-container 上の薄いテキスト        |
+| `secondary`              | `#655d52` | `secondary`           | Supporting UI、grounding elements       |
+| `secondary-container`    | `#e9ded0` | `secondary-container` | 薄い tonal fills                        |
+| `tertiary`               | `#6d5622` | `tertiary`            | Flow Tips、AI highlights、Ochre accent  |
+| `tertiary-container`     | `#886e38` | `tertiary-container`  | AI badges の background                |
+| `tertiary-fixed`         | `#ffdea0` | `tertiary-fixed`      | AI badges の Light fill                |
+| `on-tertiary-fixed`      | `#261a00` | `on-tertiary-fixed`   | tertiary-fixed 上のテキスト                |
+| `background`             | `#faf6f0` | `app-bg`              | **メインページ背景 — 温かみのあるクリーム**           |
+| `surface`                | `#ffffff` | —                     | Card、modal、elevated surface           |
 | `surface-container-low`  | `#f1f4f1` | `surface-low`         | Sidebar background                      |
-| `surface-container`      | `#ecefeb` | `surface-container`   | Hover state nhạt, input background      |
-| `surface-container-high` | `#e6e9e6` | `surface-high`        | Category chips, disabled states         |
-| `on-surface`             | `#181c1b` | `on-surface`          | Text chính                              |
-| `on-surface-variant`     | `#414942` | `on-surface-var`      | Text phụ, icon                          |
-| `outline`                | `#717971` | `outline`             | Border mặc định                         |
-| `outline-variant`        | `#c1c9bf` | `outline-var`         | Border nhạt, divider                    |
-| `error`                  | `#ba1a1a` | `error`               | Lỗi, destructive action                 |
-| `error-container`        | `#ffdad6` | `error-container`     | Background cảnh báo lỗi                 |
+| `surface-container`      | `#ecefeb` | `surface-container`   | 薄い Hover state、input background      |
+| `surface-container-high` | `#e6e9e6` | `surface-high`        | Category chips、disabled states         |
+| `on-surface`             | `#181c1b` | `on-surface`          | メインテキスト                              |
+| `on-surface-variant`     | `#414942` | `on-surface-var`      | サブテキスト、icon                          |
+| `outline`                | `#717971` | `outline`             | デフォルト Border                         |
+| `outline-variant`        | `#c1c9bf` | `outline-var`         | 薄い Border、divider                    |
+| `error`                  | `#ba1a1a` | `error`               | エラー、destructive action                 |
+| `error-container`        | `#ffdad6` | `error-container`     | エラー警告 background                 |
 | `inverse-surface`        | `#2d312f` | `inverse-surface`     | Dark card (AI taxonomy footer)          |
 
-#### Bảng Typography Scale
+#### Typography Scale 表
 
-| Cấp           | Font               | Font-size | Font-weight | Line-height | Dùng cho                                 |
+| レベル           | Font               | Font-size | Font-weight | Line-height | 用途                                 |
 | ------------- | ------------------ | --------- | ----------- | ----------- | ---------------------------------------- |
-| `display`     | Newsreader (serif) | 36px      | 700         | 1.2         | Greeting, hero title Dashboard           |
+| `display`     | Newsreader (serif) | 36px      | 700         | 1.2         | Greeting、hero title Dashboard           |
 | `headline-md` | Newsreader (serif) | 24px      | 600         | 1.3         | Page title (PageHeader)                  |
-| `headline-sm` | Newsreader (serif) | 18px      | 600         | 1.4         | Card title, Modal title, section heading |
-| `body-md`     | Nunito Sans        | 14px      | 400         | 1.5         | Mọi paragraph, description, table cell   |
-| `label-lg`    | Nunito Sans        | 14px      | 700         | 1           | Button text, nav active item             |
-| `label-sm`    | Nunito Sans        | 10px      | 600         | 1           | Badge text, chip uppercase, field label  |
+| `headline-sm` | Newsreader (serif) | 18px      | 600         | 1.4         | Card title、Modal title、section heading |
+| `body-md`     | Nunito Sans        | 14px      | 400         | 1.5         | すべての paragraph、description、table cell   |
+| `label-lg`    | Nunito Sans        | 14px      | 700         | 1           | Button text、nav active item             |
+| `label-sm`    | Nunito Sans        | 10px      | 600         | 1           | Badge text、chip uppercase、field label  |
 
-> **Quy tắc font pairing:** Headline = Newsreader serif (`font-serif`). UI text = Nunito Sans (`font-sans`, default). KHÔNG trộn lẫn.
+> **フォントペアリングルール:** Headline = Newsreader serif (`font-serif`)。UI text = Nunito Sans (`font-sans`、default)。混ぜてはいけません。
 
 #### Spacing Scale
 
-| Token | Value | Tailwind      | Dùng cho                           |
+| Token | Value | Tailwind      | 用途                           |
 | ----- | ----- | ------------- | ---------------------------------- |
-| `xs`  | 4px   | `p-1 / gap-1` | Internal icon padding, tight chip  |
-| `sm`  | 8px   | `p-2 / gap-2` | Gap icon-text trong button         |
+| `xs`  | 4px   | `p-1 / gap-1` | Internal icon padding、tight chip  |
+| `sm`  | 8px   | `p-2 / gap-2` | button 内の icon-text の Gap         |
 | `md`  | 16px  | `p-4 / gap-4` | Card internal padding (compact)    |
-| `lg`  | 24px  | `p-6 / gap-6` | Card standard padding, section gap |
-| `xl`  | 32px  | `p-8 / gap-8` | Page margin, section spacing       |
+| `lg`  | 24px  | `p-6 / gap-6` | Card standard padding、section gap |
+| `xl`  | 32px  | `p-8 / gap-8` | Page margin、section spacing       |
 
 #### Border Radius Tokens
 
-| Context                      | Radius | Tailwind       | Ví dụ                    |
+| Context                      | Radius | Tailwind       | 例                    |
 | ---------------------------- | ------ | -------------- | ------------------------ |
-| Card, container, panel       | 16px   | `rounded-lg`   | Mọi card                 |
-| Modal, large dialog          | 20px   | `rounded-xl`   | Dialog box               |
+| Card、container、panel       | 16px   | `rounded-lg`   | すべての card                 |
+| Modal、large dialog          | 20px   | `rounded-xl`   | Dialog box               |
 | Navigation active item       | 12px   | `rounded-md`   | Nav pill                 |
-| Input, small button          | 8px    | `rounded`      | TextField, inline button |
-| Badge, chip, tag, search bar | 9999px | `rounded-full` | Status chip, search      |
+| Input、small button          | 8px    | `rounded`      | TextField、inline button |
+| Badge、chip、tag、search bar | 9999px | `rounded-full` | Status chip、search      |
 
 #### Shadow / Elevation
 
-| Level          | Surface               | Shadow                                                           | Dùng cho                        |
-| -------------- | --------------------- | ---------------------------------------------------------------- | ------------------------------- |
-| 0 — Base       | `bg-app-bg` (#faf6f0) | Không có                                                         | Page background                 |
-| 1 — Card       | `bg-white`            | `shadow-card` (0 4px 20px rgba(46,50,48,0.06))                   | Tất cả card, panel              |
-| 2 — Modal      | `bg-white`            | `shadow-modal` (0 20px 50px rgba(46,50,48,0.12)) + backdrop blur | Dialog, modal focus             |
-| Dark — Inverse | `bg-inverse-surface`  | Không có                                                         | AI feature banner, dark callout |
+| Level          | Surface               | Shadow                                                           | 用途                        |
+| -------------- | --------------------- | ------------------------------------------------------------------ | ------------------------------- |
+| 0 — Base       | `bg-app-bg` (#faf6f0) | なし                                                         | Page background                 |
+| 1 — Card       | `bg-white`            | `shadow-card` (0 4px 20px rgba(46,50,48,0.06))                   | すべての card、panel              |
+| 2 — Modal      | `bg-white`            | `shadow-modal` (0 20px 50px rgba(46,50,48,0.12)) + backdrop blur | Dialog、modal focus             |
+| Dark — Inverse | `bg-inverse-surface`  | なし                                                         | AI feature banner、dark callout |
 
 ---
 
-### 8.2 Kiến trúc Component UI
+### 8.2 UI コンポーネントアーキテクチャ
 
-**Vị trí file:** `src/components/ui/` (shared) · `src/components/layout/` (layout) · `src/components/features/` (feature-specific)
+**ファイル配置:** `src/components/ui/` (shared) · `src/components/layout/` (layout) · `src/components/features/` (feature-specific)
 
-**Naming convention:** PascalCase cho component file và export. `cn()` helper từ `lib/utils.ts` (clsx + tailwind-merge). Icon từ `lucide-react`. Client component (`'use client'`) chỉ khi có state/event/browser API.
+**Naming convention:** コンポーネントファイルと export は PascalCase。`lib/utils.ts` の `cn()` helper (clsx + tailwind-merge)。Icon は `lucide-react` から。Client component (`'use client'`) は state/event/browser API がある場合のみ。
 
 #### Atomic Design Hierarchy
 
-| Tầng                    | Mô tả                                     | Ví dụ                                                  |
-| ----------------------- | ----------------------------------------- | ------------------------------------------------------ |
-| **Atoms**               | Thành phần cơ bản, không thể chia nhỏ hơn | Button, Badge, Input, Toggle                           |
-| **Molecules**           | Ghép 2+ atoms thành 1 đơn vị chức năng    | StatCard, FormField (label + input + error), FilterBar |
-| **Organisms**           | Thành phần phức hợp, có logic riêng       | NavigationSidebar, DataTable, Modal, LoadingOverlay    |
-| **Templates / Layouts** | Khung page, không chứa data cụ thể        | app/layout.tsx (Sidebar + Main), PageHeader            |
+| 階層                    | 説明                                     | 例                                                  |
+| ----------------------- | ------------------------------------------ | -------------------------------------------------------- |
+| **Atoms**               | 基本要素、これ以上分割できない | Button、Badge、Input、Toggle                           |
+| **Molecules**           | 2+ atoms を組み合わせて 1 つの機能単位に    | StatCard、FormField (label + input + error)、FilterBar |
+| **Organisms**           | 複合コンポーネント、独自のロジックを持つ       | NavigationSidebar、DataTable、Modal、LoadingOverlay    |
+| **Templates / Layouts** | ページの骨格、具体的なデータを含まない        | app/layout.tsx (Sidebar + Main)、PageHeader            |
 
-#### Bảng Component Library
+#### Component Library 表
 
-| Component           | Tầng     | File path                                          | Mô tả ngắn                                                    |
-| ------------------- | -------- | -------------------------------------------------- | ------------------------------------------------------------- |
-| `AnkiFlowLogo`      | Atom     | `components/ui/AnkiFlowLogo.tsx`                   | Brand mark với tagline "COGNITIVE SANCTUARY"                  |
+| Component           | 階層     | File path                                          | 簡単な説明                                                    |
+| ------------------- | -------- | --------------------------------------------------- | ----------------------------------------------------------------- |
+| `AnkiFlowLogo`      | Atom     | `components/ui/AnkiFlowLogo.tsx`                   | タグライン "COGNITIVE SANCTUARY" を持つ Brand mark                  |
 | `Button`            | Atom     | `components/ui/Button.tsx`                         | 4 variants: primary/secondary/ghost/destructive               |
 | `Badge`             | Atom     | `components/ui/Badge.tsx`                          | 7 variants: neutral/active/inactive/pending/ai/language/level |
-| `Toggle`            | Atom     | `components/ui/Toggle.tsx`                         | Switch on/off với label và description                        |
-| `ProgressBar`       | Atom     | `components/ui/ProgressBar.tsx`                    | Thanh tiến trình 2 kích thước (sm/md)                         |
-| `AIBadge`           | Atom     | `components/ui/AIBadge.tsx`                        | Badge AI với icon Sparkles, nền tertiary-fixed                |
-| `ConnectedBadge`    | Atom     | `components/ui/ConnectedBadge.tsx`                 | Trạng thái kết nối Anki ở bottom sidebar                      |
+| `Toggle`            | Atom     | `components/ui/Toggle.tsx`                         | label と description を伴う on/off Switch                        |
+| `ProgressBar`       | Atom     | `components/ui/ProgressBar.tsx`                    | 2 サイズ (sm/md) の進捗バー                         |
+| `AIBadge`           | Atom     | `components/ui/AIBadge.tsx`                        | Sparkles icon 付きの AI Badge、tertiary-fixed 背景                |
+| `ConnectedBadge`    | Atom     | `components/ui/ConnectedBadge.tsx`                 | sidebar 下部の Anki 接続状態                      |
 | `FormField`         | Molecule | `components/ui/FormField.tsx`                      | Input + Textarea + Select + FieldWrapper                      |
-| `TagInput`          | Molecule | `components/ui/TagInput.tsx`                       | Input nhập tag với badge removable                            |
-| `StatCard`          | Molecule | `components/ui/StatCard.tsx`                       | Thẻ thống kê: label + số + trend                              |
-| `FlowTip`           | Molecule | `components/ui/FlowTip.tsx`                        | AI tip/callout với icon Lightbulb, nền tertiary               |
-| `StepIndicator`     | Molecule | `components/ui/StepIndicator.tsx`                  | Danh sách bước có trạng thái completed/active/pending         |
-| `Card`              | Molecule | `components/ui/Card.tsx`                           | Container card với 4 variants                                 |
+| `TagInput`          | Molecule | `components/ui/TagInput.tsx`                       | removable badge 付きの tag 入力 Input                            |
+| `StatCard`          | Molecule | `components/ui/StatCard.tsx`                       | 統計カード: label + 数値 + trend                              |
+| `FlowTip`           | Molecule | `components/ui/FlowTip.tsx`                        | Lightbulb icon 付きの AI tip/callout、tertiary 背景               |
+| `StepIndicator`     | Molecule | `components/ui/StepIndicator.tsx`                  | completed/active/pending 状態を持つステップリスト         |
+| `Card`              | Molecule | `components/ui/Card.tsx`                           | 4 variants を持つ Container card                                 |
 | `FilterBar`         | Organism | `components/ui/FilterBar.tsx`                      | Search input + active filter badges + clear all               |
-| `DataTable`         | Organism | `components/ui/DataTable.tsx`                      | Bảng dữ liệu với custom column render                         |
-| `Modal`             | Organism | `components/ui/Modal.tsx`                          | Dialog với tonal header, Escape close, backdrop               |
-| `LoadingOverlay`    | Organism | `components/ui/LoadingOverlay.tsx`                 | Màn hình loading với steps + progress + flow tip              |
-| `NavigationSidebar` | Organism | `components/layout/NavigationSidebar.tsx`          | Sidebar fixed 256px với nav items + ConnectedBadge            |
-| `PageHeader`        | Template | `components/layout/PageHeader.tsx`                 | Header với breadcrumb `›`, title serif, actions slot          |
-| `CardPreview`       | Organism | `components/features/card/CardPreview.tsx`         | Preview card 3 tabs: word→meaning/meaning→word/sentence       |
-| `WordDetailCard`    | Organism | `components/features/history/WordDetailCard.tsx`   | Card chi tiết từ vựng với border-left primary                 |
-| `IntegrationCard`   | Organism | `components/features/settings/IntegrationCard.tsx` | Card trạng thái API integration                               |
+| `DataTable`         | Organism | `components/ui/DataTable.tsx`                      | custom column render を持つデータテーブル                         |
+| `Modal`             | Organism | `components/ui/Modal.tsx`                          | tonal header、Escape close、backdrop を持つ Dialog               |
+| `LoadingOverlay`    | Organism | `components/ui/LoadingOverlay.tsx`                 | steps + progress + flow tip を持つローディング画面              |
+| `NavigationSidebar` | Organism | `components/layout/NavigationSidebar.tsx`          | nav items + ConnectedBadge を含む fixed 256px Sidebar            |
+| `PageHeader`        | Template | `components/layout/PageHeader.tsx`                 | breadcrumb `›`、serif title、actions slot を持つ Header          |
+| `CardPreview`       | Organism | `components/features/card/CardPreview.tsx`         | 3 タブのプレビューカード: word→meaning/meaning→word/sentence       |
+| `WordDetailCard`    | Organism | `components/features/history/WordDetailCard.tsx`   | border-left primary を持つ語彙詳細カード                 |
+| `IntegrationCard`   | Organism | `components/features/settings/IntegrationCard.tsx` | API integration 状態カード                               |
 
 ---
 
-### 8.3 Danh sách màn hình & Luồng tương tác
+### 8.3 画面リスト & 操作フロー
 
-| Màn hình         | Route            | Primary Components                                                                        | Shared Components Used                                                       |
+| 画面         | Route            | Primary Components                                                                        | Shared Components Used                                                       |
 | ---------------- | ---------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Dashboard        | `/dashboard`     | `StatCard` (×4), `EntryListItem`                                                          | `PageHeader`, `Button`, `Badge`                                              |
-| Tạo card mới     | `/create`        | Form components (Language/IT/General)                                                     | `FormField`, `Select`, `Badge`, `Button`, `LoadingOverlay`, `PageHeader`     |
-| Preview & Review | `/preview`       | `CardPreview`, `CollocationEditor`, `ImageSelector`, `AudioPlayer`                        | `Button`, `Badge`, `Modal`, `Input`, `PageHeader`                            |
-| Lịch sử          | `/history`       | `HistoryTable` (dùng `DataTable`), `WordDetailCard`                                       | `FilterBar`, `DataTable`, `Badge`, `Button`, `PageHeader`                    |
-| Chi tiết entry   | `/history/[id]`  | `WordDetailCard`, `CardPreview`                                                           | `Badge`, `Button`, `PageHeader`                                              |
-| Quản lý (Admin)  | `/admin`         | `CategoryManager`, `CardTypeManager`, `TopicManager`, `DeckManager`, `ContentTypeManager` | `DataTable`, `Modal`, `FormField`, `Toggle`, `Badge`, `Button`, `PageHeader` |
-| Cài đặt          | `/settings`      | `IntegrationCard` (×4)                                                                    | `FormField`, `Toggle`, `Button`, `PageHeader`                                |
-| Layout (Root)    | `app/layout.tsx` | `NavigationSidebar`                                                                       | `AnkiFlowLogo`, `ConnectedBadge`                                             |
+| Dashboard        | `/dashboard`     | `StatCard` (×4)、`EntryListItem`                                                          | `PageHeader`、`Button`、`Badge`                                              |
+| 新規カード作成     | `/create`        | Form components (Language/IT/General)                                                     | `FormField`、`Select`、`Badge`、`Button`、`LoadingOverlay`、`PageHeader`     |
+| Preview & Review | `/preview`       | `CardPreview`、`CollocationEditor`、`ImageSelector`、`AudioPlayer`                        | `Button`、`Badge`、`Modal`、`Input`、`PageHeader`                            |
+| 履歴          | `/history`       | `HistoryTable` (`DataTable` 使用)、`WordDetailCard`                                       | `FilterBar`、`DataTable`、`Badge`、`Button`、`PageHeader`                    |
+| Entry 詳細   | `/history/[id]`  | `WordDetailCard`、`CardPreview`                                                           | `Badge`、`Button`、`PageHeader`                                              |
+| 管理 (Admin)  | `/admin`         | `CategoryManager`、`CardTypeManager`、`TopicManager`、`DeckManager`、`ContentTypeManager` | `DataTable`、`Modal`、`FormField`、`Toggle`、`Badge`、`Button`、`PageHeader` |
+| 設定          | `/settings`      | `IntegrationCard` (×4)                                                                    | `FormField`、`Toggle`、`Button`、`PageHeader`                                |
+| Layout (Root)    | `app/layout.tsx` | `NavigationSidebar`                                                                       | `AnkiFlowLogo`、`ConnectedBadge`                                             |
 
 ---
 
@@ -578,49 +578,49 @@ interface SessionState {
 
 **Shared components:**
 
-- `PageHeader` — hiển thị greeting "Control Center" bằng font-serif display
-- `Button` variant `primary` — Quick action "Tạo card mới" → `/create`
-- `Badge` — hiển thị language/status trên mỗi entry gần đây
-- `ProgressBar` — (tùy chọn) hiển thị tiến độ học hàng tuần
+- `PageHeader` — font-serif display で "Control Center" の greeting を表示
+- `Button` variant `primary` — Quick action "新規カード作成" → `/create`
+- `Badge` — 各最近の entry に language/status を表示
+- `ProgressBar` — (オプション) 週次学習進捗を表示
 
 **Screen-specific components:**
 
-- `StatCard` (`components/ui/StatCard.tsx`) — grid 4 cột: Total Vocabulary, Total Cards, Created Today, Success Rate
-- `EntryListItem` (`components/history/EntryListItem.tsx`) — dòng 1 entry trong danh sách 10 từ gần đây
+- `StatCard` (`components/ui/StatCard.tsx`) — 4 カラムグリッド: Total Vocabulary、Total Cards、Created Today、Success Rate
+- `EntryListItem` (`components/history/EntryListItem.tsx`) — 最近 10 単語リスト内の 1 entry 行
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `stats`: `{ totalVocab: number; totalCards: number; todayCount: number }` — fetch từ Firestore
-- `recentEntries`: `Entry[]` — 10 entries mới nhất
+- `stats`: `{ totalVocab: number; totalCards: number; todayCount: number }` — Firestore から fetch
+- `recentEntries`: `Entry[]` — 最新 10 entries
 
 ---
 
-### Tạo card mới — `/create`
+### 新規カード作成 — `/create`
 
 **Shared components:**
 
-- `LoadingOverlay` — hiện khi đang generate (3 steps: Claude → TTS → Unsplash)
+- `LoadingOverlay` — generate 中に表示 (3 steps: Claude → TTS → Unsplash)
 - `PageHeader` — breadcrumb: Home › Create Card › [Form type]
-- `Button` variant `primary` — "Tạo nháp"
-- `FormField` (Input/Textarea/Select) — tất cả form fields
-- `Badge` variant `language` — hiển thị ngôn ngữ đang chọn
-- `FlowTip` — gợi ý AI cho user
+- `Button` variant `primary` — "下書きを作成"
+- `FormField` (Input/Textarea/Select) — すべての form fields
+- `Badge` variant `language` — 選択中の言語を表示
+- `FlowTip` — ユーザー向け AI 提案
 
 **Screen-specific components:**
 
-- `DeckSelector` (`components/create/DeckSelector.tsx`) — dùng `Select` từ FormField
-- `CategorySelector` (`components/create/CategorySelector.tsx`) — dùng `Select` từ FormField
-- `LanguageSelector` (`components/create/LanguageSelector.tsx`) — 3 options với Badge
+- `DeckSelector` (`components/create/DeckSelector.tsx`) — FormField の `Select` を使用
+- `CategorySelector` (`components/create/CategorySelector.tsx`) — FormField の `Select` を使用
+- `LanguageSelector` (`components/create/LanguageSelector.tsx`) — Badge 付き 3 options
 - `CardTypeSelector` (`components/create/CardTypeSelector.tsx`) — checkbox list + Toggle
-- `TopicSelector` (`components/create/TopicSelector.tsx`) — chỉ form IT, Badge active/neutral
-- `LanguageForm` / `ITForm` / `GeneralForm` — form tương ứng từng content type
+- `TopicSelector` (`components/create/TopicSelector.tsx`) — IT form のみ、Badge active/neutral
+- `LanguageForm` / `ITForm` / `GeneralForm` — 各 content type に対応する form
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `formType`: `FormType` — detect từ deck hoặc chọn thủ công
-- `sessionState`: `SessionState` — load từ localStorage, auto-save on change
-- `isGenerating`: `boolean` — điều khiển LoadingOverlay
-- `generationSteps`: `Step[]` — trạng thái từng bước generate
+- `formType`: `FormType` — deck から検出または手動選択
+- `sessionState`: `SessionState` — localStorage から読み込み、変更時に auto-save
+- `isGenerating`: `boolean` — LoadingOverlay を制御
+- `generationSteps`: `Step[]` — 各 generate ステップの状態
 
 ---
 
@@ -629,64 +629,64 @@ interface SessionState {
 **Shared components:**
 
 - `PageHeader` — breadcrumb: Home › Create Card › Preview
-- `Button` variant `primary` — "Xác nhận & Tạo"
-- `Button` variant `ghost` — "Quay lại", "Tìm lại ảnh"
-- `Modal` — confirm trước khi tạo Anki notes
-- `Badge` — level, word type
+- `Button` variant `primary` — "確認 & 作成"
+- `Button` variant `ghost` — "戻る"、"画像を再検索"
+- `Modal` — Anki notes 作成前の確認
+- `Badge` — level、word type
 
 **Screen-specific components:**
 
-- `EditableField` (`components/preview/EditableField.tsx`) — click-to-edit với Input/Textarea
-- `CollocationEditor` (`components/preview/CollocationEditor.tsx`) — dùng `Badge` + `@dnd-kit/core`
-- `ImageSelector` (`components/preview/ImageSelector.tsx`) — grid 5 ảnh, selected ring-primary
+- `EditableField` (`components/preview/EditableField.tsx`) — Input/Textarea による click-to-edit
+- `CollocationEditor` (`components/preview/CollocationEditor.tsx`) — `Badge` + `@dnd-kit/core` を使用
+- `ImageSelector` (`components/preview/ImageSelector.tsx`) — 5 画像のグリッド、選択時 ring-primary
 - `AudioPlayer` (`components/preview/AudioPlayer.tsx`) — play/stop/regenerate
-- `CardPreview` (`components/features/card/CardPreview.tsx`) — 3 tab front/back preview
-- `CardList` (`components/preview/CardList.tsx`) — grid card types với Toggle
+- `CardPreview` (`components/features/card/CardPreview.tsx`) — 3 タブ front/back プレビュー
+- `CardList` (`components/preview/CardList.tsx`) — Toggle 付き card types グリッド
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `previewData`: `Entry` — dữ liệu được generate từ Create page
+- `previewData`: `Entry` — Create page から生成されたデータ
 - `selectedImage`: `UnsplashImage | null`
-- `selectedCardTypes`: `string[]` — các card type đã chọn
+- `selectedCardTypes`: `string[]` — 選択された card type
 - `confirmModalOpen`: `boolean`
 
 ---
 
-### Lịch sử — `/history`
+### 履歴 — `/history`
 
 **Shared components:**
 
-- `PageHeader` — title "Lịch sử từ vựng"
-- `DataTable` — bảng chính (KHÔNG tạo table mới)
+- `PageHeader` — title "語彙履歴"
+- `DataTable` — メインテーブル (新しい table を作成しない)
 - `FilterBar` — search + filter + active filter badges
-- `Badge` — trạng thái entry (active/inactive/pending)
-- `Button` — actions trong mỗi row
+- `Badge` — entry 状態 (active/inactive/pending)
+- `Button` — 各 row 内のアクション
 
 **Screen-specific components:**
 
-- `HistoryTable` (`components/history/HistoryTable.tsx`) — wrapper `DataTable` với columns cụ thể
-- `WordDetailCard` (`components/features/history/WordDetailCard.tsx`) — trang chi tiết `/history/[id]`
+- `HistoryTable` (`components/history/HistoryTable.tsx`) — 特定 columns を持つ `DataTable` の wrapper
+- `WordDetailCard` (`components/features/history/WordDetailCard.tsx`) — `/history/[id]` 詳細ページ
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `entries`: `Entry[]` — danh sách từ Firestore (có pagination)
+- `entries`: `Entry[]` — Firestore からのリスト (pagination あり)
 - `searchQuery`: `string`
-- `activeFilters`: `ActiveFilter[]` — category, language, deck, date range
+- `activeFilters`: `ActiveFilter[]` — category、language、deck、date range
 - `currentPage`: `number`
 
 ---
 
-### Quản lý (Admin) — `/admin`
+### 管理 (Admin) — `/admin`
 
 **Shared components:**
 
-- `PageHeader` — title "Control Center" với `actions` = nút "Thêm mới"
-- `DataTable` — tất cả Manager component dùng chung (KHÔNG duplicate table logic)
-- `Modal` — form Thêm/Sửa record
-- `FormField` (Input/Select) — bên trong Modal
-- `Toggle` — is_active, is_default switches
-- `Badge` — trạng thái active/inactive
-- `Button` variant `primary` — "Lưu", `ghost` — "Hủy", `destructive` — "Xóa"
+- `PageHeader` — title "Control Center" with `actions` = "新規追加" ボタン
+- `DataTable` — すべての Manager component が共有 (table logic を重複させない)
+- `Modal` — record の追加/編集フォーム
+- `FormField` (Input/Select) — Modal 内
+- `Toggle` — is_active、is_default スイッチ
+- `Badge` — active/inactive 状態
+- `Button` variant `primary` — "保存"、`ghost` — "キャンセル"、`destructive` — "削除"
 
 **Screen-specific components:**
 
@@ -696,7 +696,7 @@ interface SessionState {
 - `DeckManager` (`components/admin/DeckManager.tsx`)
 - `ContentTypeManager` (`components/admin/ContentTypeManager.tsx`)
 
-**State cần manage:**
+**管理する必要のある State:**
 
 - `activeTab`: `'categories' | 'card-types' | 'topics' | 'decks' | 'content-types'`
 - `modalOpen`: `boolean`
@@ -705,24 +705,24 @@ interface SessionState {
 
 ---
 
-### Cài đặt — `/settings`
+### 設定 — `/settings`
 
 **Shared components:**
 
-- `PageHeader` — title "Settings" với description
+- `PageHeader` — title "Settings" with description
 - `FormField` (Input) — AnkiConnect URL
 - `FormField` (Select) — Claude model
-- `Toggle` — unsplash_enabled, tts_enabled
-- `Button` variant `primary` — "Lưu thay đổi"
+- `Toggle` — unsplash_enabled、tts_enabled
+- `Button` variant `primary` — "変更を保存"
 - `Button` variant `ghost` — "Test connection"
 
 **Screen-specific components:**
 
-- `IntegrationCard` (`components/features/settings/IntegrationCard.tsx`) — hiển thị từng API: AnkiConnect, Claude, Google TTS, Unsplash
+- `IntegrationCard` (`components/features/settings/IntegrationCard.tsx`) — 各 API を表示: AnkiConnect、Claude、Google TTS、Unsplash
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `settings`: `Settings` — load từ Firestore `settings` collection
+- `settings`: `Settings` — Firestore `settings` collection から読み込み
 - `connectionStatus`: `Record<string, 'active' | 'inactive' | 'pending'>`
 - `isSaving`: `boolean`
 
@@ -732,35 +732,36 @@ interface SessionState {
 
 **Shared components:**
 
-- `NavigationSidebar` — sidebar fixed w-64, bao gồm `AnkiFlowLogo` + nav items + `ConnectedBadge`
-- `ConnectedBadge` — bottom sidebar, polling AnkiConnect mỗi 30s
+- `NavigationSidebar` — fixed w-64 sidebar、`AnkiFlowLogo` + nav items + `ConnectedBadge` を含む
+- `ConnectedBadge` — sidebar 下部、30 秒ごとに AnkiConnect を polling
 
-**State cần manage:**
+**管理する必要のある State:**
 
-- `ankiConnected`: `boolean` — global state, poll từ `/api/anki/connect`
 
-## 9. 🃏 Anki Card Templates — Thiết kế mới
+- `ankiConnected`: `boolean` — global state、`/api/anki/connect` から poll
 
-### 9.1 Nguyên tắc thiết kế
+## 9. 🃏 Anki Card Templates — 新デザイン
 
-1. **Nổi bật nội dung chính:** Từ vựng + nghĩa phải lớn, rõ ràng, dễ đọc nhất
-2. **Phân cấp thị giác:** Dùng kích thước, màu sắc, khoảng cách để tạo hierarchy
-3. **Bắt mắt, tạo hứng thú:** Gradient nhẹ, bo tròn, color accents
-4. **Font an toàn:** Luôn có fallback cho CJK characters (Noto Sans SC, Noto Sans JP)
-5. **Collocations rõ ràng:** Hiển thị cụm từ hay đi cùng để nhớ trong context
+### 9.1 デザイン原則
 
-### 9.2 CSS chung cho tất cả Anki cards
+1. **主要コンテンツを目立たせる:** 語彙 + 意味は最も大きく、明確で、読みやすくする
+2. **視覚的階層:** サイズ、色、間隔を使って hierarchy を作る
+3. **目を引き、興味を持たせる:** 軽いグラデーション、丸み、color accents
+4. **安全なフォント:** CJK characters (Noto Sans SC、Noto Sans JP) には必ず fallback を用意
+5. **明確な Collocations:** context の中で覚えられるようによく共起するフレーズを表示
+
+### 9.2 すべての Anki cards に共通の CSS
 
 ```css
 /* ============================================
    AnkiFlow Card Styles — v1.1
-   Hỗ trợ: Tiếng Trung, Nhật, Anh, IT
+   サポート: 中国語、日本語、英語、IT
    ============================================ */
 
-/* Import Google Fonts — đảm bảo không lỗi font */
+/* Google Fonts の import — フォントエラーを防ぐ */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
-/* === Biến CSS toàn cục === */
+/* === グローバル CSS 変数 === */
 .card {
     --color-primary: #0061a4; /* Primary */
     --color-primary-light: #2196f3;
@@ -801,7 +802,7 @@ interface SessionState {
     box-shadow: 0 12px 32px rgba(25, 28, 30, 0.08);
 }
 
-/* === Từ vựng chính (nổi bật nhất) === */
+/* === メイン語彙 (最も目立つ) === */
 .word-main {
     font-size: 56px;
     font-weight: 700;
@@ -812,7 +813,7 @@ interface SessionState {
     letter-spacing: 2px;
 }
 
-/* === Phiên âm (Pinyin / Hiragana / IPA) === */
+/* === 発音記号 (Pinyin / Hiragana / IPA) === */
 .reading {
     font-size: 20px;
     color: var(--color-primary-light);
@@ -821,7 +822,7 @@ interface SessionState {
     font-weight: 500;
 }
 
-/* === Hán Việt === */
+/* === ハンベトナム音 === */
 .han-viet {
     font-size: 15px;
     color: var(--color-han-viet);
@@ -830,7 +831,7 @@ interface SessionState {
     font-style: italic;
 }
 
-/* === Nghĩa tiếng Việt (nổi bật thứ 2) === */
+/* === ベトナム語の意味 (2 番目に目立つ) === */
 .meaning {
     font-size: 26px;
     font-weight: 600;
@@ -843,7 +844,7 @@ interface SessionState {
     border-left: 4px solid var(--color-accent);
 }
 
-/* === Từ loại badge === */
+/* === 品詞 badge === */
 .word-type {
     display: inline-block;
     padding: 3px 12px;
@@ -856,7 +857,7 @@ interface SessionState {
     margin: 8px auto;
 }
 
-/* === Cấp độ badge === */
+/* === レベル badge === */
 .level-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -868,7 +869,7 @@ interface SessionState {
     margin-left: 8px;
 }
 
-/* === Đường ngăn cách === */
+/* === 区切り線 === */
 .divider {
     border: none;
     height: 1px;
@@ -876,7 +877,7 @@ interface SessionState {
     margin: 20px 0;
 }
 
-/* === Hình ảnh === */
+/* === 画像 === */
 .image-container {
     text-align: center;
     margin: 16px 0;
@@ -890,7 +891,7 @@ interface SessionState {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* === Câu ví dụ === */
+/* === 例文 === */
 .example-box {
     background: rgba(56, 189, 248, 0.08);
     border-radius: 12px;
@@ -916,7 +917,7 @@ interface SessionState {
     margin-top: 8px;
 }
 
-/* === Cụm từ hay đi cùng (Collocations) === */
+/* === よく共起するフレーズ (Collocations) === */
 .collocations-box {
     background: rgba(251, 146, 60, 0.08);
     border-radius: 12px;
@@ -948,13 +949,13 @@ interface SessionState {
     font-weight: bold;
 }
 
-/* === Audio button === */
+/* === Audio ボタン === */
 .audio-section {
     text-align: center;
     margin: 12px 0;
 }
 
-/* === Prompt/Hint text === */
+/* === Prompt/Hint テキスト === */
 .hint-text {
     font-size: 15px;
     color: var(--color-text-muted);
@@ -963,7 +964,7 @@ interface SessionState {
     margin: 20px 0;
 }
 
-/* === IT Card specific === */
+/* === IT Card 固有 === */
 .term-main {
     font-size: 36px;
     font-weight: 700;
@@ -1024,7 +1025,7 @@ interface SessionState {
 }
 ```
 
-### 9.3 Template: Ngôn ngữ — Từ → Nghĩa
+### 9.3 Template: 言語 — 単語 → 意味
 
 **Front:**
 
@@ -1070,14 +1071,14 @@ interface SessionState {
     </div>
     {{/ExampleSentence}} {{#Collocations}}
     <div class="collocations-box">
-        <div class="collocations-title">Cụm từ hay đi cùng</div>
+        <div class="collocations-title">よく共起するフレーズ</div>
         {{Collocations}}
     </div>
     {{/Collocations}}
 </div>
 ```
 
-### 9.4 Template: Ngôn ngữ — Nghĩa → Từ
+### 9.4 Template: 言語 — 意味 → 単語
 
 **Front:**
 
@@ -1087,7 +1088,7 @@ interface SessionState {
     {{#Image}}
     <div class="image-container">{{Image}}</div>
     {{/Image}}
-    <div class="hint-text">Từ này là gì?</div>
+    <div class="hint-text">これは何という単語?</div>
 </div>
 ```
 
@@ -1114,14 +1115,14 @@ interface SessionState {
     </div>
     {{/ExampleSentence}} {{#Collocations}}
     <div class="collocations-box">
-        <div class="collocations-title">Cụm từ hay đi cùng</div>
+        <div class="collocations-title">よく共起するフレーズ</div>
         {{Collocations}}
     </div>
     {{/Collocations}}
 </div>
 ```
 
-### 9.5 Template: Nghe → Đoán từ
+### 9.5 Template: リスニング → 単語当て
 
 **Front:**
 
@@ -1131,7 +1132,7 @@ interface SessionState {
         <div style="font-size: 64px; margin-bottom: 20px;">🔊</div>
         {{Audio}}
     </div>
-    <div class="hint-text">Nghe và đoán từ...</div>
+    <div class="hint-text">聞いて単語を当てよう...</div>
 </div>
 ```
 
@@ -1160,21 +1161,21 @@ interface SessionState {
     </div>
     {{/ExampleSentence}} {{#Collocations}}
     <div class="collocations-box">
-        <div class="collocations-title">Cụm từ hay đi cùng</div>
+        <div class="collocations-title">よく共起するフレーズ</div>
         {{Collocations}}
     </div>
     {{/Collocations}}
 </div>
 ```
 
-### 9.6 Template: Nhìn ảnh → Đoán từ
+### 9.6 Template: 画像を見て → 単語当て
 
 **Front:**
 
 ```html
 <div class="card-container">
     <div class="image-container" style="margin: 20px 0;">{{Image}}</div>
-    <div class="hint-text">Từ nào mô tả hình ảnh này?</div>
+    <div class="hint-text">この画像を表す単語は?</div>
 </div>
 ```
 
@@ -1196,7 +1197,7 @@ interface SessionState {
 </div>
 ```
 
-### 9.7 Template: Điền vào chỗ trống
+### 9.7 Template: 穴埋め
 
 **Front:**
 
@@ -1206,7 +1207,7 @@ interface SessionState {
         <div class="example-sentence" style="font-size: 22px;">{{ExampleBlank}}</div>
     </div>
     <div class="example-translation" style="text-align: center; margin-top: 12px;">{{ExampleTranslation}}</div>
-    <div class="hint-text">Điền từ còn thiếu...</div>
+    <div class="hint-text">欠けている単語を入力...</div>
 </div>
 ```
 
@@ -1233,7 +1234,7 @@ interface SessionState {
 </div>
 ```
 
-### 9.8 Template: Pinyin/Hiragana → Chữ gốc
+### 9.8 Template: Pinyin/Hiragana → 原字
 
 **Front:**
 
@@ -1241,7 +1242,7 @@ interface SessionState {
 <div class="card-container">
     <div class="reading" style="font-size: 36px; margin: 20px 0;">{{Pinyin}}</div>
     <div class="meaning" style="font-size: 18px;">{{MeaningVI}}</div>
-    <div class="hint-text">Viết bằng chữ Hán/Kanji...</div>
+    <div class="hint-text">漢字/Kanji で書いてください...</div>
 </div>
 ```
 
@@ -1262,14 +1263,14 @@ interface SessionState {
 
     {{#Collocations}}
     <div class="collocations-box">
-        <div class="collocations-title">Cụm từ hay đi cùng</div>
+        <div class="collocations-title">よく共起するフレーズ</div>
         {{Collocations}}
     </div>
     {{/Collocations}}
 </div>
 ```
 
-### 9.9 Template: IT — Khái niệm → Định nghĩa
+### 9.9 Template: IT — 概念 → 定義
 
 **Front:**
 
@@ -1309,7 +1310,7 @@ interface SessionState {
 </div>
 ```
 
-### 9.10 Template: IT — Định nghĩa → Khái niệm
+### 9.10 Template: IT — 定義 → 概念
 
 **Front:**
 
@@ -1319,7 +1320,7 @@ interface SessionState {
     {{#Topic}}
     <div style="text-align: center;"><span class="topic-badge">{{Topic}}</span></div>
     {{/Topic}}
-    <div class="hint-text">Thuật ngữ nào?</div>
+    <div class="hint-text">どの用語?</div>
 </div>
 ```
 
@@ -1341,19 +1342,19 @@ interface SessionState {
 
 ---
 
-## 10. 🤖 AI Prompt Specifications — Cập nhật v1.1
+## 10. 🤖 AI Prompt Specifications — v1.1 更新
 
-### 10.1 Prompt cho Tiếng Trung
+### 10.1 中国語用 Prompt
 
 ```
-Bạn là chuyên gia ngôn ngữ Tiếng Trung dạy cho người Việt Nam.
-Với từ "{{WORD}}", hãy cung cấp thông tin theo format JSON sau.
+あなたはベトナム人のための中国語言語専門家です。
+単語 "{{WORD}}" について、以下の JSON format で情報を提供してください。
 
-YÊU CẦU QUAN TRỌNG:
-- Câu ví dụ phải NGẮN GỌN (dưới 10 từ), dễ hiểu, ngữ pháp đúng, ngôn ngữ tự nhiên đời sống hàng ngày.
-- Collocations: cung cấp 3-5 cụm từ/lượng từ hay đi cùng, kèm nghĩa tiếng Việt.
-  Ví dụ với 醋: "蘸点儿醋 (chấm chút giấm)", "白醋 (giấm trắng)", "吃醋 (ghen tuông)"
-- Với danh từ: thêm lượng từ phù hợp. Ví dụ: 一本书, 一杯水
+重要な要件:
+- 例文は簡潔 (10 語以下)、理解しやすく、文法が正しく、日常的な自然言語である必要があります。
+- Collocations: よく共起する 3-5 の句/量詞を提供し、ベトナム語の意味を添える。
+  例 醋: "蘸点儿醋 (酢を少しつける)", "白醋 (白酢)", "吃醋 (嫉妬する)"
+- 名詞の場合: 適切な量詞を追加。例: 一本书, 一杯水
 
 {
   "word": "书",
@@ -1377,17 +1378,17 @@ YÊU CẦU QUAN TRỌNG:
 }
 ```
 
-### 10.2 Prompt cho Tiếng Nhật
+### 10.2 日本語用 Prompt
 
 ```
-Bạn là chuyên gia ngôn ngữ Tiếng Nhật dạy cho người Việt Nam.
-Với từ "{{WORD}}", hãy cung cấp thông tin theo format JSON sau.
+あなたはベトナム人のための日本語言語専門家です。
+単語 "{{WORD}}" について、以下の JSON format で情報を提供してください。
 
-YÊU CẦU QUAN TRỌNG:
-- Câu ví dụ phải NGẮN GỌN (dưới 10 từ), dễ hiểu, ngữ pháp đúng, ngôn ngữ tự nhiên.
-- Collocations: cung cấp 3-5 cụm từ/trợ từ hay đi cùng, kèm nghĩa TV.
-  Ví dụ với 本: "本を読む (đọc sách)", "一冊の本 (một quyển sách)"
-- Katakana nếu từ có nguồn gốc ngoại lai.
+重要な要件:
+- 例文は簡潔 (10 語以下)、理解しやすく、文法が正しく、自然言語である必要があります。
+- Collocations: よく共起する 3-5 の句/助詞を提供し、ベトナム語の意味を添える。
+  例 本: "本を読む (本を読む)", "一冊の本 (1 冊の本)"
+- 外来語の場合は Katakana を使用。
 
 {
   "word": "本",
@@ -1411,16 +1412,16 @@ YÊU CẦU QUAN TRỌNG:
 }
 ```
 
-### 10.3 Prompt cho Tiếng Anh
+### 10.3 英語用 Prompt
 
 ```
-Bạn là chuyên gia ngôn ngữ Tiếng Anh dạy cho người Việt Nam.
-Với từ "{{WORD}}", hãy cung cấp thông tin theo format JSON.
+あなたはベトナム人のための英語言語専門家です。
+単語 "{{WORD}}" について、JSON format で情報を提供してください。
 
-YÊU CẦU QUAN TRỌNG:
-- Câu ví dụ phải NGẮN GỌN (dưới 12 từ), dễ hiểu, tự nhiên.
-- Collocations: 3-5 cụm từ/collocation phổ biến, kèm nghĩa TV.
-  Ví dụ với "book": "book a flight (đặt vé máy bay)", "read a book (đọc sách)"
+重要な要件:
+- 例文は簡潔 (12 語以下)、理解しやすく、自然である必要があります。
+- Collocations: よく使われる 3-5 の句/collocation を提供し、ベトナム語の意味を添える。
+  例 "book": "book a flight (チケットを予約する)", "read a book (本を読む)"
 
 {
   "word": "book",
@@ -1440,17 +1441,17 @@ YÊU CẦU QUAN TRỌNG:
 }
 ```
 
-### 10.4 Prompt cho IT Vocabulary
+### 10.4 IT Vocabulary 用 Prompt
 
 ```
-Bạn là chuyên gia IT giải thích cho lập trình viên Việt Nam.
-Với thuật ngữ "{{TERM}}" trong lĩnh vực "{{TOPICS}}", hãy cung cấp:
+あなたはベトナム人プログラマーのための IT 専門家です。
+分野 "{{TOPICS}}" における用語 "{{TERM}}" について、以下を提供してください:
 
-YÊU CẦU:
-- definition_vi: giải thích đầy đủ nhưng rõ ràng, dễ hiểu
-- definition_short: 1 câu siêu ngắn gọn
-- analogy_vi: ví von bằng đời thường để dễ nhớ
-- example_usage: ví dụ thực tế, ngắn gọn
+要件:
+- definition_vi: 詳細であるが明確で、理解しやすい説明
+- definition_short: 1 文の超短い定義
+- analogy_vi: 日常的な例えを使って覚えやすくする
+- example_usage: 現実的で簡潔な例
 
 {
   "term": "API",
@@ -1466,14 +1467,14 @@ YÊU CẦU:
 
 ---
 
-## 11. 🔌 API Integration Specifications
+## 11. 🔌 API 統合仕様
 
 ### 11.1 AnkiConnect API
 
 **Base URL:** `http://localhost:8765`  
-**Phiên bản action:** 6
+**Action バージョン:** 6
 
-**Tạo Note mới:**
+**新規 Note の作成:**
 
 ```typescript
 POST http://localhost:8765
@@ -1506,7 +1507,7 @@ POST http://localhost:8765
 }
 ```
 
-**Kiểm tra kết nối:**
+**接続確認:**
 
 ```typescript
 POST http://localhost:8765
@@ -1534,9 +1535,9 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// AI agent: ép model gọi tool `submit_card` → structured output đúng schema
+// AI agent: model に tool `submit_card` の呼び出しを強制 → 正しいスキーマの structured output
 const res = await client.messages.create({
-    model: 'claude-haiku-4-5', // lấy từ settings.ai_model
+    model: 'claude-haiku-4-5', // settings.ai_model から取得
     max_tokens: 4096,
     temperature: 0.3,
     system: systemPrompt,
@@ -1546,29 +1547,29 @@ const res = await client.messages.create({
 });
 
 const toolUse = res.content.find((b) => b.type === 'tool_use');
-const content = cardSchema.parse(toolUse.input); // validate bằng zod
+const content = cardSchema.parse(toolUse.input); // zod で validate
 ```
 
 ### 11.3 Google Cloud TTS
 
-// Quan trọng: Tách generate và store thành 2 bước độc lập.
-// Xem /api/audio/generate và /api/audio/store.
-// Route /api/audio vẫn giữ cho backward-compatible.
+// 重要: generate と store を 2 つの独立したステップに分離。
+// /api/audio/generate と /api/audio/store を参照。
+// /api/audio ルートは backward-compatible のため維持。
 
 ```typescript
 import textToSpeech from '@google-cloud/text-to-speech';
 
 const client = new textToSpeech.TextToSpeechClient();
 
-// Tiếng Trung
+// 中国語
 const request = {
     input: { text: '书' },
     voice: { languageCode: 'zh-CN', name: 'zh-CN-Wavenet-A' },
     audioConfig: { audioEncoding: 'MP3' },
 };
 
-// Tiếng Nhật: { languageCode: "ja-JP", name: "ja-JP-Wavenet-A" }
-// Tiếng Anh: { languageCode: "en-US", name: "en-US-Wavenet-F" }
+// 日本語: { languageCode: "ja-JP", name: "ja-JP-Wavenet-A" }
+// 英語: { languageCode: "en-US", name: "en-US-Wavenet-F" }
 ```
 
 ### 11.4 Unsplash API
@@ -1582,7 +1583,7 @@ const response = await fetch(
 
 ---
 
-## 12. 📁 Cấu trúc project — Cập nhật
+## 12. 📁 プロジェクト構造 — 更新
 
 ```
 ankiflow/
@@ -1602,19 +1603,19 @@ ankiflow/
 │   │   ├── page.tsx
 │   │   └── [unitId]/[fixtureId]/page.tsx
 │   └── api/
-│       ├── generate/route.ts         # Claude AI agent → sinh nội dung
+│       ├── generate/route.ts         # Claude AI agent → コンテンツ生成
 │       ├── audio/
 │       │   ├── route.ts              # TTS + store combined (backward-compat)
 │       │   ├── generate/route.ts     # TTS only → base64
 │       │   └── store/route.ts        # Store base64 → Anki media
 │       ├── image/route.ts            # Unsplash image search
 │       ├── anki/
-│       │   ├── connect/route.ts      # Kiểm tra AnkiConnect
-│       │   ├── create/route.ts       # Tạo notes + lưu Firestore
-│       │   ├── decks/route.ts        # Lấy danh sách decks
-│       │   └── update/route.ts       # Cập nhật notes + Firestore entry
+│       │   ├── connect/route.ts      # AnkiConnect チェック
+│       │   ├── create/route.ts       # notes 作成 + Firestore 保存
+│       │   ├── decks/route.ts        # decks リスト取得
+│       │   └── update/route.ts       # notes + Firestore entry 更新
 │       ├── entries/
-│       │   └── check-duplicate/route.ts  # Kiểm tra từ trùng
+│       │   └── check-duplicate/route.ts  # 重複語チェック
 │       ├── history/
 │       │   ├── route.ts              # GET/POST entries
 │       │   └── [id]/route.ts         # GET/PUT/DELETE entry
@@ -1714,7 +1715,7 @@ ankiflow/
 
 ---
 
-## 13. 🔑 Biến môi trường
+## 13. 🔑 環境変数
 
 ```bash
 # .env
@@ -1745,90 +1746,90 @@ UNSPLASH_ACCESS_KEY=
 ANKI_CONNECT_URL=http://localhost:8765
 
 # Security
-API_SECRET=                    # x-api-secret header cho /api/admin/* và /api/history/*
+API_SECRET=                    # /api/admin/* と /api/history/* 用の x-api-secret header
 ```
 
 ---
 
-## 14. 💰 Phân tích chi phí
+## 14. 💰 コスト分析
 
-| Dịch vụ                | Free Tier                                    | Dự kiến dùng                 | Chi phí                                         |
+| サービス                | Free Tier                                    | 想定使用量                 | コスト                                         |
 | ---------------------- | -------------------------------------------- | ---------------------------- | ----------------------------------------------- |
-| **Firebase Firestore** | 1GB storage, 50K reads/ngày, 20K writes/ngày | ~300MB (300K cards + config) | $0                                              |
-| **Firebase Storage**   | 5GB                                          | Gần như không dùng           | $0                                              |
-| **Claude Haiku 4.5**   | Trả phí (~$1/$5 per 1M tokens in/out)        | ~1 call/thẻ (~1-2K tokens)   | ~vài cent / 100 thẻ                             |
-| **Google Cloud TTS**   | 1M ký tự/tháng (WaveNet)                     | ~100-500 ký tự/card          | $0                                              |
-| **Unsplash API**       | 50 requests/giờ (Demo)                       | 1 request/card               | $0                                              |
-| **AnkiConnect**        | Miễn phí, open-source                        | -                            | $0                                              |
-| **AnkiWeb sync**       | Miễn phí                                     | -                            | $0                                              |
+| **Firebase Firestore** | 1GB storage、50K reads/日、20K writes/日 | ~300MB (300K cards + config) | $0                                              |
+| **Firebase Storage**   | 5GB                                          | ほぼ未使用           | $0                                              |
+| **Claude Haiku 4.5**   | 有料 (~$1/$5 per 1M tokens in/out)        | ~1 call/カード (~1-2K tokens)   | ~数セント / 100 カード                             |
+| **Google Cloud TTS**   | 100 万文字/月 (WaveNet)                     | ~100-500 文字/card          | $0                                              |
+| **Unsplash API**       | 50 requests/時間 (Demo)                       | 1 request/card               | $0                                              |
+| **AnkiConnect**        | 無料、open-source                        | -                            | $0                                              |
+| **AnkiWeb sync**       | 無料                                     | -                            | $0                                              |
 | **Hosting**            | Localhost                                    | -                            | $0                                              |
-| **Tổng**               |                                              |                              | **~$0/tháng + phí Claude theo token (rất nhỏ)** |
+| **合計**               |                                              |                              | **~$0/月 + Claude のトークン課金 (非常に小さい)** |
 
-> **Lưu ý:** Nếu số card vượt 400K+, chi phí Firestore storage có thể phát sinh ~$0.07-$0.18/tháng.
-
----
-
-## 15. 🚧 Giới hạn & Rủi ro
-
-| Rủi ro                                 | Mức độ        | Giải pháp                                                             |
-| -------------------------------------- | ------------- | --------------------------------------------------------------------- |
-| AnkiConnect không phản hồi             | Cao           | Hiển thị hướng dẫn bật Anki, retry mechanism                          |
-| Claude trả output sai schema           | Thấp          | Tool `submit_card` ép schema + validate zod + retry                   |
-| Unsplash không tìm được ảnh phù hợp    | Trung bình    | Cho phép nhập từ khóa khác, bỏ qua ảnh                                |
-| Google TTS rate limit                  | Thấp          | Queue, retry với delay                                                |
-| Firestore offline                      | Thấp          | Cache local, sync sau                                                 |
-| Trùng từ đã tạo                        | Trung bình    | Kiểm tra trong Firestore trước khi tạo                                |
-| Lỗi font CJK trên Anki mobile          | Trung bình    | Dùng Google Fonts (Noto Sans SC/JP) với fallback chain                |
-| Google TTS rate limit / lãng phí quota | Đã giảm thiểu | Tách route generate/store — có thể retry store mà không tốn TTS quota |
+> **注記:** カード数が 400K+ を超える場合、Firestore storage コストが ~$0.07-$0.18/月 発生する可能性があります。
 
 ---
 
-## 16. 🛣️ Roadmap
+## 15. 🚧 制限 & リスク
 
-### Phase 1 — MVP (Dự án hiện tại)
+| リスク                                 | 深刻度        | 対策                                                             |
+| --------------------------------------- | ------------- | --------------------------------------------------------------------- |
+| AnkiConnect が応答しない             | 高           | Anki を起動する手順を表示、retry mechanism                          |
+| Claude が誤ったスキーマの output を返す           | 低          | Tool `submit_card` でスキーマ強制 + zod validate + retry                   |
+| Unsplash で適切な画像が見つからない    | 中    | 別のキーワード入力を許可、画像をスキップ                                |
+| Google TTS rate limit                  | 低          | Queue、delay 付き retry                                                |
+| Firestore オフライン                      | 低          | ローカル Cache、後で sync                                                 |
+| 既に作成済みの単語の重複                        | 中    | 作成前に Firestore 内をチェック                                |
+| Anki mobile での CJK フォントエラー          | 中    | fallback chain 付き Google Fonts (Noto Sans SC/JP) を使用                |
+| Google TTS rate limit / quota 浪費 | 軽減済み | generate/store route を分離 — TTS quota を消費せず store を retry 可能 |
 
-- [x] Thiết kế PRD
-- [ ] Setup project (Next.js + Firebase + API keys)
-- [ ] Tạo Anki Note Types/Templates
-- [ ] Admin page: CRUD categories, topics, card types, decks
+---
+
+## 16. 🛣️ ロードマップ
+
+### Phase 1 — MVP (現在のプロジェクト)
+
+- [x] PRD 設計
+- [ ] プロジェクトセットアップ (Next.js + Firebase + API keys)
+- [ ] Anki Note Types/Templates の作成
+- [ ] Admin page: categories、topics、card types、decks の CRUD
 - [ ] Create form + Session persistence
 - [ ] Preview & Review + Confirm
-- [ ] Tích hợp Claude API — AI agent tool-based (với collocations)
-- [ ] Tích hợp Google TTS
-- [ ] Tích hợp Unsplash
-- [ ] Tích hợp AnkiConnect
-- [ ] Lưu lịch sử vào Firestore
+- [ ] Claude API 統合 — AI agent tool-based (collocations 付き)
+- [ ] Google TTS 統合
+- [ ] Unsplash 統合
+- [ ] AnkiConnect 統合
+- [ ] Firestore への履歴保存
 - [ ] Dashboard + History view
 
-### Phase 2 — Cải tiến
+### Phase 2 — 改善
 
-- [ ] Batch import (nhiều từ cùng lúc từ file CSV/txt)
-- [ ] Review/chỉnh sửa entry đã tạo
-- [ ] Thống kê học tập (card nào đang ôn, tiến độ)
-- [ ] Template editor trực quan (tùy chỉnh card design)
+- [ ] Batch import (CSV/txt ファイルから複数の単語を同時に)
+- [ ] 作成済み entry の Review/編集
+- [ ] 学習統計 (どのカードが復習中か、進捗)
+- [ ] 直感的な Template editor (card design のカスタマイズ)
 - [ ] Export/import data
-- [ ] Content type editor nâng cao (drag & drop fields)
+- [ ] 高度な Content type editor (drag & drop fields)
 
-### Phase 3 — Mở rộng (Tương lai)
+### Phase 3 — 拡張 (将来)
 
-- [ ] App iOS/Android cá nhân (thay thế Anki)
-- [ ] Sync trực tiếp không cần AnkiWeb
-- [ ] AI gợi ý từ cần học tiếp theo
-- [ ] Tích hợp với Obsidian/Notion
+- [ ] 個人用 iOS/Android アプリ (Anki の代替)
+- [ ] AnkiWeb 不要の直接 Sync
+- [ ] 次に学習すべき単語の AI 提案
+- [ ] Obsidian/Notion との統合
 
 ---
 
-## 17. ✅ Tiêu chí hoàn thành MVP
+## 17. ✅ MVP 完了基準
 
-- [ ] Tạo được card Tiếng Trung với đầy đủ: Hán tự, Pinyin, Hán Việt, nghĩa VN, ví dụ ngắn gọn, collocations, audio, ảnh
-- [ ] Tạo được card Tiếng Nhật với: Kanji, Hiragana, Romaji, nghĩa VN, ví dụ, collocations, audio, ảnh
-- [ ] Tạo được card Tiếng Anh với: từ, IPA, nghĩa VN, ví dụ, collocations, audio, ảnh
-- [ ] Tạo được card IT Vocabulary với: thuật ngữ, định nghĩa, analogy, keywords, ảnh
-- [ ] Review trước khi tạo, có thể chỉnh sửa từng field
-- [ ] Card hiển thị đẹp, bắt mắt, không lỗi font trên mọi thiết bị
-- [ ] Session persistence: chỉ cần nhập từ mới, không cần chọn lại field cố định
-- [ ] Trang Admin: quản lý categories, topics, card types, decks
-- [ ] Card xuất hiện đúng trong Anki Desktop
-- [ ] Có thể học trên iPad sau khi sync
-- [ ] Lịch sử được lưu trong Firestore
-- [ ] Chi phí $0/tháng
+- [ ] 中国語カードが完全に作成できる: 漢字、Pinyin、ハンベトナム音、VN 意味、簡潔な例文、collocations、audio、画像
+- [ ] 日本語カードが作成できる: Kanji、Hiragana、Romaji、VN 意味、例文、collocations、audio、画像
+- [ ] 英語カードが作成できる: 単語、IPA、VN 意味、例文、collocations、audio、画像
+- [ ] IT Vocabulary カードが作成できる: 用語、定義、analogy、keywords、画像
+- [ ] 作成前に Review、各 field を編集可能
+- [ ] カード表示が美しく、目を引き、あらゆるデバイスでフォントエラーがない
+- [ ] Session persistence: 新しい単語入力のみで、固定 field の再選択不要
+- [ ] Admin ページ: categories、topics、card types、decks を管理
+- [ ] カードが Anki Desktop に正しく表示される
+- [ ] sync 後 iPad で学習可能
+- [ ] 履歴が Firestore に保存される
+- [ ] コスト $0/月

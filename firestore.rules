@@ -1,17 +1,20 @@
 rules_version = '2';
 
-// AnkiFlow — Firestore Security Rules (Phase D của firebase-auth-plan-2026-06-30).
+// AnkiFlow — Firestore Security Rules (firebase-auth-plan-2026-06-30 の Phase D)。
 //
-// Tầng bảo vệ CUỐI CÙNG: 20+ file client dùng Firebase client SDK đọc/ghi Firestore
-// TRỰC TIẾP (bypass middleware + API auth). Không có rules, bất kỳ ai mở console
-// đều query thẳng data user khác. Rules dưới đây là "source of truth" cho isolation.
+// 最終防御レイヤー: 20+ のクライアントファイルが Firebase client SDK で Firestore を
+// 直接読み書きする (middleware + API auth をバイパス)。rules がなければ、誰でも
+// console を開いて他ユーザーのデータを直接クエリできてしまう。以下の rules が
+// isolation の "source of truth"。
 //
-// Admin SDK (server API routes) BYPASS mọi rule — nên server vẫn ghi settings/global,
-// seed __defaults__, v.v. bình thường. Rules chỉ áp cho client SDK.
+// Admin SDK (サーバー API routes) はすべての rule をバイパス — そのためサーバーは
+// settings/global への書き込み、__defaults__ の seed などを通常通り実行できる。
+// rules はクライアント SDK にのみ適用される。
 //
-// "Admin" = custom claim `admin:true` (đặt qua scripts/set-admin-claim.ts hoặc tự
-// động khi signup nếu email == ADMIN_EMAIL). Rules KHÔNG đọc được env → phải dùng
-// claim trong ID token (khác với check email server-side ở API routes).
+// "Admin" = カスタムクレーム `admin:true` (scripts/set-admin-claim.ts で設定、または
+// サインアップ時にメールが ADMIN_EMAIL と一致すれば自動設定)。rules は env を
+// 読み取れない → ID token 内のクレームを使う必要がある (API routes でのサーバー側
+// メールチェックとは異なる)。
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -23,19 +26,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // Doc HIỆN CÓ thuộc về user đang đăng nhập.
+    // 既存のドキュメントが、ログイン中のユーザーに属しているか。
     function owns(rsc) {
       return isSignedIn() && rsc.data.user_id == request.auth.uid;
     }
 
-    // Doc SẮP TẠO gắn đúng user_id của user đang đăng nhập (không cho tạo hộ người khác).
+    // 作成しようとしているドキュメントに、ログイン中のユーザーの user_id が正しく
+    // 付与されているか (他人の代わりに作成することを許さない)。
     function creatingOwn() {
       return isSignedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
-    // ─── Master data per-user + template "__defaults__" (admin sửa qua /admin) ───
-    // decks / categories / card_types / topics: user thao tác bản của mình; admin
-    // thêm sửa bản template (user_id == '__defaults__') mà user mới clone khi signup.
+    // ─── ユーザーごとのマスターデータ + テンプレート "__defaults__" (admin が /admin 経由で編集) ───
+    // decks / categories / card_types / topics: ユーザーは自分のデータを操作; admin は
+    // サインアップ時に新規ユーザーがクローンするテンプレート版 (user_id == '__defaults__')
+    // も追加・編集できる。
     match /decks/{id} {
       allow read, update, delete: if owns(resource)
         || (isAdmin() && resource.data.user_id == '__defaults__');
@@ -61,43 +66,51 @@ service cloud.firestore {
         || (isAdmin() && request.resource.data.user_id == '__defaults__');
     }
 
-    // ─── Entries — dữ liệu học của user, KHÔNG có bản template, admin không đặc quyền ───
+    // ─── Entries — ユーザーの学習データ、テンプレート版はなく、admin にも特権なし ───
     match /entries/{id} {
       allow read, update, delete: if owns(resource);
       allow create: if creatingOwn();
     }
 
-    // ─── Notification triggers — per-user (hiện chỉ admin dùng, nhưng scope theo owner) ───
+    // ─── Notification triggers — ユーザーごと (現状 admin のみ使用するが、owner でスコープ) ───
     match /notification_triggers/{id} {
       allow read, update, delete: if owns(resource);
       allow create: if creatingOwn();
     }
 
-    // ─── Content types — SHARED toàn cục (doc id = form_type, routing cốt lõi) ───
-    // Mọi user đọc (form blueprint); chỉ admin sửa (đổi form cho tất cả).
+    // ─── Review events — SRS revlog (SRS Phase 0)、append-only ───
+    // サーバーのみが書き込む (Admin SDK は rules をバイパス): line-webhook + sync-srs。
+    // クライアントは自分の履歴のみ読み取り可能 (将来の consumer: 統計/FSRS)。
+    match /review_events/{id} {
+      allow read: if owns(resource);
+      // allow write なし — クライアントは revlog の書き込み/編集/削除ができない
+    }
+
+    // ─── Content types — グローバルに SHARED (doc id = form_type、コアルーティング) ───
+    // 全ユーザーが読み取り可 (form blueprint); admin のみ書き込み可 (全員のフォームを変更)。
     match /content_types/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // ─── Settings — 3 loại doc trong cùng collection ───
-    // settings/global: feature flags (không secret) — mọi user đọc, admin ghi
-    //   (thực tế ghi qua server API/Admin SDK; cho phép admin client-write để linh hoạt).
+    // ─── Settings — 同じ collection 内の 3 種類の doc ───
+    // settings/global: フィーチャーフラグ (secret ではない) — 全ユーザー読み取り、admin 書き込み
+    //   (実際はサーバー API/Admin SDK 経由で書き込み; 柔軟性のため admin の client-write も許可)。
     match /settings/global {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-    // settings/default: SECRETS của chủ app (LINE token) — chỉ admin đọc/ghi.
+    // settings/default: アプリ所有者の SECRETS (LINE token) — admin のみ読み書き可。
     match /settings/default {
       allow read, write: if isAdmin();
     }
-    // settings/{uid}: preferences của từng user — chỉ chính chủ.
-    // (UID Firebase là chuỗi 28 ký tự — không bao giờ trùng 'global'/'default'.)
+    // settings/{uid}: 各ユーザーの preferences — 本人のみ。
+    // (Firebase UID は 28 文字の文字列 — 'global'/'default' と衝突することはない。)
     match /settings/{uid} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
-    // Mặc định: từ chối mọi thứ chưa khai báo tường minh ở trên.
+    // デフォルト: 上記で明示的に宣言されていないものはすべて拒否。
     match /{document=**} {
       allow read, write: if false;
     }

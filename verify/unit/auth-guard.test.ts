@@ -20,12 +20,12 @@ beforeEach(() => {
 })
 
 describe('verifySession / verifySessionUser', () => {
-  it('không có cookie → null, KHÔNG gọi Admin SDK', async () => {
+  it('cookie がない → null、Admin SDK を呼ばない', async () => {
     await expect(verifySession(makeReq())).resolves.toBeNull()
     expect(verifyMock).not.toHaveBeenCalled()
   })
 
-  it('cookie hợp lệ → uid + email, verify với checkRevoked=true', async () => {
+  it('cookie が有効 → uid + email、checkRevoked=true で検証', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'u1', email: 'a@b.co' })
 
     const user = await verifySessionUser(makeReq('__session=valid-cookie; other=x'))
@@ -41,7 +41,7 @@ describe('verifySession / verifySessionUser', () => {
 })
 
 describe('withAuth', () => {
-  it('không session → 401, handler KHÔNG được gọi', async () => {
+  it('session がない → 401、handler は呼ばれない', async () => {
     const handler = vi.fn()
     const res = await withAuth(handler)(makeReq(), ctx)
 
@@ -50,7 +50,7 @@ describe('withAuth', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 
-  it('session hợp lệ → handler nhận uid làm tham số thứ 3', async () => {
+  it('session が有効 → handler は uid を第 3 引数として受け取る', async () => {
     verifyMock.mockResolvedValueOnce({ uid: 'u1', email: 'a@b.co' })
     const handler = vi.fn(async (_req: Request, _c: unknown, uid: string) =>
       new Response(JSON.stringify({ uid }), { status: 200 }),

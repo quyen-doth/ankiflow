@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parsePostbackData, applyRating } from '@/lib/srs/webhook-handler'
-import { createDefaultReviewState } from '@/lib/srs/sm2'
+import { createDefaultReviewState } from '@/lib/srs/fsrs'
 
 describe('lib/srs/webhook-handler', () => {
   describe('parsePostbackData', () => {
@@ -47,14 +47,15 @@ describe('lib/srs/webhook-handler', () => {
       expect(result.last_rating).toBe('good')
     })
 
-    it('applies rating to existing state', () => {
+    it('applies rating to existing state (FSRS)', () => {
       const state = createDefaultReviewState(now.toISOString())
       const result = applyRating(state, 'easy', now)
       expect(result.queue).toBe('review')
-      expect(result.interval_days).toBe(4)
+      expect(result.interval_days).toBe(8)
+      expect(result.source).toBe('builtin')
     })
 
-    it('tracks again as lapse when reviewing', () => {
+    it('again on a review-queue state resets scheduling short-term (FSRS)', () => {
       const state = {
         ...createDefaultReviewState(now.toISOString()),
         queue: 'review' as const,
@@ -62,8 +63,8 @@ describe('lib/srs/webhook-handler', () => {
         ease_factor: 2.5,
       }
       const result = applyRating(state, 'again', now)
-      expect(result.lapses).toBe(1)
-      expect(result.queue).toBe('relearning')
+      expect(result.interval_days).toBe(0)
+      expect(result.fsrs?.difficulty).toBeGreaterThan(2.5) // difficulty tăng sau 'again'
     })
   })
 })

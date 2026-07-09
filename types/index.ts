@@ -93,6 +93,13 @@ export interface Entry {
   // SRS
   review_state?: ReviewState;
 
+  // Tích hợp từ hệ thống ngoài (vd Knowledge Hub) — chỉ có khi entry được tạo qua
+  // POST /api/integrations/term-drafts, không có ở entry tạo bình thường qua UI.
+  integration_source?: string;
+  source_url?: string;
+  source_title?: string;
+  context_quote?: string;
+
   // Metadata
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
@@ -237,6 +244,38 @@ export interface ReviewState {
   learning_step: number;
   source: SRSSource;
   synced_at: string;
+  /** FSRS (thay SM-2, xem lib/srs/fsrs.ts) — optional: entry cũ/vừa sync Anki chưa có block
+   * này sẽ được lazy-migrate ở lần rate nội bộ kế tiếp. Field trên (ease_factor/interval_days/
+   * due_date/lapses/total_reviews/queue) vẫn là "mirror" luôn đồng bộ từ block này. */
+  fsrs?: {
+    stability: number;
+    difficulty: number;
+    state: 0 | 1 | 2 | 3; // New/Learning/Review/Relearning — khớp ts-fsrs State enum
+    reps: number;
+    scheduled_days: number;
+    last_review: string; // ISO
+  };
+}
+
+// ─── Collection: review_events (append-only, CHỈ server ghi qua Admin SDK) ───
+// Revlog của AnkiFlow: mỗi thay đổi review_state (rate qua LINE hoặc pull từ Anki)
+// được ghi lại 1 event. Nền tảng cho FSRS/thống kê/độc lập SRS sau này — không có
+// log này thì lịch sử review mất vĩnh viễn (chỉ còn snapshot mới nhất).
+
+/** Snapshot các field scheduler quan trọng của ReviewState tại 1 thời điểm. */
+export type ReviewStateSnapshot = Pick<
+  ReviewState,
+  'queue' | 'interval_days' | 'ease_factor' | 'due_date' | 'lapses'
+>;
+
+export interface ReviewEvent {
+  user_id: string;
+  entry_id: string;
+  kind: 'rating' | 'anki_sync'; // rating = LINE/SM-2 nội bộ; anki_sync = pull từ Anki
+  rating?: SRSRating; // chỉ có với kind='rating'
+  prev: ReviewStateSnapshot | null; // null = entry chưa từng có review_state
+  next: ReviewStateSnapshot;
+  created_at: string; // ISO
 }
 
 // ─── Collection: notification_triggers ───────────────────

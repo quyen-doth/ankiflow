@@ -1,27 +1,28 @@
 /**
- * Default master data + seeding per-user — SERVER-ONLY (Admin SDK).
- * Dùng bởi: app/api/auth/signup (seed cho user mới), scripts/seed-firestore.ts,
- * scripts/migrate-user-data.ts.
+ * デフォルトマスターデータ + ユーザーごとの seeding — SERVER-ONLY (Admin SDK)。
+ * 使用元: app/api/auth/signup (新規ユーザーの seed)、scripts/seed-firestore.ts、
+ * scripts/migrate-user-data.ts。
  *
- * ID scheme per-user: `${defaultId}__${uid}` — FK re-mapping (decks →
- * default_card_type_ids/default_category_id) chỉ là phép nối chuỗi, seeding
- * idempotent (check tồn tại theo ID), debug dễ (nhìn ID biết gốc + chủ sở hữu).
+ * ユーザーごとの ID スキーム: `${defaultId}__${uid}` — FK re-mapping (decks →
+ * default_card_type_ids/default_category_id) は単なる文字列連結、seeding は
+ * idempotent (ID の存在チェック)、デバッグしやすい (ID を見れば元 + 所有者が分かる)。
  *
- * TEMPLATE (editable defaults — admin control plane): `seedUserDefaults` ưu tiên
- * đọc docs `user_id == DEFAULTS_OWNER_ID` (template, admin sửa qua /admin ở chế độ
- * "New-user defaults" — tái dùng chính CategoryManager/CardTypeManager/TopicManager/
- * DeckManager với prop `ownerId`). Không có template (lần đầu, chưa publish) →
- * fallback mảng hardcode `DEFAULT_*` bên dưới. `publishTemplateDefaults()` ghi
- * hardcode thành template lần đầu (id KHÔNG suffix — trùng chính id hardcode).
+ * TEMPLATE (editable defaults — admin control plane): `seedUserDefaults` は優先的に
+ * `user_id == DEFAULTS_OWNER_ID` の docs (テンプレート、admin が /admin の
+ * "New-user defaults" モードで編集 — CategoryManager/CardTypeManager/TopicManager/
+ * DeckManager を prop `ownerId` でそのまま再利用) を読み込む。テンプレートがない場合
+ * (初回、未 publish) → 下にある hardcode 配列 `DEFAULT_*` にフォールバック。
+ * `publishTemplateDefaults()` は初回に hardcode をテンプレートとして書き込む
+ * (id はサフィックスなし — hardcode の id と同一)。
  *
- * LƯU Ý: `content_types` KHÔNG per-user — doc ID của nó (form_language/form_it/
- * form_general) chính là giá trị `form_type` mà routing toàn app phụ thuộc.
- * Per-user hóa content_types cần tách `code` khỏi doc id (backlog).
+ * 注記: `content_types` はユーザーごとではない — その doc ID (form_language/form_it/
+ * form_general) はアプリ全体のルーティングが依存する `form_type` の値そのもの。
+ * content_types をユーザーごとにするには `code` を doc id から分離する必要がある (backlog)。
  */
 import type { Firestore } from 'firebase-admin/firestore';
 import { DEFAULTS_OWNER_ID } from '@/lib/constants';
 
-// ─── Default data (nguồn: scripts/seed-firestore.ts gốc) ─────────────────────
+// ─── デフォルトデータ (出典: scripts/seed-firestore.ts オリジナル) ─────────────────────
 
 export const DEFAULT_CATEGORIES = [
     { id: 'cat_daily', name: 'Daily', sort_order: 1 },
@@ -283,7 +284,7 @@ export const DEFAULT_DECKS = [
     },
 ] as const;
 
-/** Preferences mặc định cho settings/{uid} — KHÔNG chứa system fields (ai_model...). */
+/** settings/{uid} 用のデフォルト preferences — システムフィールド (ai_model...) は含まない。 */
 export const DEFAULT_USER_PREFS = {
     unsplash_enabled: true,
     tts_enabled: true,
@@ -293,9 +294,9 @@ export const DEFAULT_USER_PREFS = {
     auto_image: true,
 } as const;
 
-// ─── Per-user seeding ─────────────────────────────────────────────────────────
+// ─── ユーザーごとの seeding ─────────────────────────────────────────────────────────
 
-/** ID per-user từ default ID: `cat_daily` + uid `abc` → `cat_daily__abc`. */
+/** default ID からユーザーごとの ID を生成: `cat_daily` + uid `abc` → `cat_daily__abc`。 */
 export const userScopedId = (defaultId: string, uid: string) => `${defaultId}__${uid}`;
 
 async function seedDocIfMissing(db: Firestore, collection: string, id: string, data: Record<string, unknown>) {
@@ -310,17 +311,18 @@ interface TemplateDoc {
     data: FirebaseFirestore.DocumentData;
 }
 
-/** Đọc docs template (`user_id == DEFAULTS_OWNER_ID`) của 1 collection — rỗng nếu chưa publish. */
+/** 1 つの collection のテンプレート docs (`user_id == DEFAULTS_OWNER_ID`) を読み込む — 未 publish なら空。 */
 async function fetchTemplates(db: Firestore, collection: string): Promise<TemplateDoc[]> {
     const snap = await db.collection(collection).where('user_id', '==', DEFAULTS_OWNER_ID).get();
     return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 }
 
 /**
- * Publish bộ hardcode `DEFAULT_*` thành template (`user_id: DEFAULTS_OWNER_ID`, id
- * KHÔNG suffix — trùng chính id hardcode) để admin sửa qua /admin ("New-user defaults").
- * Idempotent — chỉ tạo doc chưa tồn tại. Gọi từ `scripts/seed-firestore.ts --defaults`
- * hoặc lazy-init trong `seedUserDefaults` khi chưa có template nào.
+ * hardcode の `DEFAULT_*` 一式をテンプレートとして publish (`user_id: DEFAULTS_OWNER_ID`、
+ * id はサフィックスなし — hardcode の id と同一) し、admin が /admin ("New-user defaults")
+ * 経由で編集できるようにする。Idempotent — 未存在の doc のみ作成。
+ * `scripts/seed-firestore.ts --defaults` から呼び出すか、`seedUserDefaults` 内で
+ * テンプレートが一つもない場合の lazy-init として呼ばれる。
  */
 export async function publishTemplateDefaults(db: Firestore): Promise<void> {
     const now = new Date();
@@ -390,13 +392,14 @@ interface DeckSourceItem {
 }
 
 /**
- * Seed bộ master data cho 1 user mới (idempotent — doc tồn tại thì bỏ qua).
- * Ưu tiên clone từ TEMPLATE (`user_id == DEFAULTS_OWNER_ID`, admin đã sửa qua /admin);
- * nếu chưa publish template nào (lần đầu sau khi deploy tính năng này) → lazy-publish
- * từ hardcode `DEFAULT_*` rồi dùng luôn kết quả đó (user đầu tiên "trả giá" 1 lần,
- * mọi user sau tự động hưởng template — admin sửa được ngay từ /admin).
- * FK trong decks (default_card_type_ids, default_category_id) re-map sang ID
- * per-user bằng `userScopedId`.
+ * 新規ユーザー 1 人分のマスターデータを seed (idempotent — doc が既に存在すればスキップ)。
+ * 優先的に TEMPLATE (`user_id == DEFAULTS_OWNER_ID`、admin が /admin 経由で編集済み) から
+ * クローンする; もしテンプレートが一つも publish されていない場合 (この機能デプロイ後の初回) →
+ * hardcode `DEFAULT_*` から lazy-publish してその結果をそのまま使う (最初のユーザーが
+ * 1 回だけ "コストを払う"、以降の全ユーザーは自動的にテンプレートの恩恵を受ける —
+ * admin はすぐに /admin から編集可能)。
+ * decks 内の FK (default_card_type_ids、default_category_id) は `userScopedId` で
+ * ユーザーごとの ID に re-map される。
  */
 export async function seedUserDefaults(db: Firestore, uid: string): Promise<void> {
     const now = new Date();
@@ -408,7 +411,7 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
         fetchTemplates(db, 'decks'),
     ]);
 
-    // Chưa publish template nào — lazy publish từ hardcode rồi đọc lại.
+    // テンプレートが一つも publish されていない — hardcode から lazy publish して読み直す。
     if (catTemplates.length === 0 && ctTemplates.length === 0 && topicTemplates.length === 0 && deckTemplates.length === 0) {
         await publishTemplateDefaults(db);
         [catTemplates, ctTemplates, topicTemplates, deckTemplates] = await Promise.all([
@@ -497,7 +500,7 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
                 display_name: deck.display_name,
                 form_type: deck.form_type,
                 language: deck.language,
-                // FK re-map: trỏ sang card_types/categories per-user của CHÍNH user này
+                // FK re-map: この user 自身のユーザーごとの card_types/categories を指す
                 default_card_type_ids: deck.default_card_type_ids.map((id) => userScopedId(id, uid)),
                 default_category_id: deck.default_category_id ? userScopedId(deck.default_category_id, uid) : null,
                 is_active: true,

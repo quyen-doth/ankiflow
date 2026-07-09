@@ -117,17 +117,17 @@ describe('buildNotes — audio in all card types', () => {
     expect(notes[0].tags).toContain('hsk')
   })
 
-  it('imageFilename: nhúng <img> dùng tên file media Anki vào back', () => {
+  it('imageFilename: back に Anki メディアファイル名を使った <img> を埋め込む', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], undefined, 'ankiflow_img_hello.png')
     expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
   })
 
-  it('image_to_word: imageFilename dùng làm front', () => {
+  it('image_to_word: imageFilename を front として使用', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('image_to_word')], undefined, 'ankiflow_img_hello.png')
     expect(notes[0].fields.Front).toContain('<img src="ankiflow_img_hello.png"')
   })
 
-  it('ảnh data URL không có imageFilename → không nhúng <img>', () => {
+  it('画像 data URL に imageFilename がない → <img> を埋め込まない', () => {
     const notes = buildNotes(
       makeEntry({ image_url: 'data:image/png;base64,AAAA' }),
       [makeCardType('word_to_meaning')],
@@ -135,12 +135,12 @@ describe('buildNotes — audio in all card types', () => {
     expect(notes[0].fields.Back).not.toContain('<img')
   })
 
-  it('ảnh URL http (Unsplash) vẫn nhúng trực tiếp khi không có imageFilename', () => {
+  it('画像 http URL (Unsplash) は imageFilename がなくても直接埋め込まれる', () => {
     const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')])
     expect(notes[0].fields.Back).toContain('<img src="https://images.unsplash.com/photo-hello"')
   })
 
-  it('dùng template được truyền vào (admin cấu hình), KHÔNG rơi về DEFAULT_TEMPLATES', () => {
+  it('渡された template (admin 設定) を使用し、DEFAULT_TEMPLATES にフォールバックしない', () => {
     // fill_in_blank DEFAULT back = example/translation/word/audio (không có reading/image).
     // Truyền template tùy biến có reading + image → phải xuất hiện trong output.
     const customType = {

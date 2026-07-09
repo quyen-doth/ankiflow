@@ -21,28 +21,28 @@ const validEnglish = {
 }
 
 describe('ai-agent/card-schemas — zod validation', () => {
-  it('chấp nhận output đúng schema', () => {
+  it('正しいスキーマの output を受け入れる', () => {
     expect(() => englishCardSchema.parse(validEnglish)).not.toThrow()
   })
 
-  it('từ chối khi thiếu field bắt buộc', () => {
+  it('必須 field が不足している場合は拒否', () => {
     const { ipa, ...missingIpa } = validEnglish
     void ipa
     expect(() => englishCardSchema.parse(missingIpa)).toThrow()
   })
 
-  it('từ chối khi sai kiểu (collocations không phải mảng)', () => {
+  it('型が誤っている場合は拒否 (collocations が配列でない)', () => {
     expect(() => englishCardSchema.parse({ ...validEnglish, collocations: 'not-an-array' })).toThrow()
   })
 
-  it('strip field thừa thay vì giữ lại', () => {
+  it('余分な field は保持せず strip する', () => {
     const parsed = englishCardSchema.parse({ ...validEnglish, hacker: 'x' }) as Record<string, unknown>
     expect(parsed).not.toHaveProperty('hacker')
   })
 })
 
 describe('ai-agent/card-schemas — toToolInputSchema', () => {
-  it('ép additionalProperties=false và required = mọi field', () => {
+  it('additionalProperties=false と required = 全フィールドを強制', () => {
     const json = toToolInputSchema(englishCardSchema) as {
       type: string
       properties: Record<string, unknown>
@@ -58,22 +58,22 @@ describe('ai-agent/card-schemas — toToolInputSchema', () => {
 })
 
 describe('ai-agent/card-schemas — resolveCardSpec', () => {
-  it('chọn schema Tiếng Anh cho LANGUAGE + en', () => {
+  it('LANGUAGE + en に対して英語スキーマを選択', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'book' })
     expect(spec.toolName).toBe(TOOL_NAME)
     expect(spec.schema).toBe(englishCardSchema)
-    expect(spec.systemPrompt).toContain('Tiếng Anh')
+    expect(spec.systemPrompt).toContain('英語')
     expect(spec.userMessage).toContain('book')
   })
 
-  it('chọn schema IT và đưa topics vào user message', () => {
+  it('IT スキーマを選択し、topics を user message に含める', () => {
     const spec = resolveCardSpec({ form_type: FormType.IT, term: 'Docker', topics: ['DevOps'] })
     expect(spec.schema).toBe(itVocabCardSchema)
     expect(spec.userMessage).toContain('Docker')
     expect(spec.userMessage).toContain('DevOps')
   })
 
-  it('throw với combo không hỗ trợ', () => {
+  it('サポートされていない組み合わせで throw', () => {
     expect(() => resolveCardSpec({ form_type: FormType.GENERAL })).toThrow('Invalid parameters')
     expect(() => resolveCardSpec({ form_type: FormType.LANGUAGE })).toThrow('Invalid parameters')
   })

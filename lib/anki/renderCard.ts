@@ -118,7 +118,7 @@ export function renderSide(
       if (!renderer) return ''
       const value = renderer.getValue(entry, opts)
       if (!value) return ''
-      // Preview: audio thành chip icon thay vì [sound:] (export Anki vẫn dùng [sound:]).
+      // Preview: audio は [sound:] ではなく chip icon になる (Anki への export は [sound:] のまま)。
       if (block === 'audio' && opts.audioIcon) {
         return '<span class="audio-chip">🔊 Audio</span>'
       }

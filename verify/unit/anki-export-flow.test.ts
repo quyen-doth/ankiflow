@@ -44,7 +44,7 @@ afterEach(() => {
 })
 
 describe('exportEntryToAnki — client-side', () => {
-  it('tạo deck + addNotes qua AnkiConnect, rồi persist entry status synced + note ids', async () => {
+  it('AnkiConnect 経由で deck 作成 + addNotes した後、entry status synced + note ids を永続化', async () => {
     const fetchMock = stubFetch()
 
     const result = await exportEntryToAnki(entry, cardTypes)
@@ -62,7 +62,7 @@ describe('exportEntryToAnki — client-side', () => {
     expect(body.entryData.card_type_ids).toEqual(['ct1'])
   })
 
-  it('Anki offline (addNotes throw) → ok:false, KHÔNG gọi save', async () => {
+  it('Anki オフライン (addNotes が throw) → ok:false、save を呼ばない', async () => {
     const fetchMock = stubFetch()
     mockClient.addNotes.mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
@@ -72,7 +72,7 @@ describe('exportEntryToAnki — client-side', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('tạo note thành công nhưng save Firestore lỗi → ok:false', async () => {
+  it('note 作成成功だが Firestore への save が失敗 → ok:false', async () => {
     stubFetch(500, { error: 'Firestore down' })
 
     const result = await exportEntryToAnki(entry, cardTypes)
@@ -81,7 +81,7 @@ describe('exportEntryToAnki — client-side', () => {
     expect(result.error).toBe('Firestore down')
   })
 
-  it('lưu audio data-URL vào Anki media trước khi build notes', async () => {
+  it('notes を build する前に audio data-URL を Anki media に保存', async () => {
     stubFetch()
     const withAudio = { ...entry, audio_url: 'data:audio/mp3;base64,QUJD' }
 
@@ -92,7 +92,7 @@ describe('exportEntryToAnki — client-side', () => {
 })
 
 describe('saveEntryToFirestore — deferred vs synced', () => {
-  it('deferred (không opts) → body không kèm status/anki_note_ids (server mặc định reviewed)', async () => {
+  it('deferred (opts なし) → body に status/anki_note_ids を含まない (サーバーはデフォルトで reviewed)', async () => {
     const fetchMock = stubFetch()
 
     await saveEntryToFirestore(entry, cardTypes)
@@ -103,7 +103,7 @@ describe('saveEntryToFirestore — deferred vs synced', () => {
     expect(body.entryData.card_type_ids).toEqual(['ct1'])
   })
 
-  it('kèm opts → body có status + anki_note_ids', async () => {
+  it('opts あり → body に status + anki_note_ids を含む', async () => {
     const fetchMock = stubFetch()
 
     await saveEntryToFirestore(entry, cardTypes, { ankiNoteIds: [5], status: 'synced' })

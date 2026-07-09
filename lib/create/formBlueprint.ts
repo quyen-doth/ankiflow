@@ -142,9 +142,10 @@ export const BUILTIN_BLUEPRINTS: Partial<Record<FormType, CardFormBlueprint>> = 
 }
 
 /**
- * Ánh xạ id/code của content type → FormType built-in.
- * Bao gồm cả giá trị enum (`form_language`...) lẫn alias rút gọn (`language`...)
- * mà seed đã dùng cho `code`, để 3 content type built-in luôn dùng đúng blueprint.
+ * content type の id/code → built-in FormType へのマッピング。
+ * enum の値 (`form_language`...) と、seed が `code` に使用した省略 alias
+ * (`language`...) の両方を含み、3 つの built-in content type が常に
+ * 正しい blueprint を使うようにする。
  */
 const BUILTIN_ALIASES: Record<string, FormType> = {
   [FormType.LANGUAGE]: FormType.LANGUAGE,
@@ -159,7 +160,7 @@ export function resolveBuiltinFormType(idOrCode: string): FormType | null {
   return BUILTIN_ALIASES[idOrCode] ?? null
 }
 
-/** Trả blueprint cho một content type: built-in nếu id/code khớp, ngược lại dựng từ fields[]. */
+/** content type の blueprint を返す: id/code が一致すれば built-in、そうでなければ fields[] から構築。 */
 export function getBlueprintForContentType(ct: ContentType): CardFormBlueprint {
   const ft = resolveBuiltinFormType(ct.id) ?? resolveBuiltinFormType(ct.code)
   if (ft && BUILTIN_BLUEPRINTS[ft]) return BUILTIN_BLUEPRINTS[ft]!

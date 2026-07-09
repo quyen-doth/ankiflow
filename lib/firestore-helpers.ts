@@ -13,9 +13,9 @@ export function withTimestamps<T extends Record<string, unknown>>(
 }
 
 /**
- * Batch-fetch card_types theo ids (Admin SDK, Promise.all — không Firestore trong loop),
- * map về CardTypeItem (kèm template) cho buildNotes/regenerateEntryNotes.
- * Dùng chung cho các route sync/update/resync — tránh 3 bản copy lệch nhau.
+ * ids で card_types を batch-fetch (Admin SDK、Promise.all — ループ内で Firestore を呼ばない)、
+ * buildNotes/regenerateEntryNotes 用に CardTypeItem (template 付き) にマップする。
+ * sync/update/resync ルートで共有 — 3 つのコピーがずれるのを防ぐ。
  */
 export async function fetchCardTypesByIds(db: Firestore, ids: string[]): Promise<CardTypeItem[]> {
   const unique = [...new Set(ids)]

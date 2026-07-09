@@ -60,7 +60,7 @@ const probe = () => {
 }
 
 describe('AuthProvider', () => {
-  it('loading=true cho đến khi Firebase trả auth state đầu tiên', () => {
+  it('Firebase が最初の auth state を返すまで loading=true', () => {
     act(() => {
       root.render(createElement(AuthProvider, null, createElement(Probe)))
     })
@@ -69,7 +69,7 @@ describe('AuthProvider', () => {
     expect(authState.callback).not.toBeNull()
   })
 
-  it('đăng nhập → user {uid, email}, loading=false', () => {
+  it('ログイン → user {uid, email}、loading=false', () => {
     act(() => {
       root.render(createElement(AuthProvider, null, createElement(Probe)))
     })
@@ -80,7 +80,7 @@ describe('AuthProvider', () => {
     expect(probe()).toEqual({ loading: 'false', uid: 'u1', email: 'a@b.co' })
   })
 
-  it('logout (callback null) → user=null, loading vẫn false', () => {
+  it('logout (callback null) → user=null、loading は false のまま', () => {
     act(() => {
       root.render(createElement(AuthProvider, null, createElement(Probe)))
     })
@@ -94,7 +94,7 @@ describe('AuthProvider', () => {
     expect(probe()).toEqual({ loading: 'false', uid: '', email: '' })
   })
 
-  it('unmount → unsubscribe listener (tránh leak)', () => {
+  it('unmount → listener を unsubscribe (leak を回避)', () => {
     act(() => {
       root.render(createElement(AuthProvider, null, createElement(Probe)))
     })
