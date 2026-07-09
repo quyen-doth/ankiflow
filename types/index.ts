@@ -237,6 +237,17 @@ export interface ReviewState {
   learning_step: number;
   source: SRSSource;
   synced_at: string;
+  /** FSRS (thay SM-2, xem lib/srs/fsrs.ts) — optional: entry cũ/vừa sync Anki chưa có block
+   * này sẽ được lazy-migrate ở lần rate nội bộ kế tiếp. Field trên (ease_factor/interval_days/
+   * due_date/lapses/total_reviews/queue) vẫn là "mirror" luôn đồng bộ từ block này. */
+  fsrs?: {
+    stability: number;
+    difficulty: number;
+    state: 0 | 1 | 2 | 3; // New/Learning/Review/Relearning — khớp ts-fsrs State enum
+    reps: number;
+    scheduled_days: number;
+    last_review: string; // ISO
+  };
 }
 
 // ─── Collection: review_events (append-only, CHỈ server ghi qua Admin SDK) ───

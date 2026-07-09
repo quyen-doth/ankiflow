@@ -3,7 +3,7 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import { verifySessionUser } from '@/lib/auth-guard'
 import { pushMessage } from '@/lib/line/client'
 import { buildReviewMessage } from '@/lib/line/flex-message'
-import { createDefaultReviewState } from '@/lib/srs/sm2'
+import { createDefaultReviewState } from '@/lib/srs/fsrs'
 import type { Entry } from '@/types'
 
 /**
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   const snapshot = await db.collection('entries')
     .where('user_id', '==', sessionUser.uid)
-    .where('status', '==', 'synced')
+    .where('status', 'in', ['synced', 'reviewed'])
     .get()
 
   if (snapshot.empty) {

@@ -7,8 +7,8 @@ import type { ReviewState } from '@/types'
  */
 
 const { updateMock, addMock, entryStore } = vi.hoisted(() => ({
-  updateMock: vi.fn(async () => {}),
-  addMock: vi.fn(async () => ({ id: 'ev1' })),
+  updateMock: vi.fn(async (_data: Record<string, unknown>) => {}),
+  addMock: vi.fn(async (_data: Record<string, unknown>) => ({ id: 'ev1' })),
   entryStore: new Map<string, Record<string, unknown>>(),
 }))
 
