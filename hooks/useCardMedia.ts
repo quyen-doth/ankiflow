@@ -97,9 +97,12 @@ export function useCardMedia(
   // Khi entry sẵn sàng: tự lấy ảnh gợi ý & sinh audio nếu chưa có sẵn.
   useEffect(() => {
     if (!ready) return
-    if (keywordOf() && images.length === 0) fetchImages()
-    const text = entry.word || entry.term || entry.title
-    if (text && !audioUrl && !entry.audio_url) generateAudio()
+    const timer = setTimeout(() => {
+      if (keywordOf() && images.length === 0) fetchImages()
+      const text = entry.word || entry.term || entry.title
+      if (text && !audioUrl && !entry.audio_url) generateAudio()
+    }, 0)
+    return () => clearTimeout(timer)
   }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {

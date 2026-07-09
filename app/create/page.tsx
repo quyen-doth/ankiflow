@@ -18,7 +18,6 @@ import {
     BookOpen,
     SlidersHorizontal,
     ArrowUpRight,
-    Sparkles,
     CheckCircle,
     X,
     PlusCircle,
@@ -115,10 +114,13 @@ function CreateContent() {
     useEffect(() => {
         if (searchParams.get('exported') === '1') {
             const count = parseInt(searchParams.get('count') || '0', 10);
-            setSuccessBanner({ count });
+            const showTimer = setTimeout(() => setSuccessBanner({ count }), 0);
+            const hideTimer = setTimeout(() => setSuccessBanner(null), 5000);
             router.replace('/create', { scroll: false });
-            const timer = setTimeout(() => setSuccessBanner(null), 5000);
-            return () => clearTimeout(timer);
+            return () => {
+                clearTimeout(showTimer);
+                clearTimeout(hideTimer);
+            };
         }
     }, [searchParams, router]);
 
