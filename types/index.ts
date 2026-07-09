@@ -93,6 +93,13 @@ export interface Entry {
   // SRS
   review_state?: ReviewState;
 
+  // Tích hợp từ hệ thống ngoài (vd Knowledge Hub) — chỉ có khi entry được tạo qua
+  // POST /api/integrations/term-drafts, không có ở entry tạo bình thường qua UI.
+  integration_source?: string;
+  source_url?: string;
+  source_title?: string;
+  context_quote?: string;
+
   // Metadata
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;

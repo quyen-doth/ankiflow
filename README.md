@@ -12,7 +12,7 @@
 ![Firebase](https://img.shields.io/badge/Auth_+_Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-499_passing-success)
+![Tests](https://img.shields.io/badge/tests-524_passing-success)
 ![CI](https://github.com/quyen-doth/ankiflow/actions/workflows/ci.yml/badge.svg)
 
 </div>
@@ -25,7 +25,7 @@
 
 - **対象コンテンツ**: 語学（英語 / 中国語 / 日本語）、IT 用語、一般知識をはじめ、コンテンツタイプを自由に追加可能
 - **連携先**: Anki Desktop（AnkiConnect 経由）/ LINE Messaging API（復習通知）
-- **規模**: TypeScript 約 17,500 行 / 67 コンポーネント / 21 API ルート / 11 ページ / 499 自動テスト
+- **規模**: TypeScript 約 17,500 行 / 67 コンポーネント / 23 API ルート / 11 ページ / 524 自動テスト
 
 ## 主な機能
 
@@ -63,7 +63,7 @@
 | 機能                        | 説明                                                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | **Anki エクスポート**       | AnkiConnect 経由で複数カードタイプを一括生成（音声・画像メディア同期対応）                                                     |
-| **LINE 通知による受動 SRS** | SM-2 アルゴリズムに基づき、復習タイミングを LINE に Flex Message でプッシュ通知。Anki Desktop を開かなくても隙間時間に復習可能 |
+| **LINE 通知による受動 SRS** | FSRS アルゴリズムに基づき、復習タイミングを LINE に Flex Message で自動プッシュ通知（Vercel Cron、毎日）。Anki Desktop を開かなくても隙間時間に復習可能 |
 | **セッション永続化**        | デッキ・言語・タグなどの設定を保持し、次回入力を高速化                                                                         |
 
 ## システム構成
@@ -132,7 +132,7 @@
 - 同一のコードパス（`runFixture()`）が CLI・ブラウザ（`/verify`）・コンソール API の 3 環境で動作
 - スキーマ・不変条件・DOM コントラクト・アクセシビリティの 4 種の検証器をプラガブルに追加可能
 - Firestore / fetch / Router / 認証コンテキスト / `localStorage` をモック注入し、外部依存のあるコンポーネントも単体で検証
-- 499 件のテストが安定して通過
+- 524 件のテストが安定して通過
 
 ### 4. 型安全なドメインモデリング
 
@@ -153,7 +153,7 @@ npm run lint          # ESLint
 npm run build         # 本番ビルド
 ```
 
-- 499 テストが安定して通過
+- 524 テストが安定して通過
 - 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404）
 - 詳細は [`docs/VERIFICATION.md`](docs/VERIFICATION.md) を参照
 
@@ -163,7 +163,7 @@ npm run build         # 本番ビルド
 ankiflow/
 ├── app/
 │   ├── (auth)/      # ログイン・サインアップ（サイドバーなしレイアウト）
-│   ├── api/         # サーバーロジック（21 API ルート）
+│   ├── api/         # サーバーロジック（23 API ルート、integrations/cron はトークン認証）
 │   ├── dashboard/   # 統計サマリー・クイックアクション
 │   ├── create/      # カード作成フォーム
 │   ├── preview/     # 生成カードの確認・編集・エクスポート（バッチ対応）

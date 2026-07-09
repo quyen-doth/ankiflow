@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withAuth } from '@/lib/auth-guard'
+import { normalizeTerm } from '@/lib/entries/duplicate'
 
 interface DuplicateEntry {
   id: string
@@ -31,7 +32,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     const allEntries = snapshot.docs.map(doc => {
       const data = doc.data()
       return {
-        normalized: (data.word || data.term || data.title || '').toLowerCase().trim(),
+        normalized: normalizeTerm(data.word || data.term || data.title || ''),
         entry: {
           id: doc.id,
           word: data.word || data.term || data.title,
@@ -43,7 +44,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     })
 
     const matchFor = (w: string): DuplicateEntry[] => {
-      const wl = w.toLowerCase().trim()
+      const wl = normalizeTerm(w)
       return allEntries.filter(e => e.normalized === wl).map(e => e.entry)
     }
 

@@ -18,6 +18,10 @@ import type { NextRequest } from 'next/server'
  * - `/api/auth/*` — セッションがまだない状態でも login/signup/logout は実行できる必要がある
  * - `/api/notifications/line-webhook` — LINE プラットフォームが外部から呼び出す
  *   (クッキーを持たない、LINE signature verification で自己防御)
+ * - `/api/integrations/*` — 外部システム (Knowledge Hub) が呼び出す。クッキーを持たない、
+ *   `x-integration-token` ヘッダーで自己防御
+ * - `/api/cron/*` — Vercel Cron が呼び出す。クッキーを持たない、
+ *   `Authorization: Bearer CRON_SECRET` で自己防御
  * - `/verify` — dev-only ダッシュボード (production では自動的に 404)
  */
 const SESSION_COOKIE_NAME = '__session'
@@ -48,6 +52,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|verify|.*\\..*).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|api/integrations|api/cron|verify|.*\\..*).*)',
   ],
 }

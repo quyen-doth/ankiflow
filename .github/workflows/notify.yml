@@ -1,10 +1,10 @@
 name: AnkiFlow Vocabulary Review
 
+# Schedule TẮT (2026-07-09): thay bằng GET /api/cron/srs-push (Vercel Cron, xem vercel.json).
+# Lý do: scripts/send-notifications.ts KHÔNG filter user_id — gộp dữ liệu MỌI user rồi push
+# vào 1 LINE_USER_ID cố định (rò rỉ chéo user). Route mới scope đúng theo 1 uid cấu hình
+# qua SRS_PUSH_TARGET_UID. Giữ workflow_dispatch để chạy tay khi cần (không tự động nữa).
 on:
-    schedule:
-        - cron: '0 1 * * *'
-        - cron: '0 5 * * *'
-        - cron: '0 13 * * *'
     workflow_dispatch: {}
 
 jobs:

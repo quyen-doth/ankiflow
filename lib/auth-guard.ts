@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 
@@ -50,4 +51,17 @@ export function withAuth<Req extends Request = Request>(
     }
     return handler(req, ctx, uid)
   }
+}
+
+/**
+ * Session cookie を使わない静的トークン比較 (integration/cron routes 向け)。
+ * `timingSafeEqual` はバッファ長が異なると throw するため、長さチェックを先に行う
+ * (タイミング攻撃対策 + クラッシュ防止)。
+ */
+export function verifyStaticToken(provided: string | null | undefined, expected: string | undefined): boolean {
+  if (!expected || !provided) return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
