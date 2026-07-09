@@ -6,7 +6,7 @@ on:
     workflow_dispatch: {}
 
 permissions:
-    contents: read
+    contents: write
     pull-requests: write
 
 concurrency:
@@ -28,11 +28,23 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   REPO: ${{ github.repository }}
+                  REPO_OWNER: ${{ github.repository_owner }}
                   BASE_BRANCH: main
                   HEAD_BRANCH: develop
                   PR_TITLE: "release: develop to main"
               run: |
                   set -euo pipefail
+
+                  HEAD_REF="$REPO_OWNER:$HEAD_BRANCH"
+
+                  run_gh() {
+                    local output
+                    if ! output="$("$@" 2>&1)"; then
+                      echo "$output"
+                      exit 1
+                    fi
+                    echo "$output"
+                  }
 
                   git fetch origin "$BASE_BRANCH" "$HEAD_BRANCH"
 
@@ -45,7 +57,7 @@ jobs:
                     gh pr list \
                       --repo "$REPO" \
                       --base "$BASE_BRANCH" \
-                      --head "$HEAD_BRANCH" \
+                      --head "$HEAD_REF" \
                       --state open \
                       --json number \
                       --jq '.[0].number // empty'
@@ -63,16 +75,16 @@ jobs:
                   )"
 
                   if [ -n "$existing_pr" ]; then
-                    gh pr edit "$existing_pr" \
+                    run_gh gh pr edit "$existing_pr" \
                       --repo "$REPO" \
                       --title "$PR_TITLE" \
                       --body "$pr_body"
                     echo "Updated release PR #$existing_pr."
                   else
-                    gh pr create \
+                    run_gh gh pr create \
                       --repo "$REPO" \
                       --base "$BASE_BRANCH" \
-                      --head "$HEAD_BRANCH" \
+                      --head "$HEAD_REF" \
                       --title "$PR_TITLE" \
                       --body "$pr_body"
                   fi
