@@ -19,14 +19,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
-import { FormType } from '@/types'
 import type { ContentType, FormFieldConfig } from '@/types'
-
-const FORM_TYPE_LABELS: Record<FormType, string> = {
-  [FormType.LANGUAGE]: 'Language',
-  [FormType.IT]: 'IT',
-  [FormType.GENERAL]: 'General',
-}
 
 const FIELD_TYPE_OPTIONS: { value: FormFieldConfig['type']; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -37,12 +30,8 @@ const FIELD_TYPE_OPTIONS: { value: FormFieldConfig['type']; label: string }[] = 
   { value: 'number', label: 'Number' },
 ]
 
-const FIELD_TYPE_LABELS: Record<FormFieldConfig['type'], string> = Object.fromEntries(
-  FIELD_TYPE_OPTIONS.map(o => [o.value, o.label])
-) as Record<FormFieldConfig['type'], string>
-
 interface ContentTypeDraft {
-  code: FormType | string
+  code: string
   name: string
   description: string
   icon: string

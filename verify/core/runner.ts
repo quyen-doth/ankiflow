@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { AuthContext } from '@/components/providers/AuthProvider'
 import { readContract } from './contract'
@@ -48,7 +49,9 @@ function buildActContext(root: HTMLElement): ActContext {
     click: async selector => {
       const el = root.querySelector<HTMLElement>(selector)
       if (!el) throw new Error(`act.click: không tìm thấy "${selector}"`)
-      el.click()
+      flushSync(() => {
+        el.click()
+      })
       await flush()
     },
     type: async (selector, text) => {
@@ -60,7 +63,9 @@ function buildActContext(root: HTMLElement): ActContext {
         : HTMLInputElement.prototype
       const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
       setter?.call(el, text)
-      el.dispatchEvent(new Event('input', { bubbles: true }))
+      flushSync(() => {
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+      })
       await flush()
     },
     wait: ms => flush(ms),
@@ -145,13 +150,16 @@ export async function runFixture<P>(
     } else {
       reactRoot = createRoot(container)
     }
-    reactRoot.render(
-      createElement(
-        AuthContext.Provider,
-        { value: { user: { ...TEST_AUTH_USER }, loading: false } },
-        unit.render(fixture.props),
-      ),
-    )
+    const root = reactRoot
+    flushSync(() => {
+      root.render(
+        createElement(
+          AuthContext.Provider,
+          { value: { user: { ...TEST_AUTH_USER }, loading: false } },
+          unit.render(fixture.props),
+        ),
+      )
+    })
     await flush()
 
     // --- Act ---
@@ -186,7 +194,9 @@ export async function runFixture<P>(
   } finally {
     if (!opts.keepMounted) {
       try {
-        reactRoot?.unmount()
+        flushSync(() => {
+          reactRoot?.unmount()
+        })
       } catch {
         // unmount lỗi không được che kết quả verify
       }
