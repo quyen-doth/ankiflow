@@ -6,7 +6,7 @@ on:
     workflow_dispatch: {}
 
 permissions:
-    contents: write
+    contents: read
     pull-requests: write
 
 concurrency:
@@ -19,72 +19,56 @@ jobs:
         timeout-minutes: 5
 
         steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-
             - name: Create or update release PR
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  REPO: ${{ github.repository }}
-                  REPO_OWNER: ${{ github.repository_owner }}
-                  BASE_BRANCH: main
-                  HEAD_BRANCH: develop
-                  PR_TITLE: "release: develop to main"
-              run: |
-                  set -euo pipefail
+              uses: actions/github-script@v9
+              with:
+                  script: |
+                      const base = 'main';
+                      const head = 'develop';
+                      const title = 'release: develop to main';
+                      const { owner, repo } = context.repo;
 
-                  HEAD_REF="$REPO_OWNER:$HEAD_BRANCH"
+                      const compare = await github.rest.repos.compareCommitsWithBasehead({
+                        owner,
+                        repo,
+                        basehead: `${base}...${head}`,
+                      });
 
-                  run_gh() {
-                    local output
-                    if ! output="$("$@" 2>&1)"; then
-                      echo "$output"
-                      exit 1
-                    fi
-                    echo "$output"
-                  }
+                      if (compare.data.files.length === 0) {
+                        core.info(`No changes between ${head} and ${base}. Skipping release PR.`);
+                        return;
+                      }
 
-                  git fetch origin "$BASE_BRANCH" "$HEAD_BRANCH"
+                      const body = [
+                        `Automated release PR from \`${head}\` into \`${base}\`.`,
+                        '',
+                        `Triggered by commit: ${context.sha}`,
+                        `Workflow run: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${context.runId}`,
+                        '',
+                        'Review CI status before merging.',
+                      ].join('\n');
 
-                  if git diff --quiet "origin/$BASE_BRANCH...origin/$HEAD_BRANCH"; then
-                    echo "No changes between $HEAD_BRANCH and $BASE_BRANCH. Skipping release PR."
-                    exit 0
-                  fi
+                      const { data: openPrs } = await github.rest.pulls.list({
+                        owner,
+                        repo,
+                        state: 'open',
+                        base,
+                        head: `${owner}:${head}`,
+                        per_page: 1,
+                      });
 
-                  existing_pr="$(
-                    gh pr list \
-                      --repo "$REPO" \
-                      --base "$BASE_BRANCH" \
-                      --head "$HEAD_REF" \
-                      --state open \
-                      --json number \
-                      --jq '.[0].number // empty'
-                  )"
+                      if (openPrs.length > 0) {
+                        const number = openPrs[0].number;
+                        core.info(`Release PR #${number} already exists. Skipping creation.`);
+                        return;
+                      }
 
-                  pr_body="$(
-                    cat <<EOF
-                  Automated release PR from \`$HEAD_BRANCH\` into \`$BASE_BRANCH\`.
-
-                  Triggered by commit: $GITHUB_SHA
-                  Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-
-                  Review CI status before merging.
-                  EOF
-                  )"
-
-                  if [ -n "$existing_pr" ]; then
-                    run_gh gh pr edit "$existing_pr" \
-                      --repo "$REPO" \
-                      --title "$PR_TITLE" \
-                      --body "$pr_body"
-                    echo "Updated release PR #$existing_pr."
-                  else
-                    run_gh gh pr create \
-                      --repo "$REPO" \
-                      --base "$BASE_BRANCH" \
-                      --head "$HEAD_REF" \
-                      --title "$PR_TITLE" \
-                      --body "$pr_body"
-                  fi
+                      const { data: created } = await github.rest.pulls.create({
+                        owner,
+                        repo,
+                        base,
+                        head,
+                        title,
+                        body,
+                      });
+                      core.info(`Created release PR #${created.number}.`);
