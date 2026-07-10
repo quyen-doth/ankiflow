@@ -1,0 +1,15 @@
+#!/bin/bash
+# Blocks direct commits on protected branches (docs/CONTRIBUTING.md).
+# Emergency bypass: SKIP_GIT_STANDARDS=1 git commit ...
+[ "$SKIP_GIT_STANDARDS" = "1" ] && exit 0
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "develop" ]; then
+  {
+    echo "✖ pre-commit: '$BRANCH' への直接コミットは禁止です (docs/CONTRIBUTING.md)"
+    echo "  git checkout develop && git pull origin develop && git checkout -b <type>/<slug>"
+  } >&2
+  exit 1
+fi
+
+exit 0

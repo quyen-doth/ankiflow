@@ -1,7 +1,8 @@
 ---
 name: testing
 description: >
-    Test lỗi trong ankiflow. Dùng khi: user đề cập @testing
+    Write and run tests in ankiflow (Vitest unit/verification specs, Playwright E2E).
+    Use when: user mentions @testing, or at Step 5 / Step 6a of the mandatory workflow.
 ---
 
 # Skill: Testing
@@ -56,7 +57,7 @@ AnkiConnect is NOT assumed to be available — mock or skip AnkiConnect-dependen
 
 - Full Create → Preview flow per FormType
 - History page: list, detail view
-- Admin CRUD flows (with `x-api-secret` header set in test config)
+- Admin CRUD flows (sign in as the account whose email matches `ADMIN_EMAIL` — auth is a session cookie, there is no `x-api-secret`)
 - Settings page: toggle states persist after reload
 
 ### What NOT to test

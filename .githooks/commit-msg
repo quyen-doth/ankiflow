@@ -1,0 +1,38 @@
+#!/bin/bash
+# Enforces docs/CONTRIBUTING.md commit rules (Conventional Commits, Japanese subject, no AI co-author).
+# Emergency bypass: SKIP_GIT_STANDARDS=1 git commit ...
+[ "$SKIP_GIT_STANDARDS" = "1" ] && exit 0
+
+MSG_FILE="$1"
+SUBJECT=$(head -n1 "$MSG_FILE")
+
+# Merge / revert / fixup / squash commits are exempt from the format rule
+case "$SUBJECT" in
+  Merge\ *|Revert\ *|fixup!*|squash!*) FORMAT_EXEMPT=1 ;;
+  *) FORMAT_EXEMPT=0 ;;
+esac
+
+if [ "$FORMAT_EXEMPT" -eq 0 ]; then
+  TYPE_RE='^(feat|fix|docs|refactor|chore|test|perf|ci|build|style|revert)(\([a-z0-9-]+\))?!?: .+'
+  if ! printf '%s' "$SUBJECT" | grep -qE "$TYPE_RE"; then
+    {
+      echo "✖ commit-msg: 形式が不正です。'<type>(<scope>)?: 日本語の要約' の形式で書いてください (docs/CONTRIBUTING.md 参照)"
+      echo "  例: feat: エクスポート履歴画面を追加"
+      echo "  type: feat fix docs refactor chore test perf ci build style revert"
+    } >&2
+    exit 1
+  fi
+
+  if [ "$(printf '%s' "$SUBJECT" | LC_ALL=en_US.UTF-8 wc -m | tr -d ' ')" -gt 72 ]; then
+    echo "⚠ commit-msg: 件名が72文字を超えています(推奨: 72文字以内)" >&2
+  fi
+fi
+
+# No AI co-author / AI attribution — applies to ALL commits including merges
+if grep -qiE 'Co-Authored-By:.*(claude|codex|noreply@anthropic\.com|openai)' "$MSG_FILE" \
+   || grep -qiE 'Generated with (Claude|Codex)' "$MSG_FILE"; then
+  echo "✖ commit-msg: AI (Claude/Codex) を co-author やフッターとして追加してはいけません (docs/CONTRIBUTING.md)" >&2
+  exit 1
+fi
+
+exit 0

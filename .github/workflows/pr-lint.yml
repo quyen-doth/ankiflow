@@ -1,0 +1,60 @@
+name: PR Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [develop, main]
+
+jobs:
+  pr-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          TYPE_RE='^(feat|fix|docs|refactor|chore|test|perf|ci|build|style|revert)(\([a-z0-9-]+\))?!?: .+'
+          if ! printf '%s' "$PR_TITLE" | grep -qE "$TYPE_RE"; then
+            echo "::error::PR タイトルが規約違反です。'<type>(<scope>)?: 日本語の要約' 形式にしてください (docs/CONTRIBUTING.md)"
+            exit 1
+          fi
+
+      - name: Validate commit messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          TYPE_RE='^(feat|fix|docs|refactor|chore|test|perf|ci|build|style|revert)(\([a-z0-9-]+\))?!?: .+'
+          FAIL=0
+          while IFS= read -r line; do
+            sha="${line%% *}"
+            subject="${line#* }"
+            case "$subject" in
+              Merge\ *|Revert\ *|fixup!*|squash!*) continue ;;
+            esac
+            if ! printf '%s' "$subject" | grep -qE "$TYPE_RE"; then
+              echo "::error::コミット ${sha:0:8} の形式が不正です: $subject"
+              FAIL=1
+            fi
+          done < <(git log --no-merges --format='%H %s' "$BASE_SHA".."$HEAD_SHA")
+
+          if git log --format='%B' "$BASE_SHA".."$HEAD_SHA" \
+            | grep -qiE 'Co-Authored-By:.*(claude|codex|noreply@anthropic\.com|openai)|Generated with (Claude|Codex)'; then
+            echo "::error::コミットに AI co-author / AI フッターが含まれています (docs/CONTRIBUTING.md)"
+            FAIL=1
+          fi
+          exit $FAIL
+
+      - name: Validate PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" \
+            | grep -qiE 'Co-Authored-By:.*(claude|codex)|Generated with (Claude|Codex)'; then
+            echo "::error::PR 本文に AI attribution が含まれています (docs/CONTRIBUTING.md)"
+            exit 1
+          fi
