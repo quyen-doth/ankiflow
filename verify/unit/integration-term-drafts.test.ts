@@ -108,6 +108,23 @@ describe('POST /api/integrations/term-drafts — auth', () => {
 })
 
 describe('POST /api/integrations/term-drafts — validate body', () => {
+  it('任意の BCP 47 language を canonicalize して保存', async () => {
+    const res = await POST(makeReq({
+      token: 'secret-token-123',
+      body: { source: 'knowledge-hub', items: [{ ...VALID_ITEM, language: 'pt_br' }] },
+    }))
+    expect(res.status).toBe(200)
+    expect(setDocs[0].data.language).toBe('pt-BR')
+  })
+
+  it('無効な language code → 400', async () => {
+    const res = await POST(makeReq({
+      token: 'secret-token-123',
+      body: { source: 'knowledge-hub', items: [{ ...VALID_ITEM, language: 'not a language' }] },
+    }))
+    expect(res.status).toBe(400)
+  })
+
   it('thiếu field bắt buộc (source_url) → 400', async () => {
     const res = await POST(
       makeReq({

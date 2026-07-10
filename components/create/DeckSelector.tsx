@@ -8,7 +8,7 @@ import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { ClearSelectButton } from '@/components/create/ClearSelectButton'
 import { DB_FORM_TYPE_TO_UI } from '@/lib/constants'
 import { verifyAttrs } from '@/verify/core/contract'
-import type { DeckConfig, FormType, LanguageType } from '@/types'
+import type { DeckConfig, FormType, LanguageCode } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
 
@@ -21,7 +21,7 @@ interface DeckSelectorProps {
   onClear?: () => void
   label?: string
   filterFormType?: FormType
-  filterLanguage?: LanguageType
+  filterLanguage?: LanguageCode
 }
 
 export function DeckSelector({ value, onChange, onChangeId, onClear, label = 'Anki Deck', filterFormType, filterLanguage }: DeckSelectorProps) {

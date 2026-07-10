@@ -10,7 +10,8 @@ import { AudioPlayer } from '@/components/preview/AudioPlayer'
 import { CardPreview } from '@/components/preview/CardPreview'
 import { CardList } from '@/components/preview/CardList'
 import { DeckCreatableField } from '@/components/create/DeckCreatableField'
-import type { Entry, LanguageType, CardTemplate } from '@/types'
+import type { Entry, LanguageCode, CardTemplate } from '@/types'
+import { primaryLanguageSubtag } from '@/lib/studyLanguages'
 
 interface CardTypeItem {
   id: string
@@ -76,7 +77,8 @@ export function FlashcardReviewLayout({
   onCardTypesChange,
 }: FlashcardReviewLayoutProps) {
   const reading = entry.hiragana || entry.pinyin || entry.ipa || ''
-  const showHanViet = entry.language === 'zh' || entry.language === 'ja'
+  const languageSubtag = entry.language ? primaryLanguageSubtag(entry.language) : null
+  const showHanViet = languageSubtag === 'zh' || languageSubtag === 'ja'
 
   return (
     <>
@@ -246,7 +248,7 @@ export function FlashcardReviewLayout({
               onClear={onDeckClear}
               label="Target Deck"
               createFormType={entry.form_type ?? ''}
-              createLanguage={entry.language as LanguageType | undefined}
+              createLanguage={entry.language as LanguageCode | undefined}
               fallbackDeckName={entry.anki_deck}
             />
             {entry.anki_deck && (

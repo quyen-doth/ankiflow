@@ -12,6 +12,8 @@ import { useAnkiExport, saveEntryToFirestore } from "@/hooks/useAnkiExport";
 import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useToast } from "@/components/ui/Toast";
+import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
+import { languageDisplayName } from "@/lib/studyLanguages";
 import { ValidationBanner } from "@/components/review/ValidationBanner";
 import { validateCardEntry, type InvalidCard } from "@/lib/cardValidation";
 import { doc, getDoc } from "firebase/firestore";
@@ -20,6 +22,7 @@ import type { Entry } from "@/types";
 
 export default function PreviewPage() {
     const router = useRouter();
+    const { languages } = useStudyLanguages();
 
     const {
         entry,
@@ -202,7 +205,7 @@ export default function PreviewPage() {
                 audioUrl={media.audioUrl}
                 audioLoading={media.audioLoading}
                 onAudioRegenerate={media.generateAudio}
-                audioSubtitle={`Google TTS · ${entry.language || "en"}`}
+                audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
                 selectedDeckId={selectedDeckId}
                 onDeckChange={handleDeckChange}
                 onDeckClear={handleDeckClear}

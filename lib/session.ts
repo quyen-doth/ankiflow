@@ -3,6 +3,8 @@ import { FormType } from '@/types'
 export interface SessionState {
   categoryId?: string
   language?: string
+  /** Ephemeral display name for AI prompts; intentionally not persisted in SESSION_KEYS. */
+  languageName?: string
   deckId?: string
   cardTypeIds?: string[]
   topicIds?: string[]

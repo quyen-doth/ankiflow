@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   englishCardSchema,
+  genericLanguageCardSchema,
   itVocabCardSchema,
   resolveCardSpec,
   toToolInputSchema,
@@ -64,6 +65,26 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
     expect(spec.schema).toBe(englishCardSchema)
     expect(spec.systemPrompt).toContain('英語')
     expect(spec.userMessage).toContain('book')
+  })
+
+  it('英語 variant に対して専用スキーマを選択', () => {
+    const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: 'en-GB', word: 'lift' })
+    expect(spec.schema).toBe(englishCardSchema)
+  })
+
+  it('任意の BCP 47 言語に対して汎用スキーマを選択', () => {
+    const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: 'fr-FR', word: 'bonjour' })
+    expect(spec.schema).toBe(genericLanguageCardSchema)
+    expect(spec.systemPrompt).toContain('French')
+    expect(spec.userMessage).toContain('bonjour')
+  })
+
+  it('無効な language code を汎用 profile に通さない', () => {
+    expect(() => resolveCardSpec({
+      form_type: FormType.LANGUAGE,
+      language: 'not a language',
+      word: 'hello',
+    })).toThrow('Invalid BCP 47 language code')
   })
 
   it('IT スキーマを選択し、topics を user message に含める', () => {

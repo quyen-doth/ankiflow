@@ -8,7 +8,7 @@ import { FieldWrapper } from '@/components/ui/FormField'
 import { CreatableSelect } from './CreatableSelect'
 import { NewDeckModal } from './NewDeckModal'
 import { verifyAttrs } from '@/verify/core/contract'
-import type { DeckConfig, FormType, LanguageType } from '@/types'
+import type { DeckConfig, FormType, LanguageCode } from '@/types'
 import type { CreatedDeck } from '@/lib/create/createDeckCategory'
 
 type DeckRow = Pick<DeckConfig, 'id' | 'display_name' | 'anki_deck_name' | 'form_type' | 'language' | 'sort_order'>
@@ -19,10 +19,10 @@ interface DeckCreatableFieldProps {
   onClear?: () => void
   label?: string
   filterFormType?: FormType
-  filterLanguage?: LanguageType
+  filterLanguage?: LanguageCode
   /** form_type/ngôn ngữ gán cho deck MỚI khi tạo trong trang create. */
   createFormType: FormType | string
-  createLanguage?: LanguageType | null
+  createLanguage?: LanguageCode | null
   /** Tên Anki deck đang gắn vào entry — dùng để hiển thị deck đang chọn khi chưa có deckId. */
   fallbackDeckName?: string
 }

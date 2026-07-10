@@ -30,6 +30,9 @@ const SESSION = JSON.stringify({
 })
 
 const FIRESTORE_SEED = { decks: [], categories: [], card_types: [] }
+const DETECT_JA = {
+  detections: [{ index: 0, code: 'ja', display_name: 'Japanese', confidence: 0.99 }],
+}
 
 function navPushes(): string[] | null {
   const g = globalThis as unknown as {
@@ -67,7 +70,10 @@ registerUnit<Record<string, never>>({
         firestore: FIRESTORE_SEED,
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
-        fetch: [{ match: '/api/generate', response: { status: 200, json: { content: GENERATED } } }],
+        fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_JA } },
+          { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
+        ],
       },
       act: async ctx => {
         await ctx.wait(50)
@@ -86,6 +92,7 @@ registerUnit<Record<string, never>>({
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_JA } },
           { match: '/api/generate', response: { status: 500, json: { error: 'Gemini down' } } },
         ],
       },

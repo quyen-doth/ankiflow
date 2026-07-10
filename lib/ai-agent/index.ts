@@ -1,7 +1,13 @@
 import { ClaudeAgentProvider } from './claude-agent-provider'
 import type { IAIAgentProvider } from './types'
 
-export type { GenerateCardInput, IAIAgentProvider } from './types'
+export type {
+  DetectLanguagesInput,
+  GenerateCardInput,
+  IAIAgentProvider,
+  LanguageDetection,
+  LanguageDetectionCandidate,
+} from './types'
 
 /** カードコンテンツ生成用のデフォルト Claude モデル。 */
 export const DEFAULT_AI_MODEL = 'claude-haiku-4-5'

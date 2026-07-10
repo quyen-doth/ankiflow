@@ -4,7 +4,8 @@
  * データは localStorage に保存され、Preview page が読み込んだ後に削除される。
  */
 
-import { FormType, LanguageType } from '@/types'
+import { FormType } from '@/types'
+import type { LanguageCode } from '@/types'
 
 const STORAGE_KEY = 'ankiflow_pending_result'
 
@@ -15,7 +16,7 @@ export interface PendingEntry {
 
   /** ユーザーセッションからのメタデータ */
   formType: FormType | string
-  language?: LanguageType | null
+  language?: LanguageCode | null
   deckId?: string
   categoryId?: string
   cardTypeIds: string[]

@@ -9,6 +9,10 @@ describe('suggestAnkiDeckName', () => {
     expect(suggestAnkiDeckName('N2', FormType.LANGUAGE, LanguageType.JAPANESE)).toBe('Japanese::N2')
   })
 
+  it('ユーザーが設定した表示名をプレフィックスに使用', () => {
+    expect(suggestAnkiDeckName('A1', FormType.LANGUAGE, 'fr', 'Français')).toBe('Français::A1')
+  })
+
   it('Language で言語がない → 名前をそのまま維持', () => {
     expect(suggestAnkiDeckName('Misc', FormType.LANGUAGE, null)).toBe('Misc')
   })

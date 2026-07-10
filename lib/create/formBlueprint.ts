@@ -1,4 +1,4 @@
-import { FormType, LanguageType } from '@/types'
+import { FormType } from '@/types'
 import type { ContentType } from '@/types'
 import type { SessionState } from '@/lib/session'
 
@@ -76,7 +76,8 @@ const LANGUAGE_BLUEPRINT: CardFormBlueprint = {
     payload: (v, s) => ({
       word: v.word,
       form_type: FormType.LANGUAGE,
-      language: (s.language as LanguageType) || LanguageType.ENGLISH,
+      language: s.language,
+      language_name: s.languageName,
       note: v.note || undefined,
     }),
   },

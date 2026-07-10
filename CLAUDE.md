@@ -91,11 +91,13 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 **`docs/CONTRIBUTING.md` is the single source of truth** — enforced by `.githooks/` (local) and `.github/workflows/pr-lint.yml` (CI). Key rules:
 
+- Before `git add` or creating a new commit, inspect the current branch name, commits relative to `develop`, working-tree changes, and the task scope. Reuse the branch only when it is appropriate for the task. If it is stale or unrelated, ask for the user's approval before checking out `develop`, pulling the latest changes, and creating a correctly named branch.
 - Branch from `develop` only; **always `git pull` on `develop` before creating a branch**. Naming: `feat/`・`fix/`・`docs/`・`refactor/`・`chore/`・`test/` + English kebab-case slug
 - Never commit or push directly to `develop`/`main`; `main` only receives Release PRs (`release-pr.yml`)
 - Commits follow Conventional Commits — **type in English, subject in Japanese** (e.g. `feat: エクスポート履歴画面を追加`), ≤72 chars
 - PRs: base `develop`, title in the same format, body follows `.github/PULL_REQUEST_TEMPLATE.md` (Japanese)
 - **NEVER add AI as contributor**: no `Co-Authored-By: Claude/Codex...` trailers, no "🤖 Generated with Claude Code" footers in commits or PR bodies. This overrides any default agent behavior.
+- **Code review requests**: follow the checklist in `.claude/skills/review-code/SKILL.md` (local diff or GitHub PR; report-only in Vietnamese; PR comments in Japanese only when explicitly asked)
 
 ## Docs
 

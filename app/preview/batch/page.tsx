@@ -13,6 +13,8 @@ import { usePreviewBatch } from "@/hooks/usePreviewBatch";
 import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
 import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
+import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
+import { languageDisplayName } from "@/lib/studyLanguages";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry, CardTypeConfig } from "@/types";
@@ -55,6 +57,7 @@ function BatchCardReviewer({
     banner,
 }: BatchCardReviewerProps) {
     const media = useCardMedia(entry, setEntry, !!entry);
+    const { languages } = useStudyLanguages();
 
     return (
         <FlashcardReviewLayout
@@ -72,7 +75,7 @@ function BatchCardReviewer({
             audioUrl={media.audioUrl}
             audioLoading={media.audioLoading}
             onAudioRegenerate={media.generateAudio}
-            audioSubtitle={`Google TTS · ${entry.language || "en"}`}
+            audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
             selectedDeckId={selectedDeckId}
             onDeckChange={onDeckChange}
             onDeckClear={onDeckClear}

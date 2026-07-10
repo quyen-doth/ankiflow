@@ -10,9 +10,11 @@ interface ToggleProps {
   disabled?: boolean
   /** Render only the row (label + switch) without the default boxed container. */
   bare?: boolean
+  /** Keep the label for assistive tech only — no visible text next to the switch. */
+  hideLabel?: boolean
 }
 
-export function Toggle({ checked, onChange, label, description, disabled, bare }: ToggleProps) {
+export function Toggle({ checked, onChange, label, description, disabled, bare, hideLabel }: ToggleProps) {
   return (
     <div
       className={
@@ -22,10 +24,12 @@ export function Toggle({ checked, onChange, label, description, disabled, bare }
       }
       {...verifyAttrs({ unit: 'Toggle', checked, disabled: !!disabled })}
     >
-      <div className="flex-1 mr-4">
-        <p className={bare ? 'text-[14px] font-bold text-ink' : 'text-sm font-semibold text-ink'}>{label}</p>
-        {description && <p className={bare ? 'text-[12.5px] text-slate-400 mt-0.5' : 'text-secondary text-slate-400 mt-0.5'}>{description}</p>}
-      </div>
+      {!hideLabel && (
+        <div className="flex-1 mr-4">
+          <p className={bare ? 'text-[14px] font-bold text-ink' : 'text-sm font-semibold text-ink'}>{label}</p>
+          {description && <p className={bare ? 'text-[12.5px] text-slate-400 mt-0.5' : 'text-secondary text-slate-400 mt-0.5'}>{description}</p>}
+        </div>
+      )}
       <button
         role="switch"
         aria-checked={checked}

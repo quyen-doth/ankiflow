@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { TriangleAlert, X } from 'lucide-react'
 import { overlayFade, scaleModal } from '@/lib/motion'
 import { verifyAttrs } from '@/verify/core/contract'
+import { primaryLanguageSubtag } from '@/lib/studyLanguages'
 
 interface DuplicateEntry {
   id: string
@@ -17,16 +18,14 @@ interface DuplicateModalProps {
   onClose: () => void
   onProceed: () => void
   word: string
-  /** Language code of the current flow (en/ja/zh); omit for non-language flows. */
+  /** BCP 47 language code of the current flow; omit for non-language flows. */
   language?: string
   duplicates: DuplicateEntry[]
 }
 
-const LANG_LABELS: Record<string, string> = { en: 'EN', ja: 'JA', zh: 'ZH' }
-
 function langBadge(language?: string): string | null {
   if (!language) return null
-  return LANG_LABELS[language] || language.toUpperCase().slice(0, 2)
+  return primaryLanguageSubtag(language)?.toUpperCase() ?? language.toUpperCase()
 }
 
 export function DuplicateModal({

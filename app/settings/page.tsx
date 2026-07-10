@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -23,10 +23,12 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
+import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
+import { mergeStudyLanguageEdits, normalizeStudyLanguages, validateStudyLanguages } from '@/lib/studyLanguages';
 import type { Settings } from '@/types';
 
 /**
@@ -119,6 +121,9 @@ export default function SettingsPage() {
     const [ankiConnected, setAnkiConnected] = useState(false);
     const [checkingAnki, setCheckingAnki] = useState(true);
     const [syncingSRS, setSyncingSRS] = useState(false);
+    // Danh sách code study_languages tại thời điểm load trang — mốc để phát hiện
+    // ngôn ngữ được thêm từ luồng khác (Create flow) trong lúc trang đang mở.
+    const baselineLanguageCodesRef = useRef<string[]>([]);
     const toast = useToast();
 
     const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
@@ -132,7 +137,12 @@ export default function SettingsPage() {
                 // đọc settings/global ở đây. KHÔNG đọc settings/default (secrets của admin).
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
-                setSettings({ ...prefs } as Settings);
+                const studyLanguages = normalizeStudyLanguages(prefs.study_languages);
+                baselineLanguageCodesRef.current = studyLanguages.map((language) => language.code);
+                setSettings({
+                    ...prefs,
+                    study_languages: studyLanguages,
+                } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
@@ -215,8 +225,25 @@ export default function SettingsPage() {
 
     const handleSave = async () => {
         if (!settings || !user) return;
+        const languageErrors = validateStudyLanguages(settings.study_languages ?? []);
+        if (languageErrors.length > 0) {
+            toast.error(languageErrors[0]);
+            return;
+        }
         setSaving(true);
         try {
+            // Đọc lại bản mới nhất để không ghi đè mất ngôn ngữ được thêm từ luồng khác
+            // (ví dụ DetectedLanguageModal ở Create flow) trong lúc trang này đang mở.
+            const freshSnap = await getDoc(doc(db, 'settings', user.uid));
+            const serverLanguages = normalizeStudyLanguages(
+                freshSnap.exists() ? freshSnap.data()?.study_languages : undefined,
+            );
+            const mergedLanguages = normalizeStudyLanguages(mergeStudyLanguageEdits(
+                baselineLanguageCodesRef.current,
+                settings.study_languages ?? [],
+                serverLanguages,
+            ));
+
             // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo).
             const prefsUpdate = {
                 unsplash_enabled: settings.unsplash_enabled,
@@ -225,12 +252,15 @@ export default function SettingsPage() {
                 auto_image: settings.auto_image,
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
+                study_languages: mergedLanguages,
             };
             await setDoc(
                 doc(db, 'settings', user.uid),
                 { ...prefsUpdate, updated_at: serverTimestamp() },
                 { merge: true },
             );
+            baselineLanguageCodesRef.current = mergedLanguages.map((language) => language.code);
+            updateField('study_languages', mergedLanguages);
 
             resetAnkiClientCache();
             setSavedAt(Date.now());
@@ -316,6 +346,14 @@ export default function SettingsPage() {
                 <Card>
                     <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
                     <ResyncCards ankiConnected={ankiConnected} />
+                </Card>
+
+                {/* Per-user study languages */}
+                <Card>
+                    <StudyLanguageSettings
+                        languages={settings.study_languages ?? []}
+                        onChange={(languages) => updateField('study_languages', languages)}
+                    />
                 </Card>
 
                 {/* Integrations */}
