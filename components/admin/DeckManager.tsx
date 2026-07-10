@@ -28,7 +28,7 @@ import { verifyAttrs } from '@/verify/core/contract';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureDeck, renameDeck, deleteDeckWithCleanup, setDeckSuspended, syncAllDecks } from '@/lib/flashcard-service/client-ops';
 import { FormType, LanguageType } from '@/types';
-import type { DeckConfig } from '@/types';
+import type { DeckConfig, LanguageCode } from '@/types';
 
 /**
  * Đồng bộ deck với Anki client-side (browser → AnkiConnect của user); throw nếu Anki offline / lỗi.
@@ -63,7 +63,7 @@ const FORM_TYPE_LABELS: Record<FormType, string> = {
     [FormType.GENERAL]: 'General',
 };
 
-const LANGUAGE_LABELS: Record<LanguageType, string> = {
+const LANGUAGE_LABELS: Record<string, string> = {
     [LanguageType.ENGLISH]: 'English',
     [LanguageType.JAPANESE]: 'Japanese',
     [LanguageType.CHINESE]: 'Chinese',
@@ -75,7 +75,7 @@ interface DeckDraft {
     anki_deck_name: string;
     display_name: string;
     form_type: FormType;
-    language: LanguageType | typeof NO_LANGUAGE;
+    language: LanguageCode | typeof NO_LANGUAGE;
     is_active: boolean;
     sort_order: number;
 }
@@ -112,7 +112,7 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
 
     const [search, setSearch] = useState('');
     const [filterFormType, setFilterFormType] = useState<FormType | ''>('');
-    const [filterLanguage, setFilterLanguage] = useState<LanguageType | ''>('');
+    const [filterLanguage, setFilterLanguage] = useState<LanguageCode | ''>('');
     const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('');
 
     const filteredDecks = useMemo(() => {

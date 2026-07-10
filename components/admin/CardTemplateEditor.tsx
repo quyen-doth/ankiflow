@@ -3,11 +3,11 @@
 import { Reorder } from 'framer-motion'
 import { GripVertical, X, ChevronDown, Plus } from 'lucide-react'
 import { LanguageType } from '@/types'
-import type { CardFieldSource, CardTemplate, Entry } from '@/types'
+import type { CardFieldSource, CardTemplate, Entry, LanguageCode } from '@/types'
 import { renderSide, DEFAULT_TEMPLATES, FIELD_LABELS, ALL_FIELD_SOURCES } from '@/lib/anki/renderCard'
 import { buildCardHtml, CardIframe } from '@/components/preview/CardHtmlPreview'
 
-const SAMPLE_ENTRIES: Record<LanguageType | 'default', Partial<Entry>> = {
+const SAMPLE_ENTRIES: Record<string, Partial<Entry>> = {
   default: {
     word: 'ubiquitous',
     ipa: '/juːˈbɪk.wɪ.təs/',
@@ -166,7 +166,7 @@ export function CardStructureEditor({ code, template, onChange, showErrors }: Ca
 
 interface CardPreviewProps {
   template: CardTemplate
-  language?: LanguageType | null
+  language?: LanguageCode | null
 }
 
 export function CardPreview({ template, language }: CardPreviewProps) {

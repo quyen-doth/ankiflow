@@ -20,7 +20,7 @@ import { useToast } from '@/components/ui/Toast'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType, LanguageType } from '@/types'
-import type { CardTypeConfig, CardTemplate } from '@/types'
+import type { CardTypeConfig, CardTemplate, LanguageCode } from '@/types'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
 import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
 
@@ -39,7 +39,7 @@ const FORM_TYPE_LABELS: Record<FormType, string> = {
   [FormType.GENERAL]: 'General',
 }
 
-const LANGUAGE_LABELS: Record<LanguageType, string> = {
+const LANGUAGE_LABELS: Record<string, string> = {
   [LanguageType.ENGLISH]: 'English',
   [LanguageType.JAPANESE]: 'Japanese',
   [LanguageType.CHINESE]: 'Chinese',
@@ -52,7 +52,7 @@ interface CardTypeDraft {
   name: string
   description: string
   form_type: FormType
-  language: LanguageType | typeof NO_LANGUAGE
+  language: LanguageCode | typeof NO_LANGUAGE
   is_default: boolean
   is_active: boolean
   sort_order: number
@@ -96,7 +96,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
 
   const [search, setSearch] = useState('')
   const [filterFormType, setFilterFormType] = useState<FormType | ''>('')
-  const [filterLanguage, setFilterLanguage] = useState<LanguageType | ''>('')
+  const [filterLanguage, setFilterLanguage] = useState<LanguageCode | ''>('')
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {

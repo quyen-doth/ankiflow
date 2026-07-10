@@ -23,10 +23,12 @@ import {
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
+import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
+import { normalizeStudyLanguages, validateStudyLanguages } from '@/lib/studyLanguages';
 import type { Settings } from '@/types';
 
 /**
@@ -132,7 +134,10 @@ export default function SettingsPage() {
                 // đọc settings/global ở đây. KHÔNG đọc settings/default (secrets của admin).
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
-                setSettings({ ...prefs } as Settings);
+                setSettings({
+                    ...prefs,
+                    study_languages: normalizeStudyLanguages(prefs.study_languages),
+                } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
@@ -215,6 +220,11 @@ export default function SettingsPage() {
 
     const handleSave = async () => {
         if (!settings || !user) return;
+        const languageErrors = validateStudyLanguages(settings.study_languages ?? []);
+        if (languageErrors.length > 0) {
+            toast.error(languageErrors[0]);
+            return;
+        }
         setSaving(true);
         try {
             // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo).
@@ -225,6 +235,7 @@ export default function SettingsPage() {
                 auto_image: settings.auto_image,
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
+                study_languages: normalizeStudyLanguages(settings.study_languages),
             };
             await setDoc(
                 doc(db, 'settings', user.uid),
@@ -316,6 +327,14 @@ export default function SettingsPage() {
                 <Card>
                     <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
                     <ResyncCards ankiConnected={ankiConnected} />
+                </Card>
+
+                {/* Per-user study languages */}
+                <Card>
+                    <StudyLanguageSettings
+                        languages={settings.study_languages ?? []}
+                        onChange={(languages) => updateField('study_languages', languages)}
+                    />
                 </Card>
 
                 {/* Integrations */}
