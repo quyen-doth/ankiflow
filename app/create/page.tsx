@@ -48,9 +48,9 @@ interface LoadingStep {
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-    { label: 'Calling Claude AI', status: 'active' },
-    { label: 'Generating audio (TTS)', status: 'pending' },
-    { label: 'Finding images (Unsplash)', status: 'pending' },
+    { label: 'Detecting language', status: 'active' },
+    { label: 'Checking duplicates', status: 'pending' },
+    { label: 'Calling Claude AI', status: 'pending' },
 ];
 
 const FORM_ID = 'create-form';
@@ -313,7 +313,7 @@ function CreateContent() {
                 open={isGenerating}
                 title={batchMode ? 'Generating Cards' : 'Generating Cognitive Asset'}
                 steps={
-                    batchMode
+                    batchMode && batchProgress.total > 0
                         ? [
                               {
                                   label: `Generating cards ${batchProgress.done}/${batchProgress.total || batchCount}`,
@@ -323,7 +323,7 @@ function CreateContent() {
                         : loadingSteps
                 }
                 progress={
-                    batchMode
+                    batchMode && batchProgress.total > 0
                         ? Math.round((batchProgress.done / Math.max(1, batchProgress.total || batchCount)) * 100)
                         : progress
                 }
