@@ -4,6 +4,7 @@ import {
   addOrEnableStudyLanguage,
   canonicalizeLanguageCode,
   languageDisplayName,
+  mergeStudyLanguageEdits,
   normalizeStudyLanguages,
   resolveStudyLanguage,
   validateStudyLanguages,
@@ -78,5 +79,49 @@ describe('studyLanguages — validation and updates', () => {
   it('uses configured labels and falls back to Intl.DisplayNames', () => {
     expect(languageDisplayName('en-US', languages)).toBe('American English')
     expect(languageDisplayName('ko', languages)).toBe('Korean')
+  })
+})
+
+describe('studyLanguages — merge stale Settings drafts', () => {
+  const baseline = ['en', 'fr']
+  const draft: StudyLanguage[] = [
+    { code: 'fr', display_name: 'Français', enabled: true, sort_order: 0 },
+    { code: 'en', display_name: 'English', enabled: false, sort_order: 1 },
+  ]
+
+  it('preserves languages added elsewhere after the baseline was captured', () => {
+    const server: StudyLanguage[] = [
+      { code: 'en', display_name: 'English', enabled: true, sort_order: 0 },
+      { code: 'fr', display_name: 'French', enabled: true, sort_order: 1 },
+      { code: 'ko', display_name: 'Korean', enabled: true, sort_order: 2 },
+    ]
+    expect(mergeStudyLanguageEdits(baseline, draft, server)).toEqual([
+      { code: 'fr', display_name: 'Français', enabled: true, sort_order: 0 },
+      { code: 'en', display_name: 'English', enabled: false, sort_order: 1 },
+      { code: 'ko', display_name: 'Korean', enabled: true, sort_order: 2 },
+    ])
+  })
+
+  it('keeps deliberate draft deletions of baseline languages', () => {
+    const server: StudyLanguage[] = [
+      { code: 'en', display_name: 'English', enabled: true, sort_order: 0 },
+      { code: 'fr', display_name: 'French', enabled: true, sort_order: 1 },
+    ]
+    const withoutFrench = draft.filter(language => language.code !== 'fr')
+    expect(mergeStudyLanguageEdits(baseline, withoutFrench, server)).toEqual([
+      { code: 'en', display_name: 'English', enabled: false, sort_order: 0 },
+    ])
+  })
+
+  it('matches codes case-insensitively via canonicalization', () => {
+    const server: StudyLanguage[] = [
+      { code: 'pt_br', display_name: 'Português', enabled: true, sort_order: 0 },
+    ]
+    const draftWithVariant: StudyLanguage[] = [
+      { code: 'pt-BR', display_name: 'Portuguese (BR)', enabled: true, sort_order: 0 },
+    ]
+    expect(mergeStudyLanguageEdits(['pt-br'], draftWithVariant, server)).toEqual([
+      { code: 'pt-BR', display_name: 'Portuguese (BR)', enabled: true, sort_order: 0 },
+    ])
   })
 })

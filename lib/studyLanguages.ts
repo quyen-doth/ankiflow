@@ -145,6 +145,30 @@ export function languageDisplayName(code: string, languages: StudyLanguage[]): s
   return configured?.display_name ?? inferLanguageDisplayName(code)
 }
 
+function languageKey(code: string): string {
+  return canonicalizeLanguageCode(code)?.toLowerCase() ?? code.trim().toLowerCase()
+}
+
+/**
+ * Reconcile a stale Settings draft with the latest server list before saving.
+ * The draft wins for every code it knew about (rename/enable/disable/reorder/delete),
+ * but languages that appeared on the server AFTER the draft's baseline was captured
+ * (e.g. added from the Create flow in another tab) are preserved and appended.
+ */
+export function mergeStudyLanguageEdits(
+  baselineCodes: readonly string[],
+  draft: StudyLanguage[],
+  server: StudyLanguage[],
+): StudyLanguage[] {
+  const baseline = new Set(baselineCodes.map(languageKey))
+  const drafted = new Set(draft.map(language => languageKey(language.code)))
+  const preserved = server.filter(language => {
+    const key = languageKey(language.code)
+    return !baseline.has(key) && !drafted.has(key)
+  })
+  return [...draft, ...preserved].map((language, index) => ({ ...language, sort_order: index }))
+}
+
 /** Add a new language or re-enable an existing exact tag without overwriting its custom name. */
 export function addOrEnableStudyLanguage(
   languages: StudyLanguage[],
