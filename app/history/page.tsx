@@ -64,8 +64,11 @@ export default function HistoryPage() {
   const unsyncedCount = entries.filter(e => e.status === 'reviewed').length
 
   const languageFilters = useMemo(() => {
+    // Chip = ngôn ngữ đang enabled ∪ ngôn ngữ có entry thật — ngôn ngữ disabled
+    // không có dữ liệu thì không chiếm chỗ trên thanh filter.
     const codes = new Set<string>()
     languages.forEach(language => {
+      if (!language.enabled) return
       const code = canonicalizeLanguageCode(language.code)
       if (code) codes.add(code)
     })
