@@ -58,7 +58,8 @@ export function useCardMedia(
     if (!effectiveTts) return
     const text = entry.word || entry.term || entry.title
     if (!text) return
-    const language = entry.language || (entry.form_type === FormType.IT ? 'en' : null)
+    // Language cards need an explicit language; IT/General content falls back to English audio.
+    const language = entry.language || (entry.form_type === FormType.LANGUAGE ? null : 'en')
     if (!language) return
     setAudioLoading(true)
     try {
