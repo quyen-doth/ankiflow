@@ -195,7 +195,7 @@ export function CardForm({
             // Người dùng hủy giữa chừng → giữ nguyên dữ liệu để chỉnh sửa, không báo lỗi.
             if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
                 setError(null);
-                toast.info("Đã hủy tạo thẻ");
+                toast.info("Card generation cancelled");
                 onGenerateEnd?.();
                 return;
             }
@@ -236,7 +236,7 @@ export function CardForm({
 
             // Người dùng hủy giữa chừng → giữ nguyên danh sách item để chỉnh sửa.
             if (controller.signal.aborted) {
-                toast.info("Đã hủy tạo thẻ");
+                toast.info("Card generation cancelled");
                 onGenerateEnd?.();
                 return;
             }
@@ -267,7 +267,7 @@ export function CardForm({
             router.push("/preview/batch");
         } catch (err) {
             if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
-                toast.info("Đã hủy tạo thẻ");
+                toast.info("Card generation cancelled");
                 onGenerateEnd?.();
                 return;
             }
