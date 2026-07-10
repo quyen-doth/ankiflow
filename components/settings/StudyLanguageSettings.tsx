@@ -26,6 +26,7 @@ function withSortOrder(languages: StudyLanguage[]): StudyLanguage[] {
 
 export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSettingsProps) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null)
   const [code, setCode] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [nameEdited, setNameEdited] = useState(false)
@@ -49,6 +50,13 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
 
   const removeLanguage = (index: number) => {
     onChange(withSortOrder(languages.filter((_, itemIndex) => itemIndex !== index)))
+  }
+
+  const removeTarget = confirmRemoveIndex !== null ? languages[confirmRemoveIndex] ?? null : null
+
+  const handleConfirmRemove = () => {
+    if (confirmRemoveIndex !== null) removeLanguage(confirmRemoveIndex)
+    setConfirmRemoveIndex(null)
   }
 
   const closeModal = () => {
@@ -156,7 +164,7 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
                     aria-label={`Remove ${language.display_name}`}
                     title={cannotRemove ? 'Keep at least one study language enabled.' : undefined}
                     disabled={cannotRemove}
-                    onClick={() => removeLanguage(index)}
+                    onClick={() => setConfirmRemoveIndex(index)}
                     className="w-8 h-8 inline-flex items-center justify-center rounded-[7px] text-slate-400 hover:text-danger hover:bg-danger-bg disabled:opacity-30 disabled:pointer-events-none"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -203,6 +211,20 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
             <Button variant="ghost" onClick={closeModal}>Cancel</Button>
             <Button variant="primary" onClick={handleAdd}>Add language</Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={removeTarget !== null}
+        onClose={() => setConfirmRemoveIndex(null)}
+        onConfirm={handleConfirmRemove}
+        title={`Remove ${removeTarget?.display_name || removeTarget?.code || 'language'}?`}
+        description="Existing cards keep their language code; this only removes it from your Create form choices."
+        size="sm"
+      >
+        <div className="flex justify-end gap-2 mt-1">
+          <Button variant="ghost" onClick={() => setConfirmRemoveIndex(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleConfirmRemove}>Remove</Button>
         </div>
       </Modal>
     </div>

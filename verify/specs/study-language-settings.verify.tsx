@@ -85,6 +85,18 @@ registerUnit<StudyLanguageSettingsProps>({
       },
     },
     {
+      id: 'act-remove-confirm',
+      description: 'Act: xóa French phải qua dialog xác nhận mới chạy callback.',
+      props: { languages: LANGUAGES, onChange: recordChange },
+      act: async ctx => {
+        resetSpy()
+        await ctx.click('button[aria-label="Remove French"]')
+        await ctx.wait(16)
+        clickButton(ctx.root, 'Remove')
+        await ctx.wait(16)
+      },
+    },
+    {
       id: 'probe-last-enabled',
       probe: true,
       description: 'Probe: ngôn ngữ enabled cuối cùng không thể tắt hoặc xóa.',
@@ -134,6 +146,15 @@ registerUnit<StudyLanguageSettingsProps>({
         const added = changeSpy.lastValue?.at(-1)
         return (added?.code === 'ko' && added.display_name === 'Korean') || `added=${JSON.stringify(added)}`
       },
+    },
+    {
+      id: 'remove-requires-confirm',
+      description: 'Remove chỉ callback một lần sau khi xác nhận, French bị loại.',
+      onlyFixtures: ['act-remove-confirm'],
+      check: () => (
+        changeSpy.count === 1
+        && changeSpy.lastValue?.map(language => language.code).join(',') === 'en'
+      ) || `count=${changeSpy.count}, value=${JSON.stringify(changeSpy.lastValue)}`,
     },
     {
       id: 'last-enabled-protected',
