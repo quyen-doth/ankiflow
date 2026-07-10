@@ -126,6 +126,7 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
               <div className="flex items-center justify-between sm:justify-end gap-2">
                 <Toggle
                   bare
+                  hideLabel
                   label={`${language.display_name || language.code} enabled`}
                   checked={language.enabled}
                   disabled={cannotDisable}

@@ -103,10 +103,13 @@ registerUnit<StudyLanguageSettingsProps>({
     {
       id: 'renders-configured-languages',
       description: 'Tên và mã của mọi language đều hiển thị.',
-      check: ({ root, props }) => props.languages.every(language => (
-        (root.textContent ?? '').includes(language.display_name)
-        && (root.textContent ?? '').includes(language.code)
-      )) || 'thiếu tên hoặc mã language',
+      check: ({ root, props }) => props.languages.every(language => {
+        const nameInput = root.querySelector<HTMLInputElement>(
+          `input[aria-label="Display name for ${language.code}"]`,
+        )
+        return nameInput?.value === language.display_name
+          && (root.textContent ?? '').includes(language.code)
+      }) || 'thiếu tên hoặc mã language',
     },
     {
       id: 'reorder-callback',
