@@ -315,10 +315,14 @@ export function CardForm({
     const detectAndContinue = async (items: string[], batch: boolean) => {
         setError(null);
         setDetectingLanguage(true);
+        const controller = new AbortController();
+        abortRef.current = controller;
+        registerCancel?.(() => controller.abort());
         try {
             const detections = await detectItemLanguages(
                 items,
                 languages.map(item => ({ code: item.code, display_name: item.display_name })),
+                controller.signal,
             );
             const allConfigured = languages.map(item => ({ ...item, enabled: true }));
             const resolvedDetections = detections.map(detection => {
@@ -360,6 +364,11 @@ export function CardForm({
                 items,
             });
         } catch (detectionError) {
+            // Người dùng hủy trong pha detect → không rơi xuống fallback ngôn ngữ đã chọn.
+            if (controller.signal.aborted || (detectionError instanceof Error && detectionError.name === "AbortError")) {
+                toast.info("Card generation cancelled");
+                return;
+            }
             const selectedFallback = storedLanguage
                 ? resolveStudyLanguage(storedLanguage, languages, storedLanguage)
                 : null;
@@ -603,7 +612,16 @@ export function CardForm({
                     blueprint.coreFields.map(renderCoreField)
                 )}
                 {detectingLanguage && (
-                    <p className="text-[12.5px] text-primary mt-3" role="status">Detecting language…</p>
+                    <div className="flex items-center gap-3 mt-3">
+                        <p className="text-[12.5px] text-primary" role="status">Detecting language…</p>
+                        <button
+                            type="button"
+                            onClick={() => abortRef.current?.abort()}
+                            className="text-[12.5px] text-slate-500 underline underline-offset-2 hover:text-ink"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 )}
                 <ErrorMessage message={error} />
             </div>
