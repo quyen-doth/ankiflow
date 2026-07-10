@@ -1,6 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { resolveCardSpec, type CardSpec } from './card-schemas'
-import type { GenerateCardInput, IAIAgentProvider } from './types'
+import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
+import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
+import type {
+  DetectLanguagesInput,
+  GenerateCardInput,
+  IAIAgentProvider,
+  LanguageDetection,
+} from './types'
 
 // Lazy singleton client — import 時の初期化を回避 (key がない場合の test/build でも安全)。
 let client: Anthropic | null = null
@@ -41,6 +48,44 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       if (retries > 0) {
         console.warn(`Claude generation failed, retrying... (${retries} left)`)
         return this.generateCard(input, retries - 1)
+      }
+      throw error
+    }
+  }
+
+  async detectLanguages(input: DetectLanguagesInput, retries = 2): Promise<LanguageDetection[]> {
+    const spec = buildLanguageDetectionSpec(input)
+    try {
+      const raw = await this.runForced(spec)
+      const parsed = languageDetectionResultSchema.parse(raw)
+      if (parsed.detections.length !== input.items.length) {
+        throw new Error('Language detector returned an incomplete result')
+      }
+
+      const byIndex = new Map(parsed.detections.map(detection => [detection.index, detection]))
+      if (byIndex.size !== input.items.length) {
+        throw new Error('Language detector returned duplicate indexes')
+      }
+
+      return input.items.map((_, index) => {
+        const detection = byIndex.get(index)
+        if (!detection) throw new Error(`Language detector omitted item ${index}`)
+        const code = canonicalizeLanguageCode(detection.code)
+        if (!code) throw new Error(`Language detector returned invalid BCP 47 code: ${detection.code}`)
+        const configured = input.candidateLanguages.find(candidate => (
+          canonicalizeLanguageCode(candidate.code) === code
+        ))
+        return {
+          index,
+          code,
+          display_name: configured?.display_name ?? inferLanguageDisplayName(code),
+          confidence: detection.confidence,
+        }
+      })
+    } catch (error) {
+      if (retries > 0) {
+        console.warn(`Claude language detection failed, retrying... (${retries} left)`)
+        return this.detectLanguages(input, retries - 1)
       }
       throw error
     }

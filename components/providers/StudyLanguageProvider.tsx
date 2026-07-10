@@ -28,7 +28,7 @@ const DEFAULT_LANGUAGES = DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language
 const StudyLanguageContext = createContext<StudyLanguageContextValue>({
   languages: DEFAULT_LANGUAGES,
   enabledLanguages: DEFAULT_LANGUAGES,
-  loading: true,
+  loading: false,
   saveLanguages: async () => {
     throw new Error('StudyLanguageProvider is not mounted')
   },

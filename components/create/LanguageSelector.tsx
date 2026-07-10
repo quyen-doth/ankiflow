@@ -2,17 +2,24 @@
 
 import { Select, FieldWrapper } from '@/components/ui/FormField'
 import { ClearSelectButton } from '@/components/create/ClearSelectButton'
-import { LANGUAGE_OPTIONS } from '@/lib/constants'
+import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages'
 import { verifyAttrs } from '@/verify/core/contract'
-import type { LanguageType } from '@/types'
+import type { LanguageCode, StudyLanguage } from '@/types'
 
 interface LanguageSelectorProps {
-  value: LanguageType | ''
-  onChange: (value: LanguageType) => void
+  value: LanguageCode | ''
+  languages?: StudyLanguage[]
+  onChange: (value: LanguageCode) => void
   onClear?: () => void
 }
 
-export function LanguageSelector({ value, onChange, onClear }: LanguageSelectorProps) {
+export function LanguageSelector({
+  value,
+  languages = DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language })),
+  onChange,
+  onClear,
+}: LanguageSelectorProps) {
+  const enabledLanguages = languages.filter(language => language.enabled)
   return (
     <FieldWrapper
       label="Language"
@@ -23,17 +30,17 @@ export function LanguageSelector({ value, onChange, onClear }: LanguageSelectorP
         <Select
           aria-label="Language"
           value={value}
-          onChange={(e) => onChange(e.target.value as LanguageType)}
+          onChange={(e) => onChange(e.target.value)}
           className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
         >
           <option value="" disabled>Select language...</option>
-          {LANGUAGE_OPTIONS.map(lang => (
-            <option key={lang.id} value={lang.id}>
-              {lang.flag ? `${lang.flag} ` : ''}{lang.name}
+          {enabledLanguages.map(lang => (
+            <option key={lang.code} value={lang.code}>
+              {lang.display_name}
             </option>
           ))}
         </Select>
-        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Xóa ngôn ngữ đã chọn" />
+        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Clear selected language" />
       </div>
     </FieldWrapper>
   )

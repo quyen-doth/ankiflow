@@ -29,6 +29,10 @@ function toolUseResponse(input: unknown) {
   return { content: [{ type: 'tool_use', name: 'submit_card', input }], stop_reason: 'tool_use' }
 }
 
+function detectionToolResponse(input: unknown) {
+  return { content: [{ type: 'tool_use', name: 'submit_language_detection', input }], stop_reason: 'tool_use' }
+}
+
 beforeEach(() => {
   createMock.mockReset()
 })
@@ -73,5 +77,40 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
 
     await expect(provider.generateCard(enInput)).rejects.toThrow()
     expect(createMock).toHaveBeenCalledTimes(3) // 1 + 2 retries
+  })
+})
+
+describe('ClaudeAgentProvider — language detection', () => {
+  it('forces structured detection, canonicalizes BCP 47, and keeps configured labels', async () => {
+    createMock.mockResolvedValueOnce(detectionToolResponse({
+      detections: [{ index: 0, code: 'pt_br', display_name: 'Portuguese', confidence: 0.92 }],
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.detectLanguages({
+      items: ['olá'],
+      candidateLanguages: [{ code: 'pt-BR', display_name: 'Português' }],
+    })
+
+    expect(result).toEqual([
+      { index: 0, code: 'pt-BR', display_name: 'Português', confidence: 0.92 },
+    ])
+    const params = createMock.mock.calls[0][0]
+    expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_language_detection' })
+    expect(params.system).toContain('BCP 47')
+  })
+
+  it('retries incomplete index sets and then succeeds', async () => {
+    createMock
+      .mockResolvedValueOnce(detectionToolResponse({ detections: [] }))
+      .mockResolvedValueOnce(detectionToolResponse({
+        detections: [{ index: 0, code: 'ko', display_name: 'Korean', confidence: 0.95 }],
+      }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.detectLanguages({ items: ['안녕'], candidateLanguages: [] })
+
+    expect(result[0].code).toBe('ko')
+    expect(createMock).toHaveBeenCalledTimes(2)
   })
 })

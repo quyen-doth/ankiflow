@@ -27,6 +27,21 @@ const SESSION = JSON.stringify({
 })
 
 const FIRESTORE_SEED = { decks: [], categories: [], card_types: [] }
+const DETECT_EN = {
+  detections: [{ index: 0, code: 'en', display_name: 'English', confidence: 0.98 }],
+}
+const DETECT_JA = {
+  detections: [{ index: 0, code: 'ja', display_name: 'Japanese', confidence: 0.99 }],
+}
+const DETECT_FR = {
+  detections: [{ index: 0, code: 'fr', display_name: 'French', confidence: 0.91 }],
+}
+const DETECT_MIXED = {
+  detections: [
+    { index: 0, code: 'en', display_name: 'English', confidence: 0.98 },
+    { index: 1, code: 'ja', display_name: 'Japanese', confidence: 0.99 },
+  ],
+}
 
 // Spy cho onValidityChange — reset trong act
 const validitySpy = { last: null as boolean | null, sawTrue: false }
@@ -69,6 +84,7 @@ registerUnit<LanguageFormProps>({
     onStepUpdate: fn<(step: number, status: string) => void>().optional(),
     onGenerateEnd: fn<() => void>().optional(),
     onValidityChange: fn<(canSubmit: boolean) => void>().optional(),
+    batchMode: z.boolean().optional(),
     formId: z.string().optional(),
   }),
   fixtures: [
@@ -95,6 +111,7 @@ registerUnit<LanguageFormProps>({
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_EN } },
           { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
         ],
       },
@@ -116,6 +133,7 @@ registerUnit<LanguageFormProps>({
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_EN } },
           {
             match: '/api/generate',
             response: { status: 500, json: { error: 'Gemini quota exceeded' } },
@@ -127,6 +145,26 @@ registerUnit<LanguageFormProps>({
         await ctx.type('input[aria-label="Vocabulary item"]', 'serendipity')
         submitForm(ctx.root)
         await ctx.wait(100)
+      },
+    },
+    {
+      id: 'act-detection-overrides-session',
+      description: 'Act: session=en nhưng detector=ja → pending dùng ja và xóa deck/card type không tương thích.',
+      props: {},
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { ankiflow_session_form_language: SESSION },
+        pathname: '/create',
+        fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_JA } },
+          { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.type('input[aria-label="Vocabulary item"]', '猫')
+        submitForm(ctx.root)
+        await ctx.wait(1100)
       },
     },
     {
@@ -148,13 +186,79 @@ registerUnit<LanguageFormProps>({
         await ctx.wait(16)
       },
     },
+    {
+      id: 'probe-unconfigured-language',
+      probe: true,
+      description: 'Probe: detector trả fr chưa cấu hình → hỏi Add & use, chưa generate hay redirect.',
+      props: {},
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { ankiflow_session_form_language: SESSION },
+        pathname: '/create',
+        fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_FR } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.type('input[aria-label="Vocabulary item"]', 'bonjour')
+        submitForm(ctx.root)
+        await ctx.wait(100)
+      },
+    },
+    {
+      id: 'act-detection-error-uses-manual',
+      description: 'Act: detector lỗi nhưng session đã chọn en → dùng lựa chọn thủ công, không default ngầm.',
+      props: {},
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { ankiflow_session_form_language: SESSION },
+        pathname: '/create',
+        fetch: [
+          { match: '/api/languages/detect', response: { status: 503, json: { error: 'Detector unavailable' } } },
+          { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.type('input[aria-label="Vocabulary item"]', 'serendipity')
+        submitForm(ctx.root)
+        await ctx.wait(1100)
+      },
+    },
+    {
+      id: 'probe-mixed-language-batch',
+      probe: true,
+      description: 'Probe: batch en+ja → chặn và liệt kê từng item, không gọi generate.',
+      props: { batchMode: true },
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { ankiflow_session_form_language: SESSION },
+        pathname: '/create',
+        fetch: [
+          { match: '/api/languages/detect', response: { status: 200, json: DETECT_MIXED } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.type('input[aria-label="Vocabulary item 1"]', 'cat')
+        const addButton = Array.from(ctx.root.querySelectorAll('button'))
+          .find(button => button.textContent?.trim() === 'Add item')
+        if (!addButton) throw new Error('không tìm thấy Add item')
+        addButton.click()
+        await ctx.wait(16)
+        await ctx.type('input[aria-label="Vocabulary item 2"]', '猫')
+        submitForm(ctx.root)
+        await ctx.wait(100)
+      },
+    },
   ],
   invariants: [
     {
       id: 'form-renders-core-fields',
       description: 'Form có input từ vựng, note, language/deck/category selector',
       check: ({ root }) => {
-        if (!root.querySelector('input[aria-label="Vocabulary item"]')) return 'thiếu input từ vựng'
+        if (!root.querySelector('input[aria-label^="Vocabulary item"]')) return 'thiếu input từ vựng'
         if (!root.querySelector('[data-verify-unit="LanguageSelector"]')) return 'thiếu LanguageSelector'
         if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return 'thiếu DeckCreatableField'
         return !!root.querySelector('[data-verify-unit="CategoryCreatableField"]') || 'thiếu CategoryCreatableField'
@@ -209,12 +313,61 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
+      id: 'detected-language-overrides-session',
+      description: 'Detector ghi đè session language và reset config phụ thuộc language.',
+      onlyFixtures: ['act-detection-overrides-session'],
+      check: () => {
+        const pending = loadPending()
+        if (!pending) return 'không có pending entry'
+        if (pending.language !== 'ja') return `language=${pending.language}`
+        if (pending.deckId !== '') return `deckId=${pending.deckId}`
+        return pending.cardTypeIds.length === 0 || `cardTypeIds=${JSON.stringify(pending.cardTypeIds)}`
+      },
+    },
+    {
       id: 'empty-input-reports-invalid',
       description: 'Input rỗng: onValidityChange cuối cùng là false (đã từng true khi có chữ)',
       onlyFixtures: ['probe-empty-input-invalid'],
       check: () =>
         (validitySpy.last === false && validitySpy.sawTrue) ||
         `last=${validitySpy.last}, sawTrue=${validitySpy.sawTrue}`,
+    },
+    {
+      id: 'unconfigured-language-prompts',
+      description: 'Language mới mở modal và dừng trước generate.',
+      onlyFixtures: ['probe-unconfigured-language'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        if (!text.includes('Add detected language?') || !text.includes('French')) return text
+        if (loadPending() !== null) return 'đã tạo pending trước khi user xác nhận'
+        const calls = navCalls()
+        return calls === null || calls.filter(call => call.method === 'push').length === 0 || 'đã redirect'
+      },
+    },
+    {
+      id: 'detection-error-uses-explicit-selection',
+      description: 'Detector lỗi chỉ fallback khi user đã chọn language, giữ nguyên config tương thích.',
+      onlyFixtures: ['act-detection-error-uses-manual'],
+      check: () => {
+        const pending = loadPending()
+        if (!pending) return 'không có pending entry'
+        if (pending.language !== 'en') return `language=${pending.language}`
+        if (pending.deckId !== 'd-en') return `deckId=${pending.deckId}`
+        return JSON.stringify(pending.cardTypeIds) === JSON.stringify(['ct-en'])
+          || `cardTypeIds=${JSON.stringify(pending.cardTypeIds)}`
+      },
+    },
+    {
+      id: 'mixed-batch-is-blocked',
+      description: 'Batch trộn hiển thị từng item và không tạo pending.',
+      onlyFixtures: ['probe-mixed-language-batch'],
+      check: ({ root, contract }) => {
+        const text = root.textContent ?? ''
+        if (contract.error !== 'true') return `contract.error=${contract.error}`
+        if (!text.includes('#1 “cat” → English (en)')) return text
+        if (!text.includes('#2 “猫” → Japanese (ja)')) return text
+        return loadPending() === null || 'đã tạo pending cho batch trộn'
+      },
     },
   ],
 })
