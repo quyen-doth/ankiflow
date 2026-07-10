@@ -17,6 +17,13 @@ describe('tts — resolveTtsVoice', () => {
     expect(resolveTtsVoice('ko')).toEqual({ languageCode: 'ko-KR' })
   })
 
+  it('中国語系バリアントは Google TTS が対応する cmn-*/yue-* に写像', () => {
+    expect(resolveTtsVoice('zh-CN')).toEqual({ languageCode: 'cmn-CN' })
+    expect(resolveTtsVoice('zh-TW')).toEqual({ languageCode: 'cmn-TW' })
+    expect(resolveTtsVoice('zh-HK')).toEqual({ languageCode: 'yue-HK' })
+    expect(resolveTtsVoice('zh-SG')).toEqual({ languageCode: 'cmn-CN' })
+  })
+
   it('無効な code を英語に fallback させない', () => {
     expect(() => resolveTtsVoice('not a language')).toThrow('Unsupported TTS language code')
   })

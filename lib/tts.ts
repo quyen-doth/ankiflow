@@ -22,6 +22,12 @@ const DEFAULT_VOICES: Record<LanguageType, TtsVoice> = {
   [LanguageType.JAPANESE]: { languageCode: 'ja-JP', name: 'ja-JP-Wavenet-A' },
 }
 
+// Google Cloud TTS has no voices under zh-*: Mandarin lives under cmn-*, Cantonese under yue-*.
+const CHINESE_TTS_LOCALES: Record<string, string> = {
+  'zh-TW': 'cmn-TW',
+  'zh-HK': 'yue-HK',
+}
+
 /** Resolve a Google TTS locale without silently falling back to English. */
 export function resolveTtsVoice(language: string): TtsVoice {
   const canonical = canonicalizeLanguageCode(language)
@@ -29,6 +35,10 @@ export function resolveTtsVoice(language: string): TtsVoice {
 
   if (canonical in DEFAULT_VOICES) {
     return DEFAULT_VOICES[canonical as LanguageType]
+  }
+
+  if (new Intl.Locale(canonical).language === 'zh') {
+    return { languageCode: CHINESE_TTS_LOCALES[canonical] ?? DEFAULT_VOICES[LanguageType.CHINESE].languageCode }
   }
 
   const locale = new Intl.Locale(canonical)
