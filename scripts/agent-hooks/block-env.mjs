@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Shared PreToolUse hook for Claude Code (.claude/settings.json) and Codex (.codex/hooks.json).
+// Blocks any tool access to .env files.
 import { readFileSync } from 'fs';
 const input = JSON.parse(readFileSync('/dev/stdin', 'utf8'));
 const tool = input.tool_name;

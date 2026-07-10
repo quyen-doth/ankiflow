@@ -1,93 +1,97 @@
 ---
 name: update-docs
 description: >
-  Sync tài liệu trong docs/ sau khi code thay đổi. Dùng khi:
-  user đề cập @update-docs, vừa thêm/sửa/xóa API endpoint,
-  vừa tạo hoặc sửa component, thay đổi data model hoặc schema,
-  cập nhật task status, hoặc thay đổi design system / convention.
-  KHÔNG tự ý update docs mà không có sự thay đổi code thực sự.
+  Sync the documentation in docs/ after code changes. Use when:
+  user mentions @update-docs, an API endpoint was added/changed/removed,
+  a component was created or modified, a data model or schema changed,
+  a task status changed, or the design system / conventions changed.
+  Do NOT update docs when no real code change happened.
 ---
 
 # Skill: Update Docs
 
-## Mục tiêu
-Giữ cho `docs/` luôn là **source of truth** phản ánh đúng trạng thái hiện tại
-của codebase — không thừa, không thiếu, không lỗi thời.
+## Goal
+Keep `docs/` the **source of truth** that accurately reflects the current
+state of the codebase — nothing extra, nothing missing, nothing stale.
+
+> Files in `docs/` are written in **Japanese** (see Language Policy in CLAUDE.md).
 
 ---
 
-## Mapping: Thay đổi nào → Update file nào
+## Mapping: which change → which file
 
-| Loại thay đổi                          | File cần update              |
-|----------------------------------------|------------------------------|
-| Thêm / sửa / xóa API endpoint          | `docs/API.md`                |
-| Tạo / sửa React component              | `docs/design/COMPONENT.md`   |
-| Thay đổi design token, layout, theme   | `docs/design/DESIGN.md`      |
-| Hoàn thành task hoặc thêm task mới     | `docs/tasks.md`              |
-| Thay đổi business logic / scope lớn   | `docs/prd.md`                |
+| Change type                                        | File to update         |
+|----------------------------------------------------|------------------------|
+| Add / modify / remove API endpoint                 | `docs/API.md`          |
+| Firestore schema, query pattern, enum change       | `docs/DATABASE.md`     |
+| Design tokens, component patterns, layout, theme   | `docs/DESIGN.md`       |
+| Directory structure, data flow, env vars           | `docs/REFERENCE.md`    |
+| Verification spec format / harness change          | `docs/VERIFICATION.md` |
+| Git workflow / conventions change                  | `docs/CONTRIBUTING.md` |
+| Change business logic / major scope                | `docs/PRD.md`          |
 
-> **Nguyên tắc:** Chỉ update đúng file liên quan. Không chạm vào file khác.
+> **Principle:** update only the relevant file. Do not touch the others.
 
 ---
 
-## Quy trình thực hiện
+## Process
 
-### Bước 1 — Đọc & Phân tích
-1. Đọc toàn bộ file docs liên quan đến thay đổi (theo mapping ở trên)
-2. Đọc các file code đã thay đổi để hiểu rõ thay đổi là gì
-3. Xác định: thêm mới / sửa / xóa / đổi tên?
+### Step 1 — Read & analyze
+1. Read the docs file(s) related to the change (per the mapping above)
+2. Read the changed code files to understand exactly what changed
+3. Classify: addition / modification / removal / rename?
 
-### Bước 2 — Tạo Proposal (KHÔNG tự ghi ngay)
-Tạo một **diff proposal** dưới dạng:
+### Step 2 — Create a proposal (do NOT write immediately)
+Produce a **diff proposal** in this form:
 
 ```
 📋 DOCS UPDATE PROPOSAL
 ========================
 File: docs/API.md
 
-[THÊM MỚI]
+[ADD]
 ### POST /api/cards
-...nội dung đề xuất...
+...proposed content...
 
-[SỬA]
-Dòng cũ: GET /api/decks → trả về array
-Dòng mới: GET /api/decks → trả về { data: Deck[], total: number }
+[MODIFY]
+Old: GET /api/decks → returns array
+New: GET /api/decks → returns { data: Deck[], total: number }
 
-[XÓA]
-### DELETE /api/legacy-sync  ← endpoint này đã bị remove
+[REMOVE]
+### DELETE /api/legacy-sync  ← endpoint was removed
 ```
 
-### Bước 3 — Chờ xác nhận
-**DỪNG LẠI** và hỏi user:
-> "Bạn có muốn mình apply những thay đổi này vào `docs/API.md` không?"
+### Step 3 — Wait for confirmation
+**STOP** and ask the user:
+> "Do you want me to apply these changes to `docs/API.md`?"
 
-Chỉ tiếp tục khi user xác nhận **"ok"** hoặc **"apply"**.
+Continue only after the user confirms with **"ok"** or **"apply"**.
 
-### Bước 4 — Apply & Báo cáo
-1. Ghi thay đổi vào đúng file docs
-2. Báo cáo ngắn gọn:
+### Step 4 — Apply & report
+1. Write the changes into the correct docs file (in Japanese)
+2. Report briefly:
    ```
-   ✅ Đã update: docs/API.md
-   - Thêm: POST /api/cards
-   - Sửa: response type của GET /api/decks
-   - Xóa: DELETE /api/legacy-sync
+   ✅ Updated: docs/API.md
+   - Added: POST /api/cards
+   - Modified: response type of GET /api/decks
+   - Removed: DELETE /api/legacy-sync
    ```
 
 ---
 
-## Quy tắc bắt buộc
+## Hard rules
 
-- **KHÔNG** update `docs/prd.md` trừ khi user yêu cầu rõ ràng — file này là product decision, không phải technical spec
-- **KHÔNG** xóa nội dung docs mà không quote lại cho user thấy trước
-- **KHÔNG** rewrite toàn bộ file — chỉ surgical edit đúng phần liên quan
-- **PHẢI** giữ nguyên format và heading structure hiện có của từng file
-- Nếu không chắc thay đổi thuộc file nào → hỏi user trước khi làm
+- Do **NOT** update `docs/PRD.md` unless the user explicitly asks — it holds product decisions, not technical specs
+- Do **NOT** delete docs content without quoting it to the user first
+- Do **NOT** rewrite whole files — make surgical edits to the relevant section only
+- **MUST** preserve each file's existing format and heading structure
+- If unsure which file a change belongs to → ask the user first
 
 ---
 
-## Ví dụ trigger tự nhiên
+## Natural trigger examples
 
-- *"vừa thêm xong endpoint tạo card"* → update `docs/API.md`
-- *"đã làm xong task số 3"* → update `docs/tasks.md`
-- *"@update-docs"* → hỏi: thay đổi gì vừa xảy ra?
-- *"component CardList đã refactor"* → update `docs/design/COMPONENT.md`
+- *"just finished the create-card endpoint"* → update `docs/API.md`
+- *"added a field to entries"* → update `docs/DATABASE.md`
+- *"@update-docs"* → ask: what change just happened?
+- *"the Button component styling changed"* → update `docs/DESIGN.md`

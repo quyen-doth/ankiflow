@@ -1,91 +1,101 @@
 ---
 name: deploy
 description: >
-  Chuẩn bị và thực hiện deploy ankiflow. Dùng khi: user đề cập @deploy,
-  hỏi "ready to deploy chưa", muốn check trước khi push lên production,
-  hoặc cần deploy checklist. KHÔNG tự deploy mà không có user xác nhận.
+  Prepare and perform ankiflow deployments. Use when: user mentions @deploy,
+  asks "ready to deploy?", wants a check before pushing to production,
+  or needs a deploy checklist. Do NOT deploy without user confirmation.
 ---
 
 # Skill: Deploy
 
-## Mục tiêu
-Đảm bảo mỗi lần deploy là **có chủ đích** — đã check đủ điều kiện,
-không có lỗi obvious, và user đã confirm.
+## Goal
+Make every deploy **intentional** — all conditions checked,
+no obvious errors, and the user has confirmed.
 
 ---
 
-## Bước 1 — Đọc context bắt buộc
-1. `docs/tasks.md` — xác định những task nào đã Done, còn gì In Progress
-2. Kiểm tra có task nào marked "blocking deploy" không
+## Step 1 — Required context
+
+1. `git log develop..HEAD` / recent PRs — understand what is being shipped
+2. Check whether `firestore.rules` or `firestore.indexes.json` changed since the last deploy — if so, they must be deployed too
 
 ---
 
-## Bước 2 — Pre-deploy checklist
+## Step 2 — Pre-deploy checklist
 
-Chạy theo thứ tự và báo cáo kết quả từng mục:
+Run in order and report the result of each item:
 
 ```
 PRE-DEPLOY CHECKLIST
 =====================
-[ ] Build không có lỗi
-    → Chạy: npm run build
+[ ] Build passes
+    → Run: npm run build
 
-[ ] Không có TypeScript error
-    → Chạy: npx tsc --noEmit
+[ ] No TypeScript errors
+    → Run: npx tsc --noEmit
 
-[ ] Không có console.log debug còn sót
-    → Tìm: grep -r "console.log" app/ components/
+[ ] No leftover debug console.log
+    → Search: grep -r "console.log" app/ components/
 
-[ ] ENV variables đã đủ
-    → So sánh .env.example với .env.production
+[ ] ENV variables complete
+    → Ask the user to verify on the Vercel dashboard (the agent CANNOT read
+      .env files — blocked by the block-env hook on purpose; never try to bypass it)
 
-[ ] API endpoints hoạt động đúng
-    → Xem docs/API.md, test các endpoint quan trọng
+[ ] Firestore rules/indexes deployed if changed
+    → firebase deploy --only firestore:rules,firestore:indexes
 
-[ ] Không có TODO/FIXME blocking
-    → Tìm: grep -r "TODO\|FIXME" app/ --include="*.ts" --include="*.tsx"
+[ ] Tests pass
+    → npm run verify
+
+[ ] API endpoints work correctly
+    → See docs/API.md, test the critical endpoints
+
+[ ] No blocking TODO/FIXME
+    → Search: grep -r "TODO\|FIXME" app/ --include="*.ts" --include="*.tsx"
 ```
 
 ---
 
-## Bước 3 — Báo cáo trạng thái
+## Step 3 — Status report
 
 ```
 📊 DEPLOY READINESS REPORT
 ===========================
 ✅ Build: OK
 ✅ TypeScript: OK
-⚠️  Console.log: 2 chỗ còn sót (app/cards/page.tsx:14, components/Deck/index.tsx:8)
+⚠️  Console.log: 2 leftovers (app/cards/page.tsx:14, components/Deck/index.tsx:8)
 ✅ ENV: OK
-❌ TODO blocking: 1 (app/api/sync/route.ts:32 - "TODO: add rate limiting")
+❌ Blocking TODO: 1 (app/api/sync/route.ts:32 - "TODO: add rate limiting")
 
-Kết luận: CHƯA SẴN SÀNG — cần fix 1 blocking issue
+Conclusion: NOT READY — 1 blocking issue must be fixed
 ```
 
 ---
 
-## Bước 4 — Chờ xác nhận
+## Step 4 — Wait for confirmation
 
-Nếu tất cả ✅:
-> "Checklist pass. Bạn có muốn mình proceed deploy không?"
+If everything is ✅:
+> "Checklist passed. Do you want me to proceed with the deploy?"
 
-Nếu có ⚠️ hoặc ❌:
-> "Có [N] vấn đề cần xem xét trước. Bạn muốn fix trước hay vẫn deploy?"
+If there is any ⚠️ or ❌:
+> "There are [N] issues to review first. Do you want to fix them or deploy anyway?"
 
-**KHÔNG tự deploy khi chưa có xác nhận rõ ràng từ user.**
-
----
-
-## Bước 5 — Sau khi deploy
-Đề xuất:
-```
-💡 Bạn có muốn mình update docs/tasks.md để đánh dấu những task đã shipped không?
-```
+**NEVER deploy without explicit user confirmation.**
 
 ---
 
-## Quy tắc bắt buộc
-- **KHÔNG** bỏ qua checklist dù user nói "deploy nhanh thôi"
-- **KHÔNG** tự chạy lệnh deploy nếu chưa có xác nhận
-- **PHẢI** list rõ những gì chưa pass — không che giấu warning
-- Nếu có blocking issue → đề xuất fix trước, không push qua
+## Step 5 — After deploying
+
+Suggest:
+```
+💡 Do you want me to update the relevant docs/ files for what was shipped?
+```
+
+---
+
+## Hard rules
+
+- Do **NOT** skip the checklist even if the user says "just deploy quickly"
+- Do **NOT** run the deploy command without confirmation
+- **MUST** list everything that did not pass — never hide warnings
+- If there is a blocking issue → propose fixing it first, do not push through

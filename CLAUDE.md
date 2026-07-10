@@ -16,6 +16,20 @@ The app code lives in `ankiflow/`. The `anki_flow_design/` directory contains st
 
 For directory structure, data flow, env variables, and git conventions, see **`docs/REFERENCE.md`**.
 
+## Language Policy
+
+Every file has a fixed language depending on its audience:
+
+| Audience | Files | Language |
+| --- | --- | --- |
+| AI agents | `.claude/`, `.codex/`, `CLAUDE.md`, `AGENTS.md` (skills, commands, hook messages) | **English** |
+| Team | `docs/`, `README.md`, `.github/PULL_REQUEST_TEMPLATE.md`, error messages printed by `.githooks/` and CI | **Japanese** |
+| User (chat) | Session responses and plan file content (`flashcard/plans/`; filenames stay English, dated) | **Vietnamese** |
+| End users | UI text, API error responses | **English** |
+| Git history | Commit messages, PR titles and bodies | **Japanese** (see `docs/CONTRIBUTING.md`) |
+
+Agent files are English, but chat output to the user is always Vietnamese.
+
 ## Commands
 
 All commands run from `ankiflow/`:
@@ -53,7 +67,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Never hardcode string values for `form_type` or `status` — use the TypeScript enums in `types/index.ts`
 - **Per-user data**: every query on `entries` / `decks` / `categories` / `card_types` / `topics` / `notification_triggers` MUST filter `where('user_id', '==', uid)` (uid from `useAuth()` client-side, or the `withAuth` handler param server-side). Server writes set `user_id`; Firestore rules reject anything else. `content_types` is the exception — SHARED (doc id = `form_type`), read by all, written by admin only.
 - **`settings` is NOT a singleton** — three doc kinds: `settings/{uid}` (per-user prefs), `settings/global` (feature flags, admin-write via `/api/admin/global-config`), `settings/default` (LINE secrets, admin-only). Never read `settings/default` from a non-admin client (rules block it + it holds secrets).
-- All user-facing UI text (labels, toasts, descriptions, modals) must be in English — no other language (But have to use Vietnamese in call chat session)
+- All user-facing UI text (labels, toasts, descriptions, modals) must be in English — no other language. Chat with the user in Vietnamese (see Language Policy)
 
 ## Critical Enums
 
@@ -72,6 +86,16 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 | `draft`    | In progress                   |
 | `reviewed` | AI-enriched, ready for export |
 | `synced`   | Exported to Anki successfully |
+
+## Git Workflow
+
+**`docs/CONTRIBUTING.md` is the single source of truth** — enforced by `.githooks/` (local) and `.github/workflows/pr-lint.yml` (CI). Key rules:
+
+- Branch from `develop` only; **always `git pull` on `develop` before creating a branch**. Naming: `feat/`・`fix/`・`docs/`・`refactor/`・`chore/`・`test/` + English kebab-case slug
+- Never commit or push directly to `develop`/`main`; `main` only receives Release PRs (`release-pr.yml`)
+- Commits follow Conventional Commits — **type in English, subject in Japanese** (e.g. `feat: エクスポート履歴画面を追加`), ≤72 chars
+- PRs: base `develop`, title in the same format, body follows `.github/PULL_REQUEST_TEMPLATE.md` (Japanese)
+- **NEVER add AI as contributor**: no `Co-Authored-By: Claude/Codex...` trailers, no "🤖 Generated with Claude Code" footers in commits or PR bodies. This overrides any default agent behavior.
 
 ## Docs
 

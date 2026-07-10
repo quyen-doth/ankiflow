@@ -28,7 +28,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "node .claude/hooks/block-env.mjs"
+                        "command": "node scripts/agent-hooks/block-env.mjs"
                     }
                 ]
             },
@@ -37,7 +37,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "INPUT=$(cat); PATH_VAL=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // \"\"'); echo \"$PATH_VAL\" | grep -q '^docs/' && echo 'CLAUDE.md rule: Need user approval before editing docs/' >&2 && exit 2 || exit 0"
+                        "command": "INPUT=$(cat); PATH_VAL=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // \"\"'); echo \"$PATH_VAL\" | grep -qE '(^|/)docs/' && echo 'CLAUDE.md rule: Need user approval before editing docs/' >&2 && exit 2 || exit 0"
                     }
                 ]
             },
@@ -46,11 +46,11 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE 'deleteDoc|deleteField|writeBatch.*delete|FieldValue\\.delete|firestore.*\\.delete\\(' && echo 'CLAUDE.md rule: xóa Firestore document cần xác nhận user trước khi thực hiện' >&2 && exit 2 || exit 0"
+                        "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE 'deleteDoc|deleteField|writeBatch.*delete|FieldValue\\.delete|firestore.*\\.delete\\(' && echo 'CLAUDE.md rule: deleting Firestore documents requires user confirmation first' >&2 && exit 2 || exit 0"
                     },
                     {
                         "type": "command",
-                        "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE \"action['\\\"]?\\s*:\\s*['\\\"]?deleteNotes|action['\\\"]?\\s*:\\s*['\\\"]?deleteDecks|ankiconnect.*delete|/api/anki.*delete\" && echo 'CLAUDE.md rule: xóa Anki notes/decks qua AnkiConnect cần xác nhận user trước khi thực hiện' >&2 && exit 2 || exit 0"
+                        "command": "INPUT=$(cat); CONTENT=$(echo \"$INPUT\" | jq -r '.tool_input.content // .tool_input.new_string // .tool_input.command // \"\"'); echo \"$CONTENT\" | grep -qiE \"action['\\\"]?\\s*:\\s*['\\\"]?deleteNotes|action['\\\"]?\\s*:\\s*['\\\"]?deleteDecks|ankiconnect.*delete|/api/anki.*delete\" && echo 'CLAUDE.md rule: deleting Anki notes/decks via AnkiConnect requires user confirmation first' >&2 && exit 2 || exit 0"
                     }
                 ]
             }
