@@ -4,6 +4,7 @@ import { ENGLISH_SYSTEM_PROMPT, buildEnglishUserMessage } from '@/lib/prompts/en
 import { CHINESE_SYSTEM_PROMPT, buildChineseUserMessage } from '@/lib/prompts/chinese'
 import { JAPANESE_SYSTEM_PROMPT, buildJapaneseUserMessage } from '@/lib/prompts/japanese'
 import { IT_VOCAB_SYSTEM_PROMPT, buildItVocabUserMessage } from '@/lib/prompts/it-vocab'
+import { inferLanguageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
 import type { GenerateCardInput } from './types'
 
 /**
@@ -55,6 +56,20 @@ export const japaneseCardSchema = z.object({
   example_blank: z.string().describe('Câu ví dụ với từ cần học thay bằng "___"'),
   collocations: z.array(z.string()).describe('3-5 cụm từ/trợ từ kèm nghĩa TV'),
   related_words: z.array(z.string()).describe('Các từ liên quan'),
+  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
+})
+
+export const genericLanguageCardSchema = z.object({
+  word: z.string().describe('Từ vựng trong ngôn ngữ đích'),
+  ipa: z.string().describe('Phiên âm IPA; để rỗng nếu không xác định được'),
+  meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
+  word_type_vi: z.string().describe('Loại từ bằng tiếng Việt'),
+  level: z.string().describe('Cấp độ thông dụng nếu xác định được; nếu không để rỗng'),
+  example_sentence: z.string().describe('Câu ví dụ ngắn trong ngôn ngữ đích'),
+  example_translation: z.string().describe('Bản dịch tiếng Việt của câu ví dụ'),
+  example_blank: z.string().describe('Câu ví dụ với từ cần học thay bằng "___"'),
+  collocations: z.array(z.string()).describe('3-5 cụm từ thường gặp kèm nghĩa tiếng Việt'),
+  related_words: z.array(z.string()).describe('Các từ liên quan kèm nghĩa tiếng Việt'),
   unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
 })
 
@@ -115,11 +130,14 @@ function makeSpec(
 
 /**
  * form_type/language に応じて正しい schema + prompt + user message を選択。
- * サポートされていない組み合わせでは throw (旧来の動作を維持)。
+ * 英中日は専用 profile、それ以外の有効な BCP 47 言語は汎用 profile を使用。
  */
 export function resolveCardSpec(input: GenerateCardInput): CardSpec {
   if (input.form_type === FormType.LANGUAGE && input.word && input.language) {
-    switch (input.language) {
+    const languageSubtag = primaryLanguageSubtag(input.language)
+    if (!languageSubtag) throw new Error(`Invalid BCP 47 language code: ${input.language}`)
+
+    switch (languageSubtag) {
       case LanguageType.ENGLISH:
         return makeSpec(
           englishCardSchema,
@@ -141,8 +159,20 @@ export function resolveCardSpec(input: GenerateCardInput): CardSpec {
           buildJapaneseUserMessage(input.word),
           'Nộp thẻ từ vựng Tiếng Nhật đã được enrich.',
         )
-      default:
-        throw new Error(`Unsupported language: ${input.language}`)
+      default: {
+        const languageName = inferLanguageDisplayName(input.language)
+        const systemPrompt = `You are an expert vocabulary teacher for ${languageName} (${input.language}).
+Create accurate, concise flashcard content for the supplied word.
+Write meanings, grammar labels, collocation explanations, related-word explanations, and translations in Vietnamese.
+Keep the example sentence natural and short. Use IPA when it is known; otherwise return an empty string.
+Return structured data only through the submit_card tool.`
+        return makeSpec(
+          genericLanguageCardSchema,
+          systemPrompt,
+          `Create a ${languageName} vocabulary flashcard for: "${input.word}"`,
+          `Submit an enriched ${languageName} vocabulary flashcard.`,
+        )
+      }
     }
   }
 

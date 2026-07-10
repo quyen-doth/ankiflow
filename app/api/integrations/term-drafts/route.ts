@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { verifyStaticToken } from '@/lib/auth-guard'
 import { normalizeTerm } from '@/lib/entries/duplicate'
+import { canonicalizeLanguageCode } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
 
 /**
@@ -17,7 +18,14 @@ const DEFAULT_CARD_TYPE_IDS: string[] = []
 
 const itemSchema = z.object({
   term: z.string().trim().min(1),
-  language: z.enum(['en', 'ja']),
+  language: z.string().transform((value, context) => {
+    const code = canonicalizeLanguageCode(value)
+    if (!code) {
+      context.addIssue({ code: 'custom', message: 'language must be a valid BCP 47 code' })
+      return z.NEVER
+    }
+    return code
+  }),
   definition_hint_vi: z.string().optional(),
   context_quote: z.string().max(200).optional(),
   source_url: z.string().min(1),

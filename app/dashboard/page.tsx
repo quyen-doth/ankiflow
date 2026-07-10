@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { StatCard } from '@/components/ui/StatCard'
@@ -13,13 +14,8 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { FlowTip } from '@/components/ui/FlowTip'
 import { Layers, BookOpen, CalendarCheck, CheckCircle2, PlusCircle, Inbox, Search, ArrowRight } from 'lucide-react'
-import { FormType, LanguageType, type Entry } from '@/types'
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  [LanguageType.ENGLISH]: 'English',
-  [LanguageType.JAPANESE]: 'Japanese',
-  [LanguageType.CHINESE]: 'Chinese',
-}
+import { canonicalizeLanguageCode, languageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
+import { FormType, type Entry } from '@/types'
 
 function entryDate(entry: Entry): Date | null {
   if (!entry.created_at) return null
@@ -39,6 +35,7 @@ function isToday(date: Date | null): boolean {
 export default function DashboardPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { languages } = useStudyLanguages()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,14 +74,14 @@ export default function DashboardPage() {
     const langEntries = entries.filter(e => e.form_type === FormType.LANGUAGE && e.language)
     const counts = new Map<string, number>()
     langEntries.forEach(e => {
-      const key = e.language as string
+      const key = canonicalizeLanguageCode(e.language as string) ?? e.language as string
       counts.set(key, (counts.get(key) || 0) + 1)
     })
     const total = langEntries.length || 1
     return Array.from(counts.entries())
-      .map(([lang, count]) => ({ lang, label: LANGUAGE_LABELS[lang] || lang, count, pct: Math.round((count / total) * 100) }))
+      .map(([lang, count]) => ({ lang, label: languageDisplayName(lang, languages), count, pct: Math.round((count / total) * 100) }))
       .sort((a, b) => b.count - a.count)
-  }, [entries])
+  }, [entries, languages])
 
   const recentEntries = entries.slice(0, 6)
 
@@ -171,9 +168,7 @@ export default function DashboardPage() {
                   const meaning = entry.meaning_vi || entry.definition || entry.content || '—'
                   const isSynced = entry.status === 'synced'
                   const langCode = entry.form_type === FormType.LANGUAGE && entry.language
-                    ? entry.language === LanguageType.JAPANESE ? 'JA'
-                      : entry.language === LanguageType.CHINESE ? 'ZH'
-                      : 'EN'
+                    ? primaryLanguageSubtag(entry.language)?.toUpperCase() ?? entry.language.toUpperCase()
                     : null
                   return (
                     <button
@@ -217,7 +212,7 @@ export default function DashboardPage() {
                         <span className="text-sm text-slate-600">{count}</span>
                       </div>
                       <div className="h-2 bg-canvas rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-500 ${lang === LanguageType.JAPANESE ? 'bg-amber' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
+                        <div className={`h-full rounded-full transition-all duration-500 ${primaryLanguageSubtag(lang) === 'ja' ? 'bg-amber' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   ))}

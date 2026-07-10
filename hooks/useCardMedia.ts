@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEffectiveMediaFlags } from '@/hooks/useEffectiveMediaFlags'
-import type { Entry } from '@/types'
+import { useToast } from '@/components/ui/Toast'
+import { FormType, type Entry } from '@/types'
 import type { ImageItem } from '@/components/preview/ImageSelector'
 
 /**
@@ -19,6 +20,7 @@ export function useCardMedia(
   const [imageLoading, setImageLoading] = useState(false)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [audioLoading, setAudioLoading] = useState(false)
+  const toast = useToast()
   // "Mức trần" — admin tắt (chi phí API) AND user tự tắt trong Preferences.
   const { effectiveTts, effectiveUnsplash } = useEffectiveMediaFlags()
 
@@ -56,6 +58,8 @@ export function useCardMedia(
     if (!effectiveTts) return
     const text = entry.word || entry.term || entry.title
     if (!text) return
+    const language = entry.language || (entry.form_type === FormType.IT ? 'en' : null)
+    if (!language) return
     setAudioLoading(true)
     try {
       const res = await fetch('/api/audio/generate', {
@@ -63,7 +67,7 @@ export function useCardMedia(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          language: entry.language || 'en',
+          language,
           filename: `ankiflow_${text.replace(/[\s/\\:*?"<>|]/g, '_')}.mp3`,
         }),
       })
@@ -72,13 +76,17 @@ export function useCardMedia(
         const dataUrl = `data:audio/mp3;base64,${data.base64}`
         setAudioUrl(dataUrl)
         setEntry((prev) => ({ ...prev, audio_url: dataUrl }))
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        toast.warning(data.error ? `Audio unavailable: ${data.error}` : 'Audio is unavailable for this language.')
       }
     } catch (err) {
       console.error('Audio generation error:', err)
+      toast.warning('Audio generation failed. Please try again.')
     } finally {
       setAudioLoading(false)
     }
-  }, [entry.word, entry.term, entry.title, entry.language, setEntry, effectiveTts])
+  }, [entry.word, entry.term, entry.title, entry.language, entry.form_type, setEntry, effectiveTts, toast])
 
   const handleImageSelect = useCallback(
     (img: ImageItem) => {

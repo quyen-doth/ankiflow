@@ -3,6 +3,7 @@ import { createAIAgentProvider } from '@/lib/ai-agent';
 import { withAuth } from '@/lib/auth-guard';
 import { readAISettings } from '@/lib/ai-settings';
 import { FormType } from '@/types';
+import { canonicalizeLanguageCode } from '@/lib/studyLanguages';
 
 export const POST = withAuth(async (request) => {
   try {
@@ -17,6 +18,11 @@ export const POST = withAuth(async (request) => {
       return NextResponse.json({ error: 'word is required for language form' }, { status: 400 });
     }
 
+    const languageCode = typeof language === 'string' ? canonicalizeLanguageCode(language) : null;
+    if (form_type === FormType.LANGUAGE && !languageCode) {
+      return NextResponse.json({ error: 'language must be a valid BCP 47 code for language form' }, { status: 400 });
+    }
+
     if (form_type === FormType.IT && !term) {
       return NextResponse.json({ error: 'term is required for IT form' }, { status: 400 });
     }
@@ -29,7 +35,7 @@ export const POST = withAuth(async (request) => {
     const { model, webSearchEnabled } = await readAISettings();
     const provider = createAIAgentProvider({ model, webSearchEnabled });
     const content = await provider.generateCard({
-      word, term, form_type, language, language_name, topics,
+      word, term, form_type, language: languageCode ?? undefined, language_name, topics,
       dynamicFields: dynamicFields as Record<string, string> | undefined,
       contentTypeName: contentTypeName as string | undefined,
     });

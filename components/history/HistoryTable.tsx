@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
+import { languageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
 import type { Entry } from '@/types'
 
 interface HistoryTableProps {
@@ -16,6 +18,7 @@ interface HistoryTableProps {
 
 export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   const router = useRouter()
+  const { languages } = useStudyLanguages()
 
   function truncateDeck(deck: string | undefined): string {
     if (!deck) return '—'
@@ -31,8 +34,7 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
 
   function langCode(row: Entry): string | null {
     if (row.form_type !== 'form_language' || !row.language) return null
-    const map: Record<string, string> = { en: 'EN', ja: 'JA', zh: 'ZH' }
-    return map[row.language] || row.language.toUpperCase().slice(0, 2)
+    return primaryLanguageSubtag(row.language)?.toUpperCase() ?? row.language.toUpperCase()
   }
 
   const columns = [
@@ -62,9 +64,11 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
         if (!code) return <span className="text-slate-400">—</span>
         const isJa = code === 'JA'
         return (
-          <Badge className={`px-2.5 py-1 text-[11px] ${isJa ? 'bg-amber-bg text-amber-dark' : 'bg-primary-bg text-primary'}`}>
-            {code}
-          </Badge>
+          <span title={row.language ? languageDisplayName(row.language, languages) : undefined}>
+            <Badge className={`px-2.5 py-1 text-[11px] ${isJa ? 'bg-amber-bg text-amber-dark' : 'bg-primary-bg text-primary'}`}>
+              {code}
+            </Badge>
+          </span>
         )
       },
     },

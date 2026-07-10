@@ -25,6 +25,20 @@ const validEnglish = {
 
 const enInput = { form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'resilient' }
 
+const validFrench = {
+  word: 'bonjour',
+  ipa: '/bɔ̃.ʒuʁ/',
+  meaning_vi: 'xin chào',
+  word_type_vi: 'thán từ',
+  level: 'A1',
+  example_sentence: 'Bonjour, comment allez-vous ?',
+  example_translation: 'Xin chào, bạn khỏe không?',
+  example_blank: '___, comment allez-vous ?',
+  collocations: ['dire bonjour (nói xin chào)'],
+  related_words: ['salut (chào)'],
+  unsplash_search_keyword: 'greeting',
+}
+
 function toolUseResponse(input: unknown) {
   return { content: [{ type: 'tool_use', name: 'submit_card', input }], stop_reason: 'tool_use' }
 }
@@ -69,6 +83,20 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
 
     expect(result).toEqual(validEnglish)
     expect(createMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('任意の BCP 47 言語でも汎用 schema を validate して返す', async () => {
+    createMock.mockResolvedValueOnce(toolUseResponse(validFrench))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.generateCard({
+      form_type: FormType.LANGUAGE,
+      language: 'fr-FR',
+      word: 'bonjour',
+    })
+
+    expect(result).toEqual(validFrench)
+    expect(createMock.mock.calls[0][0].system).toContain('French')
   })
 
   it('model が submit_card を呼ばない場合 (retry を使い切った後) エラーを throw', async () => {

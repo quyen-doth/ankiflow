@@ -9,19 +9,14 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '@/lib/firebase'
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { ensureDeck, setDeckSuspended } from '@/lib/flashcard-service/client-ops'
-import { FormType, LanguageType } from '@/types'
+import { FormType, type LanguageCode } from '@/types'
+import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
 
 /** ログイン中のユーザーの UID — 未ログインなら throw (middleware がアプリ内で発生しないことを保証)。 */
 function requireUid(): string {
   const uid = (auth as { currentUser?: { uid?: string } | null }).currentUser?.uid
   if (!uid) throw new Error('Not signed in')
   return uid
-}
-
-const LANGUAGE_DECK_PREFIX: Record<string, string> = {
-  [LanguageType.ENGLISH]: 'English',
-  [LanguageType.CHINESE]: 'Chinese',
-  [LanguageType.JAPANESE]: 'Japanese',
 }
 
 /**
@@ -31,12 +26,14 @@ const LANGUAGE_DECK_PREFIX: Record<string, string> = {
 export function suggestAnkiDeckName(
   displayName: string,
   formType: FormType | string,
-  language?: LanguageType | string | null,
+  language?: LanguageCode | null,
+  languageName?: string,
 ): string {
   const name = displayName.trim()
   if (!name) return ''
   if (formType === FormType.LANGUAGE) {
-    const prefix = language ? LANGUAGE_DECK_PREFIX[language as string] : undefined
+    const code = language ? canonicalizeLanguageCode(language) : null
+    const prefix = code ? languageName?.trim() || inferLanguageDisplayName(code) : undefined
     return prefix ? `${prefix}::${name}` : name
   }
   if (formType === FormType.IT) return `IT::${name}`
@@ -83,7 +80,7 @@ export async function createDeck(params: {
   displayName: string
   ankiDeckName: string
   formType: FormType | string
-  language?: LanguageType | string | null
+  language?: LanguageCode | null
 }): Promise<CreatedDeck> {
   const display_name = params.displayName.trim()
   const anki_deck_name = params.ankiDeckName.trim()

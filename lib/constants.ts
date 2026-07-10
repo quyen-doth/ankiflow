@@ -31,7 +31,7 @@ export const GLOBAL_SETTINGS_DOC_ID = 'global' as const
 export const DEFAULTS_OWNER_ID = '__defaults__' as const
 
 // ─── Form Type Mapping ───────────────────────────────────────────────────────
-import { FormType, LanguageType } from '@/types'
+import { FormType } from '@/types'
 
 /**
  * UI ラベル (state、props で使用) → FormType enum (Firestore クエリで使用)
@@ -51,15 +51,3 @@ export const DB_FORM_TYPE_TO_UI: Record<FormType, 'Language' | 'IT' | 'General'>
   [FormType.IT]: 'IT',
   [FormType.GENERAL]: 'General',
 }
-
-// ─── Language Options ────────────────────────────────────────────────────────
-
-/**
- * サポートされる言語のリスト — LanguageSelector の唯一のソース。
- * Firestore との整合性を保証するため LanguageType enum を使用。
- */
-export const LANGUAGE_OPTIONS: { id: LanguageType; name: string; flag: string }[] = [
-  { id: LanguageType.ENGLISH, name: 'English', flag: '🇺🇸' },
-  { id: LanguageType.JAPANESE, name: 'Japanese', flag: '🇯🇵' },
-  { id: LanguageType.CHINESE, name: 'Chinese', flag: '🇨🇳' },
-]

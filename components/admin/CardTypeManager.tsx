@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { Card } from '@/components/ui/Card'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -19,8 +20,9 @@ import { Plus, Pencil, Trash2, Search, ChevronDown } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
-import { FormType, LanguageType } from '@/types'
+import { FormType } from '@/types'
 import type { CardTypeConfig, CardTemplate, LanguageCode } from '@/types'
+import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
 import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
 
@@ -37,12 +39,6 @@ const FORM_TYPE_LABELS: Record<FormType, string> = {
   [FormType.LANGUAGE]: 'Language',
   [FormType.IT]: 'IT',
   [FormType.GENERAL]: 'General',
-}
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  [LanguageType.ENGLISH]: 'English',
-  [LanguageType.JAPANESE]: 'Japanese',
-  [LanguageType.CHINESE]: 'Chinese',
 }
 
 const NO_LANGUAGE = '__none__'
@@ -79,6 +75,7 @@ interface CardTypeManagerProps {
 
 export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
+  const { languages, enabledLanguages } = useStudyLanguages()
   const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,6 +95,21 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
   const [filterFormType, setFilterFormType] = useState<FormType | ''>('')
   const [filterLanguage, setFilterLanguage] = useState<LanguageCode | ''>('')
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
+
+  const languageOptions = useMemo(() => {
+    const codes = new Set<string>()
+    languages.forEach(language => codes.add(language.code))
+    cardTypes.forEach(cardType => {
+      if (cardType.language) codes.add(canonicalizeLanguageCode(cardType.language) ?? cardType.language)
+    })
+    return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
+  }, [cardTypes, languages])
+
+  const selectableLanguageOptions = useMemo(() => {
+    const codes = new Set(enabledLanguages.map(language => language.code))
+    if (draft.language !== NO_LANGUAGE) codes.add(draft.language)
+    return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
+  }, [draft.language, enabledLanguages, languages])
 
   useEffect(() => {
     if (authLoading || !ownerId) return
@@ -274,7 +286,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       key: 'language',
       header: 'Language',
       render: (_: unknown, row: CardTypeConfig) => (
-        <span className="text-slate-600">{row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}</span>
+        <span className="text-slate-600">{row.language ? languageDisplayName(row.language, languages) : '—'}</span>
       ),
     },
     {
@@ -337,9 +349,9 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
           <option value="">All Types</option>
           {Object.values(FormType).map(ft => (<option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>))}
         </Select>
-        <Select aria-label="Filter by language" value={filterLanguage} onChange={(e) => setFilterLanguage(e.target.value as LanguageType | '')} className="!w-auto min-w-[130px]">
+        <Select aria-label="Filter by language" value={filterLanguage} onChange={(e) => setFilterLanguage(e.target.value as LanguageCode | '')} className="!w-auto min-w-[130px]">
           <option value="">All Languages</option>
-          {Object.values(LanguageType).map(lang => (<option key={lang} value={lang}>{LANGUAGE_LABELS[lang]}</option>))}
+          {languageOptions.map(language => (<option key={language.value} value={language.value}>{language.label}</option>))}
         </Select>
         <Select aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')} className="!w-auto min-w-[110px]">
           <option value="">All Status</option>
@@ -386,15 +398,16 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
                 />
               </FieldWrapper>
               <FieldWrapper label="Language">
-                <SegmentedControl
+                <Select
                   aria-label="Language"
                   value={draft.language}
-                  onChange={(v) => setDraft(d => ({ ...d, language: v }))}
-                  options={[
-                    { value: NO_LANGUAGE, label: 'All' },
-                    ...Object.values(LanguageType).map(lang => ({ value: lang, label: LANGUAGE_LABELS[lang] })),
-                  ]}
-                />
+                  onChange={(event) => setDraft(d => ({ ...d, language: event.target.value as LanguageCode | typeof NO_LANGUAGE }))}
+                >
+                  <option value={NO_LANGUAGE}>All</option>
+                  {selectableLanguageOptions.map(language => (
+                    <option key={language.value} value={language.value}>{language.label}</option>
+                  ))}
+                </Select>
               </FieldWrapper>
             </div>
 

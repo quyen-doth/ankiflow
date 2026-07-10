@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider';
 import { Card } from '@/components/ui/Card';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -27,8 +28,9 @@ import { useSortableList } from '@/hooks/useSortableList';
 import { verifyAttrs } from '@/verify/core/contract';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureDeck, renameDeck, deleteDeckWithCleanup, setDeckSuspended, syncAllDecks } from '@/lib/flashcard-service/client-ops';
-import { FormType, LanguageType } from '@/types';
+import { FormType } from '@/types';
 import type { DeckConfig, LanguageCode } from '@/types';
+import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages';
 
 /**
  * Đồng bộ deck với Anki client-side (browser → AnkiConnect của user); throw nếu Anki offline / lỗi.
@@ -63,12 +65,6 @@ const FORM_TYPE_LABELS: Record<FormType, string> = {
     [FormType.GENERAL]: 'General',
 };
 
-const LANGUAGE_LABELS: Record<string, string> = {
-    [LanguageType.ENGLISH]: 'English',
-    [LanguageType.JAPANESE]: 'Japanese',
-    [LanguageType.CHINESE]: 'Chinese',
-};
-
 const NO_LANGUAGE = '__none__';
 
 interface DeckDraft {
@@ -97,6 +93,7 @@ interface DeckManagerProps {
 
 export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
     const { user, loading: authLoading } = useAuth();
+    const { languages, enabledLanguages } = useStudyLanguages();
     const ownerId = ownerIdProp ?? user?.uid;
     const [decks, setDecks] = useState<DeckConfig[]>([]);
     const [loading, setLoading] = useState(true);
@@ -115,6 +112,21 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
     const [filterLanguage, setFilterLanguage] = useState<LanguageCode | ''>('');
     const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('');
 
+    const languageOptions = useMemo(() => {
+        const codes = new Set<string>();
+        languages.forEach((language) => codes.add(language.code));
+        decks.forEach((deck) => {
+            if (deck.language) codes.add(canonicalizeLanguageCode(deck.language) ?? deck.language);
+        });
+        return Array.from(codes).map((code) => ({ value: code, label: languageDisplayName(code, languages) }));
+    }, [decks, languages]);
+
+    const selectableLanguageOptions = useMemo(() => {
+        const codes = new Set(enabledLanguages.map((language) => language.code));
+        if (draft.language !== NO_LANGUAGE) codes.add(draft.language);
+        return Array.from(codes).map((code) => ({ value: code, label: languageDisplayName(code, languages) }));
+    }, [draft.language, enabledLanguages, languages]);
+
     const filteredDecks = useMemo(() => {
         return decks.filter((d) => {
             if (search) {
@@ -132,7 +144,7 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
 
     const activeFilters: { key: string; label: string }[] = [];
     if (filterFormType) activeFilters.push({ key: 'formType', label: FORM_TYPE_LABELS[filterFormType] });
-    if (filterLanguage) activeFilters.push({ key: 'language', label: LANGUAGE_LABELS[filterLanguage] });
+    if (filterLanguage) activeFilters.push({ key: 'language', label: languageDisplayName(filterLanguage, languages) });
     if (filterStatus) activeFilters.push({ key: 'status', label: filterStatus === 'active' ? 'Active' : 'Inactive' });
 
     const removeFilter = (key: string) => {
@@ -332,7 +344,7 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
             header: 'Language',
             render: (_: unknown, row: DeckConfig) => (
                 <span className="text-slate-600">
-                    {row.language ? (LANGUAGE_LABELS[row.language] ?? row.language) : '—'}
+                    {row.language ? languageDisplayName(row.language, languages) : '—'}
                 </span>
             ),
         },
@@ -446,13 +458,13 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
                     <Select
                         aria-label="Filter by language"
                         value={filterLanguage}
-                        onChange={(e) => setFilterLanguage(e.target.value as LanguageType | '')}
+                        onChange={(e) => setFilterLanguage(e.target.value as LanguageCode | '')}
                         className="!w-auto min-w-[130px]"
                     >
                         <option value="">All Languages</option>
-                        {Object.values(LanguageType).map((lang) => (
-                            <option key={lang} value={lang}>
-                                {LANGUAGE_LABELS[lang]}
+                        {languageOptions.map((language) => (
+                            <option key={language.value} value={language.value}>
+                                {language.label}
                             </option>
                         ))}
                     </Select>
@@ -514,14 +526,14 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
                         <Input
                             value={draft.anki_deck_name}
                             onChange={(e) => setDraft((d) => ({ ...d, anki_deck_name: e.target.value }))}
-                            placeholder="e.g. AnkiFlow::English::Vocabulary"
+                            placeholder="e.g. AnkiFlow::Language::Vocabulary"
                         />
                     </FieldWrapper>
                     <FieldWrapper label="Display Name">
                         <Input
                             value={draft.display_name}
                             onChange={(e) => setDraft((d) => ({ ...d, display_name: e.target.value }))}
-                            placeholder="e.g. English Vocabulary"
+                            placeholder="e.g. Vocabulary"
                         />
                     </FieldWrapper>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -545,14 +557,14 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
                                 onChange={(e) =>
                                     setDraft((d) => ({
                                         ...d,
-                                        language: e.target.value as LanguageType | typeof NO_LANGUAGE,
+                                        language: e.target.value as LanguageCode | typeof NO_LANGUAGE,
                                     }))
                                 }
                             >
                                 <option value={NO_LANGUAGE}>—</option>
-                                {Object.values(LanguageType).map((lang) => (
-                                    <option key={lang} value={lang}>
-                                        {LANGUAGE_LABELS[lang]}
+                                {selectableLanguageOptions.map((language) => (
+                                    <option key={language.value} value={language.value}>
+                                        {language.label}
                                     </option>
                                 ))}
                             </Select>
