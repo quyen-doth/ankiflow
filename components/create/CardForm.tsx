@@ -27,6 +27,7 @@ import { savePendingEntry } from "@/lib/pendingEntry";
 import { savePendingBatch } from "@/lib/pendingBatch";
 import { generateBatch } from "@/lib/create/batchGenerate";
 import { detectItemLanguages, formatMixedLanguageError } from "@/lib/create/languageDetection";
+import { clearDraft, hasDraftContent, loadDraft, saveDraft } from "@/lib/create/draftCache";
 import { canonicalizeLanguageCode, resolveStudyLanguage } from "@/lib/studyLanguages";
 import { verifyAttrs } from "@/verify/core/contract";
 import type { CardFormBlueprint, CoreField, ConfigBlock, ConfigLeaf } from "@/lib/create/formBlueprint";
@@ -90,6 +91,49 @@ export function CardForm({
     const [savingDetectedLanguage, setSavingDetectedLanguage] = useState(false);
     const activeSubmitLanguage = useRef<LanguageCode | null>(null);
     const languageConfigReset = useRef(false);
+    // draft 復元前に auto-save が空の初期値で既存 draft を消さないようにする。
+    const draftHydratedRef = useRef(false);
+
+    // client component も初回は SSR されるため、hydration mismatch を避けて effect 内で復元する。
+    // blueprint.formType は key={activeCode} による mount ごとに固定される。
+    // NOTE: async wrapper は useSession と同じ意図的なパターン — 同期 setState を effect 直下に
+    // 置くと react-hooks/set-state-in-effect (error) に違反するため。await が無くても削らないこと。
+    useEffect(() => {
+        async function hydrate() {
+            const draft = loadDraft(blueprint.formType);
+            if (draft) {
+                // blueprint に現存する field のみ復元 — admin がフォーム定義を変更した後の
+                // stale key が dynamicFields 経由で AI に渡るのを防ぐ。"keywords" は IT flow の
+                // coreFields 外の固定入力 (下の renderLeaf 参照) のため明示的に許可する。
+                const validKeys = new Set([...blueprint.coreFields.map((field) => field.key), "keywords"]);
+                const restoredValues = Object.fromEntries(
+                    Object.entries(draft.values).filter(([key]) => validKeys.has(key)),
+                );
+                // batchItems と同じ基準: 空白のみの内容は復元しない (すぐ auto-clear されるだけ)。
+                if (Object.values(restoredValues).some((value) => value.trim().length > 0)) {
+                    setValues(restoredValues);
+                }
+                if (draft.batchItems.some((item) => item.trim().length > 0)) setBatchItems(draft.batchItems);
+            }
+            draftHydratedRef.current = true;
+        }
+        void hydrate();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // 入力内容を debounce 保存し、すべて空になった場合は draft を削除する。
+    useEffect(() => {
+        if (!draftHydratedRef.current) return;
+        const timer = setTimeout(() => {
+            if (hasDraftContent(values, batchItems)) {
+                saveDraft(blueprint.formType, { values, batchItems });
+            } else {
+                clearDraft(blueprint.formType);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [values, batchItems]);
 
     const setValue = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
 
@@ -189,6 +233,7 @@ export function CardForm({
             });
 
             resetContent();
+            clearDraft(blueprint.formType);
             setValues({});
             router.push("/preview");
         } catch (err) {
@@ -263,6 +308,7 @@ export function CardForm({
             });
 
             resetContent();
+            clearDraft(blueprint.formType);
             setBatchItems([""]);
             router.push("/preview/batch");
         } catch (err) {

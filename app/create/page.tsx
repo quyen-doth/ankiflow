@@ -9,6 +9,7 @@ import { CardForm } from '@/components/create/CardForm';
 import { ModeToggle } from '@/components/create/ModeToggle';
 import { MotionPage } from '@/components/ui/MotionPage';
 import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
+import { loadCreateUiState, saveCreateUiState } from '@/lib/create/draftCache';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -99,8 +100,16 @@ function CreateContent() {
                 const types = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as ContentType);
                 setContentTypes(types);
                 if (types.length > 0 && !activeCode) {
-                    setActiveCode(types[0].code);
-                    setBatchMode(types[0].default_create_mode === 'batch');
+                    // 前回選択したタブ/モードを復元し、現在の types に無ければ先頭へ戻す。
+                    const savedUi = loadCreateUiState();
+                    const restored = savedUi ? types.find((type) => type.code === savedUi.activeCode) : undefined;
+                    if (restored && savedUi) {
+                        setActiveCode(restored.code);
+                        setBatchMode(savedUi.batchMode);
+                    } else {
+                        setActiveCode(types[0].code);
+                        setBatchMode(types[0].default_create_mode === 'batch');
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching content types:', error);
@@ -151,6 +160,7 @@ function CreateContent() {
             setBatchMode(next?.default_create_mode === 'batch');
             setCanSubmit(false);
             setBatchCount(0);
+            saveCreateUiState({ activeCode: code, batchMode: next?.default_create_mode === 'batch' });
         },
         [contentTypes],
     );
@@ -159,7 +169,8 @@ function CreateContent() {
         setBatchMode(batch);
         setCanSubmit(false);
         setBatchCount(0);
-    }, []);
+        saveCreateUiState({ activeCode, batchMode: batch });
+    }, [activeCode]);
 
     const handleBatchProgress = useCallback((done: number, total: number) => {
         setBatchProgress({ done, total });
