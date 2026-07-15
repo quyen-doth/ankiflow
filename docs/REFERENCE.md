@@ -112,7 +112,15 @@ npm run seed                            # content_types + settings/global + sett
 npm run seed -- --defaults              # テンプレート __defaults__ をパブリッシュ (オプション — サインアップ時に自動遅延パブリッシュ)
 npx tsx scripts/set-admin-claim.ts <email>       # 管理者クレームを設定 (その後再ログイン)
 npx tsx scripts/migrate-user-data.ts <uid> [--dry-run]  # 古いシングルユーザーデータを 1 つのアカウントに割り当て
+npx tsx scripts/sync-admin-defaults.ts            # 管理者 workspace → __defaults__ + 既存 user の不足分を dry-run
+npx tsx scripts/sync-admin-defaults.ts --apply    # レビュー済みの template 差分・user create を適用
 ```
+
+`sync-admin-defaults.ts` は one-time migration。`ADMIN_EMAIL` の `/admin` "My workspace" を
+`__defaults__` の正確な snapshot に置き換え、既存 user には ID または論理キーで不足している
+master data だけを `create` する。引数なしでは読み取りと差分表示のみで、Firestore への書き込みは
+行わない。`--apply` は古い template の削除を含むため、必ず dry-run の全 path をレビューし、
+Firestore の書き込み・削除について明示的な承認を得てから 1 回だけ実行する。
 
 ## Git 規約
 

@@ -22,6 +22,7 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { DEFAULTS_OWNER_ID } from '@/lib/constants';
 import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
+import { FormType } from '@/types';
 
 // ─── デフォルトデータ (出典: scripts/seed-firestore.ts オリジナル) ─────────────────────
 
@@ -382,15 +383,21 @@ export async function publishTemplateDefaults(db: Firestore): Promise<void> {
     ]);
 }
 
-interface CategorySourceItem { id: string; name: string; sort_order: number }
-interface CardTypeSourceItem {
-    id: string; code: string; name: string; form_type: string;
-    language: string | null; is_default: boolean; sort_order: number; template: Record<string, unknown>;
+interface CategorySourceItem {
+    id: string; name: string; form_type: string; sort_order: number; is_active: boolean;
 }
-interface TopicSourceItem { id: string; name: string; sort_order: number }
+interface CardTypeSourceItem {
+    id: string; code: string; name: string; description: string; form_type: string;
+    language: string | null; is_default: boolean; is_active: boolean; sort_order: number;
+    template: Record<string, unknown>;
+}
+interface TopicSourceItem {
+    id: string; name: string; form_type: string; is_active: boolean; sort_order: number;
+}
 interface DeckSourceItem {
     id: string; anki_deck_name: string; display_name: string; form_type: string;
-    language: string | null; default_card_type_ids: string[]; default_category_id: string | null; sort_order: number;
+    language: string | null; default_card_type_ids: string[]; default_category_id: string | null;
+    is_active: boolean; sort_order: number;
 }
 
 /**
@@ -425,25 +432,44 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
     }
 
     const categorySource: CategorySourceItem[] = catTemplates.length > 0
-        ? catTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
-        : DEFAULT_CATEGORIES.map((cat) => ({ ...cat }));
+        ? catTemplates.map((t) => ({
+            id: t.id,
+            name: t.data.name as string,
+            form_type: (t.data.form_type as string) ?? FormType.LANGUAGE,
+            sort_order: (t.data.sort_order as number) ?? 0,
+            is_active: t.data.is_active !== false,
+        }))
+        : DEFAULT_CATEGORIES.map((cat) => ({ ...cat, form_type: FormType.LANGUAGE, is_active: true }));
 
     const cardTypeSource: CardTypeSourceItem[] = ctTemplates.length > 0
         ? ctTemplates.map((t) => ({
             id: t.id,
             code: t.data.code as string,
             name: t.data.name as string,
+            description: (t.data.description as string) ?? '',
             form_type: t.data.form_type as string,
             language: (t.data.language as string | null) ?? null,
             is_default: !!t.data.is_default,
+            is_active: t.data.is_active !== false,
             sort_order: (t.data.sort_order as number) ?? 0,
             template: t.data.template as Record<string, unknown>,
         }))
-        : DEFAULT_CARD_TYPES.map((ct) => ({ ...ct, template: ct.template as Record<string, unknown> }));
+        : DEFAULT_CARD_TYPES.map((ct) => ({
+            ...ct,
+            description: '',
+            is_active: true,
+            template: ct.template as Record<string, unknown>,
+        }));
 
     const topicSource: TopicSourceItem[] = topicTemplates.length > 0
-        ? topicTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
-        : DEFAULT_TOPICS.map((topic) => ({ ...topic }));
+        ? topicTemplates.map((t) => ({
+            id: t.id,
+            name: t.data.name as string,
+            form_type: (t.data.form_type as string) ?? FormType.IT,
+            is_active: t.data.is_active !== false,
+            sort_order: (t.data.sort_order as number) ?? 0,
+        }))
+        : DEFAULT_TOPICS.map((topic) => ({ ...topic, form_type: FormType.IT, is_active: true }));
 
     const deckSource: DeckSourceItem[] = deckTemplates.length > 0
         ? deckTemplates.map((t) => ({
@@ -454,18 +480,23 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
             language: (t.data.language as string | null) ?? null,
             default_card_type_ids: (t.data.default_card_type_ids as string[]) ?? [],
             default_category_id: (t.data.default_category_id as string | null) ?? null,
+            is_active: t.data.is_active !== false,
             sort_order: (t.data.sort_order as number) ?? 0,
         }))
-        : DEFAULT_DECKS.map((deck) => ({ ...deck, default_card_type_ids: [...deck.default_card_type_ids] }));
+        : DEFAULT_DECKS.map((deck) => ({
+            ...deck,
+            default_card_type_ids: [...deck.default_card_type_ids],
+            is_active: true,
+        }));
 
     await Promise.all([
         ...categorySource.map((cat) =>
             seedDocIfMissing(db, 'categories', userScopedId(cat.id, uid), {
                 user_id: uid,
                 name: cat.name,
-                form_type: 'form_language',
+                form_type: cat.form_type,
                 sort_order: cat.sort_order,
-                is_active: true,
+                is_active: cat.is_active,
                 created_at: now,
                 updated_at: now,
             }),
@@ -475,11 +506,11 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
                 user_id: uid,
                 code: ct.code,
                 name: ct.name,
-                description: '',
+                description: ct.description,
                 form_type: ct.form_type,
                 language: ct.language,
                 is_default: ct.is_default,
-                is_active: true,
+                is_active: ct.is_active,
                 sort_order: ct.sort_order,
                 template: ct.template,
                 created_at: now,
@@ -489,8 +520,8 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
             seedDocIfMissing(db, 'topics', userScopedId(topic.id, uid), {
                 user_id: uid,
                 name: topic.name,
-                form_type: 'form_it',
-                is_active: true,
+                form_type: topic.form_type,
+                is_active: topic.is_active,
                 sort_order: topic.sort_order,
                 created_at: now,
             }),
@@ -505,7 +536,7 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
                 // FK re-map: この user 自身のユーザーごとの card_types/categories を指す
                 default_card_type_ids: deck.default_card_type_ids.map((id) => userScopedId(id, uid)),
                 default_category_id: deck.default_category_id ? userScopedId(deck.default_category_id, uid) : null,
-                is_active: true,
+                is_active: deck.is_active,
                 sort_order: deck.sort_order,
                 created_at: now,
             }),
