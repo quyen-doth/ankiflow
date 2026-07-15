@@ -332,7 +332,7 @@ TTS をレンダリング — base64 audio を返す。Audio は entry 内で da
     ```json
     { "success": true, "base64": "<base64-encoded-mp3>", "filename": "zh_shu_123.mp3" }
     ```
-- **Voice 解決:** base code `en`/`zh`/`ja` は既存の専用 Wavenet voice を維持。その他は BCP 47 locale を canonicalize し、region がない場合は `Intl.Locale.maximize()` で補完して Google TTS に voice 自動選択を任せる。英語への暗黙 fallback は行わない。
+- **Voice 解決:** base code `en`/`zh`/`ja` は既存の専用 Wavenet voice を維持。中国語系バリアントは Google TTS が対応する locale に写像する (`zh-TW` → `cmn-TW`、`zh-HK` → `yue-HK`、その他の `zh-*` → `cmn-CN`)。それ以外は BCP 47 locale を canonicalize し、region がない場合は `Intl.Locale.maximize()` で補完して Google TTS に voice 自動選択を任せる。英語への暗黙 fallback は行わない。
 - **Response (400):** 必須 field または BCP 47 code が不正。**Response (403):** `settings/global.tts_available == false`。
 
 #### `GET /api/image`
