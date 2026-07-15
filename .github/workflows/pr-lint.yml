@@ -7,6 +7,9 @@ on:
 
 jobs:
   pr-lint:
+    # release-pr.yml が生成する Release PR (develop → main) は対象外。
+    # 中身のコミットは各 feature PR で lint 済みのため二重チェックになる。
+    if: ${{ !(github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'develop') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
