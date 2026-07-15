@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
@@ -15,6 +15,8 @@ import { Input, FieldWrapper } from '@/components/ui/FormField'
 import { Plus, Pencil, Trash2, Bell, Send } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
+import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import type { NotificationTrigger, DeckConfig } from '@/types'
 
 interface TriggerDraft {
@@ -39,16 +41,11 @@ const EMPTY_DRAFT: TriggerDraft = {
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6) // 6-22
 
-const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'zh', label: 'Chinese' },
-]
-
 export function NotificationManager() {
   // ADMIN-ONLY: LINE notifications dùng credentials của chủ app (env) — user thường
   // không thấy UI này; server route /api/notifications/send cũng gate theo ADMIN_EMAIL.
   const { user } = useAuth()
+  const { languages, enabledLanguages } = useStudyLanguages()
   const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
 
   const [triggers, setTriggers] = useState<NotificationTrigger[]>([])
@@ -63,6 +60,15 @@ export function NotificationManager() {
   const [testing, setTesting] = useState(false)
   const toast = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
+
+  const languageOptions = useMemo(() => {
+    const codes = new Set(enabledLanguages.map(language => language.code))
+    triggers.forEach(trigger => trigger.language_filter.forEach(code => {
+      codes.add(canonicalizeLanguageCode(code) ?? code)
+    }))
+    draft.language_filter.forEach(code => codes.add(canonicalizeLanguageCode(code) ?? code))
+    return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
+  }, [draft.language_filter, enabledLanguages, languages, triggers])
 
   useEffect(() => {
     if (!user) return
@@ -251,7 +257,9 @@ export function NotificationManager() {
       render: (_: unknown, row: NotificationTrigger) => {
         const parts: string[] = []
         if (row.deck_filter.length > 0) parts.push(`${row.deck_filter.length} decks`)
-        if (row.language_filter.length > 0) parts.push(row.language_filter.join(', ').toUpperCase())
+        if (row.language_filter.length > 0) {
+          parts.push(row.language_filter.map(code => languageDisplayName(code, languages)).join(', '))
+        }
         return <span className="text-xs text-slate-400 font-mono">{parts.join(' · ') || 'All'}</span>
       },
     },
@@ -384,7 +392,7 @@ export function NotificationManager() {
           <div>
             <label className="block text-sm font-semibold text-ink mb-2">Language Filter <span className="text-xs font-normal text-slate-400">(empty = all languages)</span></label>
             <div className="flex gap-2">
-              {LANGUAGES.map(lang => (
+              {languageOptions.map(lang => (
                 <button
                   key={lang.value}
                   type="button"

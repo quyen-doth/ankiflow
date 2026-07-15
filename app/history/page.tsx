@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { FilterBar } from '@/components/ui/FilterBar'
@@ -15,9 +16,10 @@ import { useEntryEdit } from '@/hooks/useEntryEdit'
 import { PlusCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FormType, type Entry } from '@/types'
+import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 
-const LANG_FILTERS = ['All', 'English', 'Japanese', 'IT'] as const
-type LangFilter = (typeof LANG_FILTERS)[number]
+const ALL_LANGUAGES = '__all_languages__'
+const IT_CONTENT = '__it_content__'
 
 const SYNC_FILTERS = ['All', 'Unsynced', 'Synced'] as const
 type SyncFilter = (typeof SYNC_FILTERS)[number]
@@ -25,10 +27,11 @@ type SyncFilter = (typeof SYNC_FILTERS)[number]
 export default function HistoryPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { languages } = useStudyLanguages()
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [langFilter, setLangFilter] = useState<LangFilter>('All')
+  const [langFilter, setLangFilter] = useState(ALL_LANGUAGES)
   const [syncFilter, setSyncFilter] = useState<SyncFilter>('All')
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const { saveEntry } = useEntryEdit()
@@ -60,18 +63,37 @@ export default function HistoryPage() {
 
   const unsyncedCount = entries.filter(e => e.status === 'reviewed').length
 
+  const languageFilters = useMemo(() => {
+    // Chip = ngôn ngữ đang enabled ∪ ngôn ngữ có entry thật — ngôn ngữ disabled
+    // không có dữ liệu thì không chiếm chỗ trên thanh filter.
+    const codes = new Set<string>()
+    languages.forEach(language => {
+      if (!language.enabled) return
+      const code = canonicalizeLanguageCode(language.code)
+      if (code) codes.add(code)
+    })
+    entries.forEach(entry => {
+      if (entry.form_type !== FormType.LANGUAGE || !entry.language) return
+      codes.add(canonicalizeLanguageCode(entry.language) ?? entry.language)
+    })
+    return [
+      { value: ALL_LANGUAGES, label: 'All' },
+      ...Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) })),
+      { value: IT_CONTENT, label: 'IT' },
+    ]
+  }, [entries, languages])
+
   const filteredEntries = entries.filter(entry => {
     if (syncFilter === 'Unsynced' && entry.status !== 'reviewed') return false
     if (syncFilter === 'Synced' && entry.status !== 'synced') return false
 
-    if (langFilter !== 'All') {
-      if (langFilter === 'IT') {
+    if (langFilter !== ALL_LANGUAGES) {
+      if (langFilter === IT_CONTENT) {
         if (entry.form_type !== FormType.IT) return false
       } else {
         if (entry.form_type !== FormType.LANGUAGE) return false
-        const lang = entry.language?.toLowerCase() || ''
-        if (langFilter === 'English' && lang !== 'en') return false
-        if (langFilter === 'Japanese' && lang !== 'ja') return false
+        const lang = entry.language ? canonicalizeLanguageCode(entry.language) ?? entry.language : ''
+        if (lang !== langFilter) return false
       }
     }
     if (!searchTerm) return true
@@ -104,19 +126,19 @@ export default function HistoryPage() {
             />
           </div>
           <div className="flex items-center gap-1.5">
-            {LANG_FILTERS.map(f => (
+            {languageFilters.map(filter => (
               <button
-                key={f}
+                key={filter.value}
                 type="button"
-                onClick={() => setLangFilter(f)}
+                onClick={() => setLangFilter(filter.value)}
                 className={cn(
                   'px-3.5 py-1.5 rounded-pill text-[12.5px] font-semibold transition-colors',
-                  langFilter === f
+                  langFilter === filter.value
                     ? 'bg-primary text-white'
                     : 'text-slate-600 hover:bg-surface'
                 )}
               >
-                {f}
+                {filter.label}
               </button>
             ))}
           </div>

@@ -1,36 +1,25 @@
 import { NextResponse } from 'next/server';
 import { createAIAgentProvider } from '@/lib/ai-agent';
-import { getAdminDb } from '@/lib/firebase-admin';
 import { withAuth } from '@/lib/auth-guard';
-import { GLOBAL_SETTINGS_DOC_ID, SETTINGS_DOC_ID } from '@/lib/constants';
+import { readAISettings } from '@/lib/ai-settings';
 import { FormType } from '@/types';
-
-// Đọc cấu hình AI từ settings/global — CONTROL PLANE do admin quản lý qua
-// POST /api/admin/global-config. CỐ Ý không đọc settings/{uid}: ai_model/web_search
-// ảnh hưởng chi phí API của chủ app, user thường không được tự chỉnh.
-// Fallback settings/default: tương thích ngược với data trước khi tách 2 tầng.
-async function readAISettings(): Promise<{ model: string | null; webSearchEnabled: boolean }> {
-  try {
-    const db = getAdminDb();
-    let snap = await db.collection('settings').doc(GLOBAL_SETTINGS_DOC_ID).get();
-    if (!snap.exists) {
-      snap = await db.collection('settings').doc(SETTINGS_DOC_ID).get();
-    }
-    const data = snap.data();
-    return {
-      model: (data?.ai_model as string | undefined) ?? null,
-      webSearchEnabled: (data?.web_search_enabled as boolean | undefined) ?? false,
-    };
-  } catch (error) {
-    console.warn('Could not read AI settings, using defaults:', error);
-    return { model: null, webSearchEnabled: false };
-  }
-}
+import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages';
 
 export const POST = withAuth(async (request) => {
   try {
     const body = await request.json();
-    const { word, term, form_type, language, topics, dynamicFields, contentTypeName } = body;
+    const {
+      word,
+      term,
+      form_type,
+      language,
+      language_name,
+      output_language,
+      output_language_name,
+      topics,
+      dynamicFields,
+      contentTypeName,
+    } = body;
 
     if (!form_type) {
       return NextResponse.json({ error: 'form_type is required' }, { status: 400 });
@@ -38,6 +27,11 @@ export const POST = withAuth(async (request) => {
 
     if (form_type === FormType.LANGUAGE && !word) {
       return NextResponse.json({ error: 'word is required for language form' }, { status: 400 });
+    }
+
+    const languageCode = typeof language === 'string' ? canonicalizeLanguageCode(language) : null;
+    if (form_type === FormType.LANGUAGE && !languageCode) {
+      return NextResponse.json({ error: 'language must be a valid BCP 47 code for language form' }, { status: 400 });
     }
 
     if (form_type === FormType.IT && !term) {
@@ -49,10 +43,27 @@ export const POST = withAuth(async (request) => {
       return NextResponse.json({ error: 'word is required' }, { status: 400 });
     }
 
+    const outputLanguage = canonicalizeLanguageCode(
+      typeof output_language === 'string' ? output_language : '',
+    ) ?? 'vi';
+    const requestedOutputLanguageName = typeof output_language_name === 'string'
+      ? output_language_name.trim()
+      : '';
+    const outputLanguageName = outputLanguage === 'vi'
+      ? 'Vietnamese'
+      : requestedOutputLanguageName || inferLanguageDisplayName(outputLanguage);
+
     const { model, webSearchEnabled } = await readAISettings();
     const provider = createAIAgentProvider({ model, webSearchEnabled });
     const content = await provider.generateCard({
-      word, term, form_type, language, topics,
+      word,
+      term,
+      form_type,
+      language: languageCode ?? undefined,
+      language_name,
+      output_language: outputLanguage,
+      output_language_name: outputLanguageName,
+      topics,
       dynamicFields: dynamicFields as Record<string, string> | undefined,
       contentTypeName: contentTypeName as string | undefined,
     });

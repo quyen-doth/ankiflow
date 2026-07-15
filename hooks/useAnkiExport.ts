@@ -128,7 +128,8 @@ export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: An
                 toast.error(`Export failed: ${result.error || 'Unknown error'}`);
             } else {
                 toast.success(`Created ${result.noteCount} cards in Anki`);
-                router.push(`/create?exported=1&count=${result.noteCount}`);
+                // 成功フィードバックは上の toast が担当 — create 側の ?exported= バナーは廃止済み。
+                router.push('/create');
             }
         } catch (err) {
             console.error('Anki connection error:', err);

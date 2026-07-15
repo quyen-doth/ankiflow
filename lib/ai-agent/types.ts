@@ -1,4 +1,4 @@
-import type { FormType, LanguageType } from '@/types'
+import type { FormType, LanguageCode } from '@/types'
 
 /**
  * カード 1 枚のコンテンツを生成するための入力パラメータ。`/api/generate` の
@@ -8,12 +8,32 @@ export interface GenerateCardInput {
   word?: string
   term?: string
   form_type: FormType | string
-  language?: LanguageType
+  language?: LanguageCode
+  language_name?: string
+  output_language?: LanguageCode
+  output_language_name?: string
   topics?: string[]
   /** Dynamic fields from custom content types */
   dynamicFields?: Record<string, string>
   /** Name of the custom content type (for prompt context) */
   contentTypeName?: string
+}
+
+export interface LanguageDetectionCandidate {
+  code: LanguageCode
+  display_name: string
+}
+
+export interface DetectLanguagesInput {
+  items: string[]
+  candidateLanguages: LanguageDetectionCandidate[]
+}
+
+export interface LanguageDetection {
+  index: number
+  code: LanguageCode
+  display_name: string
+  confidence: number
 }
 
 /**
@@ -23,4 +43,5 @@ export interface GenerateCardInput {
  */
 export interface IAIAgentProvider {
   generateCard(input: GenerateCardInput): Promise<Record<string, unknown>>
+  detectLanguages(input: DetectLanguagesInput): Promise<LanguageDetection[]>
 }

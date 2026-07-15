@@ -5,7 +5,6 @@
  * rate-limit を避けるための concurrency 制限があり、onProgress で進捗を報告する。
  */
 
-import { LanguageType } from '@/types'
 import type { SessionState } from '@/lib/session'
 import type { CardFormBlueprint } from '@/lib/create/formBlueprint'
 
@@ -68,15 +67,6 @@ export async function generateBatch(
 ): Promise<BatchGenResult[]> {
   const { onProgress, signal } = options
 
-  // session を正規化: 言語 content type の場合、不足していれば English をデフォルトにする。
-  const effectiveSession: SessionState = {
-    ...session,
-    language:
-      blueprint.uiFormType === 'Language'
-        ? (session.language as LanguageType) || LanguageType.ENGLISH
-        : session.language,
-  }
-
   const results: BatchGenResult[] = new Array(items.length)
   let done = 0
   let cursor = 0
@@ -87,7 +77,7 @@ export async function generateBatch(
       const index = cursor++
       const item = items[index]
       try {
-        const content = await generateOne(blueprint, item, effectiveSession, signal)
+        const content = await generateOne(blueprint, item, session, signal)
         results[index] = { item, ok: true, content }
       } catch (err) {
         if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return

@@ -1,14 +1,14 @@
 'use client';
 
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CardForm } from '@/components/create/CardForm';
 import { ModeToggle } from '@/components/create/ModeToggle';
 import { MotionPage } from '@/components/ui/MotionPage';
 import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
+import { loadCreateUiState, saveCreateUiState } from '@/lib/create/draftCache';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -18,8 +18,6 @@ import {
     BookOpen,
     SlidersHorizontal,
     ArrowUpRight,
-    CheckCircle,
-    X,
     PlusCircle,
 } from 'lucide-react';
 import { FormType } from '@/types';
@@ -48,9 +46,9 @@ interface LoadingStep {
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-    { label: 'Calling Claude AI', status: 'active' },
-    { label: 'Generating audio (TTS)', status: 'pending' },
-    { label: 'Finding images (Unsplash)', status: 'pending' },
+    { label: 'Detecting language', status: 'active' },
+    { label: 'Checking duplicates', status: 'pending' },
+    { label: 'Calling Claude AI', status: 'pending' },
 ];
 
 const FORM_ID = 'create-form';
@@ -72,7 +70,6 @@ export default function CreatePage() {
 }
 
 function CreateContent() {
-    const searchParams = useSearchParams();
     const router = useRouter();
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
     const [loadingTypes, setLoadingTypes] = useState(true);
@@ -81,7 +78,6 @@ function CreateContent() {
     const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
     const [progress, setProgress] = useState(0);
     const [canSubmit, setCanSubmit] = useState(false);
-    const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null);
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
     const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
@@ -99,8 +95,16 @@ function CreateContent() {
                 const types = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as ContentType);
                 setContentTypes(types);
                 if (types.length > 0 && !activeCode) {
-                    setActiveCode(types[0].code);
-                    setBatchMode(types[0].default_create_mode === 'batch');
+                    // 前回選択したタブ/モードを復元し、現在の types に無ければ先頭へ戻す。
+                    const savedUi = loadCreateUiState();
+                    const restored = savedUi ? types.find((type) => type.code === savedUi.activeCode) : undefined;
+                    if (restored && savedUi) {
+                        setActiveCode(restored.code);
+                        setBatchMode(savedUi.batchMode);
+                    } else {
+                        setActiveCode(types[0].code);
+                        setBatchMode(types[0].default_create_mode === 'batch');
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching content types:', error);
@@ -110,19 +114,6 @@ function CreateContent() {
         }
         fetchContentTypes();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    useEffect(() => {
-        if (searchParams.get('exported') === '1') {
-            const count = parseInt(searchParams.get('count') || '0', 10);
-            const showTimer = setTimeout(() => setSuccessBanner({ count }), 0);
-            const hideTimer = setTimeout(() => setSuccessBanner(null), 5000);
-            router.replace('/create', { scroll: false });
-            return () => {
-                clearTimeout(showTimer);
-                clearTimeout(hideTimer);
-            };
-        }
-    }, [searchParams, router]);
 
     const activeType = contentTypes.find((t) => t.code === activeCode);
 
@@ -151,15 +142,20 @@ function CreateContent() {
             setBatchMode(next?.default_create_mode === 'batch');
             setCanSubmit(false);
             setBatchCount(0);
+            saveCreateUiState({ activeCode: code, batchMode: next?.default_create_mode === 'batch' });
         },
         [contentTypes],
     );
 
-    const handleModeChange = useCallback((batch: boolean) => {
-        setBatchMode(batch);
-        setCanSubmit(false);
-        setBatchCount(0);
-    }, []);
+    const handleModeChange = useCallback(
+        (batch: boolean) => {
+            setBatchMode(batch);
+            setCanSubmit(false);
+            setBatchCount(0);
+            saveCreateUiState({ activeCode, batchMode: batch });
+        },
+        [activeCode],
+    );
 
     const handleBatchProgress = useCallback((done: number, total: number) => {
         setBatchProgress({ done, total });
@@ -200,33 +196,6 @@ function CreateContent() {
                 </nav>
                 <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
             </div>
-
-            <AnimatePresence>
-                {successBanner && (
-                    <motion.div
-                        className="max-w-6xl mx-auto w-full px-0 mb-2 overflow-hidden"
-                        initial={{ opacity: 0, height: 0, y: -8 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -8 }}
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
-                            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                            <p className="text-sm font-medium text-ink flex-1">
-                                Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''}{' '}
-                                to Anki!
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => setSuccessBanner(null)}
-                                className="text-slate-600 hover:text-ink"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
@@ -313,7 +282,7 @@ function CreateContent() {
                 open={isGenerating}
                 title={batchMode ? 'Generating Cards' : 'Generating Cognitive Asset'}
                 steps={
-                    batchMode
+                    batchMode && batchProgress.total > 0
                         ? [
                               {
                                   label: `Generating cards ${batchProgress.done}/${batchProgress.total || batchCount}`,
@@ -323,7 +292,7 @@ function CreateContent() {
                         : loadingSteps
                 }
                 progress={
-                    batchMode
+                    batchMode && batchProgress.total > 0
                         ? Math.round((batchProgress.done / Math.max(1, batchProgress.total || batchCount)) * 100)
                         : progress
                 }

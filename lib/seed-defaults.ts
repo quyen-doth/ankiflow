@@ -21,6 +21,7 @@
  */
 import type { Firestore } from 'firebase-admin/firestore';
 import { DEFAULTS_OWNER_ID } from '@/lib/constants';
+import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
 
 // ─── デフォルトデータ (出典: scripts/seed-firestore.ts オリジナル) ─────────────────────
 
@@ -292,6 +293,7 @@ export const DEFAULT_USER_PREFS = {
     allow_duplicate: false,
     auto_audio: true,
     auto_image: true,
+    study_languages: DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language })),
 } as const;
 
 // ─── ユーザーごとの seeding ─────────────────────────────────────────────────────────

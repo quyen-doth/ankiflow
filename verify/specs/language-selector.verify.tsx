@@ -1,16 +1,16 @@
 import type { ComponentProps } from 'react'
 import { z } from 'zod'
 import { LanguageSelector } from '@/components/create/LanguageSelector'
-import { LANGUAGE_OPTIONS } from '@/lib/constants'
+import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
-import { LanguageType } from '@/types'
+import type { LanguageCode } from '@/types'
 
 type LanguageSelectorProps = ComponentProps<typeof LanguageSelector>
 
 // Spy cho act-change — reset trong act
-const changeSpy = { count: 0, lastValue: null as LanguageType | null }
-const recordChange = (value: LanguageType) => {
+const changeSpy = { count: 0, lastValue: null as LanguageCode | null }
+const recordChange = (value: LanguageCode) => {
   changeSpy.count++
   changeSpy.lastValue = value
 }
@@ -27,12 +27,18 @@ function selectValue(root: HTMLElement, value: string): void {
 registerUnit<LanguageSelectorProps>({
   id: 'LanguageSelector',
   title: 'LanguageSelector',
-  description: 'Select ngôn ngữ — option sinh từ LANGUAGE_OPTIONS (LanguageType enum).',
+  description: 'Select ngôn ngữ — option sinh từ cấu hình BCP 47 theo user.',
   kind: 'component',
   render: props => <LanguageSelector {...props} />,
   propsSchema: z.object({
     value: z.string(),
-    onChange: fn<(value: LanguageType) => void>(),
+    languages: z.array(z.object({
+      code: z.string(),
+      display_name: z.string(),
+      enabled: z.boolean(),
+      sort_order: z.number(),
+    })).optional(),
+    onChange: fn<(value: LanguageCode) => void>(),
   }),
   fixtures: [
     {
@@ -43,7 +49,7 @@ registerUnit<LanguageSelectorProps>({
     {
       id: 'english-selected',
       description: 'Đang chọn English (LanguageType.ENGLISH).',
-      props: { value: LanguageType.ENGLISH, onChange: noop },
+      props: { value: 'en', onChange: noop },
     },
     {
       id: 'act-change',
@@ -52,7 +58,7 @@ registerUnit<LanguageSelectorProps>({
       act: async ctx => {
         changeSpy.count = 0
         changeSpy.lastValue = null
-        selectValue(ctx.root, LanguageType.JAPANESE)
+        selectValue(ctx.root, 'ja')
         await ctx.wait(16)
       },
     },
@@ -60,7 +66,7 @@ registerUnit<LanguageSelectorProps>({
       id: 'probe-unknown-value',
       probe: true,
       description: 'Probe: value không thuộc enum — không option nào khớp, không crash.',
-      props: { value: 'fr' as LanguageType, onChange: noop },
+      props: { value: 'fr', onChange: noop },
     },
   ],
   invariants: [
@@ -71,7 +77,7 @@ registerUnit<LanguageSelectorProps>({
         const values = Array.from(root.querySelectorAll('option'))
           .map(o => o.getAttribute('value'))
           .filter(v => v !== '')
-        const expected = LANGUAGE_OPTIONS.map(l => l.id as string)
+        const expected = DEFAULT_STUDY_LANGUAGES.map(language => language.code)
         const missing = expected.filter(v => !values.includes(v))
         const extra = values.filter(v => !expected.includes(v as string))
         return (
@@ -95,7 +101,7 @@ registerUnit<LanguageSelectorProps>({
       description: 'onChange nhận đúng LanguageType đã chọn, gọi 1 lần',
       onlyFixtures: ['act-change'],
       check: () =>
-        (changeSpy.count === 1 && changeSpy.lastValue === LanguageType.JAPANESE) ||
+        (changeSpy.count === 1 && changeSpy.lastValue === 'ja') ||
         `count=${changeSpy.count}, lastValue=${changeSpy.lastValue}`,
     },
     {

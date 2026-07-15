@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import { Plus, X } from 'lucide-react'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface BatchItemListProps {
   /** Danh sách item chính (mỗi phần tử = 1 thẻ sẽ được tạo). */
@@ -60,6 +61,9 @@ export function BatchItemList({ items, onChange, label, placeholder, hint }: Bat
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    // Generate shortcut は page 側の window handler に渡し、行追加として扱わない。
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) return
+
     if (e.key === 'Enter') {
       e.preventDefault()
       addItemAfter(index)
@@ -72,7 +76,7 @@ export function BatchItemList({ items, onChange, label, placeholder, hint }: Bat
   const nonEmptyCount = items.filter((it) => it.trim().length > 0).length
 
   return (
-    <div>
+    <div {...verifyAttrs({ unit: 'BatchItemList', count: items.length, nonEmptyCount })}>
       <div className="flex items-center justify-between mb-2">
         <label className="block text-[13px] font-bold text-ink">
           {label} <span className="text-danger">*</span>

@@ -89,6 +89,18 @@ registerUnit<HistoryTableProps>({
       },
     },
     {
+      id: 'custom-language',
+      description: 'BCP 47 language ngoài defaults hiển thị badge tổng quát và tên fallback.',
+      props: {
+        data: [makeEntry({
+          id: 'e-fr',
+          word: 'bonjour',
+          meaning_vi: 'xin chào',
+          language: 'fr-FR',
+        })],
+      },
+    },
+    {
       id: 'probe-missing-fields',
       probe: true,
       description: 'Probe: entry thiếu word/term/title và created_at — hiển thị "—", không crash.',
@@ -137,6 +149,17 @@ registerUnit<HistoryTableProps>({
       check: ({ root }) =>
         (root.textContent ?? '').includes('No vocabulary cards created yet.') ||
         'không thấy empty message',
+    },
+    {
+      id: 'custom-language-fallback',
+      description: 'Ngôn ngữ tùy chỉnh dùng primary subtag cho badge và display name cho tooltip.',
+      onlyFixtures: ['custom-language'],
+      check: ({ root }) => {
+        const badge = Array.from(root.querySelectorAll('[title]'))
+          .find(element => element.getAttribute('title') === 'French (France)')
+        if (!badge) return 'không thấy display name fallback cho fr-FR'
+        return badge.textContent?.trim() === 'FR' || `badge=${badge.textContent}`
+      },
     },
     {
       id: 'delete-fires-id-without-nav',

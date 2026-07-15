@@ -1,6 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { resolveCardSpec, type CardSpec } from './card-schemas'
-import type { GenerateCardInput, IAIAgentProvider } from './types'
+import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
+import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
+import type {
+  DetectLanguagesInput,
+  GenerateCardInput,
+  IAIAgentProvider,
+  LanguageDetection,
+} from './types'
 
 // Lazy singleton client — import 時の初期化を回避 (key がない場合の test/build でも安全)。
 let client: Anthropic | null = null
@@ -17,6 +24,15 @@ function getClient(): Anthropic {
 const MAX_TOKENS = 4096
 const TEMPERATURE = 0.3
 const MAX_SEARCH_TURNS = 6
+
+function cacheableSystemPrompt(text: string): Anthropic.TextBlockParam[] {
+  return [{
+    type: 'text',
+    text,
+    // tools → system の prefix を 5 分間 cache。閾値未満の prompt では安全な no-op。
+    cache_control: { type: 'ephemeral' },
+  }]
+}
 
 /**
  * "tool 化" 方式で Claude によりカードコンテンツを生成する Provider:
@@ -46,6 +62,44 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
     }
   }
 
+  async detectLanguages(input: DetectLanguagesInput, retries = 2): Promise<LanguageDetection[]> {
+    const spec = buildLanguageDetectionSpec(input)
+    try {
+      const raw = await this.runForced(spec)
+      const parsed = languageDetectionResultSchema.parse(raw)
+      if (parsed.detections.length !== input.items.length) {
+        throw new Error('Language detector returned an incomplete result')
+      }
+
+      const byIndex = new Map(parsed.detections.map(detection => [detection.index, detection]))
+      if (byIndex.size !== input.items.length) {
+        throw new Error('Language detector returned duplicate indexes')
+      }
+
+      return input.items.map((_, index) => {
+        const detection = byIndex.get(index)
+        if (!detection) throw new Error(`Language detector omitted item ${index}`)
+        const code = canonicalizeLanguageCode(detection.code)
+        if (!code) throw new Error(`Language detector returned invalid BCP 47 code: ${detection.code}`)
+        const configured = input.candidateLanguages.find(candidate => (
+          canonicalizeLanguageCode(candidate.code) === code
+        ))
+        return {
+          index,
+          code,
+          display_name: configured?.display_name ?? inferLanguageDisplayName(code),
+          confidence: detection.confidence,
+        }
+      })
+    } catch (error) {
+      if (retries > 0) {
+        console.warn(`Claude language detection failed, retrying... (${retries} left)`)
+        return this.detectLanguages(input, retries - 1)
+      }
+      throw error
+    }
+  }
+
   /** デフォルトの経路: 1 回の call、tool `submit_card` の呼び出しを強制。Deterministic、低コスト。 */
   private async runForced(spec: CardSpec): Promise<unknown> {
     const cardTool: Anthropic.Tool = {
@@ -58,7 +112,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       model: this.model,
       max_tokens: MAX_TOKENS,
       temperature: TEMPERATURE,
-      system: spec.systemPrompt,
+      system: cacheableSystemPrompt(spec.systemPrompt),
       tools: [cardTool],
       tool_choice: { type: 'tool', name: spec.toolName },
       messages: [{ role: 'user', content: spec.userMessage }],
@@ -91,7 +145,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
         model: this.model,
         max_tokens: MAX_TOKENS,
         temperature: TEMPERATURE,
-        system: spec.systemPrompt,
+        system: cacheableSystemPrompt(spec.systemPrompt),
         tools: [cardTool, webSearchTool],
         tool_choice: { type: 'auto' },
         messages,

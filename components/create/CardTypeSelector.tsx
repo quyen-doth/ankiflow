@@ -8,13 +8,13 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
-import type { CardTypeConfig, LanguageType } from '@/types'
+import type { CardTypeConfig, LanguageCode } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
 
 interface CardTypeSelectorProps {
   formType?: UIFormType
-  language?: LanguageType | ''
+  language?: LanguageCode | ''
   selectedIds: string[]
   onChange: (ids: string[]) => void
 }

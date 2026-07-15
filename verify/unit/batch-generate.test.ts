@@ -71,11 +71,11 @@ describe('generateBatch — api mode', () => {
     expect(results[0].ok && results[2].ok).toBe(true)
   })
 
-  it('defaults language to English for language flow', async () => {
+  it('does not silently default a missing language to English', async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
     await generateBatch(apiBlueprint, ['x'], {})
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string)
-    expect(body.language).toBe(LanguageType.ENGLISH)
+    expect(body.language).toBeUndefined()
   })
 })
 

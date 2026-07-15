@@ -26,11 +26,25 @@ export enum FormType {
 
 /**
  * Ngôn ngữ được hỗ trợ
+ *
+ * @deprecated Danh sách ngôn ngữ học hiện do từng user cấu hình. Chỉ dùng enum
+ * này khi cần nhận diện ba profile AI/TTS chuyên biệt đã có từ trước.
  */
 export enum LanguageType {
   ENGLISH = 'en',
   CHINESE = 'zh',
   JAPANESE = 'ja',
+}
+
+/** Mã ngôn ngữ BCP 47 đã được canonicalize, ví dụ `en`, `fr`, `pt-BR`. */
+export type LanguageCode = string
+
+/** Một ngôn ngữ học trong preferences riêng của user (`settings/{uid}`). */
+export interface StudyLanguage {
+  code: LanguageCode
+  display_name: string
+  enabled: boolean
+  sort_order: number
 }
 
 // ─── Collection: entries ──────────────────────────────
@@ -44,7 +58,9 @@ export interface Entry {
 
   // Thông tin phân loại
   category_id: string | null;
-  language?: LanguageType | null;
+  language?: LanguageCode | null;
+  /** meaning_vi 等の内容に使用した出力言語。未設定の旧 Entry は `vi`。 */
+  output_language?: LanguageCode;
   form_type: FormType | string;
 
   // Nội dung chung
@@ -152,7 +168,7 @@ export interface CardTypeConfig {
   name: string; // Tên hiển thị
   description?: string;
   form_type: FormType;
-  language?: LanguageType | null;
+  language?: LanguageCode | null;
   is_default: boolean;
   is_active: boolean;
   sort_order: number;
@@ -184,7 +200,7 @@ export interface DeckConfig {
   anki_deck_name: string; // Tên deck chính xác trong Anki
   display_name: string; // Tên hiển thị trên UI
   form_type: FormType;
-  language?: LanguageType | null;
+  language?: LanguageCode | null;
   default_card_type_ids: string[];
   default_category_id?: string | null;
   is_active: boolean;
@@ -312,6 +328,10 @@ export interface Settings {
   notifications_enabled: boolean;
   line_channel_access_token?: string;
   line_user_id?: string;
+  /** Danh sách ngôn ngữ học riêng của user; thiếu field → dùng legacy defaults. */
+  study_languages?: StudyLanguage[];
+  /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
+  ai_output_language?: string;
   updated_at: FirestoreTimestamp;
 }
 
@@ -335,7 +355,7 @@ export interface GlobalSettings {
  */
 export interface SessionState {
   form_type: FormType;
-  language?: LanguageType | null;
+  language?: LanguageCode | null;
   anki_deck?: string | null;
   category_id?: string | null;
   tags?: string[];

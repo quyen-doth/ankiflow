@@ -1,82 +1,100 @@
 ---
 name: api
 description: >
-  Tạo hoặc sửa API endpoint trong ankiflow (Next.js App Router route handler).
-  Dùng khi: user đề cập @api, thêm endpoint mới, sửa response type,
-  thêm validation, hoặc hỏi về API convention đang dùng.
-  KHÔNG dùng cho UI hoặc component.
+  Create or modify API endpoints in ankiflow (Next.js App Router route handlers).
+  Use when: user mentions @api, adds a new endpoint, changes a response type,
+  adds validation, or asks about the current API conventions.
+  Do NOT use for UI or components.
 ---
 
 # Skill: API Development
 
-## Mục tiêu
-Mọi endpoint được tạo/sửa đều nhất quán với `docs/API.md`
-— đúng format, đúng error handling, đúng naming convention, dùng đúng helper đã có sẵn.
+## Goal
+Every endpoint created or modified must be consistent with `docs/API.md`
+— correct format, correct error handling, correct auth layer, reusing existing helpers.
 
 ---
 
-## Bước 1 — Đọc context bắt buộc
-1. `docs/API.md` — xem toàn bộ endpoint đã có, format response chuẩn, error codes
-2. `lib/api-response.ts` — helper response chuẩn (`apiSuccess`, `apiError`, `catchError`)
-3. `lib/auth-guard.ts` — `withAuthGuard` wrapper cho route cần auth
-4. `lib/validation.ts` — zod schema + `parseBody` helper
+## Step 1 — Required context
 
-> Kiểm tra endpoint tương tự đã tồn tại chưa trước khi tạo mới.
-> Đây là Next.js thuần (App Router) — **không có Fastify** trong project này.
+1. `docs/API.md` — full list of existing endpoints, standard response format, error codes
+2. `lib/auth-guard.ts` — `withAuth`, `verifySessionUser`, `verifyStaticToken`
+3. `lib/api-response.ts` — standard response helpers (`apiSuccess`, `apiError`, `catchError`)
+4. `lib/validation.ts` — zod schemas + `parseBody` helper
+5. `lib/firestore-helpers.ts` — `withTimestamps` for created_at/updated_at
+
+> Check whether a similar endpoint already exists before creating a new one.
+> This is plain Next.js (App Router) — there is **no Fastify** in this project.
 
 ---
 
-## Bước 2 — Convention bắt buộc
+## Step 2 — Auth layers (MUST pick the right one)
+
+Auth is Firebase **session cookie** (`__session`, httpOnly). Middleware only checks the
+cookie *exists*; real verification happens per-route in `lib/auth-guard.ts`.
+
+| Route kind | Mechanism |
+| --- | --- |
+| Normal authenticated routes (entries, history, admin master-data CRUD...) | `withAuth(handler(req, ctx, uid))` — verifies the session cookie (`verifySessionCookie`, checkRevoked) and passes `uid` as the 3rd argument; returns 401 `{ error: 'Unauthorized' }` if invalid |
+| Admin-gated routes (`/api/admin/global-config`, `/api/notifications/send`) | `verifySessionUser(req)` → additionally check `email === process.env.ADMIN_EMAIL` → 403 otherwise |
+| Cron / external integrations (`/api/cron/*`, `/api/integrations/*`) | `verifyStaticToken(provided, expected)` — timing-safe static token compare, no cookie |
+| Unauthenticated | only `/api/auth/*` and `/api/notifications/line-webhook` (excluded in `middleware.ts`) |
+
+There is **no `x-api-secret` header and no `withAuthGuard`** — those belonged to an old version.
+
+**Per-user data:** server writes MUST set `user_id: uid`; queries on per-user collections
+MUST filter by `user_id` (see the `database` skill).
+
+---
+
+## Step 3 — Required conventions
 
 ### Naming:
 ```
-GET    /api/[resource]          ← list
+GET    /api/[resource]          ← list (filters via query params)
 GET    /api/[resource]/[id]     ← single item
 POST   /api/[resource]          ← create
-PUT    /api/[resource]          ← update (id nằm trong body, không có segment [id])
-DELETE /api/[resource]?id=...   ← delete (id qua query param)
+PUT    /api/[resource]          ← update (id in body, no [id] segment)
+DELETE /api/[resource]?id=...   ← delete/deactivate (id via query param)
 ```
 
-### Response format chuẩn (theo `lib/api-response.ts` và `docs/API.md`):
+### Standard response format (per `lib/api-response.ts` and `docs/API.md`):
 ```typescript
 // Success — apiSuccess(data, status?)
-{ ...data }              // ví dụ: { categories: [...] }, { success: true, id: '...' }
+{ ...data }              // e.g. { categories: [...] }, { success: true, id: '...' }
 
-// Error — apiError(message, status) hoặc catchError(error)
-{ error: string }         // KHÔNG có field "code"
+// Error — apiError(message, status) or catchError(error)
+{ error: string }         // NO "code" field
 ```
 
-### HTTP status codes phổ biến:
+### Common HTTP status codes:
 ```
-200 OK                ← thành công
-400 Bad Request       ← payload/query thiếu hoặc sai định dạng
-401 Unauthorized       ← thiếu/sai x-api-secret
-404 Not Found          ← resource không tồn tại
-500 Internal Error     ← lỗi server/external service
-503 Service Unavailable ← AnkiConnect chưa mở
+200 OK / 201 Created   ← success
+400 Bad Request        ← parseBody validation failure
+401 Unauthorized       ← missing/invalid session cookie (withAuth)
+403 Forbidden          ← authenticated but not admin (ADMIN_EMAIL check)
+404 Not Found          ← resource does not exist
+500 Internal Error     ← catchError default
 ```
-
-### Auth (bắt buộc kiểm tra trước khi tạo route):
-- `/api/anki/*` và `/api/generate` → **public**, không cần auth guard
-- `/api/admin/*` và `/api/history/*` → **bắt buộc** wrap handler bằng `withAuthGuard` (check header `x-api-secret` so với env `API_SECRET`)
 
 ---
 
-## Bước 3 — Tạo endpoint (Next.js App Router, theo pattern thật của project)
+## Step 4 — Boilerplate (matches the real pattern, e.g. `app/api/admin/categories/route.ts`)
 
 ```typescript
 // app/api/[resource]/route.ts
 
 import { NextRequest } from 'next/server'
-import { withAuthGuard } from '@/lib/auth-guard'
+import { withAuth } from '@/lib/auth-guard'
 import { getAdminDb } from '@/lib/firebase-admin'
+import { withTimestamps } from '@/lib/firestore-helpers'
 import { apiSuccess, apiError, catchError } from '@/lib/api-response'
 import { parseBody, ResourceSchema } from '@/lib/validation'
 
-async function GET_handler(request: NextRequest) {
+async function GET_handler(request: NextRequest, _ctx: unknown, uid: string) {
   try {
     const db = getAdminDb()
-    const snapshot = await db.collection('resource').get()
+    const snapshot = await db.collection('resource').where('user_id', '==', uid).get()
     const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     return apiSuccess({ items })
   } catch (error) {
@@ -84,46 +102,51 @@ async function GET_handler(request: NextRequest) {
   }
 }
 
-async function POST_handler(request: NextRequest) {
+async function POST_handler(request: NextRequest, _ctx: unknown, uid: string) {
   try {
     const parsed = parseBody(ResourceSchema, await request.json())
     if (!parsed.ok) return parsed.response
 
     const db = getAdminDb()
-    const docRef = await db.collection('resource').add(parsed.data)
+    const docRef = await db.collection('resource').add(
+      withTimestamps({ ...parsed.data, user_id: uid }, true)
+    )
     return apiSuccess({ success: true, id: docRef.id }, 201)
   } catch (error) {
     return catchError(error)
   }
 }
 
-// Chỉ wrap withAuthGuard nếu route thuộc /api/admin/* hoặc /api/history/*
-export const GET = withAuthGuard(GET_handler)
-export const POST = withAuthGuard(POST_handler)
+export const GET = withAuth(GET_handler)
+export const POST = withAuth(POST_handler)
 ```
 
 ---
 
-## Bước 4 — Checklist trước khi hoàn thành
-- [ ] Input validation đã dùng `parseBody` + zod schema chưa?
-- [ ] Error handling dùng `catchError`/`apiError` (không tự viết `NextResponse.json` thô)?
-- [ ] Response shape có khớp `apiSuccess`/`apiError` (không có field `code`) không?
-- [ ] Nếu route thuộc `/api/admin/*` hoặc `/api/history/*` → đã wrap `withAuthGuard` chưa?
-- [ ] Endpoint mới có conflict với endpoint đã có không?
+## Step 5 — Checklist before finishing
+
+- [ ] Input validation uses `parseBody` + a zod schema (schema lives in `lib/validation.ts`)?
+- [ ] Error handling uses `catchError`/`apiError` (no hand-rolled `NextResponse.json`)?
+- [ ] Response shape matches `apiSuccess`/`apiError` (no `code` field)?
+- [ ] Correct auth layer chosen (withAuth / ADMIN_EMAIL check / verifyStaticToken)?
+- [ ] Server writes set `user_id: uid`; per-user queries filter by `user_id`?
+- [ ] Does the new endpoint conflict with an existing one?
 
 ---
 
-## Bước 5 — Sau khi tạo xong
-```
-✅ Đã tạo: POST /api/[resource]
+## Step 6 — After creating
 
-💡 Bạn có muốn mình update docs/API.md để đăng ký endpoint này không?
+```
+✅ Created: POST /api/[resource]
+
+💡 Do you want me to update docs/API.md to register this endpoint?
 ```
 
 ---
 
-## Quy tắc bắt buộc
-- **KHÔNG** tạo endpoint nếu chưa đọc `docs/API.md`
-- **KHÔNG** tự viết lại response/error format — dùng `apiSuccess`/`apiError`/`catchError` từ `lib/api-response.ts`
-- **KHÔNG** quên `withAuthGuard` cho route `/api/admin/*` và `/api/history/*`
-- **PHẢI** có error handling — không để endpoint throw uncaught error
+## Hard rules
+
+- Do **NOT** create an endpoint before reading `docs/API.md`
+- Do **NOT** reinvent the response/error format — use `apiSuccess`/`apiError`/`catchError`
+- Do **NOT** call AnkiConnect from the server — it is client-side only (see the `anki-connect` skill)
+- **MUST** have error handling — never let an endpoint throw an uncaught error

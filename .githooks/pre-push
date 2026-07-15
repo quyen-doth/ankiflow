@@ -1,0 +1,17 @@
+#!/bin/bash
+# Blocks direct pushes to protected branches (docs/CONTRIBUTING.md).
+# Emergency bypass: SKIP_GIT_STANDARDS=1 git push ...
+[ "$SKIP_GIT_STANDARDS" = "1" ] && exit 0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/develop)
+      {
+        echo "✖ pre-push: '${remote_ref#refs/heads/}' への直接プッシュは禁止です。PR を作成してください (docs/CONTRIBUTING.md)"
+      } >&2
+      exit 1
+      ;;
+  esac
+done
+
+exit 0

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { FlashcardReviewLayout } from '@/components/review/FlashcardReviewLayout'
 import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
@@ -13,6 +14,7 @@ import { useToast } from '@/components/ui/Toast'
 import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import { ArrowLeft, Check } from 'lucide-react'
 import type { Entry, CardTemplate } from '@/types'
+import { languageDisplayName } from '@/lib/studyLanguages'
 
 interface CardTypeItem {
   id: string
@@ -25,6 +27,7 @@ export default function HistoryDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { languages } = useStudyLanguages()
   const id = params.id as string
 
   const [entry, setEntry] = useState<Partial<Entry>>({})
@@ -199,7 +202,7 @@ export default function HistoryDetailPage() {
       audioUrl={media.audioUrl}
       audioLoading={media.audioLoading}
       onAudioRegenerate={media.generateAudio}
-      audioSubtitle={`Google TTS · ${entry.language || 'en'}`}
+      audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
       selectedDeckId={selectedDeckId}
       onDeckChange={handleDeckChange}
       onDeckClear={handleDeckClear}

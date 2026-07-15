@@ -5,7 +5,8 @@
  * データは localStorage に保存され、review ページが読み込んだ後に削除される。
  */
 
-import { FormType, LanguageType } from '@/types'
+import { FormType } from '@/types'
+import type { LanguageCode } from '@/types'
 
 const STORAGE_KEY = 'ankiflow_pending_batch'
 
@@ -16,7 +17,8 @@ export interface PendingBatch {
 
   /** batch 全体で共有するメタデータ。 */
   formType: FormType | string
-  language?: LanguageType | null
+  language?: LanguageCode | null
+  outputLanguage?: LanguageCode
   deckId?: string
   categoryId?: string
   cardTypeIds: string[]

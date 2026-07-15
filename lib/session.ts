@@ -3,6 +3,12 @@ import { FormType } from '@/types'
 export interface SessionState {
   categoryId?: string
   language?: string
+  /** Ephemeral display name for AI prompts; intentionally not persisted in SESSION_KEYS. */
+  languageName?: string
+  /** AI 出力言語。SESSION_KEYS には含めず、ユーザー設定から毎回注入する。 */
+  outputLanguage?: string
+  /** AI 出力言語の表示名。prompt 用の一時データとしてのみ使用する。 */
+  outputLanguageName?: string
   deckId?: string
   cardTypeIds?: string[]
   topicIds?: string[]

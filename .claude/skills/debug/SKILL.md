@@ -1,9 +1,9 @@
 ---
 name: debug
 description: >
-    Debug và fix lỗi trong ankiflow. Dùng khi: user đề cập @debug,
-    paste error message, mô tả behavior bất thường, hỏi "tại sao X không chạy",
-    hoặc có unexpected output. Ưu tiên tìm root cause trước khi fix.
+    Debug and fix errors in ankiflow. Use when: user mentions @debug,
+    pastes an error message, describes unexpected behavior, asks "why doesn't X work",
+    or reports unexpected output. Find the root cause before fixing.
 ---
 
 # Skill: Debug
