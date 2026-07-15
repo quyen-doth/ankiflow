@@ -17,6 +17,7 @@ export interface PendingEntry {
   /** ユーザーセッションからのメタデータ */
   formType: FormType | string
   language?: LanguageCode | null
+  outputLanguage?: LanguageCode
   deckId?: string
   categoryId?: string
   cardTypeIds: string[]

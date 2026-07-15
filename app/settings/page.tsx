@@ -24,11 +24,17 @@ import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
+import { LanguagePicker } from '@/components/ui/LanguagePicker';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
-import { mergeStudyLanguageEdits, normalizeStudyLanguages, validateStudyLanguages } from '@/lib/studyLanguages';
+import {
+    canonicalizeLanguageCode,
+    mergeStudyLanguageEdits,
+    normalizeStudyLanguages,
+    validateStudyLanguages,
+} from '@/lib/studyLanguages';
 import type { Settings } from '@/types';
 
 /**
@@ -138,10 +144,14 @@ export default function SettingsPage() {
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
                 const studyLanguages = normalizeStudyLanguages(prefs.study_languages);
+                const aiOutputLanguage = typeof prefs.ai_output_language === 'string'
+                    ? canonicalizeLanguageCode(prefs.ai_output_language) ?? 'vi'
+                    : 'vi';
                 baselineLanguageCodesRef.current = studyLanguages.map((language) => language.code);
                 setSettings({
                     ...prefs,
                     study_languages: studyLanguages,
+                    ai_output_language: aiOutputLanguage,
                 } as Settings);
             } catch (error) {
                 console.error('Error fetching settings:', error);
@@ -253,6 +263,7 @@ export default function SettingsPage() {
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
                 study_languages: mergedLanguages,
+                ai_output_language: canonicalizeLanguageCode(settings.ai_output_language ?? '') ?? 'vi',
             };
             await setDoc(
                 doc(db, 'settings', user.uid),
@@ -409,6 +420,18 @@ export default function SettingsPage() {
                 <Card>
                     <SectionHeader icon={SlidersHorizontal} label="Preferences" tone="green" />
                     <div className="flex flex-col">
+                        <div className="pb-[15px] border-b border-[#f5f5f1]">
+                            <div className="mb-3">
+                                <p className="text-sm font-semibold text-ink">AI output language</p>
+                                <p className="text-[12.5px] text-slate-500 mt-0.5">
+                                    Meanings and translations on generated cards are written in this language.
+                                </p>
+                            </div>
+                            <LanguagePicker
+                                value={settings.ai_output_language ?? 'vi'}
+                                onChange={(language) => updateField('ai_output_language', language.code)}
+                            />
+                        </div>
                         {(
                             [
                                 {

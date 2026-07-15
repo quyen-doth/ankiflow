@@ -84,4 +84,32 @@ describe('POST /api/generate — customizable languages', () => {
     }))
     expect(await response.json()).toEqual({ content })
   })
+
+  it('output_language がない、または無効な場合は Vietnamese に fallback する', async () => {
+    generateMock.mockResolvedValue({ word: 'book' })
+
+    const missing = await POST(makeRequest({
+      form_type: 'form_language',
+      word: 'book',
+      language: 'en',
+    }), ROUTE_CONTEXT)
+    const invalid = await POST(makeRequest({
+      form_type: 'form_language',
+      word: 'book',
+      language: 'en',
+      output_language: 'not a language',
+      output_language_name: 'English',
+    }), ROUTE_CONTEXT)
+
+    expect(missing.status).toBe(200)
+    expect(invalid.status).toBe(200)
+    expect(generateMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      output_language: 'vi',
+      output_language_name: 'Vietnamese',
+    }))
+    expect(generateMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      output_language: 'vi',
+      output_language_name: 'Vietnamese',
+    }))
+  })
 })

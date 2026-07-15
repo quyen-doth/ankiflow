@@ -29,7 +29,11 @@ import { generateBatch } from "@/lib/create/batchGenerate";
 import { detectItemLanguages, formatMixedLanguageError } from "@/lib/create/languageDetection";
 import { detectByScript } from "@/lib/create/scriptDetection";
 import { clearDraft, hasDraftContent, loadDraft, saveDraft } from "@/lib/create/draftCache";
-import { canonicalizeLanguageCode, resolveStudyLanguage } from "@/lib/studyLanguages";
+import {
+    canonicalizeLanguageCode,
+    inferLanguageDisplayName,
+    resolveStudyLanguage,
+} from "@/lib/studyLanguages";
 import { verifyAttrs } from "@/verify/core/contract";
 import type { CardFormBlueprint, CoreField, ConfigBlock, ConfigLeaf } from "@/lib/create/formBlueprint";
 import type { LanguageDetection } from "@/lib/ai-agent";
@@ -80,6 +84,7 @@ export function CardForm({
     const {
         languages,
         enabledLanguages,
+        aiOutputLanguage,
         loading: languagesLoading,
         addOrEnableLanguage,
     } = useStudyLanguages();
@@ -219,6 +224,8 @@ export function CardForm({
                 ...(session ?? {}),
                 language: submissionLanguage ?? session?.language,
                 languageName: languageNameFor(submissionLanguage),
+                outputLanguage: aiOutputLanguage,
+                outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
             };
 
             let generatedContent: Record<string, unknown>;
@@ -249,6 +256,7 @@ export function CardForm({
                 generatedContent,
                 formType: blueprint.formType,
                 language: submissionLanguage,
+                outputLanguage: aiOutputLanguage,
                 deckId: languageConfigReset.current ? "" : deckId,
                 categoryId: category,
                 cardTypeIds: languageConfigReset.current ? [] : cardTypes,
@@ -299,6 +307,8 @@ export function CardForm({
                 ...(session ?? {}),
                 language: submissionLanguage ?? session?.language,
                 languageName: languageNameFor(submissionLanguage),
+                outputLanguage: aiOutputLanguage,
+                outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
             };
             const results = await generateBatch(blueprint, items, effectiveSession, {
                 onProgress: (done, total) => onBatchProgress?.(done, total),
@@ -327,6 +337,7 @@ export function CardForm({
                 items: succeeded.map((r) => r.content as Record<string, unknown>),
                 formType: blueprint.formType,
                 language: submissionLanguage,
+                outputLanguage: aiOutputLanguage,
                 deckId: languageConfigReset.current ? "" : deckId,
                 categoryId: category,
                 cardTypeIds: languageConfigReset.current ? [] : cardTypes,

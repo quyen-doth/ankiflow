@@ -59,6 +59,8 @@ export interface Entry {
   // Thông tin phân loại
   category_id: string | null;
   language?: LanguageCode | null;
+  /** meaning_vi 等の内容に使用した出力言語。未設定の旧 Entry は `vi`。 */
+  output_language?: LanguageCode;
   form_type: FormType | string;
 
   // Nội dung chung
@@ -328,6 +330,8 @@ export interface Settings {
   line_user_id?: string;
   /** Danh sách ngôn ngữ học riêng của user; thiếu field → dùng legacy defaults. */
   study_languages?: StudyLanguage[];
+  /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
+  ai_output_language?: string;
   updated_at: FirestoreTimestamp;
 }
 

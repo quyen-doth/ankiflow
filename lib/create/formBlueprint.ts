@@ -78,6 +78,8 @@ const LANGUAGE_BLUEPRINT: CardFormBlueprint = {
       form_type: FormType.LANGUAGE,
       language: s.language,
       language_name: s.languageName,
+      output_language: s.outputLanguage,
+      output_language_name: s.outputLanguageName,
       note: v.note || undefined,
     }),
   },
@@ -110,6 +112,8 @@ const IT_BLUEPRINT: CardFormBlueprint = {
       term: v.term,
       form_type: FormType.IT,
       topics: s.topicIds || [],
+      output_language: s.outputLanguage,
+      output_language_name: s.outputLanguageName,
       definition: v.definition || undefined,
       keywords: csv(v.keywords),
     }),
@@ -192,9 +196,11 @@ export function blueprintFromContentType(ct: ContentType): CardFormBlueprint {
     configBlocks: [{ kind: 'deck' }, { kind: 'tags' }],
     generate: {
       mode: 'api',
-      payload: (v) => ({
+      payload: (v, s) => ({
         word: coreFields[0] ? v[coreFields[0].key] : '',
         form_type: ct.code,
+        output_language: s.outputLanguage,
+        output_language_name: s.outputLanguageName,
         contentTypeName: ct.name,
         dynamicFields: v,
       }),
