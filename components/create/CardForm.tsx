@@ -17,7 +17,7 @@ import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { DuplicateModal } from "./DuplicateModal";
 import { BatchDuplicateModal } from "./BatchDuplicateModal";
 import { DetectedLanguageModal } from "./DetectedLanguageModal";
-import type { BatchDuplicateResult } from "@/hooks/useDuplicateCheck";
+import type { BatchDuplicateResult, DuplicateEntry } from "@/hooks/useDuplicateCheck";
 import { useSession } from "@/hooks/useSession";
 import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -43,6 +43,10 @@ interface PendingLanguageAction {
     batch: boolean;
     items: string[];
 }
+
+type PendingDuplicateCheck =
+    | { batch: false; promise: Promise<DuplicateEntry[]> }
+    | { batch: true; promise: Promise<BatchDuplicateResult[]> };
 
 interface CardFormProps {
     blueprint: CardFormBlueprint;
@@ -82,12 +86,20 @@ export function CardForm({
     const [values, setValues] = useState<Record<string, string>>({});
     const [batchItems, setBatchItems] = useState<string[]>([""]);
     const [error, setError] = useState<string | null>(null);
-    const { duplicates, showWarning, setShowWarning, checkDuplicate, checkDuplicatesBatch } = useDuplicateCheck();
+    const {
+        duplicates,
+        showWarning,
+        setShowWarning,
+        fetchDuplicates,
+        presentDuplicates,
+        checkDuplicatesBatch,
+    } = useDuplicateCheck();
     const abortRef = useRef<AbortController | null>(null);
     const [batchDuplicates, setBatchDuplicates] = useState<BatchDuplicateResult[]>([]);
     const [showBatchDuplicate, setShowBatchDuplicate] = useState(false);
     const [detectingLanguage, setDetectingLanguage] = useState(false);
     const [pendingLanguageAction, setPendingLanguageAction] = useState<PendingLanguageAction | null>(null);
+    const pendingDuplicateRef = useRef<PendingDuplicateCheck | null>(null);
     const [savingDetectedLanguage, setSavingDetectedLanguage] = useState(false);
     const activeSubmitLanguage = useRef<LanguageCode | null>(null);
     const languageConfigReset = useRef(false);
@@ -168,21 +180,40 @@ export function CardForm({
         return languages.find(item => canonicalizeLanguageCode(item.code) === canonicalizeLanguageCode(code))?.display_name;
     };
 
+    const finishIfAborted = (controller = abortRef.current): boolean => {
+        if (!controller?.signal.aborted) return false;
+        setShowWarning(false);
+        setShowBatchDuplicate(false);
+        onGenerateEnd?.();
+        return true;
+    };
+
+    const prepareResume = (duplicateCheckCompleted: boolean): void => {
+        let controller = abortRef.current;
+        if (!controller || controller.signal.aborted) {
+            controller = new AbortController();
+            abortRef.current = controller;
+            const activeController = controller;
+            registerCancel?.(() => activeController.abort());
+        }
+        onGenerateStart?.();
+        onStepUpdate?.(0, "completed");
+        onStepUpdate?.(1, duplicateCheckCompleted ? "completed" : "active");
+    };
+
     const runGenerate = async (languageOverride?: LanguageCode | null) => {
         const submissionLanguage = isLanguageFlow ? (languageOverride ?? metaLanguage) : null;
         if (isLanguageFlow && !submissionLanguage) {
             setError("Select a study language before generating the card.");
+            onGenerateEnd?.();
             return;
         }
         setError(null);
-        onGenerateStart?.();
-
-        const controller = new AbortController();
-        abortRef.current = controller;
-        registerCancel?.(() => controller.abort());
+        const controller = abortRef.current;
+        if (!controller || finishIfAborted(controller)) return;
 
         try {
-            onStepUpdate?.(0, "active");
+            onStepUpdate?.(2, "active");
             const effectiveSession = {
                 ...(session ?? {}),
                 language: submissionLanguage ?? session?.language,
@@ -202,24 +233,16 @@ export function CardForm({
                     throw new Error(errData.error || "Failed to call Claude API");
                 }
                 generatedContent = (await res.json()).content;
-                onStepUpdate?.(0, "completed");
-                onStepUpdate?.(1, "active");
-                await new Promise((r) => setTimeout(r, 500));
-                onStepUpdate?.(1, "completed");
-                onStepUpdate?.(2, "active");
-                await new Promise((r) => setTimeout(r, 400));
                 onStepUpdate?.(2, "completed");
             } else {
-                await new Promise((r) => setTimeout(r, 300));
                 onStepUpdate?.(0, "completed");
-                onStepUpdate?.(1, "active");
-                await new Promise((r) => setTimeout(r, 200));
                 onStepUpdate?.(1, "completed");
                 onStepUpdate?.(2, "active");
-                await new Promise((r) => setTimeout(r, 200));
-                onStepUpdate?.(2, "completed");
                 generatedContent = blueprint.generate.content(values, effectiveSession);
+                onStepUpdate?.(2, "completed");
             }
+
+            if (finishIfAborted(controller)) return;
 
             savePendingEntry({
                 generatedContent,
@@ -255,20 +278,22 @@ export function CardForm({
     const runBatchGenerate = async (itemsOverride?: string[], languageOverride?: LanguageCode | null) => {
         setError(null);
         const items = itemsOverride ?? batchItems.map((it) => it.trim()).filter(Boolean);
-        if (items.length === 0) return;
+        if (items.length === 0) {
+            onGenerateEnd?.();
+            return;
+        }
         const submissionLanguage = isLanguageFlow ? (languageOverride ?? metaLanguage) : null;
         if (isLanguageFlow && !submissionLanguage) {
             setError("Select a study language before generating the batch.");
+            onGenerateEnd?.();
             return;
         }
 
-        onGenerateStart?.();
-
-        const controller = new AbortController();
-        abortRef.current = controller;
-        registerCancel?.(() => controller.abort());
+        const controller = abortRef.current;
+        if (!controller || finishIfAborted(controller)) return;
 
         try {
+            onStepUpdate?.(2, "active");
             const effectiveSession = {
                 ...(session ?? {}),
                 language: submissionLanguage ?? session?.language,
@@ -285,6 +310,7 @@ export function CardForm({
                 onGenerateEnd?.();
                 return;
             }
+            onStepUpdate?.(2, "completed");
 
             const succeeded = results.filter((r) => r && r.ok && r.content);
             const failed = results.filter((r) => r && !r.ok);
@@ -340,19 +366,38 @@ export function CardForm({
         return next;
     };
 
-    const continueSingle = async (submissionLanguage: LanguageCode | null) => {
+    const continueSingle = async (
+        submissionLanguage: LanguageCode | null,
+        prefetched?: Promise<DuplicateEntry[]>,
+    ) => {
         activeSubmitLanguage.current = submissionLanguage;
-        const hasDuplicate = await checkDuplicate(primaryValue);
-        if (!hasDuplicate) await runGenerate(submissionLanguage);
+        onStepUpdate?.(1, "active");
+        const found = await (prefetched ?? fetchDuplicates(primaryValue, abortRef.current?.signal));
+        if (finishIfAborted()) return;
+        onStepUpdate?.(1, "completed");
+        if (found.length > 0) {
+            onGenerateEnd?.();
+            presentDuplicates(found);
+            return;
+        }
+        await runGenerate(submissionLanguage);
     };
 
-    const continueBatch = async (items: string[], submissionLanguage: LanguageCode | null) => {
+    const continueBatch = async (
+        items: string[],
+        submissionLanguage: LanguageCode | null,
+        prefetched?: Promise<BatchDuplicateResult[]>,
+    ) => {
         activeSubmitLanguage.current = submissionLanguage;
-        const results = await checkDuplicatesBatch(items);
+        onStepUpdate?.(1, "active");
+        const results = await (prefetched ?? checkDuplicatesBatch(items, abortRef.current?.signal));
+        if (finishIfAborted()) return;
+        onStepUpdate?.(1, "completed");
         const duplicatesFound = results.filter((result) => result.duplicates.length > 0);
         if (duplicatesFound.length > 0) {
             setBatchDuplicates(duplicatesFound);
             setShowBatchDuplicate(true);
+            onGenerateEnd?.();
             return;
         }
         await runBatchGenerate(items, submissionLanguage);
@@ -361,15 +406,25 @@ export function CardForm({
     const detectAndContinue = async (items: string[], batch: boolean) => {
         setError(null);
         setDetectingLanguage(true);
-        const controller = new AbortController();
-        abortRef.current = controller;
-        registerCancel?.(() => controller.abort());
+        const controller = abortRef.current;
+        if (!controller || finishIfAborted(controller)) {
+            setDetectingLanguage(false);
+            return;
+        }
+        // 重複チェックは言語判定結果に依存しないため、同時に開始する。
+        const singleDuplicatePromise = batch
+            ? null
+            : fetchDuplicates(items[0], controller.signal);
+        const batchDuplicatePromise = batch
+            ? checkDuplicatesBatch(items, controller.signal)
+            : null;
         try {
-            const detections = await detectItemLanguages(
-                items,
-                languages.map(item => ({ code: item.code, display_name: item.display_name })),
-                controller.signal,
-            );
+            const candidates = languages.map(item => ({ code: item.code, display_name: item.display_name }));
+            const detections = detectByScript(items, candidates)
+                ?? await detectItemLanguages(items, candidates, controller.signal);
+            if (finishIfAborted(controller)) return;
+            onStepUpdate?.(0, "completed");
+            onStepUpdate?.(1, "active");
             const allConfigured = languages.map(item => ({ ...item, enabled: true }));
             const resolvedDetections = detections.map(detection => {
                 const configured = resolveStudyLanguage(detection.code, allConfigured, storedLanguage);
@@ -382,6 +437,7 @@ export function CardForm({
                 const mixedLanguageError = formatMixedLanguageError(items, resolvedDetections);
                 if (mixedLanguageError) {
                     setError(mixedLanguageError);
+                    onGenerateEnd?.();
                     return;
                 }
             }
@@ -390,8 +446,8 @@ export function CardForm({
             const enabledMatch = resolveStudyLanguage(detection.code, languages, storedLanguage);
             if (enabledMatch) {
                 const code = applyDetectedLanguage(enabledMatch);
-                if (batch) await continueBatch(items, code);
-                else await continueSingle(code);
+                if (batch) await continueBatch(items, code, batchDuplicatePromise ?? undefined);
+                else await continueSingle(code, singleDuplicatePromise ?? undefined);
                 return;
             }
 
@@ -409,10 +465,17 @@ export function CardForm({
                 batch,
                 items,
             });
+            if (batch && batchDuplicatePromise) {
+                pendingDuplicateRef.current = { batch: true, promise: batchDuplicatePromise };
+            } else if (!batch && singleDuplicatePromise) {
+                pendingDuplicateRef.current = { batch: false, promise: singleDuplicatePromise };
+            }
+            onGenerateEnd?.();
         } catch (detectionError) {
             // Người dùng hủy trong pha detect → không rơi xuống fallback ngôn ngữ đã chọn.
             if (controller.signal.aborted || (detectionError instanceof Error && detectionError.name === "AbortError")) {
                 toast.info("Card generation cancelled");
+                onGenerateEnd?.();
                 return;
             }
             const selectedFallback = storedLanguage
@@ -420,12 +483,15 @@ export function CardForm({
                 : null;
             if (selectedFallback) {
                 toast.warning("Language detection failed. Using your manually selected language.");
+                onStepUpdate?.(0, "completed");
+                onStepUpdate?.(1, "active");
                 const code = applyDetectedLanguage(selectedFallback);
-                if (batch) await continueBatch(items, code);
-                else await continueSingle(code);
+                if (batch) await continueBatch(items, code, batchDuplicatePromise ?? undefined);
+                else await continueSingle(code, singleDuplicatePromise ?? undefined);
             } else {
                 const message = detectionError instanceof Error ? detectionError.message : "Unknown error";
                 setError(`Language detection failed: ${message}. Select a language manually and try again.`);
+                onGenerateEnd?.();
             }
         } finally {
             setDetectingLanguage(false);
@@ -435,9 +501,21 @@ export function CardForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (detectingLanguage) return;
+
+        const items = batchMode ? batchValidItemsList() : [primaryValue.trim()].filter(Boolean);
+        if (items.length === 0) return;
+
+        const controller = new AbortController();
+        abortRef.current = controller;
+        registerCancel?.(() => controller.abort());
+        onGenerateStart?.();
+
+        if (!isLanguageFlow) {
+            onStepUpdate?.(0, "completed");
+            onStepUpdate?.(1, "active");
+        }
+
         if (batchMode) {
-            const items = batchValidItemsList();
-            if (items.length === 0) return;
             if (isLanguageFlow) await detectAndContinue(items, true);
             else await continueBatch(items, null);
             return;
@@ -450,11 +528,13 @@ export function CardForm({
     const batchValidItemsList = () => batchItems.map((it) => it.trim()).filter(Boolean);
     const handleBatchProceedAll = () => {
         setShowBatchDuplicate(false);
+        prepareResume(true);
         runBatchGenerate(batchValidItemsList(), activeSubmitLanguage.current);
     };
     const handleBatchSkipDuplicates = () => {
         setShowBatchDuplicate(false);
         const dupWords = new Set(batchDuplicates.map((d) => d.word));
+        prepareResume(true);
         runBatchGenerate(
             batchValidItemsList().filter((it) => !dupWords.has(it)),
             activeSubmitLanguage.current,
@@ -463,6 +543,7 @@ export function CardForm({
 
     const handleProceedAnyway = () => {
         setShowWarning(false);
+        prepareResume(true);
         runGenerate(activeSubmitLanguage.current);
     };
 
@@ -475,16 +556,31 @@ export function CardForm({
                 display_name: pendingLanguageAction.detection.display_name,
             });
             const action = pendingLanguageAction;
+            const pendingDuplicate = pendingDuplicateRef.current;
+            pendingDuplicateRef.current = null;
             setPendingLanguageAction(null);
             const code = applyDetectedLanguage(saved);
-            if (action.batch) await continueBatch(action.items, code);
-            else await continueSingle(code);
+            prepareResume(false);
+            if (action.batch) {
+                const prefetched = pendingDuplicate?.batch ? pendingDuplicate.promise : undefined;
+                await continueBatch(action.items, code, prefetched);
+            } else {
+                const prefetched = pendingDuplicate && !pendingDuplicate.batch
+                    ? pendingDuplicate.promise
+                    : undefined;
+                await continueSingle(code, prefetched);
+            }
         } catch (saveError) {
             const message = saveError instanceof Error ? saveError.message : "Unknown error";
             toast.error(`Failed to update study languages: ${message}`);
         } finally {
             setSavingDetectedLanguage(false);
         }
+    };
+
+    const handleDetectedLanguageClose = () => {
+        pendingDuplicateRef.current = null;
+        setPendingLanguageAction(null);
     };
 
     if (!isLoaded || languagesLoading) return null;
@@ -703,7 +799,7 @@ export function CardForm({
                 existingDisabled={pendingLanguageAction?.existingDisabled ?? false}
                 saving={savingDetectedLanguage}
                 onConfirm={handleDetectedLanguageConfirm}
-                onClose={() => setPendingLanguageAction(null)}
+                onClose={handleDetectedLanguageClose}
             />
         </form>
     );
