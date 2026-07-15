@@ -27,6 +27,7 @@ import { savePendingEntry } from "@/lib/pendingEntry";
 import { savePendingBatch } from "@/lib/pendingBatch";
 import { generateBatch } from "@/lib/create/batchGenerate";
 import { detectItemLanguages, formatMixedLanguageError } from "@/lib/create/languageDetection";
+import { detectByScript } from "@/lib/create/scriptDetection";
 import { clearDraft, hasDraftContent, loadDraft, saveDraft } from "@/lib/create/draftCache";
 import { canonicalizeLanguageCode, resolveStudyLanguage } from "@/lib/studyLanguages";
 import { verifyAttrs } from "@/verify/core/contract";
