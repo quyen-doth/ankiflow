@@ -165,12 +165,15 @@ function CreateContent() {
         [contentTypes],
     );
 
-    const handleModeChange = useCallback((batch: boolean) => {
-        setBatchMode(batch);
-        setCanSubmit(false);
-        setBatchCount(0);
-        saveCreateUiState({ activeCode, batchMode: batch });
-    }, [activeCode]);
+    const handleModeChange = useCallback(
+        (batch: boolean) => {
+            setBatchMode(batch);
+            setCanSubmit(false);
+            setBatchCount(0);
+            saveCreateUiState({ activeCode, batchMode: batch });
+        },
+        [activeCode],
+    );
 
     const handleBatchProgress = useCallback((done: number, total: number) => {
         setBatchProgress({ done, total });
@@ -211,33 +214,6 @@ function CreateContent() {
                 </nav>
                 <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
             </div>
-
-            <AnimatePresence>
-                {successBanner && (
-                    <motion.div
-                        className="max-w-6xl mx-auto w-full px-0 mb-2 overflow-hidden"
-                        initial={{ opacity: 0, height: 0, y: -8 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -8 }}
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <div className="flex items-center gap-3 bg-primary-bg border border-primary/30 rounded-card px-5 py-3">
-                            <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                            <p className="text-sm font-medium text-ink flex-1">
-                                Successfully exported {successBanner.count} card{successBanner.count !== 1 ? 's' : ''}{' '}
-                                to Anki!
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => setSuccessBanner(null)}
-                                className="text-slate-600 hover:text-ink"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
