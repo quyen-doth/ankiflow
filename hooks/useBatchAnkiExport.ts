@@ -135,7 +135,8 @@ export function useBatchAnkiExport({
       } else {
         toast.success(`Created ${totalNotes} cards in Anki`)
       }
-      router.push(`/create?exported=1&count=${totalNotes}`)
+      // 成功フィードバックは上の toast が担当 — create 側の ?exported= バナーは廃止済み。
+      router.push('/create')
     } catch (err) {
       console.error('Batch Anki connection error:', err)
       toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.')

@@ -1,8 +1,7 @@
 'use client';
 
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { CardForm } from '@/components/create/CardForm';
@@ -19,8 +18,6 @@ import {
     BookOpen,
     SlidersHorizontal,
     ArrowUpRight,
-    CheckCircle,
-    X,
     PlusCircle,
 } from 'lucide-react';
 import { FormType } from '@/types';
@@ -73,7 +70,6 @@ export default function CreatePage() {
 }
 
 function CreateContent() {
-    const searchParams = useSearchParams();
     const router = useRouter();
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
     const [loadingTypes, setLoadingTypes] = useState(true);
@@ -82,7 +78,6 @@ function CreateContent() {
     const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
     const [progress, setProgress] = useState(0);
     const [canSubmit, setCanSubmit] = useState(false);
-    const [successBanner, setSuccessBanner] = useState<{ count: number } | null>(null);
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
     const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
@@ -119,19 +114,6 @@ function CreateContent() {
         }
         fetchContentTypes();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    useEffect(() => {
-        if (searchParams.get('exported') === '1') {
-            const count = parseInt(searchParams.get('count') || '0', 10);
-            const showTimer = setTimeout(() => setSuccessBanner({ count }), 0);
-            const hideTimer = setTimeout(() => setSuccessBanner(null), 5000);
-            router.replace('/create', { scroll: false });
-            return () => {
-                clearTimeout(showTimer);
-                clearTimeout(hideTimer);
-            };
-        }
-    }, [searchParams, router]);
 
     const activeType = contentTypes.find((t) => t.code === activeCode);
 
