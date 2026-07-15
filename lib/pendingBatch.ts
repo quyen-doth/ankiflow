@@ -18,6 +18,7 @@ export interface PendingBatch {
   /** batch 全体で共有するメタデータ。 */
   formType: FormType | string
   language?: LanguageCode | null
+  outputLanguage?: LanguageCode
   deckId?: string
   categoryId?: string
   cardTypeIds: string[]

@@ -66,6 +66,7 @@ export function usePreviewBatch(): PreviewBatchState {
       const mapped: Partial<Entry>[] = pending.items.map((content) => ({
         form_type: pending.formType,
         language: pending.language ?? undefined,
+        output_language: pending.outputLanguage,
         anki_deck: ankiDeckName,
         category_id: pending.categoryId || null,
         card_type_ids: pending.cardTypeIds,

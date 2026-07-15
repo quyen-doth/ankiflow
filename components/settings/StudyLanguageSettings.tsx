@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp, Languages, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, FieldWrapper } from '@/components/ui/FormField'
+import { LanguagePicker } from '@/components/ui/LanguagePicker'
 import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { SectionHeader } from '@/components/settings/SettingsPrimitives'
 import {
   addOrEnableStudyLanguage,
   canonicalizeLanguageCode,
-  inferLanguageDisplayName,
 } from '@/lib/studyLanguages'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { StudyLanguage } from '@/types'
@@ -29,7 +29,6 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
   const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null)
   const [code, setCode] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [nameEdited, setNameEdited] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const enabledCount = languages.filter(language => language.enabled).length
@@ -63,14 +62,7 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
     setModalOpen(false)
     setCode('')
     setDisplayName('')
-    setNameEdited(false)
     setError(null)
-  }
-
-  const handleCodeChange = (value: string) => {
-    setCode(value)
-    setError(null)
-    if (!nameEdited) setDisplayName(inferLanguageDisplayName(value))
   }
 
   const handleAdd = () => {
@@ -181,17 +173,19 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
         onClose={closeModal}
         onConfirm={handleAdd}
         title="Add study language"
-        description="Use a canonical BCP 47 language code."
+        description="Search the language catalog or enter a valid BCP 47 code."
         size="sm"
       >
         <div className="flex flex-col gap-4">
-          <FieldWrapper label="Language code">
-            <Input
-              autoFocus
-              aria-label="Language code"
-              value={code}
-              onChange={event => handleCodeChange(event.target.value)}
-              placeholder="e.g. fr, ko, pt-BR"
+          <FieldWrapper label="Language">
+            <LanguagePicker
+              value={code || null}
+              excludeCodes={languages.map(language => language.code)}
+              onChange={language => {
+                setCode(language.code)
+                setDisplayName(language.display_name)
+                setError(null)
+              }}
             />
           </FieldWrapper>
           <FieldWrapper label="Display name">
@@ -199,7 +193,6 @@ export function StudyLanguageSettings({ languages, onChange }: StudyLanguageSett
               aria-label="Language display name"
               value={displayName}
               onChange={event => {
-                setNameEdited(true)
                 setDisplayName(event.target.value)
                 setError(null)
               }}

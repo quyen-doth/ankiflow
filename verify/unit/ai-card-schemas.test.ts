@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  englishCardSchema,
-  genericLanguageCardSchema,
-  itVocabCardSchema,
+  buildEnglishCardSchema,
   resolveCardSpec,
   toToolInputSchema,
   TOOL_NAME,
@@ -20,6 +18,8 @@ const validEnglish = {
   collocations: ['highly resilient (rất kiên cường)'],
   unsplash_search_keyword: 'resilience',
 }
+
+const englishCardSchema = buildEnglishCardSchema('Vietnamese')
 
 describe('ai-agent/card-schemas — zod validation', () => {
   it('正しいスキーマの output を受け入れる', () => {
@@ -62,19 +62,20 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
   it('LANGUAGE + en に対して英語スキーマを選択', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'book' })
     expect(spec.toolName).toBe(TOOL_NAME)
-    expect(spec.schema).toBe(englishCardSchema)
+    expect(spec.inputSchema).toHaveProperty('properties.ipa')
     expect(spec.systemPrompt).toContain('英語')
     expect(spec.userMessage).toContain('book')
   })
 
   it('英語 variant に対して専用スキーマを選択', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: 'en-GB', word: 'lift' })
-    expect(spec.schema).toBe(englishCardSchema)
+    expect(spec.inputSchema).toHaveProperty('properties.ipa')
+    expect(spec.systemPrompt).toContain('英語')
   })
 
   it('任意の BCP 47 言語に対して汎用スキーマを選択', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: 'fr-FR', word: 'bonjour' })
-    expect(spec.schema).toBe(genericLanguageCardSchema)
+    expect(spec.inputSchema).toHaveProperty('properties.ipa')
     expect(spec.systemPrompt).toContain('French')
     expect(spec.userMessage).toContain('bonjour')
   })
@@ -89,7 +90,7 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
 
   it('IT スキーマを選択し、topics を user message に含める', () => {
     const spec = resolveCardSpec({ form_type: FormType.IT, term: 'Docker', topics: ['DevOps'] })
-    expect(spec.schema).toBe(itVocabCardSchema)
+    expect(spec.inputSchema).toHaveProperty('properties.definition_vi')
     expect(spec.userMessage).toContain('Docker')
     expect(spec.userMessage).toContain('DevOps')
   })

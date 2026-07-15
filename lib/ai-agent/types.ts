@@ -10,6 +10,8 @@ export interface GenerateCardInput {
   form_type: FormType | string
   language?: LanguageCode
   language_name?: string
+  output_language?: LanguageCode
+  output_language_name?: string
   topics?: string[]
   /** Dynamic fields from custom content types */
   dynamicFields?: Record<string, string>

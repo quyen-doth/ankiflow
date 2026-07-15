@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { FormType, LanguageType } from '@/types'
-import { ENGLISH_SYSTEM_PROMPT, buildEnglishUserMessage } from '@/lib/prompts/english'
-import { CHINESE_SYSTEM_PROMPT, buildChineseUserMessage } from '@/lib/prompts/chinese'
-import { JAPANESE_SYSTEM_PROMPT, buildJapaneseUserMessage } from '@/lib/prompts/japanese'
-import { IT_VOCAB_SYSTEM_PROMPT, buildItVocabUserMessage } from '@/lib/prompts/it-vocab'
+import { buildEnglishSystemPrompt, buildEnglishUserMessage } from '@/lib/prompts/english'
+import { buildChineseSystemPrompt, buildChineseUserMessage } from '@/lib/prompts/chinese'
+import { buildJapaneseSystemPrompt, buildJapaneseUserMessage } from '@/lib/prompts/japanese'
+import { buildItVocabSystemPrompt, buildItVocabUserMessage } from '@/lib/prompts/it-vocab'
 import { inferLanguageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
 import type { GenerateCardInput } from './types'
 
@@ -14,75 +14,95 @@ import type { GenerateCardInput } from './types'
  *   旧 prompt のようにモデルがすべてのフィールドを埋める方式と合致する。
  */
 
-export const englishCardSchema = z.object({
-  word: z.string().describe('Từ vựng tiếng Anh'),
-  ipa: z.string().describe('Phiên âm IPA, vd /rɪˈzɪl.jənt/'),
-  meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
-  word_type_vi: z.string().describe('Loại từ bằng tiếng Việt, vd "tính từ"'),
-  example_sentence: z.string().describe('Câu ví dụ tiếng Anh, dưới 12 từ'),
-  example_translation: z.string().describe('Bản dịch tiếng Việt của câu ví dụ'),
-  example_blank: z.string().describe('Câu ví dụ với từ vựng cần học thay bằng "___"'),
-  collocations: z.array(z.string()).describe('3-5 collocation kèm nghĩa TV, vd "book a flight (đặt vé máy bay)"'),
-  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
-})
+export function buildEnglishCardSchema(outputLanguageName: string) {
+  return z.object({
+    word: z.string().describe('English vocabulary word'),
+    ipa: z.string().describe('IPA pronunciation, e.g. /rɪˈzɪl.jənt/'),
+    meaning_vi: z.string().describe(`Meaning in ${outputLanguageName}`),
+    word_type_vi: z.string().describe(`Part of speech written in ${outputLanguageName}, e.g. "adjective"`),
+    example_sentence: z.string().describe('Natural English example sentence under 12 words'),
+    example_translation: z.string().describe(`${outputLanguageName} translation of the example sentence`),
+    example_blank: z.string().describe('Example sentence with the vocabulary word replaced by "___"'),
+    collocations: z.array(z.string()).describe(
+      `3-5 common collocations with ${outputLanguageName} meanings in parentheses`,
+    ),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
+  })
+}
 
-export const chineseCardSchema = z.object({
-  word: z.string().describe('Từ vựng tiếng Trung (Hán tự)'),
-  pinyin: z.string().describe('Phiên âm pinyin'),
-  han_viet: z.string().describe('Âm Hán Việt'),
-  meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
-  word_type: z.string().describe('Loại từ bằng tiếng Trung, vd 名词'),
-  word_type_vi: z.string().describe('Loại từ bằng tiếng Việt, vd "danh từ"'),
-  level: z.string().describe('Cấp độ HSK nếu xác định được, vd HSK1'),
-  example_sentence: z.string().describe('Câu ví dụ tiếng Trung, dưới 10 từ'),
-  example_translation: z.string().describe('Bản dịch tiếng Việt của câu ví dụ'),
-  example_blank: z.string().describe('Câu ví dụ với từ cần học thay bằng "___"'),
-  collocations: z.array(z.string()).describe('3-5 cụm từ/lượng từ kèm nghĩa TV'),
-  related_words: z.array(z.string()).describe('Các từ liên quan'),
-  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
-})
+export function buildChineseCardSchema(outputLanguageName: string, includeHanViet: boolean) {
+  return z.object({
+    word: z.string().describe('Chinese vocabulary word in Han characters'),
+    pinyin: z.string().describe('Pinyin pronunciation'),
+    ...(includeHanViet ? { han_viet: z.string().describe('Âm Hán Việt của từ') } : {}),
+    meaning_vi: z.string().describe(`Meaning in ${outputLanguageName}`),
+    word_type: z.string().describe('Part of speech in Chinese, e.g. 名词'),
+    word_type_vi: z.string().describe(`Part of speech written in ${outputLanguageName}, e.g. "noun"`),
+    level: z.string().describe('HSK level when known, e.g. HSK1; otherwise an empty string'),
+    example_sentence: z.string().describe('Natural Chinese example sentence under 10 words'),
+    example_translation: z.string().describe(`${outputLanguageName} translation of the example sentence`),
+    example_blank: z.string().describe('Example sentence with the vocabulary word replaced by "___"'),
+    collocations: z.array(z.string()).describe(
+      `3-5 common phrases or measure-word combinations with ${outputLanguageName} meanings`,
+    ),
+    related_words: z.array(z.string()).describe(`Related words with ${outputLanguageName} meanings`),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
+  })
+}
 
-export const japaneseCardSchema = z.object({
-  word: z.string().describe('Từ vựng tiếng Nhật'),
-  hiragana: z.string().describe('Cách đọc hiragana'),
-  katakana: z.string().describe('Katakana nếu là từ ngoại lai, nếu không để rỗng'),
-  romaji: z.string().describe('Chuyển tự La-tinh (romaji)'),
-  han_viet: z.string().describe('Âm Hán Việt của Kanji trong từ, để rỗng nếu từ thuần kana'),
-  meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
-  word_type_vi: z.string().describe('Loại từ bằng tiếng Việt'),
-  level: z.string().describe('Cấp độ JLPT nếu xác định được, vd N5'),
-  example_sentence: z.string().describe('Câu ví dụ tiếng Nhật, dưới 10 từ'),
-  example_translation: z.string().describe('Bản dịch tiếng Việt của câu ví dụ'),
-  example_blank: z.string().describe('Câu ví dụ với từ cần học thay bằng "___"'),
-  collocations: z.array(z.string()).describe('3-5 cụm từ/trợ từ kèm nghĩa TV'),
-  related_words: z.array(z.string()).describe('Các từ liên quan'),
-  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
-})
+export function buildJapaneseCardSchema(outputLanguageName: string, includeHanViet: boolean) {
+  return z.object({
+    word: z.string().describe('Japanese vocabulary word'),
+    hiragana: z.string().describe('Hiragana reading'),
+    katakana: z.string().describe('Katakana for loanwords; otherwise an empty string'),
+    romaji: z.string().describe('Latin transliteration in romaji'),
+    ...(includeHanViet
+      ? { han_viet: z.string().describe('Âm Hán Việt của Kanji trong từ; từ thuần kana để rỗng') }
+      : {}),
+    meaning_vi: z.string().describe(`Meaning in ${outputLanguageName}`),
+    word_type_vi: z.string().describe(`Part of speech written in ${outputLanguageName}`),
+    level: z.string().describe('JLPT level when known, e.g. N5; otherwise an empty string'),
+    example_sentence: z.string().describe('Natural Japanese example sentence under 10 words'),
+    example_translation: z.string().describe(`${outputLanguageName} translation of the example sentence`),
+    example_blank: z.string().describe('Example sentence with the vocabulary word replaced by "___"'),
+    collocations: z.array(z.string()).describe(
+      `3-5 common phrases or particle combinations with ${outputLanguageName} meanings`,
+    ),
+    related_words: z.array(z.string()).describe(`Related words with ${outputLanguageName} meanings`),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
+  })
+}
 
-export const genericLanguageCardSchema = z.object({
-  word: z.string().describe('Từ vựng trong ngôn ngữ đích'),
-  ipa: z.string().describe('Phiên âm IPA; để rỗng nếu không xác định được'),
-  meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
-  word_type_vi: z.string().describe('Loại từ bằng tiếng Việt'),
-  level: z.string().describe('Cấp độ thông dụng nếu xác định được; nếu không để rỗng'),
-  example_sentence: z.string().describe('Câu ví dụ ngắn trong ngôn ngữ đích'),
-  example_translation: z.string().describe('Bản dịch tiếng Việt của câu ví dụ'),
-  example_blank: z.string().describe('Câu ví dụ với từ cần học thay bằng "___"'),
-  collocations: z.array(z.string()).describe('3-5 cụm từ thường gặp kèm nghĩa tiếng Việt'),
-  related_words: z.array(z.string()).describe('Các từ liên quan kèm nghĩa tiếng Việt'),
-  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
-})
+export function buildGenericLanguageCardSchema(outputLanguageName: string) {
+  return z.object({
+    word: z.string().describe('Vocabulary word in the target study language'),
+    ipa: z.string().describe('IPA pronunciation; return an empty string when unknown'),
+    meaning_vi: z.string().describe(`Meaning in ${outputLanguageName}`),
+    word_type_vi: z.string().describe(`Part of speech written in ${outputLanguageName}`),
+    level: z.string().describe('Common proficiency level when known; otherwise an empty string'),
+    example_sentence: z.string().describe('Short example sentence in the target study language'),
+    example_translation: z.string().describe(`${outputLanguageName} translation of the example sentence`),
+    example_blank: z.string().describe('Example sentence with the vocabulary word replaced by "___"'),
+    collocations: z.array(z.string()).describe(
+      `3-5 common phrases with ${outputLanguageName} meanings in parentheses`,
+    ),
+    related_words: z.array(z.string()).describe(`Related words with ${outputLanguageName} meanings`),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
+  })
+}
 
-export const itVocabCardSchema = z.object({
-  term: z.string().describe('Thuật ngữ IT'),
-  definition_vi: z.string().describe('Định nghĩa tiếng Việt đầy đủ nhưng rõ ràng'),
-  definition_short: z.string().describe('Định nghĩa 1 câu siêu ngắn gọn'),
-  example_usage: z.string().describe('Ví dụ sử dụng thực tế, ngắn gọn'),
-  keywords: z.array(z.string()).describe('Các từ khóa liên quan'),
-  related_topics: z.array(z.string()).describe('Các chủ đề liên quan'),
-  analogy_vi: z.string().describe('Ví von đời thường giúp dễ nhớ'),
-  unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
-})
+export function buildItVocabCardSchema(outputLanguageName: string) {
+  return z.object({
+    term: z.string().describe('IT term'),
+    definition_vi: z.string().describe(`Clear, complete definition in ${outputLanguageName}`),
+    definition_short: z.string().describe('Very short one-sentence definition'),
+    example_usage: z.string().describe('Short, realistic usage example'),
+    keywords: z.array(z.string()).describe('Related keywords'),
+    related_topics: z.array(z.string()).describe('Related topics'),
+    analogy_vi: z.string().describe(`Everyday analogy in ${outputLanguageName} to aid memory`),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
+  })
+}
 
 export const TOOL_NAME = 'submit_card'
 
@@ -133,6 +153,9 @@ function makeSpec(
  * 英中日は専用 profile、それ以外の有効な BCP 47 言語は汎用 profile を使用。
  */
 export function resolveCardSpec(input: GenerateCardInput): CardSpec {
+  const outputName = input.output_language_name?.trim() || 'Vietnamese'
+  const isVietnamese = (input.output_language ?? 'vi') === 'vi'
+
   if (input.form_type === FormType.LANGUAGE && input.word && input.language) {
     const languageSubtag = primaryLanguageSubtag(input.language)
     if (!languageSubtag) throw new Error(`Invalid BCP 47 language code: ${input.language}`)
@@ -140,34 +163,34 @@ export function resolveCardSpec(input: GenerateCardInput): CardSpec {
     switch (languageSubtag) {
       case LanguageType.ENGLISH:
         return makeSpec(
-          englishCardSchema,
-          ENGLISH_SYSTEM_PROMPT,
+          buildEnglishCardSchema(outputName),
+          buildEnglishSystemPrompt(outputName),
           buildEnglishUserMessage(input.word),
-          'Nộp thẻ từ vựng Tiếng Anh đã được enrich.',
+          'Submit the enriched English vocabulary card.',
         )
       case LanguageType.CHINESE:
         return makeSpec(
-          chineseCardSchema,
-          CHINESE_SYSTEM_PROMPT,
+          buildChineseCardSchema(outputName, isVietnamese),
+          buildChineseSystemPrompt(outputName, isVietnamese),
           buildChineseUserMessage(input.word),
-          'Nộp thẻ từ vựng Tiếng Trung đã được enrich.',
+          'Submit the enriched Chinese vocabulary card.',
         )
       case LanguageType.JAPANESE:
         return makeSpec(
-          japaneseCardSchema,
-          JAPANESE_SYSTEM_PROMPT,
+          buildJapaneseCardSchema(outputName, isVietnamese),
+          buildJapaneseSystemPrompt(outputName, isVietnamese),
           buildJapaneseUserMessage(input.word),
-          'Nộp thẻ từ vựng Tiếng Nhật đã được enrich.',
+          'Submit the enriched Japanese vocabulary card.',
         )
       default: {
         const languageName = inferLanguageDisplayName(input.language)
         const systemPrompt = `You are an expert vocabulary teacher for ${languageName} (${input.language}).
 Create accurate, concise flashcard content for the supplied word.
-Write meanings, grammar labels, collocation explanations, related-word explanations, and translations in Vietnamese.
+Write meanings, grammar labels, collocation explanations, related-word explanations, and translations in ${outputName}.
 Keep the example sentence natural and short. Use IPA when it is known; otherwise return an empty string.
 Return structured data only through the submit_card tool.`
         return makeSpec(
-          genericLanguageCardSchema,
+          buildGenericLanguageCardSchema(outputName),
           systemPrompt,
           `Create a ${languageName} vocabulary flashcard for: "${input.word}"`,
           `Submit an enriched ${languageName} vocabulary flashcard.`,
@@ -178,15 +201,15 @@ Return structured data only through the submit_card tool.`
 
   if (input.form_type === FormType.IT && input.term) {
     return makeSpec(
-      itVocabCardSchema,
-      IT_VOCAB_SYSTEM_PROMPT,
+      buildItVocabCardSchema(outputName),
+      buildItVocabSystemPrompt(outputName),
       buildItVocabUserMessage(input.term, input.topics),
-      'Nộp thẻ thuật ngữ IT đã được enrich.',
+      'Submit the enriched IT vocabulary card.',
     )
   }
 
   if (input.dynamicFields && input.word) {
-    return buildDynamicSpec(input.word, input.dynamicFields, input.contentTypeName)
+    return buildDynamicSpec(input.word, input.dynamicFields, outputName, input.contentTypeName)
   }
 
   throw new Error('Invalid parameters for generating content')
@@ -195,14 +218,15 @@ Return structured data only through the submit_card tool.`
 function buildDynamicSpec(
   word: string,
   fields: Record<string, string>,
+  outputLanguageName: string,
   contentTypeName?: string,
 ): CardSpec {
   const schemaShape: Record<string, z.ZodType> = {
     word: z.string().describe('The main term/word'),
-    meaning_vi: z.string().describe('Nghĩa tiếng Việt'),
-    example_sentence: z.string().describe('Câu ví dụ minh họa'),
-    example_translation: z.string().describe('Bản dịch câu ví dụ sang tiếng Việt'),
-    unsplash_search_keyword: z.string().describe('Từ khóa tiếng Anh để tìm ảnh minh họa'),
+    meaning_vi: z.string().describe(`Meaning in ${outputLanguageName}`),
+    example_sentence: z.string().describe('Illustrative example sentence'),
+    example_translation: z.string().describe(`${outputLanguageName} translation of the example sentence`),
+    unsplash_search_keyword: z.string().describe('Short English keyword for an illustration image search'),
   }
 
   for (const key of Object.keys(fields)) {
@@ -220,8 +244,8 @@ function buildDynamicSpec(
     .join('\n')
 
   const systemPrompt = `You are an AI assistant that creates enriched flashcard content for "${typeName}" cards.
-Given a word/term and optional context, generate comprehensive flashcard content in Vietnamese.
-Always include: meaning in Vietnamese, example sentence, and Vietnamese translation of the example.
+Given a word/term and optional context, generate comprehensive flashcard content in ${outputLanguageName}.
+Always include: meaning in ${outputLanguageName}, example sentence, and ${outputLanguageName} translation of the example.
 Return structured data via the submit_card tool.`
 
   const userMessage = fieldList

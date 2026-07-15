@@ -79,7 +79,8 @@ registerUnit<StudyLanguageSettingsProps>({
         resetSpy()
         clickButton(ctx.root, 'Add language')
         await ctx.wait(16)
-        await ctx.type('input[aria-label="Language code"]', 'ko')
+        await ctx.type('input[role="combobox"]', 'kor')
+        await ctx.click('[role="option"][data-language-code="ko"]')
         clickButton(ctx.root, 'Add language', true)
         await ctx.wait(16)
       },

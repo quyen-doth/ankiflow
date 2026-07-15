@@ -10,6 +10,7 @@
     "seed": "tsx scripts/seed-firestore.ts",
     "verify": "vitest run",
     "verify:watch": "vitest",
+    "test:e2e": "playwright test",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.39",
     "@types/react": "^19",
