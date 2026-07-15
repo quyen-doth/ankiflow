@@ -25,6 +25,14 @@ const validEnglish = {
 
 const enInput = { form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'resilient' }
 
+function expectCachedSystem(system: unknown, text: string): void {
+  expect(system).toEqual([{
+    type: 'text',
+    text: expect.stringContaining(text),
+    cache_control: { type: 'ephemeral' },
+  }])
+}
+
 const validFrench = {
   word: 'bonjour',
   ipa: '/bɔ̃.ʒuʁ/',
@@ -69,6 +77,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_card' })
     expect(params.tools[0].name).toBe('submit_card')
     expect(params.tools[0].input_schema.additionalProperties).toBe(false)
+    expectCachedSystem(params.system, '英語')
   })
 
   it('output が無効な場合 retry し、次回成功する', async () => {
@@ -96,7 +105,17 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     })
 
     expect(result).toEqual(validFrench)
-    expect(createMock.mock.calls[0][0].system).toContain('French')
+    expectCachedSystem(createMock.mock.calls[0][0].system, 'French')
+  })
+
+  it('web_search 経路でも system prompt に cache_control を付与', async () => {
+    createMock.mockResolvedValueOnce(toolUseResponse(validEnglish))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5', true)
+
+    expect(await provider.generateCard(enInput)).toEqual(validEnglish)
+    const params = createMock.mock.calls[0][0]
+    expect(params.tool_choice).toEqual({ type: 'auto' })
+    expectCachedSystem(params.system, '英語')
   })
 
   it('model が submit_card を呼ばない場合 (retry を使い切った後) エラーを throw', async () => {
@@ -125,7 +144,7 @@ describe('ClaudeAgentProvider — language detection', () => {
     ])
     const params = createMock.mock.calls[0][0]
     expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_language_detection' })
-    expect(params.system).toContain('BCP 47')
+    expectCachedSystem(params.system, 'BCP 47')
   })
 
   it('retries incomplete index sets and then succeeds', async () => {

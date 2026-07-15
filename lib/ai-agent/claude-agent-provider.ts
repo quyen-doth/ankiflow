@@ -25,6 +25,15 @@ const MAX_TOKENS = 4096
 const TEMPERATURE = 0.3
 const MAX_SEARCH_TURNS = 6
 
+function cacheableSystemPrompt(text: string): Anthropic.TextBlockParam[] {
+  return [{
+    type: 'text',
+    text,
+    // tools → system の prefix を 5 分間 cache。閾値未満の prompt では安全な no-op。
+    cache_control: { type: 'ephemeral' },
+  }]
+}
+
 /**
  * "tool 化" 方式で Claude によりカードコンテンツを生成する Provider:
  * model は tool `submit_card` (カードスキーマ) の呼び出しを強制され、structured output を返す。
@@ -103,7 +112,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       model: this.model,
       max_tokens: MAX_TOKENS,
       temperature: TEMPERATURE,
-      system: spec.systemPrompt,
+      system: cacheableSystemPrompt(spec.systemPrompt),
       tools: [cardTool],
       tool_choice: { type: 'tool', name: spec.toolName },
       messages: [{ role: 'user', content: spec.userMessage }],
@@ -136,7 +145,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
         model: this.model,
         max_tokens: MAX_TOKENS,
         temperature: TEMPERATURE,
-        system: spec.systemPrompt,
+        system: cacheableSystemPrompt(spec.systemPrompt),
         tools: [cardTool, webSearchTool],
         tool_choice: { type: 'auto' },
         messages,
