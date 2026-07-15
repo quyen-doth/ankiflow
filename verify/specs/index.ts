@@ -31,6 +31,7 @@ import './app-shell.verify'
 // Phase C — create/ + preview/ + history/
 import './section-divider.verify'
 import './smart-enrichment-banner.verify'
+import './batch-item-list.verify'
 import './language-selector.verify'
 import './editable-field.verify'
 import './collocation-editor.verify'
