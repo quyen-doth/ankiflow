@@ -19,6 +19,13 @@ import {
     DEFAULT_LINE_WORDS_PER_NOTIFICATION,
     parseLineWordsPerNotification,
 } from '@/lib/notifications/config';
+import {
+    createAdminSettingsSnapshot,
+    type AiConfigForm,
+    type FeatureFlagsForm,
+    type LineConfigForm,
+} from '@/lib/settings-form-state';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import { cn } from '@/lib/utils';
 import type { GlobalSettings } from '@/types';
 
@@ -30,21 +37,6 @@ import type { GlobalSettings } from '@/types';
  *
  * Preferences cá nhân (settings/{uid}) nằm ở `/settings`. Trang này KHÔNG đụng settings/{uid}.
  */
-
-interface FeatureFlagsForm {
-    tts_available: boolean;
-    unsplash_available: boolean;
-}
-
-interface AiConfigForm {
-    ai_model: string;
-    web_search_enabled: boolean;
-}
-
-interface LineConfigForm {
-    line_notifications_available: boolean;
-    line_schedule_hours: number[];
-}
 
 const CLAUDE_MODEL_OPTIONS = [
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
@@ -71,6 +63,7 @@ export default function AdminSettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
+    const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
 
     // UI-gate: non-admin không được xem trang này (bảo mật ghi vẫn do API/Firestore Rules lo).
     useEffect(() => {
@@ -86,24 +79,35 @@ export default function AdminSettingsPage() {
                 const globalSnap = await getDoc(doc(db, 'settings', GLOBAL_SETTINGS_DOC_ID));
                 const g = (globalSnap.exists() ? globalSnap.data() : {}) as Partial<GlobalSettings>;
 
-                setFeatureFlags({
+                const loadedFeatureFlags = {
                     tts_available: g.tts_available ?? true,
                     unsplash_available: g.unsplash_available ?? true,
-                });
-                setAiConfig({
+                };
+                const loadedAiConfig = {
                     ai_model: g.ai_model ?? 'claude-haiku-4-5',
                     web_search_enabled: g.web_search_enabled ?? false,
-                });
-                setLineConfig({
+                };
+                const loadedLineConfig = {
                     line_notifications_available: g.line_notifications_available ?? true,
                     line_schedule_hours: g.line_schedule_hours ?? [],
-                });
+                };
                 const configuredWords = g.line_words_per_notification;
-                setLineWordsInput(String(
+                const loadedLineWordsInput = String(
                     typeof configuredWords === 'number' && configuredWords >= 1 && configuredWords <= 10
                         ? configuredWords
                         : DEFAULT_LINE_WORDS_PER_NOTIFICATION,
-                ));
+                );
+
+                setFeatureFlags(loadedFeatureFlags);
+                setAiConfig(loadedAiConfig);
+                setLineConfig(loadedLineConfig);
+                setLineWordsInput(loadedLineWordsInput);
+                setSavedSnapshot(createAdminSettingsSnapshot({
+                    featureFlags: loadedFeatureFlags,
+                    aiConfig: loadedAiConfig,
+                    lineConfig: loadedLineConfig,
+                    lineWordsInput: loadedLineWordsInput,
+                }));
             } catch (error) {
                 console.error('Error fetching global settings:', error);
             } finally {
@@ -114,18 +118,22 @@ export default function AdminSettingsPage() {
     }, [user, authLoading, isAdmin]);
 
     const updateFlag = useCallback(<K extends keyof FeatureFlagsForm>(field: K, value: boolean) => {
+        setSavedAt(null);
         setFeatureFlags((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const updateAi = useCallback(<K extends keyof AiConfigForm>(field: K, value: AiConfigForm[K]) => {
+        setSavedAt(null);
         setAiConfig((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const updateLine = useCallback(<K extends keyof LineConfigForm>(field: K, value: LineConfigForm[K]) => {
+        setSavedAt(null);
         setLineConfig((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const toggleScheduleHour = useCallback((hour: number) => {
+        setSavedAt(null);
         setLineConfig((prev) => ({
             ...prev,
             line_schedule_hours: prev.line_schedule_hours.includes(hour)
@@ -139,8 +147,17 @@ export default function AdminSettingsPage() {
         ? 'Enter a whole number from 1 to 10.'
         : undefined;
 
+    const currentSnapshot = createAdminSettingsSnapshot({
+        featureFlags,
+        aiConfig,
+        lineConfig,
+        lineWordsInput,
+    });
+    const hasChanges = savedSnapshot !== null && currentSnapshot !== savedSnapshot;
+    useUnsavedChangesGuard(hasChanges);
+
     const handleSave = async () => {
-        if (!isAdmin) return;
+        if (!isAdmin || !hasChanges) return;
         if (parsedLineWords === null) {
             toast.error('Check Words per notification before saving.');
             return;
@@ -166,6 +183,7 @@ export default function AdminSettingsPage() {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error || 'Failed to save global config');
             }
+            setSavedSnapshot(currentSnapshot);
             setSavedAt(Date.now());
             toast.success('App settings saved');
         } catch (error) {
@@ -200,7 +218,7 @@ export default function AdminSettingsPage() {
                             variant="primary"
                             leftIcon={<Check className="w-4 h-4" />}
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || !hasChanges}
                         >
                             {saving ? 'Saving...' : 'Save changes'}
                         </Button>
@@ -310,7 +328,10 @@ export default function AdminSettingsPage() {
                                 max={10}
                                 value={lineWordsInput}
                                 error={lineWordsError !== undefined}
-                                onChange={(event) => setLineWordsInput(event.target.value)}
+                                onChange={(event) => {
+                                    setSavedAt(null);
+                                    setLineWordsInput(event.target.value);
+                                }}
                                 className="max-w-32 font-mono"
                             />
                         </FieldWrapper>
