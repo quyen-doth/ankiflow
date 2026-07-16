@@ -22,6 +22,7 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { DEFAULTS_OWNER_ID } from '@/lib/constants';
 import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
+import { FormType, LanguageType } from '@/types';
 
 // ─── デフォルトデータ (出典: scripts/seed-firestore.ts オリジナル) ─────────────────────
 
@@ -198,7 +199,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::Chinese::HSK1',
         display_name: 'Chinese HSK1',
         form_type: 'form_language',
-        language: 'chinese',
+        language: LanguageType.CHINESE,
         default_card_type_ids: FULL_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 1,
@@ -208,7 +209,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::Chinese::HSK2',
         display_name: 'Chinese HSK2',
         form_type: 'form_language',
-        language: 'chinese',
+        language: LanguageType.CHINESE,
         default_card_type_ids: FULL_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 2,
@@ -218,7 +219,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::Chinese::HSK3',
         display_name: 'Chinese HSK3',
         form_type: 'form_language',
-        language: 'chinese',
+        language: LanguageType.CHINESE,
         default_card_type_ids: CORE_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 3,
@@ -228,7 +229,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::Japanese::N5',
         display_name: 'Japanese N5',
         form_type: 'form_language',
-        language: 'japanese',
+        language: LanguageType.JAPANESE,
         default_card_type_ids: FULL_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 4,
@@ -238,7 +239,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::Japanese::N4',
         display_name: 'Japanese N4',
         form_type: 'form_language',
-        language: 'japanese',
+        language: LanguageType.JAPANESE,
         default_card_type_ids: CORE_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 5,
@@ -248,7 +249,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::English::B1',
         display_name: 'English B1',
         form_type: 'form_language',
-        language: 'english',
+        language: LanguageType.ENGLISH,
         default_card_type_ids: FULL_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 6,
@@ -258,7 +259,7 @@ export const DEFAULT_DECKS = [
         anki_deck_name: 'Language::English::B2',
         display_name: 'English B2',
         form_type: 'form_language',
-        language: 'english',
+        language: LanguageType.ENGLISH,
         default_card_type_ids: CORE_LANG_SET,
         default_category_id: 'cat_daily',
         sort_order: 7,
@@ -301,6 +302,59 @@ export const DEFAULT_USER_PREFS = {
 /** default ID からユーザーごとの ID を生成: `cat_daily` + uid `abc` → `cat_daily__abc`。 */
 export const userScopedId = (defaultId: string, uid: string) => `${defaultId}__${uid}`;
 
+export const USER_DEFAULT_COLLECTIONS = ['categories', 'card_types', 'topics', 'decks'] as const;
+export type UserDefaultCollection = (typeof USER_DEFAULT_COLLECTIONS)[number];
+
+export interface UserDefaultTemplateDocument {
+    id: string;
+    data: Record<string, unknown>;
+}
+
+export type UserDefaultTemplateSnapshot = Record<UserDefaultCollection, UserDefaultTemplateDocument[]>;
+
+export interface UserDefaultReferenceIds {
+    categoryIds?: ReadonlyMap<string, string>;
+    cardTypeIds?: ReadonlyMap<string, string>;
+}
+
+export interface MaterializedUserDefaultDocument {
+    id: string;
+    data: Record<string, unknown>;
+}
+
+/**
+ * Template 1 件を user-owned document に変換する共通経路。
+ * Template の system fields は引き継がず、deck FK は解決済み ID を優先して user scope に変換する。
+ */
+export function materializeUserDefaultDocument(
+    collection: UserDefaultCollection,
+    template: UserDefaultTemplateDocument,
+    uid: string,
+    references: UserDefaultReferenceIds = {},
+): MaterializedUserDefaultDocument {
+    const data = { ...template.data };
+    delete data.user_id;
+    delete data.created_at;
+    delete data.updated_at;
+
+    if (collection === 'decks') {
+        const cardTypeIds = Array.isArray(data.default_card_type_ids)
+            ? data.default_card_type_ids.filter((id): id is string => typeof id === 'string')
+            : [];
+        const categoryId = typeof data.default_category_id === 'string' ? data.default_category_id : null;
+        data.default_card_type_ids = cardTypeIds.map((id) =>
+            references.cardTypeIds?.get(id) ?? userScopedId(id, uid));
+        data.default_category_id = categoryId
+            ? references.categoryIds?.get(categoryId) ?? userScopedId(categoryId, uid)
+            : null;
+    }
+
+    return {
+        id: userScopedId(template.id, uid),
+        data: { ...data, user_id: uid },
+    };
+}
+
 async function seedDocIfMissing(db: Firestore, collection: string, id: string, data: Record<string, unknown>) {
     const ref = db.collection(collection).doc(id);
     const snap = await ref.get();
@@ -308,15 +362,64 @@ async function seedDocIfMissing(db: Firestore, collection: string, id: string, d
     await ref.set(data);
 }
 
-interface TemplateDoc {
-    id: string;
-    data: FirebaseFirestore.DocumentData;
+/** 1 つの collection のテンプレート docs (`user_id == DEFAULTS_OWNER_ID`) を読み込む — 未 publish なら空。 */
+async function fetchTemplates(db: Firestore, collection: UserDefaultCollection): Promise<UserDefaultTemplateDocument[]> {
+    const snap = await db.collection(collection).where('user_id', '==', DEFAULTS_OWNER_ID).get();
+    return snap.docs.map((d) => ({ id: d.id, data: { ...d.data() } as Record<string, unknown> }));
 }
 
-/** 1 つの collection のテンプレート docs (`user_id == DEFAULTS_OWNER_ID`) を読み込む — 未 publish なら空。 */
-async function fetchTemplates(db: Firestore, collection: string): Promise<TemplateDoc[]> {
-    const snap = await db.collection(collection).where('user_id', '==', DEFAULTS_OWNER_ID).get();
-    return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+function hardcodedTemplateSnapshot(): UserDefaultTemplateSnapshot {
+    return {
+        categories: DEFAULT_CATEGORIES.map((category) => ({
+            id: category.id,
+            data: {
+                user_id: DEFAULTS_OWNER_ID,
+                name: category.name,
+                form_type: FormType.LANGUAGE,
+                sort_order: category.sort_order,
+                is_active: true,
+            },
+        })),
+        card_types: DEFAULT_CARD_TYPES.map((cardType) => ({
+            id: cardType.id,
+            data: {
+                user_id: DEFAULTS_OWNER_ID,
+                code: cardType.code,
+                name: cardType.name,
+                description: '',
+                form_type: cardType.form_type,
+                language: cardType.language,
+                is_default: cardType.is_default,
+                is_active: true,
+                sort_order: cardType.sort_order,
+                template: cardType.template,
+            },
+        })),
+        topics: DEFAULT_TOPICS.map((topic) => ({
+            id: topic.id,
+            data: {
+                user_id: DEFAULTS_OWNER_ID,
+                name: topic.name,
+                form_type: FormType.IT,
+                is_active: true,
+                sort_order: topic.sort_order,
+            },
+        })),
+        decks: DEFAULT_DECKS.map((deck) => ({
+            id: deck.id,
+            data: {
+                user_id: DEFAULTS_OWNER_ID,
+                anki_deck_name: deck.anki_deck_name,
+                display_name: deck.display_name,
+                form_type: deck.form_type,
+                language: deck.language,
+                default_card_type_ids: [...deck.default_card_type_ids],
+                default_category_id: deck.default_category_id,
+                is_active: true,
+                sort_order: deck.sort_order,
+            },
+        })),
+    };
 }
 
 /**
@@ -328,69 +431,18 @@ async function fetchTemplates(db: Firestore, collection: string): Promise<Templa
  */
 export async function publishTemplateDefaults(db: Firestore): Promise<void> {
     const now = new Date();
-    await Promise.all([
-        ...DEFAULT_CATEGORIES.map((cat) =>
-            seedDocIfMissing(db, 'categories', cat.id, {
-                user_id: DEFAULTS_OWNER_ID,
-                name: cat.name,
-                form_type: 'form_language',
-                sort_order: cat.sort_order,
-                is_active: true,
-                created_at: now,
-                updated_at: now,
-            }),
+    const templates = hardcodedTemplateSnapshot();
+    await Promise.all(
+        USER_DEFAULT_COLLECTIONS.flatMap((collection) =>
+            templates[collection].map((template) =>
+                seedDocIfMissing(db, collection, template.id, {
+                    ...template.data,
+                    created_at: now,
+                    updated_at: now,
+                }),
+            ),
         ),
-        ...DEFAULT_CARD_TYPES.map((ct) =>
-            seedDocIfMissing(db, 'card_types', ct.id, {
-                user_id: DEFAULTS_OWNER_ID,
-                code: ct.code,
-                name: ct.name,
-                description: '',
-                form_type: ct.form_type,
-                language: ct.language,
-                is_default: ct.is_default,
-                is_active: true,
-                sort_order: ct.sort_order,
-                template: ct.template,
-                created_at: now,
-            }),
-        ),
-        ...DEFAULT_TOPICS.map((topic) =>
-            seedDocIfMissing(db, 'topics', topic.id, {
-                user_id: DEFAULTS_OWNER_ID,
-                name: topic.name,
-                form_type: 'form_it',
-                is_active: true,
-                sort_order: topic.sort_order,
-                created_at: now,
-            }),
-        ),
-        ...DEFAULT_DECKS.map((deck) =>
-            seedDocIfMissing(db, 'decks', deck.id, {
-                user_id: DEFAULTS_OWNER_ID,
-                anki_deck_name: deck.anki_deck_name,
-                display_name: deck.display_name,
-                form_type: deck.form_type,
-                language: deck.language,
-                default_card_type_ids: [...deck.default_card_type_ids],
-                default_category_id: deck.default_category_id,
-                is_active: true,
-                sort_order: deck.sort_order,
-                created_at: now,
-            }),
-        ),
-    ]);
-}
-
-interface CategorySourceItem { id: string; name: string; sort_order: number }
-interface CardTypeSourceItem {
-    id: string; code: string; name: string; form_type: string;
-    language: string | null; is_default: boolean; sort_order: number; template: Record<string, unknown>;
-}
-interface TopicSourceItem { id: string; name: string; sort_order: number }
-interface DeckSourceItem {
-    id: string; anki_deck_name: string; display_name: string; form_type: string;
-    language: string | null; default_card_type_ids: string[]; default_category_id: string | null; sort_order: number;
+    );
 }
 
 /**
@@ -424,90 +476,27 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
         ]);
     }
 
-    const categorySource: CategorySourceItem[] = catTemplates.length > 0
-        ? catTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
-        : DEFAULT_CATEGORIES.map((cat) => ({ ...cat }));
+    const hardcodedTemplates = hardcodedTemplateSnapshot();
+    const templates: UserDefaultTemplateSnapshot = {
+        categories: catTemplates.length > 0 ? catTemplates : hardcodedTemplates.categories,
+        card_types: ctTemplates.length > 0 ? ctTemplates : hardcodedTemplates.card_types,
+        topics: topicTemplates.length > 0 ? topicTemplates : hardcodedTemplates.topics,
+        decks: deckTemplates.length > 0 ? deckTemplates : hardcodedTemplates.decks,
+    };
 
-    const cardTypeSource: CardTypeSourceItem[] = ctTemplates.length > 0
-        ? ctTemplates.map((t) => ({
-            id: t.id,
-            code: t.data.code as string,
-            name: t.data.name as string,
-            form_type: t.data.form_type as string,
-            language: (t.data.language as string | null) ?? null,
-            is_default: !!t.data.is_default,
-            sort_order: (t.data.sort_order as number) ?? 0,
-            template: t.data.template as Record<string, unknown>,
-        }))
-        : DEFAULT_CARD_TYPES.map((ct) => ({ ...ct, template: ct.template as Record<string, unknown> }));
-
-    const topicSource: TopicSourceItem[] = topicTemplates.length > 0
-        ? topicTemplates.map((t) => ({ id: t.id, name: t.data.name as string, sort_order: (t.data.sort_order as number) ?? 0 }))
-        : DEFAULT_TOPICS.map((topic) => ({ ...topic }));
-
-    const deckSource: DeckSourceItem[] = deckTemplates.length > 0
-        ? deckTemplates.map((t) => ({
-            id: t.id,
-            anki_deck_name: t.data.anki_deck_name as string,
-            display_name: t.data.display_name as string,
-            form_type: t.data.form_type as string,
-            language: (t.data.language as string | null) ?? null,
-            default_card_type_ids: (t.data.default_card_type_ids as string[]) ?? [],
-            default_category_id: (t.data.default_category_id as string | null) ?? null,
-            sort_order: (t.data.sort_order as number) ?? 0,
-        }))
-        : DEFAULT_DECKS.map((deck) => ({ ...deck, default_card_type_ids: [...deck.default_card_type_ids] }));
+    const userDocuments = USER_DEFAULT_COLLECTIONS.flatMap((collection) =>
+        templates[collection].map((template) => ({
+            collection,
+            ...materializeUserDefaultDocument(collection, template, uid),
+        })),
+    );
 
     await Promise.all([
-        ...categorySource.map((cat) =>
-            seedDocIfMissing(db, 'categories', userScopedId(cat.id, uid), {
-                user_id: uid,
-                name: cat.name,
-                form_type: 'form_language',
-                sort_order: cat.sort_order,
-                is_active: true,
+        ...userDocuments.map((document) =>
+            seedDocIfMissing(db, document.collection, document.id, {
+                ...document.data,
                 created_at: now,
                 updated_at: now,
-            }),
-        ),
-        ...cardTypeSource.map((ct) =>
-            seedDocIfMissing(db, 'card_types', userScopedId(ct.id, uid), {
-                user_id: uid,
-                code: ct.code,
-                name: ct.name,
-                description: '',
-                form_type: ct.form_type,
-                language: ct.language,
-                is_default: ct.is_default,
-                is_active: true,
-                sort_order: ct.sort_order,
-                template: ct.template,
-                created_at: now,
-            }),
-        ),
-        ...topicSource.map((topic) =>
-            seedDocIfMissing(db, 'topics', userScopedId(topic.id, uid), {
-                user_id: uid,
-                name: topic.name,
-                form_type: 'form_it',
-                is_active: true,
-                sort_order: topic.sort_order,
-                created_at: now,
-            }),
-        ),
-        ...deckSource.map((deck) =>
-            seedDocIfMissing(db, 'decks', userScopedId(deck.id, uid), {
-                user_id: uid,
-                anki_deck_name: deck.anki_deck_name,
-                display_name: deck.display_name,
-                form_type: deck.form_type,
-                language: deck.language,
-                // FK re-map: この user 自身のユーザーごとの card_types/categories を指す
-                default_card_type_ids: deck.default_card_type_ids.map((id) => userScopedId(id, uid)),
-                default_category_id: deck.default_category_id ? userScopedId(deck.default_category_id, uid) : null,
-                is_active: true,
-                sort_order: deck.sort_order,
-                created_at: now,
             }),
         ),
         seedDocIfMissing(db, 'settings', uid, { ...DEFAULT_USER_PREFS, updated_at: now }),

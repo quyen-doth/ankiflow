@@ -6,7 +6,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "bash $HOME/.claude/scripts/notify.sh \"✅ Claude Code\" \"Task completed\""
+                        "command": "bash $HOME/.claude/scripts/notify.sh \"✅ [AnkiFlow] Claude Code\" \"Task completed\""
                     }
                 ]
             }
@@ -17,7 +17,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "bash $HOME/.claude/scripts/notify.sh \"🔔 Claude Code\" \"Need approval\""
+                        "command": "bash $HOME/.claude/scripts/notify.sh \"🔔 [AnkiFlow] Claude Code\" \"Need approval\""
                     }
                 ]
             }

@@ -12,20 +12,13 @@
  * Firebase client SDK は並行してログイン状態を保持 (onAuthStateChanged) — クライアントが
  * Firestore を直接読むため、Security Rules (Phase D) は request.auth に基づく。
  */
-import { z } from 'zod'
 import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
-export const emailSchema = z.email('Please enter a valid email address')
-
-export const passwordSchema = z
-  .string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least 1 number')
+export { emailSchema, passwordSchema } from '@/lib/auth-validation'
 
 export interface AuthResult {
   ok: boolean
