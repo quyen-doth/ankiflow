@@ -6,10 +6,11 @@ import type { ReviewState } from '@/types'
  * kèm review_event `rating` (revlog, SRS Phase 0).
  */
 
-const { updateMock, addMock, entryStore } = vi.hoisted(() => ({
+const { updateMock, addMock, entryStore, settingsStore } = vi.hoisted(() => ({
   updateMock: vi.fn<(data: Record<string, unknown>) => Promise<void>>().mockResolvedValue(undefined),
   addMock: vi.fn<(data: Record<string, unknown>) => Promise<{ id: string }>>().mockResolvedValue({ id: 'ev1' }),
   entryStore: new Map<string, Record<string, unknown>>(),
+  settingsStore: new Map<string, Record<string, unknown>>(),
 }))
 
 vi.mock('@/lib/firebase-admin', () => ({
@@ -17,7 +18,13 @@ vi.mock('@/lib/firebase-admin', () => ({
     collection: (name: string) =>
       name === 'review_events'
         ? { add: addMock }
-        : {
+        : name === 'settings'
+          ? {
+              doc: (id: string) => ({
+                get: async () => ({ exists: settingsStore.has(id), data: () => settingsStore.get(id) }),
+              }),
+            }
+          : {
             doc: (id: string) => ({
               get: async () => ({ exists: entryStore.has(id), data: () => entryStore.get(id) }),
               update: updateMock,
@@ -29,6 +36,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 // Bỏ qua verify chữ ký LINE — test này chỉ quan tâm side effect Firestore.
 vi.mock('@/lib/line/client', () => ({
   verifySignatureAsync: async () => true,
+  replyMessage: vi.fn(),
 }))
 
 import { POST } from '@/app/api/notifications/line-webhook/route'
@@ -41,6 +49,7 @@ function makeReq(entryId: string, rating: string) {
       {
         type: 'postback',
         replyToken: 'r1',
+        source: { userId: 'line-u9' },
         postback: { data: `ankiflow:action=srs_rate&entry_id=${entryId}&rating=${rating}` },
       },
     ],
@@ -72,6 +81,7 @@ beforeEach(() => {
   updateMock.mockClear()
   addMock.mockClear()
   entryStore.clear()
+  settingsStore.clear()
   process.env.LINE_CHANNEL_SECRET = 'test-secret'
 })
 
@@ -82,6 +92,7 @@ afterEach(() => {
 describe('POST /api/notifications/line-webhook — revlog', () => {
   it('有効な rating → review_state を update (source builtin) + kind rating の event を追加', async () => {
     entryStore.set('e1', { user_id: 'u9', review_state: ankiState() })
+    settingsStore.set('u9', { line_user_id: 'line-u9' })
 
     const res = await POST(makeReq('e1', 'good'))
     expect(res.status).toBe(200)
@@ -107,6 +118,7 @@ describe('POST /api/notifications/line-webhook — revlog', () => {
 
   it('entry に review_state がない → prev null の event', async () => {
     entryStore.set('e2', { user_id: 'u9' })
+    settingsStore.set('u9', { line_user_id: 'line-u9' })
 
     await POST(makeReq('e2', 'again'))
 
