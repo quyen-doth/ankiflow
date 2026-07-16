@@ -157,6 +157,22 @@ registerUnit<Record<string, never>>({
         await ctx.wait(0)
       },
     },
+    {
+      id: 'protected-builtins',
+      description: 'Built-in global document は delete action を表示せず、custom document だけ表示する。',
+      props: {},
+      mocks: {
+        firestore: {
+          content_types: [
+            { ...SEED.content_types[0], id: FormType.LANGUAGE },
+            { ...SEED.content_types[1], id: 'custom_it' },
+          ],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
   ],
   invariants: [
     {
@@ -245,6 +261,17 @@ registerUnit<Record<string, never>>({
       check: ({ root }) => {
         if (!modalOpen(root)) return 'modal không mở'
         return !(root.textContent ?? '').includes('undefined') || 'leak "undefined" ra UI'
+      },
+    },
+    {
+      id: 'protected-builtins-hide-delete',
+      description: 'Built-in global Content Type は削除不可、custom global だけ削除ボタンを持つ',
+      onlyFixtures: ['protected-builtins'],
+      check: ({ root }) => {
+        const buttons = root.querySelectorAll<HTMLButtonElement>('button[aria-label^="Delete content type"]')
+        if (buttons.length !== 1) return `deleteButtons=${buttons.length}, expected=1`
+        return buttons[0].getAttribute('aria-label') === 'Delete content type IT'
+          || `aria-label="${buttons[0].getAttribute('aria-label')}"`
       },
     },
   ],

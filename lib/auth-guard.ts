@@ -53,6 +53,24 @@ export function withAuth<Req extends Request = Request>(
   }
 }
 
+/** Admin control-plane route を session email + server-only ADMIN_EMAIL で fail-closed 保護する。 */
+export function withAdmin<Req extends Request = Request>(
+  handler: (req: Req, ctx: RouteContext, user: SessionUser) => Promise<Response>,
+): (req: Req, ctx: RouteContext) => Promise<Response> {
+  return async (req, ctx) => {
+    const user = await verifySessionUser(req)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL?.trim()
+    if (!adminEmail || user.email !== adminEmail) {
+      return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+    }
+    return handler(req, ctx, user)
+  }
+}
+
 /**
  * Session cookie を使わない静的トークン比較 (integration/cron routes 向け)。
  * `timingSafeEqual` はバッファ長が異なると throw するため、長さチェックを先に行う

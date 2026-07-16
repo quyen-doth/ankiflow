@@ -19,6 +19,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
+import { isProtectedGlobalContentTypeId } from '@/lib/contentTypes'
 import type { ContentType, FormFieldConfig } from '@/types'
 
 const FIELD_TYPE_OPTIONS: { value: FormFieldConfig['type']; label: string }[] = [
@@ -238,9 +239,11 @@ export function ContentTypeManager() {
           <Button variant="ghost" size="sm" aria-label={`Edit fields ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
             <Pencil className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Delete content type ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          {!isProtectedGlobalContentTypeId(row.id) && (
+            <Button variant="ghost" size="sm" aria-label={`Delete content type ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </div>
       ),
     },
