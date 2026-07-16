@@ -51,3 +51,6 @@ next-env.d.ts
 .playwright-mcp/
 *.local-browser/
 mcp-browser-data/
+
+# Plan working documents (kept out of Git)
+plans/
