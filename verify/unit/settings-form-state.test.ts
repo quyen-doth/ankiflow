@@ -36,11 +36,11 @@ const adminSettings = {
     ai_model: 'claude-haiku-4-5',
     web_search_enabled: true,
   },
-  lineSecrets: {
-    notifications_enabled: true,
-    line_channel_access_token: 'token',
-    line_user_id: 'user-id',
+  lineConfig: {
+    line_notifications_available: true,
+    line_schedule_hours: [9, 21],
   },
+  lineWordsInput: '5',
 }
 
 describe('settings form snapshots', () => {
@@ -98,26 +98,17 @@ describe('settings form snapshots', () => {
       .not.toBe(createPersonalSettingsSnapshot(original))
   })
 
-  it('管理設定の空文字と未定義の LINE secret を同一視する', () => {
-    const withoutSecrets = {
+  it('管理設定の LINE 配信時刻変更を検出する', () => {
+    const changed = {
       ...adminSettings,
-      lineSecrets: {
-        notifications_enabled: true,
-        line_channel_access_token: undefined,
-        line_user_id: undefined,
-      },
-    }
-    const emptySecrets = {
-      ...adminSettings,
-      lineSecrets: {
-        notifications_enabled: true,
-        line_channel_access_token: '',
-        line_user_id: '',
+      lineConfig: {
+        ...adminSettings.lineConfig,
+        line_schedule_hours: [9],
       },
     }
 
-    expect(createAdminSettingsSnapshot(emptySecrets))
-      .toBe(createAdminSettingsSnapshot(withoutSecrets))
+    expect(createAdminSettingsSnapshot(changed))
+      .not.toBe(createAdminSettingsSnapshot(adminSettings))
   })
 
   it('管理設定の保存対象値の変更を検出する', () => {
@@ -125,6 +116,13 @@ describe('settings form snapshots', () => {
       ...adminSettings,
       aiConfig: { ...adminSettings.aiConfig, web_search_enabled: false },
     }
+
+    expect(createAdminSettingsSnapshot(changed))
+      .not.toBe(createAdminSettingsSnapshot(adminSettings))
+  })
+
+  it('管理設定の LINE 通知単語数の入力変更を検出する', () => {
+    const changed = { ...adminSettings, lineWordsInput: '7' }
 
     expect(createAdminSettingsSnapshot(changed))
       .not.toBe(createAdminSettingsSnapshot(adminSettings))

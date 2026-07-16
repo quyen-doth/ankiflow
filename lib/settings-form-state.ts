@@ -11,16 +11,16 @@ export interface AiConfigForm {
   web_search_enabled: boolean
 }
 
-export interface LineSecretsForm {
-  notifications_enabled: boolean
-  line_channel_access_token?: string
-  line_user_id?: string
+export interface LineConfigForm {
+  line_notifications_available: boolean
+  line_schedule_hours: number[]
 }
 
 interface AdminSettingsForm {
   featureFlags: FeatureFlagsForm
   aiConfig: AiConfigForm
-  lineSecrets: LineSecretsForm
+  lineConfig: LineConfigForm
+  lineWordsInput: string
 }
 
 export function createPersonalSettingsSnapshot(settings: Settings): string {
@@ -44,15 +44,16 @@ export function createPersonalSettingsSnapshot(settings: Settings): string {
 export function createAdminSettingsSnapshot({
   featureFlags,
   aiConfig,
-  lineSecrets,
+  lineConfig,
+  lineWordsInput,
 }: AdminSettingsForm): string {
   return JSON.stringify({
     tts_available: featureFlags.tts_available,
     unsplash_available: featureFlags.unsplash_available,
     ai_model: aiConfig.ai_model,
     web_search_enabled: aiConfig.web_search_enabled,
-    notifications_enabled: lineSecrets.notifications_enabled,
-    line_channel_access_token: lineSecrets.line_channel_access_token ?? '',
-    line_user_id: lineSecrets.line_user_id ?? '',
+    line_notifications_available: lineConfig.line_notifications_available,
+    line_schedule_hours: lineConfig.line_schedule_hours,
+    line_words_per_notification: lineWordsInput,
   })
 }
