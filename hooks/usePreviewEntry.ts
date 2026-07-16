@@ -5,6 +5,8 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
+import type { PendingEntry } from '@/lib/pendingEntry'
+import { FormType } from '@/types'
 import type { Entry, CardTypeConfig } from '@/types'
 
 type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
@@ -17,6 +19,25 @@ interface PreviewEntryState {
   setSelectedCardTypeIds: React.Dispatch<React.SetStateAction<string[]>>
   isLoading: boolean
   error: string | null
+}
+
+export function mapPendingEntryToPreview(
+  pending: PendingEntry,
+  ankiDeckName: string,
+): Partial<Entry> {
+  const content = pending.generatedContent as Record<string, unknown>
+  return {
+    form_type: pending.formType,
+    language: pending.language ?? undefined,
+    output_language: pending.outputLanguage,
+    anki_deck: ankiDeckName,
+    category_id: pending.categoryId || null,
+    card_type_ids: pending.cardTypeIds,
+    tags: pending.tags,
+    ...(content as Partial<Entry>),
+    ...(pending.formType === FormType.IT ? { topic_ids: pending.topicIds ?? [] } : {}),
+    word_type: (content.word_type as string) || (content.word_type_vi as string) || '',
+  }
 }
 
 export function usePreviewEntry(): PreviewEntryState {
@@ -42,8 +63,6 @@ export function usePreviewEntry(): PreviewEntryState {
         return
       }
 
-      const content = pending.generatedContent as Record<string, unknown>
-
       let ankiDeckName = pending.deckId || ''
       if (pending.deckId) {
         try {
@@ -56,18 +75,7 @@ export function usePreviewEntry(): PreviewEntryState {
         }
       }
 
-      const mappedEntry: Partial<Entry> = {
-        form_type: pending.formType,
-        language: pending.language ?? undefined,
-        output_language: pending.outputLanguage,
-        anki_deck: ankiDeckName,
-        category_id: pending.categoryId || null,
-        card_type_ids: pending.cardTypeIds,
-        tags: pending.tags,
-        ...(content as Partial<Entry>),
-        word_type: (content.word_type as string) || (content.word_type_vi as string) || '',
-      }
-      setEntry(mappedEntry)
+      setEntry(mapPendingEntryToPreview(pending, ankiDeckName))
 
       try {
         const q = query(

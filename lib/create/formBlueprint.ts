@@ -111,7 +111,7 @@ const IT_BLUEPRINT: CardFormBlueprint = {
     payload: (v, s) => ({
       term: v.term,
       form_type: FormType.IT,
-      topics: s.topicIds || [],
+      topics: s.topicNames || [],
       output_language: s.outputLanguage,
       output_language_name: s.outputLanguageName,
       definition: v.definition || undefined,

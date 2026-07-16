@@ -24,7 +24,13 @@ const SESSION = JSON.stringify({
   tags: ['it'],
 })
 
-const FIRESTORE_SEED = { decks: [], topics: [], card_types: [] }
+const FIRESTORE_SEED = {
+  decks: [],
+  topics: [
+    { id: 't-be', name: 'Backend', form_type: FormType.IT, is_active: true, sort_order: 1 },
+  ],
+  card_types: [],
+}
 
 // Spy cho onValidityChange — reset trong act
 const validitySpy = { last: null as boolean | null, sawTrue: false }
@@ -170,6 +176,9 @@ registerUnit<ITFormProps>({
         if (pending.formType !== FormType.IT) return `formType=${pending.formType}`
         if (pending.language !== null) return `language=${pending.language}`
         if (pending.deckId !== 'd-it') return `deckId=${pending.deckId}`
+        if (JSON.stringify(pending.topicIds) !== JSON.stringify(['t-be'])) {
+          return `topicIds=${JSON.stringify(pending.topicIds)}`
+        }
         return (
           JSON.stringify(pending.tags) === JSON.stringify(['it']) ||
           `tags=${JSON.stringify(pending.tags)}`
