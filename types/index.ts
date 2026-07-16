@@ -228,6 +228,12 @@ export interface ContentType {
   updated_at: FirestoreTimestamp;
 }
 
+/** ユーザー workspace 内の Content Type snapshot。 */
+export interface UserContentType extends ContentType {
+  user_id: string;
+  source_content_type_id?: string;
+}
+
 /**
  * Cấu hình từng trường (field) trong Form
  */

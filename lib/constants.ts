@@ -33,6 +33,17 @@ export const DEFAULTS_OWNER_ID = '__defaults__' as const
 // ─── Form Type Mapping ───────────────────────────────────────────────────────
 import { FormType } from '@/types'
 
+export const GLOBAL_CONTENT_TYPES_COLLECTION = 'content_types' as const
+export const USER_CONTENT_TYPES_COLLECTION = 'user_content_types' as const
+
+export const PROTECTED_GLOBAL_CONTENT_TYPE_IDS = [
+  FormType.LANGUAGE,
+  FormType.IT,
+  FormType.GENERAL,
+] as const
+
+export const CONTENT_TYPE_CODE_PATTERN = /^[a-z][a-z0-9_]*$/
+
 /**
  * UI ラベル (state、props で使用) → FormType enum (Firestore クエリで使用)
  * 各コンポーネントで map をハードコードする代わりにこの関数を使う。

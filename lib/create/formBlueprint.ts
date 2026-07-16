@@ -1,4 +1,5 @@
 import { FormType } from '@/types'
+import { resolveContentTypeFormType } from '@/lib/contentTypes'
 import type { ContentType } from '@/types'
 import type { SessionState } from '@/lib/session'
 
@@ -152,17 +153,8 @@ export const BUILTIN_BLUEPRINTS: Partial<Record<FormType, CardFormBlueprint>> = 
  * (`language`...) の両方を含み、3 つの built-in content type が常に
  * 正しい blueprint を使うようにする。
  */
-const BUILTIN_ALIASES: Record<string, FormType> = {
-  [FormType.LANGUAGE]: FormType.LANGUAGE,
-  [FormType.IT]: FormType.IT,
-  [FormType.GENERAL]: FormType.GENERAL,
-  language: FormType.LANGUAGE,
-  it: FormType.IT,
-  general: FormType.GENERAL,
-}
-
 export function resolveBuiltinFormType(idOrCode: string): FormType | null {
-  return BUILTIN_ALIASES[idOrCode] ?? null
+  return resolveContentTypeFormType(idOrCode)
 }
 
 /** content type の blueprint を返す: id/code が一致すれば built-in、そうでなければ fields[] から構築。 */
