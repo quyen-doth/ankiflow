@@ -1,39 +1,77 @@
 import { NextResponse } from 'next/server'
-import { getAdminDb } from '@/lib/firebase-admin'
 import { verifySessionUser } from '@/lib/auth-guard'
-import { pushMessage } from '@/lib/line/client'
+import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants'
+import { getAdminDb } from '@/lib/firebase-admin'
 import { buildReviewMessage } from '@/lib/line/flex-message'
+import { pushMessage } from '@/lib/line/client'
 import { createDefaultReviewState } from '@/lib/srs/fsrs'
 import { pickDueForReview } from '@/lib/srs/prioritize'
 import type { Entry } from '@/types'
 
+interface GlobalLineSettings {
+  line_notifications_available?: boolean
+  line_words_per_notification?: number
+}
+
+interface UserLineSettings {
+  line_user_id?: string
+}
+
+function clampWordCount(value: unknown, fallback: number): number {
+  const count = typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return Math.min(10, Math.max(1, Math.trunc(count)))
+}
+
 /**
- * LINE notifications là tính năng ADMIN-ONLY: LINE token/userId là của chủ app (env),
- * push về LINE của chủ app. Gate theo env ADMIN_EMAIL — user thường bị 403.
- * (LINE per-user = backlog P2, xem multi-user-readiness-review.)
+ * 認証済み user の連携先 LINE アカウントへ、復習通知を即時送信する。
  */
 export async function POST(request: Request) {
   const sessionUser = await verifySessionUser(request)
   if (!sessionUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const adminEmail = process.env.ADMIN_EMAIL
-  if (!adminEmail || sessionUser.email !== adminEmail) {
-    return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+  const db = getAdminDb()
+  const [globalSnapshot, userSettingsSnapshot] = await Promise.all([
+    db.collection('settings').doc(GLOBAL_SETTINGS_DOC_ID).get(),
+    db.collection('settings').doc(sessionUser.uid).get(),
+  ])
+  const globalSettings = (globalSnapshot.data() ?? {}) as GlobalLineSettings
+
+  if (globalSettings.line_notifications_available === false) {
+    return NextResponse.json(
+      { error: 'LINE notifications are disabled by administrator' },
+      { status: 403 },
+    )
+  }
+
+  const userSettings = (userSettingsSnapshot.data() ?? {}) as UserLineSettings
+  const lineUserId = userSettings.line_user_id
+  if (!lineUserId) {
+    return NextResponse.json(
+      { error: 'Link your LINE account in Settings first' },
+      { status: 400 },
+    )
   }
 
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN
-  const userId = process.env.LINE_USER_ID
-  if (!token || !userId) {
+  if (!token) {
     return NextResponse.json({ error: 'LINE credentials not configured' }, { status: 500 })
   }
 
-  const body = await request.json().catch(() => ({}))
-  const deckFilter = (body.deck_filter as string[] | undefined) ?? []
-  const languageFilter = (body.language_filter as string[] | undefined) ?? []
-  const count = (body.count as number | undefined) ?? 3
+  const rawBody: unknown = await request.json().catch(() => ({}))
+  const body =
+    typeof rawBody === 'object' && rawBody !== null
+      ? (rawBody as Record<string, unknown>)
+      : {}
+  const deckFilter = Array.isArray(body.deck_filter)
+    ? body.deck_filter.filter((value: unknown): value is string => typeof value === 'string')
+    : []
+  const languageFilter = Array.isArray(body.language_filter)
+    ? body.language_filter.filter((value: unknown): value is string => typeof value === 'string')
+    : []
+  const defaultCount = clampWordCount(globalSettings.line_words_per_notification, 5)
+  const count = clampWordCount(body.count, defaultCount)
 
-  const db = getAdminDb()
   const now = new Date()
   const nowISO = now.toISOString()
 
@@ -68,7 +106,7 @@ export async function POST(request: Request) {
   }
 
   const message = buildReviewMessage(selected)
-  const result = await pushMessage(token, userId, [message])
+  const result = await pushMessage(token, lineUserId, [message])
 
   if (!result.success) {
     console.error('LINE push failed:', result.error)
