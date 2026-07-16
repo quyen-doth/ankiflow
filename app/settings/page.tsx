@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
+import { LineNotificationSettings } from '@/components/settings/LineNotificationSettings';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
 import { LanguagePicker } from '@/components/ui/LanguagePicker';
@@ -35,6 +36,8 @@ import {
     normalizeStudyLanguages,
     validateStudyLanguages,
 } from '@/lib/studyLanguages';
+import { createPersonalSettingsSnapshot } from '@/lib/settings-form-state';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
 
 /**
@@ -124,6 +127,7 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
+    const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
     const [ankiConnected, setAnkiConnected] = useState(false);
     const [checkingAnki, setCheckingAnki] = useState(true);
     const [syncingSRS, setSyncingSRS] = useState(false);
@@ -148,11 +152,13 @@ export default function SettingsPage() {
                     ? canonicalizeLanguageCode(prefs.ai_output_language) ?? 'vi'
                     : 'vi';
                 baselineLanguageCodesRef.current = studyLanguages.map((language) => language.code);
-                setSettings({
+                const loadedSettings = {
                     ...prefs,
                     study_languages: studyLanguages,
                     ai_output_language: aiOutputLanguage,
-                } as Settings);
+                } as Settings;
+                setSettings(loadedSettings);
+                setSavedSnapshot(createPersonalSettingsSnapshot(loadedSettings));
             } catch (error) {
                 console.error('Error fetching settings:', error);
             } finally {
@@ -230,11 +236,16 @@ export default function SettingsPage() {
     }, [recheckAnki]);
 
     const updateField = useCallback(<K extends keyof Settings>(field: K, value: Settings[K]) => {
+        setSavedAt(null);
         setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
     }, []);
 
+    const currentSnapshot = settings ? createPersonalSettingsSnapshot(settings) : null;
+    const hasChanges = savedSnapshot !== null && currentSnapshot !== savedSnapshot;
+    useUnsavedChangesGuard(hasChanges);
+
     const handleSave = async () => {
-        if (!settings || !user) return;
+        if (!settings || !user || !hasChanges) return;
         const languageErrors = validateStudyLanguages(settings.study_languages ?? []);
         if (languageErrors.length > 0) {
             toast.error(languageErrors[0]);
@@ -271,7 +282,13 @@ export default function SettingsPage() {
                 { merge: true },
             );
             baselineLanguageCodesRef.current = mergedLanguages.map((language) => language.code);
-            updateField('study_languages', mergedLanguages);
+            const savedSettings = {
+                ...settings,
+                study_languages: mergedLanguages,
+                ai_output_language: prefsUpdate.ai_output_language,
+            };
+            setSettings(savedSettings);
+            setSavedSnapshot(createPersonalSettingsSnapshot(savedSettings));
 
             resetAnkiClientCache();
             setSavedAt(Date.now());
@@ -324,7 +341,7 @@ export default function SettingsPage() {
                             variant="primary"
                             leftIcon={<Check className="w-4 h-4" />}
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || !hasChanges}
                         >
                             {saving ? 'Saving...' : 'Save changes'}
                         </Button>
@@ -473,6 +490,11 @@ export default function SettingsPage() {
                             </div>
                         ))}
                     </div>
+                </Card>
+
+                {/* Per-user LINE account linking and reminder preference. */}
+                <Card>
+                    <LineNotificationSettings />
                 </Card>
 
                 {savedAt && <p className="text-overline text-slate-600 text-center">Saved successfully.</p>}

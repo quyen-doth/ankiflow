@@ -12,6 +12,7 @@ import { logout } from '@/lib/auth';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
+import { useConfirmNavigation } from '@/hooks/useUnsavedChangesGuard';
 import { verifyAttrs } from '@/verify/core/contract';
 
 const navItems = [
@@ -32,13 +33,16 @@ export function NavigationSidebar() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState<string | null>(null);
     const [signingOut, setSigningOut] = useState(false);
+    const confirmNavigation = useConfirmNavigation();
 
     const handleSignOut = useCallback(async () => {
-        setSigningOut(true);
-        await logout();
-        // Full reload: xóa sạch client state + để middleware nhận cookie đã bị xóa
-        window.location.href = '/login';
-    }, []);
+        confirmNavigation(async () => {
+            setSigningOut(true);
+            await logout();
+            // Full reload: xóa sạch client state + để middleware nhận cookie đã bị xóa
+            window.location.href = '/login';
+        });
+    }, [confirmNavigation]);
 
     const handleSync = useCallback(async () => {
         setIsSyncing(true)

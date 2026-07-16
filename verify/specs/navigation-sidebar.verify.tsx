@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { NavigationSidebar } from '@/components/layout/NavigationSidebar'
+import { UnsavedChangesProvider } from '@/components/providers/UnsavedChangesProvider'
 import { verifyGlobals } from '@/verify/core/globals'
 import { registerUnit } from '@/verify/core/registry'
 
@@ -36,7 +37,11 @@ registerUnit<Record<string, never>>({
   description:
     'Sidebar điều hướng chính: logo, nav link (5 chung + App Settings admin-only), ConnectedBadge; responsive drawer.',
   kind: 'component',
-  render: () => <NavigationSidebar />,
+  render: () => (
+    <UnsavedChangesProvider>
+      <NavigationSidebar />
+    </UnsavedChangesProvider>
+  ),
   propsSchema: z.object({}),
   fixtures: [
     {

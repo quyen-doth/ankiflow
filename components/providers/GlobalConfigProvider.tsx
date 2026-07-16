@@ -6,7 +6,16 @@ import { db } from '@/lib/firebase'
 import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants'
 import type { GlobalSettings } from '@/types'
 
-type GlobalConfigValue = Pick<GlobalSettings, 'ai_model' | 'web_search_enabled' | 'tts_available' | 'unsplash_available'>
+type GlobalConfigValue = Pick<
+  GlobalSettings,
+  | 'ai_model'
+  | 'web_search_enabled'
+  | 'tts_available'
+  | 'unsplash_available'
+  | 'line_notifications_available'
+  | 'line_schedule_hours'
+  | 'line_words_per_notification'
+>
 
 /** Fail-open: nếu doc chưa tồn tại (chưa chạy seed) mọi tính năng vẫn khả dụng. */
 const DEFAULT_CONFIG: GlobalConfigValue = {
@@ -14,6 +23,9 @@ const DEFAULT_CONFIG: GlobalConfigValue = {
   web_search_enabled: false,
   tts_available: true,
   unsplash_available: true,
+  line_notifications_available: true,
+  line_schedule_hours: [],
+  line_words_per_notification: 5,
 }
 
 interface GlobalConfigContextValue {
@@ -43,6 +55,11 @@ export function GlobalConfigProvider({ children }: Readonly<{ children: React.Re
             web_search_enabled: data.web_search_enabled ?? DEFAULT_CONFIG.web_search_enabled,
             tts_available: data.tts_available ?? DEFAULT_CONFIG.tts_available,
             unsplash_available: data.unsplash_available ?? DEFAULT_CONFIG.unsplash_available,
+            line_notifications_available:
+              data.line_notifications_available ?? DEFAULT_CONFIG.line_notifications_available,
+            line_schedule_hours: data.line_schedule_hours ?? DEFAULT_CONFIG.line_schedule_hours,
+            line_words_per_notification:
+              data.line_words_per_notification ?? DEFAULT_CONFIG.line_words_per_notification,
           })
         }
         setLoading(false)

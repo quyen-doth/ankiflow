@@ -5,11 +5,8 @@ import { verifySessionUser } from '@/lib/auth-guard'
 import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants'
 
 /**
- * Feature flags TOÀN CỤC (ai_model, web_search_enabled, tts_available, unsplash_available)
- * — control plane cho admin. GET không secret nên client thường cũng đọc trực tiếp qua
- * client SDK (GlobalConfigProvider); route này chủ yếu phục vụ POST — ghi PHẢI qua server,
- * verify admin bằng session cookie + email (client-side check trong UI chỉ là UX, không
- * phải bảo mật — user thường có thể tự gọi setDoc nếu không chặn ở đây).
+ * AI・media・LINE 通知のグローバル設定を管理する control plane。
+ * GET は secret を含まず、POST は session cookie と admin email の両方で保護する。
  */
 function isAdmin(email?: string): boolean {
   const adminEmail = process.env.ADMIN_EMAIL
@@ -30,6 +27,13 @@ const globalConfigSchema = z.object({
   web_search_enabled: z.boolean().optional(),
   tts_available: z.boolean().optional(),
   unsplash_available: z.boolean().optional(),
+  line_notifications_available: z.boolean().optional(),
+  line_schedule_hours: z
+    .array(z.number().int().min(0).max(23))
+    .max(24)
+    .transform((hours) => [...new Set(hours)].sort((a, b) => a - b))
+    .optional(),
+  line_words_per_notification: z.number().int().min(1).max(10).optional(),
 })
 
 export async function POST(request: Request) {
