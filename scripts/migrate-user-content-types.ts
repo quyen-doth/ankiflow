@@ -95,10 +95,21 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     console.error(`  ${failure.path}: ${failure.errorCode}`)
   }
   if (result.failed.length > 0) process.exitCode = 1
+
+  // Read-back: writes が実際に永続化されたか、planner を再実行して確認する。
+  const verifyExisting = await fetchExistingUserContentTypes(db, userIds)
+  const verifyPlan = buildUserContentTypeMigrationPlan(sources, userIds, verifyExisting)
+  console.log(`\nPost-apply verification: ${verifyPlan.creates.length} create candidate(s) remaining (expected 0).`)
+  if (verifyPlan.creates.length > 0) {
+    console.error('Migration did not reach zero-create state; investigate before rerunning.')
+    process.exitCode = 1
+  }
 }
 
 const executedFile = process.argv[1] ? pathToFileURL(process.argv[1]).href : null
 if (executedFile === import.meta.url) {
+  // tsx は CJS へ transpile するため top-level await は使えない。main() の pending I/O
+  // が event loop を維持し、末尾の read-back verification が flush 完了を保証する。
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`Migration failed: ${message}`)
