@@ -49,6 +49,11 @@ export interface FixtureMocks {
   fetch?: FetchRule[]
   firestore?: Record<string, DocSeed[]>
   localStorage?: Record<string, string>
+  /** Auth context cho fixture; mặc định dùng TEST_AUTH_USER. */
+  auth?: {
+    user: { uid: string; email: string | null } | null
+    loading?: boolean
+  }
   /** Pathname cho mock next/navigation (chỉ có tác dụng trong vitest) */
   pathname?: string
 }

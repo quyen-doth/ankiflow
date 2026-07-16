@@ -23,11 +23,10 @@ const TABS = [
 
 const TAB_IDS = TABS.map(t => t.id)
 
-// Chỉ 4 tab này có bản per-user + template ("New-user defaults").
-// content-types là SHARED (routing cốt lõi) nên không có ownerId.
-const OWNER_SCOPED_TABS = new Set(['categories', 'card-types', 'topics', 'decks'])
+// 5 tab đều có workspace riêng + source cho account mới.
+const OWNER_SCOPED_TABS = new Set(['categories', 'card-types', 'topics', 'decks', 'content-types'])
 
-/** Switch "My workspace" / "New-user defaults" — chỉ admin thấy, chỉ áp dụng cho 4 tab per-user. */
+/** Switch "My workspace" / "New-user defaults" — chỉ admin thấy. */
 function OwnerScopeSwitch({ templateMode, onChange }: { templateMode: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="inline-flex gap-1 bg-[#ececea] rounded-[11px] p-1 self-start" role="radiogroup" aria-label="Editing scope">
@@ -86,7 +85,12 @@ function AdminContent() {
       {activeTab === 'card-types' && <CardTypeManager ownerId={ownerId} />}
       {activeTab === 'topics' && <TopicManager ownerId={ownerId} />}
       {activeTab === 'decks' && <DeckManager ownerId={ownerId} />}
-      {activeTab === 'content-types' && <ContentTypeManager />}
+      {activeTab === 'content-types' && (
+        <ContentTypeManager
+          key={isAdmin && templateMode ? 'global-defaults' : 'workspace'}
+          scope={isAdmin && templateMode ? 'global-defaults' : 'workspace'}
+        />
+      )}
     </div>
   )
 }

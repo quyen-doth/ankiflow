@@ -2,8 +2,10 @@ import { createElement, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { searchParamsState } = vi.hoisted(() => ({
+const { searchParamsState, authState, contentTypeScopes } = vi.hoisted(() => ({
   searchParamsState: { value: '' },
+  authState: { user: null as { uid: string; email: string } | null },
+  contentTypeScopes: [] as string[],
 }))
 
 vi.mock('next/navigation', () => ({
@@ -11,7 +13,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/components/providers/AuthProvider', () => ({
-  useAuth: () => ({ user: null }),
+  useAuth: () => ({ user: authState.user, loading: false }),
 }))
 
 vi.mock('@/components/admin/CategoryManager', () => ({
@@ -27,7 +29,10 @@ vi.mock('@/components/admin/DeckManager', () => ({
   DeckManager: () => 'Deck manager',
 }))
 vi.mock('@/components/admin/ContentTypeManager', () => ({
-  ContentTypeManager: () => 'Content type manager',
+  ContentTypeManager: ({ scope }: { scope?: string }) => {
+    contentTypeScopes.push(scope ?? 'workspace')
+    return 'Content type manager'
+  },
 }))
 
 import AdminPage from '@/app/admin/page'
@@ -57,6 +62,8 @@ function tabLabels(): string[] {
 beforeEach(() => {
   ;(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true
   searchParamsState.value = ''
+  authState.user = null
+  contentTypeScopes.length = 0
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -91,5 +98,31 @@ describe('AdminPage', () => {
     const selectedTab = container.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
     expect(selectedTab?.textContent).toBe('Content Types')
     expect(container.textContent).toContain('Content type manager')
+    expect(contentTypeScopes.at(-1)).toBe('workspace')
+  })
+
+  it('一般 user は Content Types を workspace scope だけで管理する', async () => {
+    authState.user = { uid: 'user-a', email: 'user@example.com' }
+    searchParamsState.value = 'tab=content-types'
+
+    await renderPage()
+
+    expect(container.querySelector('[role="radiogroup"][aria-label="Editing scope"]')).toBeNull()
+    expect(contentTypeScopes.at(-1)).toBe('workspace')
+  })
+
+  it('admin が Content Types の New-user defaults に切り替えると global scope を渡す', async () => {
+    authState.user = { uid: 'admin-a', email: process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? '' }
+    searchParamsState.value = 'tab=content-types'
+    await renderPage()
+
+    const globalScopeButton = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="radio"]'))
+      .find(button => button.textContent === 'New-user defaults')
+    expect(globalScopeButton).toBeDefined()
+
+    await act(async () => globalScopeButton?.click())
+
+    expect(contentTypeScopes.at(-1)).toBe('global-defaults')
+    expect(container.textContent).toContain('Editing the defaults new accounts receive on sign-up.')
   })
 })
