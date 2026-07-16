@@ -77,6 +77,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
   const [contentTypes, setContentTypes] = useState<Option[]>([])
   const [contentTypesLoading, setContentTypesLoading] = useState(true)
   const [contentTypeError, setContentTypeError] = useState<string | null>(null)
+  const [contentTypeWarning, setContentTypeWarning] = useState<string | null>(null)
   const [decks, setDecks] = useState<Option[]>([])
   const [cardTypes, setCardTypes] = useState<Option[]>([])
 
@@ -103,22 +104,20 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
         if (cancelled) return
 
         const prepared = prepareRuntimeContentTypes(loaded.contentTypes)
-        if (prepared.conflictingCodes.length > 0) {
-          setContentTypes([])
-          setFormType('')
-          setContentTypeError(
-            `Conflicting Content Type codes found: ${prepared.conflictingCodes.join(', ')}. Resolve them in Settings before re-syncing cards.`,
-          )
-        } else {
-          const options = prepared.contentTypes.map(contentType => ({
-            value: resolveRuntimeContentTypeCode(contentType.code),
-            label: contentType.name || contentType.code,
-          }))
-          setContentTypes(options)
-          setFormType(current => (
-            current && !options.some(option => option.value === current) ? '' : current
-          ))
-        }
+        // 競合分だけ除外し、残りは再同期に使える。競合は非ブロッキング警告で通知。
+        setContentTypeWarning(
+          prepared.conflictingCodes.length > 0
+            ? `Some Content Types share a routing code and were hidden: ${prepared.conflictingCodes.join(', ')}. Fix them in Settings.`
+            : null,
+        )
+        const options = prepared.contentTypes.map(contentType => ({
+          value: resolveRuntimeContentTypeCode(contentType.code),
+          label: contentType.name || contentType.code,
+        }))
+        setContentTypes(options)
+        setFormType(current => (
+          current && !options.some(option => option.value === current) ? '' : current
+        ))
         setDecks(loaded.decks)
         setCardTypes(loaded.cardTypes)
       } catch (error) {
@@ -126,6 +125,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
         if (!cancelled) {
           setContentTypes([])
           setFormType('')
+          setContentTypeWarning(null)
           setContentTypeError('Unable to load your Content Types. Please try again or review them in Settings.')
         }
       } finally {
@@ -203,6 +203,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
         unit: 'ResyncCards',
         contentTypesLoading,
         contentTypeState: contentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
+        contentTypeWarning: !!contentTypeWarning,
       })}
     >
       <p className="text-sm text-slate-600 mb-4">
@@ -230,6 +231,15 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
           </Select>
         </FieldWrapper>
       </div>
+
+      {!contentTypesLoading && contentTypeWarning && (
+        <p className="text-xs text-[#b87514] mb-3">
+          {contentTypeWarning}{' '}
+          <Link href="/settings" className="font-semibold underline underline-offset-2">
+            Open Settings
+          </Link>
+        </p>
+      )}
 
       {contentTypesLoading ? (
         <p className="text-xs text-slate-400 mb-3">Loading Content Types...</p>

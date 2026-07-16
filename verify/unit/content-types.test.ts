@@ -201,13 +201,14 @@ describe('runtime Content Type preparation', () => {
     expect(input.map(contentType => contentType.id)).toEqual(['later', 'inactive', 'first'])
   })
 
-  it('同じ code の duplicate を inactive document も含めて検出する', () => {
+  it('同じ code の duplicate を inactive document も含めて検出し、競合分を一覧から除外する', () => {
     const result = prepareRuntimeContentTypes([
       runtimeContentType({ id: 'active', code: 'medical_terms' }),
       runtimeContentType({ id: 'inactive', code: 'medical_terms', is_active: false }),
     ])
 
     expect(result.conflictingCodes).toEqual(['medical_terms'])
+    expect(result.contentTypes).toEqual([])
   })
 
   it('同じ built-in route に解決される alias も競合として検出する', () => {
@@ -217,6 +218,18 @@ describe('runtime Content Type preparation', () => {
     ])
 
     expect(result.conflictingCodes).toEqual([FormType.LANGUAGE, 'language'])
+    expect(result.contentTypes).toEqual([])
+  })
+
+  it('競合していない Content Type は競合と共存しても利用可能なまま残す', () => {
+    const result = prepareRuntimeContentTypes([
+      runtimeContentType({ id: 'dup-a', code: 'language', sort_order: 1 }),
+      runtimeContentType({ id: 'dup-b', code: FormType.LANGUAGE, sort_order: 2 }),
+      runtimeContentType({ id: 'ok', code: 'quiz', sort_order: 3 }),
+    ])
+
+    expect(result.conflictingCodes).toEqual([FormType.LANGUAGE, 'language'])
+    expect(result.contentTypes.map(contentType => contentType.id)).toEqual(['ok'])
   })
 })
 

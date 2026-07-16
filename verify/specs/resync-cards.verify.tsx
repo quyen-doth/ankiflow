@@ -40,6 +40,7 @@ function injectedContentTypes(state: E2EState): UserContentType[] {
     : [
         BASE_CONTENT_TYPE,
         { ...BASE_CONTENT_TYPE, id: 'legacy-language', code: FormType.LANGUAGE },
+        { ...BASE_CONTENT_TYPE, id: 'it-type', code: 'it', name: 'IT', sort_order: 20 },
       ]
   return contentTypes
 }
@@ -117,13 +118,14 @@ registerUnit<VerifyProps>({
     {
       id: 'probe-conflicting-routing-codes',
       probe: true,
-      description: 'Probe: routing code が競合する場合は option を作らず Settings での修正を要求する。',
+      description: 'Probe: 競合した code は option から除外し警告を出すが、非競合 type は残す。',
       props: { ankiConnected: false },
       mocks: {
         firestore: {
           user_content_types: [
             BASE_CONTENT_TYPE,
             { ...BASE_CONTENT_TYPE, id: 'legacy-language', code: FormType.LANGUAGE },
+            { ...BASE_CONTENT_TYPE, id: 'it-type', code: 'it', name: 'IT', sort_order: 20 },
           ],
           decks: [],
           card_types: [],
@@ -143,7 +145,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'e2e-conflicting-routing-codes',
-      description: 'E2E: 実 Resync component で duplicate blocking state を確認する。',
+      description: 'E2E: 実 Resync component で競合除外 + 非ブロッキング警告を確認する。',
       props: { ankiConnected: false, e2eState: 'conflict' },
       act: async ctx => {
         await ctx.wait(50)
@@ -191,18 +193,17 @@ registerUnit<VerifyProps>({
       ),
     },
     {
-      id: 'duplicate-is-blocking',
-      description: 'Routing code 競合時は option を選ばず Resync action を無効化する。',
+      id: 'duplicate-hides-conflicts-not-blocking',
+      description: '競合した code は option から除外 + 警告を出すが、非競合 type は選択できる。',
       onlyFixtures: ['probe-conflicting-routing-codes', 'e2e-conflicting-routing-codes'],
       check: ({ root, contract }) => {
-        const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
-          .find(element => element.textContent?.includes('Re-sync cards'))
+        const values = contentTypeOptions(root).map(option => option.value)
         return (
-          (contract.contenttypestate === 'error'
-            && contentTypeOptions(root).length === 1
-            && root.textContent?.includes('Conflicting Content Type codes found')
-            && button?.disabled === true)
-          || `state=${contract.contenttypestate}, disabled=${button?.disabled}`
+          (contract.contenttypestate === 'ready'
+            && contract.contenttypewarning === 'true'
+            && JSON.stringify(values) === JSON.stringify(['', FormType.IT])
+            && root.textContent?.includes('share a routing code and were hidden'))
+          || `state=${contract.contenttypestate}, warning=${contract.contenttypewarning}, values=${JSON.stringify(values)}`
         )
       },
     },

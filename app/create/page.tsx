@@ -85,6 +85,7 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
     const [loadingTypes, setLoadingTypes] = useState(true);
     const [contentTypeError, setContentTypeError] = useState<string | null>(null);
+    const [contentTypeWarning, setContentTypeWarning] = useState<string | null>(null);
     const [activeCode, setActiveCode] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
@@ -107,14 +108,12 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                 const prepared = prepareRuntimeContentTypes(await loadContentTypes(currentUid));
                 if (cancelled) return;
 
-                if (prepared.conflictingCodes.length > 0) {
-                    setContentTypes([]);
-                    setActiveCode('');
-                    setContentTypeError(
-                        `Conflicting Content Type codes found: ${prepared.conflictingCodes.join(', ')}. Resolve them in Settings before creating cards.`,
-                    );
-                    return;
-                }
+                // 競合した Content Type だけ非表示にし、残りはそのまま作成に使える。
+                setContentTypeWarning(
+                    prepared.conflictingCodes.length > 0
+                        ? `Some Content Types share a routing code and were hidden: ${prepared.conflictingCodes.join(', ')}. Fix them in Settings.`
+                        : null,
+                );
 
                 const types = prepared.contentTypes;
                 setContentTypes(types);
@@ -137,6 +136,7 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                 if (!cancelled) {
                     setContentTypes([]);
                     setActiveCode('');
+                    setContentTypeWarning(null);
                     setContentTypeError('Unable to load your Content Types. Please try again or review them in Settings.');
                 }
             } finally {
@@ -248,8 +248,14 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                     unit: 'CreateContentTypes',
                     loading: loadingTypes,
                     state: runtimeContentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
+                    warning: !!contentTypeWarning,
                 })}
             >
+                {!loadingTypes && contentTypeWarning && (
+                    <div className="rounded-[11px] border border-[#f0e4cc] bg-[#fdfbf5] px-4 py-3">
+                        <p className="text-[12.5px] text-[#b87514] leading-relaxed">{contentTypeWarning}</p>
+                    </div>
+                )}
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-3">

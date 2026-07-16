@@ -25,9 +25,19 @@ interface VerifyProps {
 
 function e2eContentTypes(state: E2EState): UserContentType[] {
   if (state === 'empty') return []
+  // language ↔ form_language は同じ route で競合 (両方非表示)、quiz は競合せず利用可能。
   return [
     USER_CONTENT_TYPE,
     { ...USER_CONTENT_TYPE, id: 'legacy-language', code: 'form_language' },
+    {
+      ...USER_CONTENT_TYPE,
+      id: 'quiz-type',
+      code: 'quiz',
+      name: 'Quiz',
+      fields: [
+        { field_key: 'prompt', label: 'Prompt', type: 'text', is_required: true, is_session_persistent: false, sort_order: 1, data_source: null, placeholder: null },
+      ],
+    },
   ]
 }
 
@@ -83,13 +93,22 @@ registerUnit<VerifyProps>({
     {
       id: 'probe-conflicting-routing-codes',
       probe: true,
-      description: 'Probe: 同じ built-in route の code が重複した場合は自動選択せず設定エラーを表示する。',
+      description: 'Probe: 競合した code は自動選択せず非表示にし、非ブロッキング警告を出す。競合しない type は使える。',
       props: {},
       mocks: {
         firestore: {
           user_content_types: [
             USER_CONTENT_TYPE,
             { ...USER_CONTENT_TYPE, id: 'legacy-language', code: 'form_language' },
+            {
+      ...USER_CONTENT_TYPE,
+      id: 'quiz-type',
+      code: 'quiz',
+      name: 'Quiz',
+      fields: [
+        { field_key: 'prompt', label: 'Prompt', type: 'text', is_required: true, is_session_persistent: false, sort_order: 1, data_source: null, placeholder: null },
+      ],
+    },
           ],
         },
       },
@@ -107,7 +126,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'e2e-conflicting-routing-codes',
-      description: 'E2E: Firestore を使わず実 component の duplicate blocking state を確認する。',
+      description: 'E2E: Firestore を使わず実 component の非ブロッキング警告 + 残存 type を確認する。',
       props: { e2eState: 'conflict' },
       act: async ctx => {
         await ctx.wait(50)
@@ -146,14 +165,16 @@ registerUnit<VerifyProps>({
       ),
     },
     {
-      id: 'duplicate-is-blocking',
-      description: 'Routing code 競合時は Content Type を選択しない。',
+      id: 'duplicate-hides-conflicts-not-blocking',
+      description: '競合した type は非表示 + 警告を出すが、競合しない type は作成に使える。',
       onlyFixtures: ['probe-conflicting-routing-codes', 'e2e-conflicting-routing-codes'],
       check: ({ root, contract }) => (
-        (contract.state === 'error'
-          && root.textContent?.includes('Conflicting Content Type codes found')
-          && !root.querySelector('form'))
-        || `state=${contract.state}, text=${root.textContent}`
+        (contract.warning === 'true'
+          && contract.state === 'ready'
+          && root.textContent?.includes('share a routing code and were hidden')
+          && root.textContent?.includes('Quiz')
+          && !!root.querySelector('form'))
+        || `state=${contract.state}, warning=${contract.warning}, text=${root.textContent}`
       ),
     },
     {

@@ -163,6 +163,8 @@ export function resolveRuntimeContentTypeCode(code: string): FormType | string {
  *
  * 重複判定は inactive document も含む workspace 全体に対して行い、built-in alias
  * (`language` / `form_language`) が同じ route に解決される場合も競合として扱う。
+ * 競合した route の Content Type は runtime 一覧から除外し (ランダム選択を避ける)、
+ * `conflictingCodes` で呼び出し側に警告表示させる。競合していない残りは利用可能。
  */
 export function prepareRuntimeContentTypes<T extends RuntimeContentTypeLike>(
   contentTypes: readonly T[],
@@ -177,6 +179,12 @@ export function prepareRuntimeContentTypes<T extends RuntimeContentTypeLike>(
     routingGroups.set(key, codes)
   }
 
+  const conflictingKeys = new Set(
+    Array.from(routingGroups.entries())
+      .filter(([, codes]) => codes.length > 1)
+      .map(([key]) => key),
+  )
+
   const conflictingCodes = Array.from(routingGroups.values())
     .filter(codes => codes.length > 1)
     .flatMap(codes => codes)
@@ -185,6 +193,9 @@ export function prepareRuntimeContentTypes<T extends RuntimeContentTypeLike>(
 
   const activeContentTypes = contentTypes
     .filter(contentType => contentType.is_active)
+    .filter(contentType => (
+      !conflictingKeys.has(resolveRuntimeContentTypeCode(contentType.code).toLocaleLowerCase('en-US'))
+    ))
     .slice()
     .sort((a, b) => (
       a.sort_order - b.sort_order
