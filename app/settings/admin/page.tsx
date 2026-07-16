@@ -3,27 +3,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Toggle } from '@/components/ui/Toggle';
-import { FieldWrapper, Select } from '@/components/ui/FormField';
+import { FieldWrapper, Input, Select } from '@/components/ui/FormField';
 import { Button } from '@/components/ui/Button';
-import { Plug, Brain, Bell, MessageSquare, Check, ArrowLeft } from 'lucide-react';
+import { Plug, Brain, Bell, Check, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
-import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
+import { SectionHeader } from '@/components/settings/SettingsPrimitives';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { SETTINGS_DOC_ID, GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
-import type { Settings } from '@/types';
+import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import type { GlobalSettings } from '@/types';
 
 /**
  * Trang Settings TOÀN CỤC (admin-only) — cấu hình ảnh hưởng MỌI account:
- * - `settings/global` (feature flags + AI): ai_model, web_search_enabled, tts_available,
- *   unsplash_available. CHỈ ghi được qua POST /api/admin/global-config (verify admin
- *   server-side — không thể bypass bằng setDoc trực tiếp).
- * - `settings/default` (SECRETS): LINE credentials + notifications_enabled. Ghi trực tiếp
- *   qua client SDK (interim — Phase D Security Rules sẽ khóa).
+ * - `settings/global` (feature flags + AI + LINE schedule): CHỈ ghi được qua
+ *   POST /api/admin/global-config (verify admin server-side).
+ * - LINE channel credentials は server environment variables で管理する。
  *
  * Preferences cá nhân (settings/{uid}) nằm ở `/settings`. Trang này KHÔNG đụng settings/{uid}.
  */
@@ -38,10 +37,10 @@ interface AiConfigForm {
     web_search_enabled: boolean;
 }
 
-interface LineSecretsForm {
-    notifications_enabled: boolean;
-    line_channel_access_token?: string;
-    line_user_id?: string;
+interface LineConfigForm {
+    line_notifications_available: boolean;
+    line_schedule_hours: number[];
+    line_words_per_notification: number;
 }
 
 const CLAUDE_MODEL_OPTIONS = [
@@ -61,7 +60,11 @@ export default function AdminSettingsPage() {
         unsplash_available: true,
     });
     const [aiConfig, setAiConfig] = useState<AiConfigForm>({ ai_model: 'claude-haiku-4-5', web_search_enabled: false });
-    const [lineSecrets, setLineSecrets] = useState<LineSecretsForm>({ notifications_enabled: false });
+    const [lineConfig, setLineConfig] = useState<LineConfigForm>({
+        line_notifications_available: true,
+        line_schedule_hours: [],
+        line_words_per_notification: 5,
+    });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -77,15 +80,8 @@ export default function AdminSettingsPage() {
         if (authLoading || !user || !isAdmin) return;
         async function fetchGlobal() {
             try {
-                const [globalSnap, defSnap] = await Promise.all([
-                    getDoc(doc(db, 'settings', GLOBAL_SETTINGS_DOC_ID)),
-                    getDoc(doc(db, 'settings', SETTINGS_DOC_ID)),
-                ]);
-                const g = (globalSnap.exists() ? globalSnap.data() : {}) as Partial<Settings> & {
-                    tts_available?: boolean;
-                    unsplash_available?: boolean;
-                };
-                const d = (defSnap.exists() ? defSnap.data() : {}) as Partial<Settings>;
+                const globalSnap = await getDoc(doc(db, 'settings', GLOBAL_SETTINGS_DOC_ID));
+                const g = (globalSnap.exists() ? globalSnap.data() : {}) as Partial<GlobalSettings>;
 
                 setFeatureFlags({
                     tts_available: g.tts_available ?? true,
@@ -95,10 +91,10 @@ export default function AdminSettingsPage() {
                     ai_model: g.ai_model ?? 'claude-haiku-4-5',
                     web_search_enabled: g.web_search_enabled ?? false,
                 });
-                setLineSecrets({
-                    notifications_enabled: d.notifications_enabled ?? false,
-                    line_channel_access_token: d.line_channel_access_token,
-                    line_user_id: d.line_user_id,
+                setLineConfig({
+                    line_notifications_available: g.line_notifications_available ?? true,
+                    line_schedule_hours: g.line_schedule_hours ?? [],
+                    line_words_per_notification: g.line_words_per_notification ?? 5,
                 });
             } catch (error) {
                 console.error('Error fetching global settings:', error);
@@ -117,8 +113,17 @@ export default function AdminSettingsPage() {
         setAiConfig((prev) => ({ ...prev, [field]: value }));
     }, []);
 
-    const updateLine = useCallback(<K extends keyof LineSecretsForm>(field: K, value: LineSecretsForm[K]) => {
-        setLineSecrets((prev) => ({ ...prev, [field]: value }));
+    const updateLine = useCallback(<K extends keyof LineConfigForm>(field: K, value: LineConfigForm[K]) => {
+        setLineConfig((prev) => ({ ...prev, [field]: value }));
+    }, []);
+
+    const toggleScheduleHour = useCallback((hour: number) => {
+        setLineConfig((prev) => ({
+            ...prev,
+            line_schedule_hours: prev.line_schedule_hours.includes(hour)
+                ? prev.line_schedule_hours.filter((value) => value !== hour)
+                : [...prev.line_schedule_hours, hour].sort((a, b) => a - b),
+        }));
     }, []);
 
     const handleSave = async () => {
@@ -135,25 +140,15 @@ export default function AdminSettingsPage() {
                     web_search_enabled: aiConfig.web_search_enabled,
                     tts_available: featureFlags.tts_available,
                     unsplash_available: featureFlags.unsplash_available,
+                    line_notifications_available: lineConfig.line_notifications_available,
+                    line_schedule_hours: lineConfig.line_schedule_hours,
+                    line_words_per_notification: lineConfig.line_words_per_notification,
                 }),
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error || 'Failed to save global config');
             }
-
-            // Secrets (LINE) → settings/default — client SDK trực tiếp (interim).
-            await setDoc(
-                doc(db, 'settings', SETTINGS_DOC_ID),
-                {
-                    notifications_enabled: lineSecrets.notifications_enabled,
-                    line_channel_access_token: lineSecrets.line_channel_access_token,
-                    line_user_id: lineSecrets.line_user_id,
-                    updated_at: serverTimestamp(),
-                },
-                { merge: true },
-            );
-
             setSavedAt(Date.now());
             toast.success('App settings saved');
         } catch (error) {
@@ -249,48 +244,58 @@ export default function AdminSettingsPage() {
                     </div>
                 </Card>
 
-                {/* Notifications — LINE credentials là của chủ app */}
+                {/* LINE 通知の可用性と全 user 共通の配信ルール。 */}
                 <Card>
                     <SectionHeader icon={Bell} label="Notifications" tone="amber" />
-                    <div className="flex flex-col gap-3.5">
+                    <p className="text-[12.5px] text-slate-500 mb-3.5">
+                        Channel credentials are configured via server environment variables.
+                    </p>
+                    <div className="flex flex-col gap-4">
                         <div className="py-[15px] border-b border-[#f5f5f1]">
                             <Toggle
                                 bare
-                                label="Enable notifications"
-                                description="Send vocabulary review reminders via LINE."
-                                checked={lineSecrets.notifications_enabled}
-                                onChange={(v) => updateLine('notifications_enabled', v)}
+                                label="LINE reminders available (all users)"
+                                description="Allow users to link LINE and receive vocabulary review reminders."
+                                checked={lineConfig.line_notifications_available}
+                                onChange={(v) => updateLine('line_notifications_available', v)}
                             />
                         </div>
 
-                        <IntegrationCard
-                            label="LINE Messaging"
-                            description={lineSecrets.line_channel_access_token ? 'Token configured' : 'Not configured'}
-                            icon={MessageSquare}
-                            tone="amber"
-                            connected={!!lineSecrets.line_channel_access_token}
-                            checking={false}
-                        />
-
-                        <FieldWrapper label="LINE Channel Access Token">
-                            <input
-                                type="password"
-                                value={lineSecrets.line_channel_access_token ?? ''}
-                                onChange={(e) =>
-                                    updateLine('line_channel_access_token', e.target.value || undefined)
-                                }
-                                placeholder="Paste your LINE Channel Access Token"
-                                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
-                            />
+                        <FieldWrapper label="Reminder hours (user local time)">
+                            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                                {Array.from({ length: 24 }, (_, hour) => {
+                                    const selected = lineConfig.line_schedule_hours.includes(hour);
+                                    return (
+                                        <button
+                                            key={hour}
+                                            type="button"
+                                            aria-pressed={selected}
+                                            onClick={() => toggleScheduleHour(hour)}
+                                            className={cn(
+                                                'h-9 rounded-[8px] border font-mono text-[12px] font-bold transition-colors',
+                                                selected
+                                                    ? 'border-primary bg-primary text-white'
+                                                    : 'border-[#e3e3de] bg-[#fcfcfb] text-slate-500 hover:border-primary/50 hover:text-primary',
+                                            )}
+                                        >
+                                            {String(hour).padStart(2, '0')}:00
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </FieldWrapper>
 
-                        <FieldWrapper label="LINE User ID">
-                            <input
-                                type="text"
-                                value={lineSecrets.line_user_id ?? ''}
-                                onChange={(e) => updateLine('line_user_id', e.target.value || undefined)}
-                                placeholder="Your LINE User ID"
-                                className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] text-ink placeholder:text-slate-400/70 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow font-mono"
+                        <FieldWrapper label="Words per notification">
+                            <Input
+                                aria-label="Words per notification"
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={lineConfig.line_words_per_notification}
+                                onChange={(event) =>
+                                    updateLine('line_words_per_notification', Number(event.target.value))
+                                }
+                                className="max-w-32 font-mono"
                             />
                         </FieldWrapper>
                     </div>

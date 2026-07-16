@@ -328,6 +328,12 @@ export interface Settings {
   notifications_enabled: boolean;
   line_channel_access_token?: string;
   line_user_id?: string;
+  /** user が LINE リマインダーを受け取るかどうか。 */
+  line_notifications_enabled?: boolean;
+  /** リマインダー時刻を解釈するための IANA timezone。 */
+  line_timezone?: string;
+  /** 同じローカル時刻での重複送信を防止するキー。 */
+  line_last_push_key?: string;
   /** Danh sách ngôn ngữ học riêng của user; thiếu field → dùng legacy defaults. */
   study_languages?: StudyLanguage[];
   /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
@@ -345,6 +351,9 @@ export interface GlobalSettings {
   web_search_enabled: boolean;
   tts_available: boolean;
   unsplash_available: boolean;
+  line_notifications_available?: boolean;
+  line_schedule_hours?: number[];
+  line_words_per_notification?: number;
   updated_at: FirestoreTimestamp;
 }
 
