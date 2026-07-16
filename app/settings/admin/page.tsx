@@ -15,6 +15,13 @@ import { useToast } from '@/components/ui/Toast';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { SETTINGS_DOC_ID, GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
+import {
+    createAdminSettingsSnapshot,
+    type AiConfigForm,
+    type FeatureFlagsForm,
+    type LineSecretsForm,
+} from '@/lib/settings-form-state';
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
 
 /**
@@ -27,22 +34,6 @@ import type { Settings } from '@/types';
  *
  * Preferences cá nhân (settings/{uid}) nằm ở `/settings`. Trang này KHÔNG đụng settings/{uid}.
  */
-
-interface FeatureFlagsForm {
-    tts_available: boolean;
-    unsplash_available: boolean;
-}
-
-interface AiConfigForm {
-    ai_model: string;
-    web_search_enabled: boolean;
-}
-
-interface LineSecretsForm {
-    notifications_enabled: boolean;
-    line_channel_access_token?: string;
-    line_user_id?: string;
-}
 
 const CLAUDE_MODEL_OPTIONS = [
     { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' },
@@ -65,6 +56,7 @@ export default function AdminSettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
+    const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
 
     // UI-gate: non-admin không được xem trang này (bảo mật ghi vẫn do API/Firestore Rules lo).
     useEffect(() => {
@@ -87,19 +79,28 @@ export default function AdminSettingsPage() {
                 };
                 const d = (defSnap.exists() ? defSnap.data() : {}) as Partial<Settings>;
 
-                setFeatureFlags({
+                const loadedFeatureFlags = {
                     tts_available: g.tts_available ?? true,
                     unsplash_available: g.unsplash_available ?? true,
-                });
-                setAiConfig({
+                };
+                const loadedAiConfig = {
                     ai_model: g.ai_model ?? 'claude-haiku-4-5',
                     web_search_enabled: g.web_search_enabled ?? false,
-                });
-                setLineSecrets({
+                };
+                const loadedLineSecrets = {
                     notifications_enabled: d.notifications_enabled ?? false,
                     line_channel_access_token: d.line_channel_access_token,
                     line_user_id: d.line_user_id,
-                });
+                };
+
+                setFeatureFlags(loadedFeatureFlags);
+                setAiConfig(loadedAiConfig);
+                setLineSecrets(loadedLineSecrets);
+                setSavedSnapshot(createAdminSettingsSnapshot({
+                    featureFlags: loadedFeatureFlags,
+                    aiConfig: loadedAiConfig,
+                    lineSecrets: loadedLineSecrets,
+                }));
             } catch (error) {
                 console.error('Error fetching global settings:', error);
             } finally {
@@ -110,19 +111,26 @@ export default function AdminSettingsPage() {
     }, [user, authLoading, isAdmin]);
 
     const updateFlag = useCallback(<K extends keyof FeatureFlagsForm>(field: K, value: boolean) => {
+        setSavedAt(null);
         setFeatureFlags((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const updateAi = useCallback(<K extends keyof AiConfigForm>(field: K, value: AiConfigForm[K]) => {
+        setSavedAt(null);
         setAiConfig((prev) => ({ ...prev, [field]: value }));
     }, []);
 
     const updateLine = useCallback(<K extends keyof LineSecretsForm>(field: K, value: LineSecretsForm[K]) => {
+        setSavedAt(null);
         setLineSecrets((prev) => ({ ...prev, [field]: value }));
     }, []);
 
+    const currentSnapshot = createAdminSettingsSnapshot({ featureFlags, aiConfig, lineSecrets });
+    const hasChanges = savedSnapshot !== null && currentSnapshot !== savedSnapshot;
+    useUnsavedChangesGuard(hasChanges);
+
     const handleSave = async () => {
-        if (!isAdmin) return;
+        if (!isAdmin || !hasChanges) return;
         setSaving(true);
         try {
             // Feature flags + AI TOÀN CỤC → settings/global — BẮT BUỘC qua server API
@@ -154,6 +162,7 @@ export default function AdminSettingsPage() {
                 { merge: true },
             );
 
+            setSavedSnapshot(currentSnapshot);
             setSavedAt(Date.now());
             toast.success('App settings saved');
         } catch (error) {
@@ -188,7 +197,7 @@ export default function AdminSettingsPage() {
                             variant="primary"
                             leftIcon={<Check className="w-4 h-4" />}
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || !hasChanges}
                         >
                             {saving ? 'Saving...' : 'Save changes'}
                         </Button>

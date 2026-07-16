@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { NavigationSidebar } from '@/components/layout/NavigationSidebar'
+import { UnsavedChangesProvider } from '@/components/providers/UnsavedChangesProvider'
 import { verifyAttrs } from '@/verify/core/contract'
 
 /** Các route auth: không sidebar, không offset — (auth)/layout tự căn giữa nội dung. */
@@ -28,7 +29,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   }
 
   return (
-    <>
+    <UnsavedChangesProvider>
       <NavigationSidebar />
       {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
       <main
@@ -37,6 +38,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       >
         {children}
       </main>
-    </>
+    </UnsavedChangesProvider>
   )
 }
