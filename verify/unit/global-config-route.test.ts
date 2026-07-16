@@ -145,4 +145,46 @@ describe('POST /api/admin/global-config — 有効な admin', () => {
 
     expect(res.status).toBe(400)
   })
+
+  it('LINE 設定を保存し、配信時刻を重複排除して昇順にする', async () => {
+    verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
+
+    const res = await POST(makeReq({
+      cookie: '__session=ok',
+      body: {
+        line_notifications_available: true,
+        line_schedule_hours: [21, 9, 21, 0],
+        line_words_per_notification: 7,
+      },
+    }))
+
+    expect(res.status).toBe(200)
+    expect(docStore.get('settings/global')).toMatchObject({
+      line_notifications_available: true,
+      line_schedule_hours: [0, 9, 21],
+      line_words_per_notification: 7,
+    })
+  })
+
+  it.each([-1, 24])('配信時刻 %i は 400', async (hour) => {
+    verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
+
+    const res = await POST(makeReq({
+      cookie: '__session=ok',
+      body: { line_schedule_hours: [hour] },
+    }))
+
+    expect(res.status).toBe(400)
+  })
+
+  it.each([0, 11])('通知単語数 %i は 400', async (words) => {
+    verifyMock.mockResolvedValueOnce({ uid: 'admin1', email: 'owner@ankiflow.dev' })
+
+    const res = await POST(makeReq({
+      cookie: '__session=ok',
+      body: { line_words_per_notification: words },
+    }))
+
+    expect(res.status).toBe(400)
+  })
 })

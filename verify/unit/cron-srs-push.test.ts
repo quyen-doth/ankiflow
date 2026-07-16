@@ -179,6 +179,42 @@ describe('GET /api/cron/srs-push — user ごとの配信', () => {
     ])
   })
 
+  it('timezone が異なる 2 user のうち配信時刻が一致する user だけに送る', async () => {
+    userSettings.user2 = {
+      line_notifications_enabled: true,
+      line_user_id: 'line-user-2',
+      line_timezone: 'America/New_York',
+    }
+    entriesByUser.user1 = [dueEntry('tokyo-entry')]
+    entriesByUser.user2 = [dueEntry('new-york-entry')]
+
+    const response = await GET(makeRequest('cron-secret-xyz'))
+
+    expect(await response.json()).toEqual({ pushed: 1, skipped: 1, failed: 0 })
+    expect(pushMessageMock).toHaveBeenCalledTimes(1)
+    expect(pushMessageMock.mock.calls[0][1]).toBe('line-user-1')
+  })
+
+  it('同じローカル時刻の guard key があれば skip する', async () => {
+    userSettings.user1.line_last_push_key = '2026-07-16T12@Asia/Tokyo'
+    entriesByUser.user1 = [dueEntry('e1')]
+
+    const response = await GET(makeRequest('cron-secret-xyz'))
+
+    expect(await response.json()).toEqual({ pushed: 0, skipped: 1, failed: 0 })
+    expect(pushMessageMock).not.toHaveBeenCalled()
+  })
+
+  it('LINE account が未連携なら skip する', async () => {
+    delete userSettings.user1.line_user_id
+    entriesByUser.user1 = [dueEntry('e1')]
+
+    const response = await GET(makeRequest('cron-secret-xyz'))
+
+    expect(await response.json()).toEqual({ pushed: 0, skipped: 1, failed: 0 })
+    expect(pushMessageMock).not.toHaveBeenCalled()
+  })
+
   it('due entry がなければ skip し、送信キーを更新しない', async () => {
     const response = await GET(makeRequest('cron-secret-xyz'))
 
@@ -195,5 +231,18 @@ describe('GET /api/cron/srs-push — user ごとの配信', () => {
 
     expect(await response.json()).toEqual({ pushed: 0, skipped: 0, failed: 1 })
     expect(settingsUpdates).toEqual([])
+  })
+
+  it('管理者設定の単語数を 1 回の Flex message に適用する', async () => {
+    globalSettings.line_words_per_notification = 2
+    entriesByUser.user1 = Array.from({ length: 5 }, (_, index) => dueEntry(`e${index}`))
+
+    await GET(makeRequest('cron-secret-xyz'))
+
+    const message = pushMessageMock.mock.calls[0][2][0] as unknown as {
+      contents: { type: string; contents?: unknown[] }
+    }
+    expect(message.contents.type).toBe('carousel')
+    expect(message.contents.contents).toHaveLength(2)
   })
 })
