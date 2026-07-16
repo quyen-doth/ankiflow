@@ -24,6 +24,10 @@ vi.mock('@/lib/firebase-admin', () => ({
       doc: (id: string) => {
         const path = `${collectionName}/${id}`
         return {
+          get: async () => {
+            const data = documents.get(path)
+            return { exists: data !== undefined, data: () => data }
+          },
           update: async (data: Record<string, unknown>) => {
             updates.push({ path, data })
             documents.set(path, { ...(documents.get(path) ?? {}), ...data })
@@ -142,6 +146,7 @@ describe('PUT /api/admin/content-types', () => {
   })
 
   it('admin session は fields を更新できる', async () => {
+    documents.set('content_types/form_language', { code: 'language', name: 'Language' })
     const response = await PUT(request('PUT', { body: validBody }), ROUTE_CONTEXT)
 
     expect(response.status).toBe(200)
@@ -153,12 +158,35 @@ describe('PUT /api/admin/content-types', () => {
     })
   })
 
+  it('存在しない content type は 404 で更新しない', async () => {
+    const response = await PUT(request('PUT', { body: validBody }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({ error: 'Content type not found' })
+    expect(updates).toEqual([])
+  })
+
   it('built-in invariant を満たさない fields は 400 で更新しない', async () => {
+    documents.set('content_types/form_language', { code: 'language', name: 'Language' })
     const response = await PUT(request('PUT', {
       body: {
         ...validBody,
         fields: [validBody.fields[1]],
       },
+    }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: 'Built-in Language Content Type must define the "language" configuration field.',
+    })
+    expect(updates).toEqual([])
+  })
+
+  it('invariant は doc ID ではなく保存済み code で判定する', async () => {
+    // doc ID は built-in ではないが code は 'language' — 実 code で invariant を強制する。
+    documents.set('content_types/legacy_lang', { code: 'language', name: 'Legacy Language' })
+    const response = await PUT(request('PUT', {
+      body: { id: 'legacy_lang', fields: [validBody.fields[1]] },
     }), ROUTE_CONTEXT)
 
     expect(response.status).toBe(400)

@@ -27,15 +27,21 @@ async function PUT_handler(request: NextRequest) {
     if (!parsed.ok) return parsed.response
 
     const { id, fields } = parsed.data
-    const blueprintValidation = validateContentTypeBlueprint({ code: id, name: id, fields })
+    const db = getAdminDb()
+    const ref = db.collection(GLOBAL_CONTENT_TYPES_COLLECTION).doc(id)
+    const snapshot = await ref.get()
+    if (!snapshot.exists) return apiError('Content type not found', 404)
+
+    // routing key は doc ID ではなく保存済み code — global custom は auto-ID なので必須。
+    const existing = snapshot.data() ?? {}
+    const code = typeof existing.code === 'string' ? existing.code : id
+    const name = typeof existing.name === 'string' ? existing.name : id
+    const blueprintValidation = validateContentTypeBlueprint({ code, name, fields })
     if (!blueprintValidation.success) {
       return apiError(blueprintValidation.error, 400)
     }
 
-    const db = getAdminDb()
-    await db.collection(GLOBAL_CONTENT_TYPES_COLLECTION).doc(id).update(
-      withTimestamps({ fields }, false)
-    )
+    await ref.update(withTimestamps({ fields }, false))
     return apiSuccess({ success: true, id })
   } catch (error) {
     return catchError(error)
