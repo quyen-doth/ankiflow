@@ -91,12 +91,15 @@ service cloud.firestore {
     }
 
     // ─── User Content Types — workspace ごとの動的フォーム設定 ───
-    // list query も `where('user_id', '==', request.auth.uid)` が必須。update では owner を変更不可。
+    // list query も `where('user_id', '==', request.auth.uid)` が必須。
+    // update では owner と routing key (code) を変更不可 — client SDK 直書きでも
+    // code 変更 (= 重複 route の温床) を防ぐ。
     match /user_content_types/{id} {
       allow read, delete: if owns(resource);
       allow create: if creatingOwn();
       allow update: if owns(resource)
-        && request.resource.data.user_id == resource.data.user_id;
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.code == resource.data.code;
     }
 
     // ─── Content types — 新規ユーザー用のグローバル source snapshot ───
