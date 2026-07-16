@@ -8,7 +8,7 @@ import { TEST_AUTH_USER } from '@/verify/core/test-auth-user'
 MotionGlobalConfig.skipAnimations = true
 
 // --- TEST_AUTH_USER (runner.ts) coi như admin trong mọi spec — components admin-gated
-// (ContentTypeManager, NotificationManager...) test được CRUD UI thật, không bị chặn
+// (ContentTypeManager...) test được CRUD UI thật, không bị chặn
 // bởi gate. Muốn test riêng nhánh non-admin thì cần cơ chế mock user khác (chưa có).
 process.env.NEXT_PUBLIC_ADMIN_EMAIL = TEST_AUTH_USER.email
 
