@@ -3,7 +3,7 @@
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { CardForm } from '@/components/create/CardForm';
+import { CardForm, CardFormContent } from '@/components/create/CardForm';
 import { ModeToggle } from '@/components/create/ModeToggle';
 import { MotionPage } from '@/components/ui/MotionPage';
 import { getBlueprintForContentType } from '@/lib/create/formBlueprint';
@@ -77,9 +77,13 @@ export default function CreatePage() {
 
 interface CreateContentProps {
     loadContentTypes?: UserContentTypeLoader;
+    navigate?: (path: string) => void;
 }
 
-export function CreateContent({ loadContentTypes = loadUserContentTypes }: CreateContentProps = {}) {
+export function CreateContent({
+    loadContentTypes = loadUserContentTypes,
+    navigate,
+}: CreateContentProps = {}) {
     const { user, loading: authLoading } = useAuth();
     const uid = user?.uid;
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
@@ -343,7 +347,23 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                             </Link>
                         </div>
                     )}
-                    {blueprint && (
+                    {blueprint && (navigate ? (
+                        <CardFormContent
+                            key={activeCode}
+                            blueprint={blueprint}
+                            batchMode={batchMode}
+                            onGenerateStart={handleGenerateStart}
+                            onStepUpdate={handleStepUpdate}
+                            onGenerateEnd={handleGenerateEnd}
+                            onBatchCountChange={setBatchCount}
+                            onBatchProgress={handleBatchProgress}
+                            registerCancel={(fn) => {
+                                cancelRef.current = fn;
+                            }}
+                            formId={FORM_ID}
+                            navigate={navigate}
+                        />
+                    ) : (
                         <CardForm
                             key={activeCode}
                             blueprint={blueprint}
@@ -358,7 +378,7 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                             }}
                             formId={FORM_ID}
                         />
-                    )}
+                    ))}
                 </div>
             </div>
 

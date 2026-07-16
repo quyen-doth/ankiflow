@@ -51,6 +51,7 @@ registerUnit<VerifyProps>({
       loadContentTypes={props.e2eState
         ? async () => e2eContentTypes(props.e2eState!)
         : undefined}
+      navigate={props.e2eState ? () => undefined : undefined}
     />
   ),
   propsSchema: z.object({ e2eState: z.enum(['empty', 'conflict']).optional() }),
