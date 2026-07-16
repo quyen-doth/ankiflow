@@ -217,18 +217,22 @@ npm run dev
 | `ANTHROPIC_API_KEY`                           | Anthropic Console                      |
 | `GOOGLE_TTS_API_KEY`                          | Google Cloud Console                   |
 | `UNSPLASH_ACCESS_KEY`                         | Unsplash Developers                    |
-| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_USER_ID`  | LINE Developers（管理者の通知用）      |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Messaging API / webhook     |
+| `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`             | LINE 公式アカウント追加 URL             |
+| `CRON_SECRET`                                 | LINE 通知 cron API の bearer 認証       |
 | `ADMIN_EMAIL`                                 | サーバー側の管理者判定用メール         |
 | `NEXT_PUBLIC_ADMIN_EMAIL`                     | クライアント側の管理者 UI 表示用メール |
 
 > **AnkiConnect の CORS 設定**: ブラウザから `localhost:8765` を呼ぶため、Anki の AnkiConnect アドオン設定で `webCorsOriginList` にアプリのオリジン（`http://localhost:3000` やデプロイ先ドメイン）を追加する必要があります。設定画面に案内を用意しています（Safari は HTTPS ページから localhost への接続を許可しないため、デプロイ環境では Chrome / Edge / Firefox を使用）。
 >
 > AI 生成・プレビュー・保存は Anki なしでも動作します（遅延同期）。
+>
+> `LINE_USER_ID` を使う legacy 手動 script/workflow はユーザーごとのデータ分離に対応していないため、実行しないでください。現行の通知先は各 user の LINE 連携から解決されます。
 
 ## 今後の展望
 
 - 独自 SRS エンジンの実装（Anki Desktop 依存の完全な解消）
-- LINE 通知のユーザー別対応（現状は管理者のみ）
+- LINE 通知の配信履歴・利用量モニタリング
 - モバイル向け UI 最適化 / 学習状況統計の画面
 - 複数デバイスからのメモ入力（Chrome 拡張機能などの活用）
 

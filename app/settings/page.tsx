@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { ResyncCards } from '@/components/settings/ResyncCards';
+import { LineNotificationSettings } from '@/components/settings/LineNotificationSettings';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
 import { LanguagePicker } from '@/components/ui/LanguagePicker';
@@ -473,6 +474,11 @@ export default function SettingsPage() {
                             </div>
                         ))}
                     </div>
+                </Card>
+
+                {/* Per-user LINE account linking and reminder preference. */}
+                <Card>
+                    <LineNotificationSettings />
                 </Card>
 
                 {savedAt && <p className="text-overline text-slate-600 text-center">Saved successfully.</p>}
