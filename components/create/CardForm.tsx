@@ -738,7 +738,7 @@ export function CardFormContent({
         const fieldError = fieldErrors[field.key];
 
         let control: React.ReactNode;
-        if (isPrimary || field.type === "text") {
+        if (field.type === "text") {
             control = (
                 <Input
                     type="text"
@@ -756,6 +756,7 @@ export function CardFormContent({
             control = (
                 <Textarea
                     aria-label={field.label}
+                    autoFocus={isPrimary}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     rows={4}
@@ -769,6 +770,7 @@ export function CardFormContent({
             control = (
                 <Select
                     aria-label={field.label}
+                    autoFocus={isPrimary}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     error={!!fieldError}
@@ -785,6 +787,7 @@ export function CardFormContent({
                 <Input
                     type="number"
                     aria-label={field.label}
+                    autoFocus={isPrimary}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={field.placeholder}

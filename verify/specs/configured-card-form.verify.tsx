@@ -39,6 +39,25 @@ const BLUEPRINT: CardFormBlueprint = {
   },
 }
 
+const DROPDOWN_PRIMARY_BLUEPRINT: CardFormBlueprint = {
+  formType: 'custom_dropdown_primary',
+  primaryFieldKey: 'level',
+  coreFields: [
+    {
+      key: 'level',
+      label: 'Level',
+      type: 'dropdown',
+      required: true,
+      options: ['Beginner', 'Advanced'],
+    },
+  ],
+  configBlocks: [],
+  generate: {
+    mode: 'local',
+    content: values => ({ ...values, word: values.level }),
+  },
+}
+
 function submitForm(root: HTMLElement): void {
   const form = root.querySelector<HTMLFormElement>('form')
   if (!form) throw new Error('form が見つからない')
@@ -50,14 +69,32 @@ function pendingEntry(): PendingEntry | null {
   return raw ? JSON.parse(raw) as PendingEntry : null
 }
 
-registerUnit<Record<string, never>>({
+interface ConfiguredCardFormVerifyProps {
+  primaryType?: 'dropdown'
+}
+
+registerUnit<ConfiguredCardFormVerifyProps>({
   id: 'ConfiguredCardForm',
   title: 'Configured CardForm fields',
   description: 'fields[] の required/persistent metadata を CardForm runtime で検証する。',
   kind: 'feature',
-  render: () => <CardFormContent blueprint={BLUEPRINT} navigate={() => undefined} />,
-  propsSchema: z.object({}),
+  render: props => (
+    <CardFormContent
+      blueprint={props.primaryType === 'dropdown' ? DROPDOWN_PRIMARY_BLUEPRINT : BLUEPRINT}
+      navigate={() => undefined}
+    />
+  ),
+  propsSchema: z.object({ primaryType: z.enum(['dropdown']).optional() }),
   fixtures: [
+    {
+      id: 'primary-dropdown-renders-as-select',
+      description: 'Custom primary dropdown は text input ではなく static options の select を表示する。',
+      props: { primaryType: 'dropdown' },
+      mocks: { pathname: '/create' },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
     {
       id: 'persistent-field-hydrates',
       description: 'Persistent core field は session.fieldValues から復元する。',
@@ -102,6 +139,17 @@ registerUnit<Record<string, never>>({
     },
   ],
   invariants: [
+    {
+      id: 'primary-field-keeps-configured-type',
+      description: 'Primary field でも fields[] の input type を上書きしない。',
+      onlyFixtures: ['primary-dropdown-renders-as-select'],
+      check: ({ root }) => {
+        const select = root.querySelector<HTMLSelectElement>('select[aria-label="Level"]')
+        if (!select) return 'Level dropdown が表示されていない'
+        return Array.from(select.options).map(option => option.textContent).join('|') === 'Select…|Beginner|Advanced'
+          || `options=${Array.from(select.options).map(option => option.textContent).join('|')}`
+      },
+    },
     {
       id: 'persistent-value-hydrated',
       description: 'Session の persistent field value を input に復元する。',

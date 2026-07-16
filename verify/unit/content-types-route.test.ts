@@ -92,7 +92,24 @@ describe('GET /api/admin/content-types', () => {
 describe('PUT /api/admin/content-types', () => {
   const validBody = {
     id: 'form_language',
-    fields: [{ field_key: 'word', label: 'Word' }],
+    fields: [
+      {
+        field_key: 'language',
+        label: 'Language',
+        type: 'dropdown',
+        is_required: true,
+        is_session_persistent: true,
+        sort_order: 0,
+      },
+      {
+        field_key: 'word',
+        label: 'Word',
+        type: 'text',
+        is_required: true,
+        is_session_persistent: false,
+        sort_order: 1,
+      },
+    ],
   }
 
   it('session がなければ 401、Firestore を更新しない', async () => {
@@ -134,6 +151,21 @@ describe('PUT /api/admin/content-types', () => {
       path: 'content_types/form_language',
       data: { fields: validBody.fields, updated_at: expect.any(Date) },
     })
+  })
+
+  it('built-in invariant を満たさない fields は 400 で更新しない', async () => {
+    const response = await PUT(request('PUT', {
+      body: {
+        ...validBody,
+        fields: [validBody.fields[1]],
+      },
+    }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: 'Built-in Language Content Type must define the "language" configuration field.',
+    })
+    expect(updates).toEqual([])
   })
 })
 

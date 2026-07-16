@@ -46,6 +46,14 @@ test('Configured CardForm は persistent core field を session から復元す�
   await expect(page.getByRole('textbox', { name: 'Audience' })).toHaveValue('Software engineers')
 })
 
+test('Configured CardForm は primary dropdown の型と options を保持する', async ({ page }) => {
+  await page.goto('/verify/ConfiguredCardForm/primary-dropdown-renders-as-select?chrome=0')
+
+  const select = page.getByRole('combobox', { name: 'Level' })
+  await expect(select).toBeVisible()
+  await expect(select.locator('option')).toHaveText(['Select…', 'Beginner', 'Advanced'])
+})
+
 test('Configured CardForm はすべての required field を検証する', async ({ page }) => {
   await page.goto('/verify/ConfiguredCardForm/probe-all-required-fields?chrome=0')
 

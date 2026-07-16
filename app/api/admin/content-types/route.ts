@@ -8,6 +8,7 @@ import {
   GLOBAL_CONTENT_TYPES_COLLECTION,
 } from '@/lib/constants'
 import { isProtectedGlobalContentTypeId } from '@/lib/contentTypes'
+import { validateContentTypeBlueprint } from '@/lib/create/formBlueprint'
 
 async function GET_handler() {
   try {
@@ -26,6 +27,11 @@ async function PUT_handler(request: NextRequest) {
     if (!parsed.ok) return parsed.response
 
     const { id, fields } = parsed.data
+    const blueprintValidation = validateContentTypeBlueprint({ code: id, name: id, fields })
+    if (!blueprintValidation.success) {
+      return apiError(blueprintValidation.error, 400)
+    }
+
     const db = getAdminDb()
     await db.collection(GLOBAL_CONTENT_TYPES_COLLECTION).doc(id).update(
       withTimestamps({ fields }, false)

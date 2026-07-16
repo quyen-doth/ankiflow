@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { FormType } from '@/types'
+import { formFieldConfigSchema } from '@/lib/contentTypes'
 import { apiError } from './api-response'
 
 const formTypeEnum = z.nativeEnum(FormType)
@@ -64,7 +65,7 @@ export const TopicPutSchema = TopicPostSchema.partial().extend({
 
 export const ContentTypePutSchema = z.object({
   id: z.string().min(1, 'id is required'),
-  fields: z.array(z.record(z.string(), z.unknown())).min(1),
+  fields: z.array(formFieldConfigSchema).min(1),
 })
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
