@@ -12,6 +12,8 @@ export interface SessionState {
   deckId?: string
   cardTypeIds?: string[]
   topicIds?: string[]
+  /** AI prompt 用の Topic 表示名。TopicSelector が ID から毎回再同期する。 */
+  topicNames?: string[]
   difficulty?: string
   tags?: string[]
 }
@@ -19,7 +21,7 @@ export interface SessionState {
 type SessionKey = keyof SessionState
 
 const SESSION_KEYS: SessionKey[] = [
-  'categoryId', 'language', 'deckId', 'cardTypeIds', 'topicIds', 'difficulty', 'tags',
+  'categoryId', 'language', 'deckId', 'cardTypeIds', 'topicIds', 'topicNames', 'difficulty', 'tags',
 ]
 
 const getStorageKey = (formType: FormType | string) => `ankiflow_session_${formType}`

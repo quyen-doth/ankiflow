@@ -78,3 +78,17 @@ describe('getBlueprintForContentType', () => {
     expect(bp.coreFields.map(f => f.key)).toEqual(['prompt', 'answer'])
   })
 })
+
+describe('IT blueprint payload', () => {
+  it('AI に Topic ID ではなく Topic 名を渡す', () => {
+    const blueprint = BUILTIN_BLUEPRINTS[FormType.IT]!
+    if (blueprint.generate.mode !== 'api') throw new Error('IT blueprint must use API generation')
+
+    expect(blueprint.generate.payload(
+      { term: 'Event Loop' },
+      { topicIds: ['topic-1'], topicNames: ['JavaScript Runtime'] },
+    )).toMatchObject({
+      topics: ['JavaScript Runtime'],
+    })
+  })
+})

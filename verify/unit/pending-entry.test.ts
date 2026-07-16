@@ -33,6 +33,12 @@ describe('lib/pendingEntry', () => {
     expect(loadPendingEntry()).toEqual(entry)
   })
 
+  it('IT Topic ID を preview handoff 用に保持する', () => {
+    const entry = makeEntry({ formType: FormType.IT, topicIds: ['topic-1', 'topic-2'] })
+    savePendingEntry(entry)
+    expect(loadPendingEntry()?.topicIds).toEqual(['topic-1', 'topic-2'])
+  })
+
   it('データがない場合 loadPendingEntry は null を返す', () => {
     expect(loadPendingEntry()).toBeNull()
   })

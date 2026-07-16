@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PenLine, SlidersHorizontal } from "lucide-react";
 import { Input, Textarea, Select, FieldWrapper } from "@/components/ui/FormField";
@@ -9,7 +9,7 @@ import { LanguageSelector } from "./LanguageSelector";
 import { CategoryCreatableField } from "./CategoryCreatableField";
 import { CardTypeSelector } from "./CardTypeSelector";
 import { DeckCreatableField } from "./DeckCreatableField";
-import { TopicSelector } from "./TopicSelector";
+import { TopicSelector, type TopicSelection } from "./TopicSelector";
 import { ColumnLabel } from "./ColumnLabel";
 import { InfoCallout } from "./InfoCallout";
 import { BatchItemList } from "./BatchItemList";
@@ -104,6 +104,7 @@ export function CardForm({
     const [batchDuplicates, setBatchDuplicates] = useState<BatchDuplicateResult[]>([]);
     const [showBatchDuplicate, setShowBatchDuplicate] = useState(false);
     const [detectingLanguage, setDetectingLanguage] = useState(false);
+    const [topicsLoading, setTopicsLoading] = useState(blueprint.uiFormType === "IT");
     const [pendingLanguageAction, setPendingLanguageAction] = useState<PendingLanguageAction | null>(null);
     const pendingDuplicateRef = useRef<PendingDuplicateCheck | null>(null);
     const [savingDetectedLanguage, setSavingDetectedLanguage] = useState(false);
@@ -164,6 +165,7 @@ export function CardForm({
     const tags = session?.tags || [];
     const cardTypes = session?.cardTypeIds || [];
     const topicIds = session?.topicIds || [];
+    const topicNames = session?.topicNames || [];
     const difficulty = session?.difficulty || "intermediate";
 
     const primaryKey = blueprint.coreFields[0]?.key ?? "";
@@ -173,13 +175,17 @@ export function CardForm({
 
     useEffect(() => {
         if (batchMode) {
-            onValidityChange?.(batchValidItems.length > 0 && !detectingLanguage);
+            onValidityChange?.(batchValidItems.length > 0 && !detectingLanguage && !topicsLoading);
             onBatchCountChange?.(batchValidItems.length);
         } else {
-            onValidityChange?.(primaryValue.trim().length > 0 && !detectingLanguage);
+            onValidityChange?.(primaryValue.trim().length > 0 && !detectingLanguage && !topicsLoading);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [primaryValue, batchMode, batchItems, detectingLanguage, onValidityChange, onBatchCountChange]);
+    }, [primaryValue, batchMode, batchItems, detectingLanguage, topicsLoading, onValidityChange, onBatchCountChange]);
+
+    const handleTopicChange = useCallback((selection: TopicSelection) => {
+        updateSession({ topicIds: selection.ids, topicNames: selection.names });
+    }, [updateSession]);
 
     const languageNameFor = (code: LanguageCode | null): string | undefined => {
         if (!code) return undefined;
@@ -260,6 +266,7 @@ export function CardForm({
                 deckId: languageConfigReset.current ? "" : deckId,
                 categoryId: category,
                 cardTypeIds: languageConfigReset.current ? [] : cardTypes,
+                topicIds: blueprint.uiFormType === "IT" ? topicIds : undefined,
                 tags,
                 savedAt: new Date().toISOString(),
             });
@@ -341,6 +348,7 @@ export function CardForm({
                 deckId: languageConfigReset.current ? "" : deckId,
                 categoryId: category,
                 cardTypeIds: languageConfigReset.current ? [] : cardTypes,
+                topicIds: blueprint.uiFormType === "IT" ? topicIds : undefined,
                 tags,
                 savedAt: new Date().toISOString(),
             });
@@ -512,7 +520,7 @@ export function CardForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (detectingLanguage) return;
+        if (detectingLanguage || topicsLoading) return;
 
         const items = batchMode ? batchValidItemsList() : [primaryValue.trim()].filter(Boolean);
         if (items.length === 0) return;
@@ -707,7 +715,14 @@ export function CardForm({
                     />
                 );
             case "topic":
-                return <TopicSelector selectedIds={topicIds} onChange={(v) => updateSession({ topicIds: v })} />;
+                return (
+                    <TopicSelector
+                        selectedIds={topicIds}
+                        selectedNames={topicNames}
+                        onChange={handleTopicChange}
+                        onLoadingChange={setTopicsLoading}
+                    />
+                );
             case "difficulty":
                 return (
                     <FieldWrapper label="Difficulty">
