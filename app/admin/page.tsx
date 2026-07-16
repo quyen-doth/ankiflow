@@ -9,7 +9,6 @@ import { CardTypeManager } from '@/components/admin/CardTypeManager'
 import { TopicManager } from '@/components/admin/TopicManager'
 import { DeckManager } from '@/components/admin/DeckManager'
 import { ContentTypeManager } from '@/components/admin/ContentTypeManager'
-import { NotificationManager } from '@/components/admin/NotificationManager'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import { cn } from '@/lib/utils'
@@ -20,13 +19,12 @@ const TABS = [
   { id: 'topics', label: 'Topics' },
   { id: 'decks', label: 'Decks' },
   { id: 'content-types', label: 'Content Types' },
-  { id: 'notifications', label: 'Notifications' },
 ]
 
 const TAB_IDS = TABS.map(t => t.id)
 
-// Chỉ 4 tab này có bản per-user + template ("New-user defaults"). content-types là
-// SHARED (routing cốt lõi) và notifications là admin-only sẵn — không có ownerId.
+// Chỉ 4 tab này có bản per-user + template ("New-user defaults").
+// content-types là SHARED (routing cốt lõi) nên không có ownerId.
 const OWNER_SCOPED_TABS = new Set(['categories', 'card-types', 'topics', 'decks'])
 
 /** Switch "My workspace" / "New-user defaults" — chỉ admin thấy, chỉ áp dụng cho 4 tab per-user. */
@@ -89,7 +87,6 @@ function AdminContent() {
       {activeTab === 'topics' && <TopicManager ownerId={ownerId} />}
       {activeTab === 'decks' && <DeckManager ownerId={ownerId} />}
       {activeTab === 'content-types' && <ContentTypeManager />}
-      {activeTab === 'notifications' && <NotificationManager />}
     </div>
   )
 }
