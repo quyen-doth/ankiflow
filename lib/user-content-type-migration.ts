@@ -218,28 +218,32 @@ export async function executeUserContentTypeMigration(
     return retryable && error.failedAttempts < 10
   })
 
-  try {
-    await Promise.all(plan.creates.map(async candidate => {
-      const path = `${USER_CONTENT_TYPES_COLLECTION}/${candidate.id}`
-      try {
-        await writer.create(db.collection(USER_CONTENT_TYPES_COLLECTION).doc(candidate.id), {
-          ...candidate.data,
-          created_at: now,
-          updated_at: now,
-        })
+  // create() の promise は flush/close まで解決しない。await してから close() すると
+  // BulkWriter が小さい buffer を flush せず deadlock し、無 write でプロセスが終了する。
+  // よって promise は tracking のみ登録し、close() で flush してから結果を集計する。
+  const tasks = plan.creates.map(candidate => {
+    const path = `${USER_CONTENT_TYPES_COLLECTION}/${candidate.id}`
+    return writer
+      .create(db.collection(USER_CONTENT_TYPES_COLLECTION).doc(candidate.id), {
+        ...candidate.data,
+        created_at: now,
+        updated_at: now,
+      })
+      .then(() => {
         created += 1
-      } catch (error) {
+      })
+      .catch((error: unknown) => {
         const code = migrationErrorCode(error)
         if (code === GrpcStatus.ALREADY_EXISTS || code === 'already-exists') {
           skippedExisting += 1
           return
         }
         failed.push({ path, errorCode: code })
-      }
-    }))
-  } finally {
-    await writer.close()
-  }
+      })
+  })
+
+  await writer.close()
+  await Promise.all(tasks)
 
   return {
     created,

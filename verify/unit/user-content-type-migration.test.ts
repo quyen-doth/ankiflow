@@ -180,21 +180,32 @@ describe('executeUserContentTypeMigration', () => {
     const existingPath = `${USER_CONTENT_TYPES_COLLECTION}/${plan.creates[1].id}`
     const failedPath = `${USER_CONTENT_TYPES_COLLECTION}/${plan.creates[2].id}`
     const writes: Array<{ path: string; data: Record<string, unknown> }> = []
-    const close = vi.fn().mockResolvedValue(undefined)
+    // 実 BulkWriter を再現: 成功 create() は close()/flush まで解決しない。
+    // 旧実装 (await create → finally close) だとここで deadlock しテストが timeout する。
+    const pendingFlushes: Array<() => void> = []
+    const close = vi.fn().mockImplementation(async () => {
+      for (const flush of pendingFlushes) flush()
+      pendingFlushes.length = 0
+    })
     const db = {
       collection: (collection: string) => ({
         doc: (id: string) => ({ path: `${collection}/${id}` }),
       }),
       bulkWriter: () => ({
         onWriteError: vi.fn(),
-        create: async (ref: { path: string }, data: Record<string, unknown>) => {
+        create: (ref: { path: string }, data: Record<string, unknown>) => {
           if (ref.path === existingPath) {
-            throw Object.assign(new Error('exists'), { code: 6 })
+            return Promise.reject(Object.assign(new Error('exists'), { code: 6 }))
           }
           if (ref.path === failedPath) {
-            throw Object.assign(new Error('unavailable'), { code: 14 })
+            return Promise.reject(Object.assign(new Error('unavailable'), { code: 14 }))
           }
-          writes.push({ path: ref.path, data })
+          return new Promise<void>(resolve => {
+            pendingFlushes.push(() => {
+              writes.push({ path: ref.path, data })
+              resolve()
+            })
+          })
         },
         close,
       }),
