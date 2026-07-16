@@ -157,9 +157,9 @@ export function resolveBuiltinFormType(idOrCode: string): FormType | null {
   return resolveContentTypeFormType(idOrCode)
 }
 
-/** content type の blueprint を返す: id/code が一致すれば built-in、そうでなければ fields[] から構築。 */
+/** content type の blueprint を返す: code が一致すれば built-in、そうでなければ fields[] から構築。 */
 export function getBlueprintForContentType(ct: ContentType): CardFormBlueprint {
-  const ft = resolveBuiltinFormType(ct.id) ?? resolveBuiltinFormType(ct.code)
+  const ft = resolveBuiltinFormType(ct.code)
   if (ft && BUILTIN_BLUEPRINTS[ft]) return BUILTIN_BLUEPRINTS[ft]!
   return blueprintFromContentType(ct)
 }

@@ -4,7 +4,9 @@ import {
   isProtectedGlobalContentTypeId,
   materializeUserContentType,
   parseContentTypeConfig,
+  prepareRuntimeContentTypes,
   resolveContentTypeFormType,
+  resolveRuntimeContentTypeCode,
   userContentTypeId,
   validateContentTypeConfig,
 } from '@/lib/contentTypes'
@@ -160,6 +162,57 @@ describe('Content Type routing resolver', () => {
 
   it('custom code は built-in FormType に解決しない', () => {
     expect(resolveContentTypeFormType('medical_terms')).toBeNull()
+  })
+
+  it('runtime routing は document ID ではなく code のみを正規化する', () => {
+    expect(resolveRuntimeContentTypeCode(' language ')).toBe(FormType.LANGUAGE)
+    expect(resolveRuntimeContentTypeCode('medical_terms')).toBe('medical_terms')
+  })
+})
+
+describe('runtime Content Type preparation', () => {
+  function runtimeContentType(overrides: Partial<ContentTypeSourceDocument> = {}): ContentTypeSourceDocument {
+    return {
+      ...sourceDocument(),
+      id: overrides.id ?? 'runtime-medical',
+      code: overrides.code ?? 'medical_terms',
+      name: overrides.name ?? 'Medical Terms',
+      is_active: overrides.is_active ?? true,
+      sort_order: overrides.sort_order ?? 1,
+      ...overrides,
+    }
+  }
+
+  it('active document だけを sort_order 順に並べ、入力配列を変更しない', () => {
+    const input = [
+      runtimeContentType({ id: 'later', code: 'later', sort_order: 20 }),
+      runtimeContentType({ id: 'inactive', code: 'inactive', is_active: false, sort_order: 0 }),
+      runtimeContentType({ id: 'first', code: 'first', sort_order: 10 }),
+    ]
+
+    const result = prepareRuntimeContentTypes(input)
+
+    expect(result.contentTypes.map(contentType => contentType.id)).toEqual(['first', 'later'])
+    expect(result.conflictingCodes).toEqual([])
+    expect(input.map(contentType => contentType.id)).toEqual(['later', 'inactive', 'first'])
+  })
+
+  it('同じ code の duplicate を inactive document も含めて検出する', () => {
+    const result = prepareRuntimeContentTypes([
+      runtimeContentType({ id: 'active', code: 'medical_terms' }),
+      runtimeContentType({ id: 'inactive', code: 'medical_terms', is_active: false }),
+    ])
+
+    expect(result.conflictingCodes).toEqual(['medical_terms'])
+  })
+
+  it('同じ built-in route に解決される alias も競合として検出する', () => {
+    const result = prepareRuntimeContentTypes([
+      runtimeContentType({ id: 'short-code', code: 'language' }),
+      runtimeContentType({ id: 'enum-code', code: FormType.LANGUAGE }),
+    ])
+
+    expect(result.conflictingCodes).toEqual([FormType.LANGUAGE, 'language'])
   })
 })
 

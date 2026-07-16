@@ -77,6 +77,21 @@ describe('getBlueprintForContentType', () => {
     expect(bp.uiFormType).toBeUndefined()
     expect(bp.coreFields.map(f => f.key)).toEqual(['prompt', 'answer'])
   })
+
+  it('copied document ID が built-in に似ていても code だけで routing する', () => {
+    const fields: FormFieldConfig[] = [
+      { field_key: 'prompt', label: 'Prompt', type: 'text', is_required: true, is_session_persistent: false, sort_order: 1, placeholder: null, data_source: null },
+    ]
+    const bp = getBlueprintForContentType(makeCt({
+      id: 'form_language__user-1',
+      code: 'custom_prompt',
+      name: 'Custom Prompt',
+      fields,
+    }))
+
+    expect(bp.formType).toBe('custom_prompt')
+    expect(bp).not.toBe(BUILTIN_BLUEPRINTS[FormType.LANGUAGE])
+  })
 })
 
 describe('IT blueprint payload', () => {

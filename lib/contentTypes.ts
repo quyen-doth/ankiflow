@@ -40,6 +40,18 @@ export interface ContentTypeValidationIssue {
   message: string
 }
 
+export interface RuntimeContentTypeLike {
+  id: string
+  code: string
+  is_active: boolean
+  sort_order: number
+}
+
+export interface RuntimeContentTypePreparation<T extends RuntimeContentTypeLike> {
+  contentTypes: T[]
+  conflictingCodes: string[]
+}
+
 export type ContentTypeValidationResult =
   | { success: true; data: EditableContentTypeData }
   | { success: false; issues: ContentTypeValidationIssue[] }
@@ -134,6 +146,52 @@ const BUILTIN_CODE_MAP: Readonly<Record<string, FormType>> = {
 /** Content Type の code だけを使って built-in FormType を解決する。 */
 export function resolveContentTypeFormType(code: string): FormType | null {
   return BUILTIN_CODE_MAP[code] ?? null
+}
+
+/** Runtime routing key は user document ID ではなく Content Type code だけから作る。 */
+export function resolveRuntimeContentTypeCode(code: string): FormType | string {
+  const normalizedCode = code.trim().toLocaleLowerCase('en-US')
+  return resolveContentTypeFormType(normalizedCode) ?? normalizedCode
+}
+
+/**
+ * Workspace snapshot を runtime 表示用に整形する。
+ *
+ * 重複判定は inactive document も含む workspace 全体に対して行い、built-in alias
+ * (`language` / `form_language`) が同じ route に解決される場合も競合として扱う。
+ */
+export function prepareRuntimeContentTypes<T extends RuntimeContentTypeLike>(
+  contentTypes: readonly T[],
+): RuntimeContentTypePreparation<T> {
+  const routingGroups = new Map<string, string[]>()
+
+  for (const contentType of contentTypes) {
+    const routingCode = resolveRuntimeContentTypeCode(contentType.code)
+    const key = routingCode.toLocaleLowerCase('en-US')
+    const codes = routingGroups.get(key) ?? []
+    codes.push(contentType.code)
+    routingGroups.set(key, codes)
+  }
+
+  const conflictingCodes = Array.from(routingGroups.values())
+    .filter(codes => codes.length > 1)
+    .flatMap(codes => codes)
+    .filter((code, index, codes) => codes.indexOf(code) === index)
+    .sort((a, b) => a.localeCompare(b))
+
+  const activeContentTypes = contentTypes
+    .filter(contentType => contentType.is_active)
+    .slice()
+    .sort((a, b) => (
+      a.sort_order - b.sort_order
+      || a.code.localeCompare(b.code)
+      || a.id.localeCompare(b.id)
+    ))
+
+  return {
+    contentTypes: activeContentTypes,
+    conflictingCodes,
+  }
 }
 
 export function isProtectedGlobalContentTypeId(id: string): boolean {
