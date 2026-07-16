@@ -247,6 +247,8 @@ export function FlashcardReviewLayout({
               onChangeId={onDeckChange}
               onClear={onDeckClear}
               label="Target Deck"
+              filterFormType={entry.form_type}
+              filterLanguage={entry.language as LanguageCode | undefined}
               createFormType={entry.form_type ?? ''}
               createLanguage={entry.language as LanguageCode | undefined}
               fallbackDeckName={entry.anki_deck}

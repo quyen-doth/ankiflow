@@ -18,7 +18,7 @@ interface DeckCreatableFieldProps {
   onChangeId: (deckId: string) => void
   onClear?: () => void
   label?: string
-  filterFormType?: FormType
+  filterFormType?: FormType | string
   filterLanguage?: LanguageCode
   /** form_type/ngôn ngữ gán cho deck MỚI khi tạo trong trang create. */
   createFormType: FormType | string
