@@ -5,11 +5,12 @@ interface EntryDoc {
   data: Record<string, unknown>
 }
 
-const { verifyMock, settingsStore, entryDocs, queriedUserIds, pushMessageMock } = vi.hoisted(() => ({
+const { verifyMock, settingsStore, entryDocs, queriedUserIds, transactionRuns, pushMessageMock } = vi.hoisted(() => ({
   verifyMock: vi.fn(),
   settingsStore: new Map<string, Record<string, unknown>>(),
   entryDocs: [] as EntryDoc[],
   queriedUserIds: [] as string[],
+  transactionRuns: [] as string[],
   pushMessageMock: vi
     .fn<
       (
@@ -28,6 +29,7 @@ vi.mock('@/lib/firebase-admin', () => ({
       if (collectionName === 'settings') {
         return {
           doc: (id: string) => ({
+            id,
             get: async () => ({ data: () => settingsStore.get(id) }),
           }),
         }
@@ -46,6 +48,20 @@ vi.mock('@/lib/firebase-admin', () => ({
           }
         },
       }
+    },
+    runTransaction: async (
+      handler: (transaction: {
+        get: (ref: { id: string }) => Promise<{ data: () => Record<string, unknown> | undefined }>
+        update: (ref: { id: string }, data: Record<string, unknown>) => void
+      }) => Promise<unknown>,
+    ) => {
+      transactionRuns.push('run')
+      return handler({
+        get: async (ref) => ({ data: () => settingsStore.get(ref.id) }),
+        update: (ref, data) => {
+          settingsStore.set(ref.id, { ...(settingsStore.get(ref.id) ?? {}), ...data })
+        },
+      })
     },
   }),
 }))
@@ -83,16 +99,20 @@ function dueEntry(id: string): EntryDoc {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-07-16T03:00:00.000Z'))
   verifyMock.mockReset()
   settingsStore.clear()
   entryDocs.length = 0
   queriedUserIds.length = 0
+  transactionRuns.length = 0
   pushMessageMock.mockReset()
   pushMessageMock.mockResolvedValue({ success: true })
   process.env.LINE_CHANNEL_ACCESS_TOKEN = 'line-token'
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   process.env.LINE_CHANNEL_ACCESS_TOKEN = ORIGINAL_LINE_TOKEN
 })
 
@@ -147,5 +167,27 @@ describe('POST /api/notifications/send', () => {
     expect(pushMessageMock.mock.calls[0][0]).toBe('line-token')
     expect(pushMessageMock.mock.calls[0][1]).toBe('line-user-1')
     expect(pushMessageMock.mock.calls[0][2][0].type).toBe('flex')
+    expect(transactionRuns).toEqual(['run'])
+    expect(settingsStore.get('user1')?.line_last_test_at).toEqual(
+      new Date('2026-07-16T03:00:00.000Z'),
+    )
+  })
+
+  it('60 秒以内の再送を 429 で拒否し、LINE を呼ばない', async () => {
+    verifyMock.mockResolvedValueOnce({ uid: 'user1', email: 'user@example.com' })
+    settingsStore.set('global', { line_notifications_available: true })
+    settingsStore.set('user1', {
+      line_user_id: 'line-user-1',
+      line_last_test_at: new Date('2026-07-16T02:59:30.000Z'),
+    })
+    entryDocs.push(dueEntry('e1'))
+
+    const response = await POST(makeRequest())
+    const body = await response.json()
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('30')
+    expect(body.retry_after_seconds).toBe(30)
+    expect(pushMessageMock).not.toHaveBeenCalled()
   })
 })

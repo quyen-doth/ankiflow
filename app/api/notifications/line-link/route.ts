@@ -6,6 +6,13 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import { generateLineLinkCode } from '@/lib/line/link-code'
 
 const LINK_CODE_TTL_MS = 10 * 60 * 1000
+const LINK_CODE_CREATE_ATTEMPTS = 3
+
+function isAlreadyExistsError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return false
+  const code = (error as { code?: unknown }).code
+  return code === 6 || code === 'already-exists' || code === 'ALREADY_EXISTS'
+}
 
 export const POST = withAuth(async (_request, _ctx, uid) => {
   try {
@@ -19,16 +26,29 @@ export const POST = withAuth(async (_request, _ctx, uid) => {
     }
 
     const existingCodes = await db.collection('line_link_codes').where('uid', '==', uid).get()
-    const code = generateLineLinkCode()
     const expiresAt = new Date(Date.now() + LINK_CODE_TTL_MS).toISOString()
-    const batch = db.batch()
+    const ownCodes = new Set(existingCodes.docs.map((document) => document.id))
 
-    for (const document of existingCodes.docs) batch.delete(document.ref)
-    // 衝突時に別ユーザーの有効なコードを上書きしないよう create precondition を使う。
-    batch.create(db.collection('line_link_codes').doc(code), { uid, expires_at: expiresAt })
-    await batch.commit()
+    for (let attempt = 0; attempt < LINK_CODE_CREATE_ATTEMPTS; attempt += 1) {
+      const code = generateLineLinkCode()
+      if (ownCodes.has(code)) continue
 
-    return NextResponse.json({ code, expires_at: expiresAt })
+      const batch = db.batch()
+      for (const document of existingCodes.docs) batch.delete(document.ref)
+      // 別 user の code と衝突した場合は上書きせず、新しい code で再試行する。
+      batch.create(db.collection('line_link_codes').doc(code), { uid, expires_at: expiresAt })
+
+      try {
+        await batch.commit()
+        return NextResponse.json({ code, expires_at: expiresAt })
+      } catch (error) {
+        if (!isAlreadyExistsError(error) || attempt === LINK_CODE_CREATE_ATTEMPTS - 1) {
+          throw error
+        }
+      }
+    }
+
+    throw new Error('Could not allocate a unique LINE link code')
   } catch (error) {
     console.error('Failed to generate LINE link code:', error)
     return NextResponse.json({ error: 'Failed to generate LINE link code' }, { status: 500 })

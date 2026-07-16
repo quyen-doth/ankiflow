@@ -8,6 +8,8 @@ import { createDefaultReviewState } from '@/lib/srs/fsrs'
 import { pickDueForReview } from '@/lib/srs/prioritize'
 import type { Entry } from '@/types'
 
+const TEST_NOTIFICATION_COOLDOWN_MS = 60 * 1000
+
 interface GlobalLineSettings {
   line_notifications_available?: boolean
   line_words_per_notification?: number
@@ -15,11 +17,28 @@ interface GlobalLineSettings {
 
 interface UserLineSettings {
   line_user_id?: string
+  line_last_test_at?: unknown
 }
 
 function clampWordCount(value: unknown, fallback: number): number {
   const count = typeof value === 'number' && Number.isFinite(value) ? value : fallback
   return Math.min(10, Math.max(1, Math.trunc(count)))
+}
+
+function timestampToMillis(value: unknown): number | null {
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  if (typeof value === 'object' && value !== null && 'toMillis' in value) {
+    const toMillis = (value as { toMillis?: unknown }).toMillis
+    if (typeof toMillis === 'function') {
+      const parsed = toMillis.call(value)
+      return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null
+    }
+  }
+  return null
 }
 
 /**
@@ -99,6 +118,43 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, sent: 0, message: 'No entries due for review' })
   }
 
+  const settingsRef = db.collection('settings').doc(sessionUser.uid)
+  const claimTime = new Date()
+  const claim = await db.runTransaction(async (transaction) => {
+    const currentSnapshot = await transaction.get(settingsRef)
+    const currentSettings = (currentSnapshot.data() ?? {}) as UserLineSettings
+    const currentLineUserId = currentSettings.line_user_id
+    if (!currentLineUserId) return { status: 'unlinked' as const }
+
+    const lastTestAt = timestampToMillis(currentSettings.line_last_test_at)
+    const elapsed = lastTestAt === null ? TEST_NOTIFICATION_COOLDOWN_MS : claimTime.getTime() - lastTestAt
+    if (elapsed < TEST_NOTIFICATION_COOLDOWN_MS) {
+      return {
+        status: 'cooldown' as const,
+        retryAfterSeconds: Math.max(1, Math.ceil((TEST_NOTIFICATION_COOLDOWN_MS - elapsed) / 1000)),
+      }
+    }
+
+    transaction.update(settingsRef, { line_last_test_at: claimTime })
+    return { status: 'claimed' as const, lineUserId: currentLineUserId }
+  })
+
+  if (claim.status === 'unlinked') {
+    return NextResponse.json(
+      { error: 'Link your LINE account in Settings first' },
+      { status: 400 },
+    )
+  }
+  if (claim.status === 'cooldown') {
+    return NextResponse.json(
+      {
+        error: `Please wait ${claim.retryAfterSeconds} seconds before sending another test notification`,
+        retry_after_seconds: claim.retryAfterSeconds,
+      },
+      { status: 429, headers: { 'Retry-After': String(claim.retryAfterSeconds) } },
+    )
+  }
+
   for (const entry of selected) {
     if (!entry.review_state) {
       entry.review_state = createDefaultReviewState(nowISO)
@@ -106,7 +162,7 @@ export async function POST(request: Request) {
   }
 
   const message = buildReviewMessage(selected)
-  const result = await pushMessage(token, lineUserId, [message])
+  const result = await pushMessage(token, claim.lineUserId, [message])
 
   if (!result.success) {
     console.error('LINE push failed:', result.error)

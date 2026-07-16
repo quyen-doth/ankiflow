@@ -22,7 +22,7 @@ const {
 }))
 
 vi.mock('@/lib/line/link-code', () => ({
-  generateLineLinkCode: () => generatedCodes.shift() ?? 'ANKI-ZZZZ',
+  generateLineLinkCode: () => generatedCodes.shift() ?? 'ANKI-ZZZZZZ',
 }))
 
 vi.mock('@/lib/firebase-admin', () => ({
@@ -50,7 +50,7 @@ vi.mock('@/lib/firebase-admin', () => ({
           get: async () => ({
             docs: [...codeStore.entries()]
               .filter(([, data]) => data.uid === 'user1')
-              .map(([id]) => ({ ref: { collection: collectionName, id } })),
+              .map(([id]) => ({ id, ref: { collection: collectionName, id } })),
           }),
         }),
         doc: (id: string): MockDocumentRef => ({ collection: collectionName, id }),
@@ -63,9 +63,16 @@ vi.mock('@/lib/firebase-admin', () => ({
         delete: (ref: MockDocumentRef) => deletes.push(ref),
         create: (ref: MockDocumentRef, data: Record<string, unknown>) => creates.push({ ref, data }),
         commit: async () => {
+          for (const { ref, data } of creates) {
+            if (codeStore.has(ref.id)) {
+              const error = new Error('ALREADY_EXISTS') as Error & { code: number }
+              error.code = 6
+              throw error
+            }
+            void data
+          }
           for (const ref of deletes) codeStore.delete(ref.id)
           for (const { ref, data } of creates) {
-            if (codeStore.has(ref.id)) throw new Error('ALREADY_EXISTS')
             codeStore.set(ref.id, data)
           }
         },
@@ -95,7 +102,7 @@ beforeEach(() => {
   codeStore.clear()
   settingsUpdates.length = 0
   generatedCodes.length = 0
-  generatedCodes.push('ANKI-ABCD', 'ANKI-EFGH')
+  generatedCodes.push('ANKI-ABCDEF', 'ANKI-GHJKLM')
 })
 
 afterEach(() => {
@@ -124,7 +131,7 @@ describe('POST /api/notifications/line-link', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.code).toMatch(/^ANKI-[A-HJ-NP-Z2-9]{4}$/)
+    expect(body.code).toMatch(/^ANKI-[A-HJ-NP-Z2-9]{6}$/)
     expect(body.expires_at).toBe('2026-07-16T03:10:00.000Z')
     expect(codeStore.get(body.code)).toEqual({
       uid: 'user1',
@@ -136,10 +143,22 @@ describe('POST /api/notifications/line-link', () => {
     const first = await (await POST(makeRequest(), ROUTE_CONTEXT)).json()
     const second = await (await POST(makeRequest(), ROUTE_CONTEXT)).json()
 
-    expect(first.code).toBe('ANKI-ABCD')
-    expect(second.code).toBe('ANKI-EFGH')
+    expect(first.code).toBe('ANKI-ABCDEF')
+    expect(second.code).toBe('ANKI-GHJKLM')
     expect(codeStore.has(first.code)).toBe(false)
     expect([...codeStore.keys()]).toEqual([second.code])
+  })
+
+  it('別 user の code と衝突した場合は新しい code で再試行する', async () => {
+    codeStore.set('ANKI-ABCDEF', { uid: 'other-user', expires_at: '2026-07-16T03:10:00.000Z' })
+
+    const response = await POST(makeRequest(), ROUTE_CONTEXT)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.code).toBe('ANKI-GHJKLM')
+    expect(codeStore.get('ANKI-ABCDEF')?.uid).toBe('other-user')
+    expect(codeStore.get('ANKI-GHJKLM')?.uid).toBe('user1')
   })
 })
 

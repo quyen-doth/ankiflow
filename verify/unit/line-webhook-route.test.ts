@@ -175,7 +175,7 @@ afterEach(() => {
 
 describe('POST /api/notifications/line-webhook — account linking', () => {
   it('有効な code で settings に LINE ID を保存し、code を削除して linked と返信する', async () => {
-    codeStore.set('ANKI-ABCD', {
+    codeStore.set('ANKI-ABCDEF', {
       uid: 'user1',
       expires_at: '2026-07-16T03:10:00.000Z',
     })
@@ -184,19 +184,19 @@ describe('POST /api/notifications/line-webhook — account linking', () => {
       type: 'message',
       replyToken: 'reply-link',
       source: { userId: 'line-user-1' },
-      message: { type: 'text', text: ' anki-abcd ' },
+      message: { type: 'text', text: ' anki-abcdef ' },
     }]))
 
     expect(response.status).toBe(200)
     expect(settingsStore.get('user1')).toMatchObject({ line_user_id: 'line-user-1' })
-    expect(codeStore.has('ANKI-ABCD')).toBe(false)
+    expect(codeStore.has('ANKI-ABCDEF')).toBe(false)
     expect(replyMessageMock).toHaveBeenCalledTimes(1)
     expect(replyMessageMock.mock.calls[0][0]).toBe('line-access-token')
     expect(replyMessageMock.mock.calls[0][2][0].text).toContain('now linked')
   })
 
   it('期限切れ code を削除して expired と返信する', async () => {
-    codeStore.set('ANKI-ABCD', {
+    codeStore.set('ANKI-ABCDEF', {
       uid: 'user1',
       expires_at: '2026-07-16T02:59:59.000Z',
     })
@@ -205,10 +205,10 @@ describe('POST /api/notifications/line-webhook — account linking', () => {
       type: 'message',
       replyToken: 'reply-expired',
       source: { userId: 'line-user-1' },
-      message: { type: 'text', text: 'ANKI-ABCD' },
+      message: { type: 'text', text: 'ANKI-ABCDEF' },
     }]))
 
-    expect(codeStore.has('ANKI-ABCD')).toBe(false)
+    expect(codeStore.has('ANKI-ABCDEF')).toBe(false)
     expect(settingsStore.has('user1')).toBe(false)
     expect(replyMessageMock.mock.calls[0][2][0].text).toContain('expired')
   })

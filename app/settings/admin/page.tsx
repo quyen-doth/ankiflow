@@ -15,6 +15,10 @@ import { useToast } from '@/components/ui/Toast';
 import { SectionHeader } from '@/components/settings/SettingsPrimitives';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
+import {
+    DEFAULT_LINE_WORDS_PER_NOTIFICATION,
+    parseLineWordsPerNotification,
+} from '@/lib/notifications/config';
 import { cn } from '@/lib/utils';
 import type { GlobalSettings } from '@/types';
 
@@ -40,7 +44,6 @@ interface AiConfigForm {
 interface LineConfigForm {
     line_notifications_available: boolean;
     line_schedule_hours: number[];
-    line_words_per_notification: number;
 }
 
 const CLAUDE_MODEL_OPTIONS = [
@@ -63,8 +66,8 @@ export default function AdminSettingsPage() {
     const [lineConfig, setLineConfig] = useState<LineConfigForm>({
         line_notifications_available: true,
         line_schedule_hours: [],
-        line_words_per_notification: 5,
     });
+    const [lineWordsInput, setLineWordsInput] = useState(String(DEFAULT_LINE_WORDS_PER_NOTIFICATION));
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -94,8 +97,13 @@ export default function AdminSettingsPage() {
                 setLineConfig({
                     line_notifications_available: g.line_notifications_available ?? true,
                     line_schedule_hours: g.line_schedule_hours ?? [],
-                    line_words_per_notification: g.line_words_per_notification ?? 5,
                 });
+                const configuredWords = g.line_words_per_notification;
+                setLineWordsInput(String(
+                    typeof configuredWords === 'number' && configuredWords >= 1 && configuredWords <= 10
+                        ? configuredWords
+                        : DEFAULT_LINE_WORDS_PER_NOTIFICATION,
+                ));
             } catch (error) {
                 console.error('Error fetching global settings:', error);
             } finally {
@@ -126,8 +134,17 @@ export default function AdminSettingsPage() {
         }));
     }, []);
 
+    const parsedLineWords = parseLineWordsPerNotification(lineWordsInput);
+    const lineWordsError = parsedLineWords === null
+        ? 'Enter a whole number from 1 to 10.'
+        : undefined;
+
     const handleSave = async () => {
         if (!isAdmin) return;
+        if (parsedLineWords === null) {
+            toast.error('Check Words per notification before saving.');
+            return;
+        }
         setSaving(true);
         try {
             // Feature flags + AI TOÀN CỤC → settings/global — BẮT BUỘC qua server API
@@ -142,7 +159,7 @@ export default function AdminSettingsPage() {
                     unsplash_available: featureFlags.unsplash_available,
                     line_notifications_available: lineConfig.line_notifications_available,
                     line_schedule_hours: lineConfig.line_schedule_hours,
-                    line_words_per_notification: lineConfig.line_words_per_notification,
+                    line_words_per_notification: parsedLineWords,
                 }),
             });
             if (!res.ok) {
@@ -285,16 +302,15 @@ export default function AdminSettingsPage() {
                             </div>
                         </FieldWrapper>
 
-                        <FieldWrapper label="Words per notification">
+                        <FieldWrapper label="Words per notification" error={lineWordsError}>
                             <Input
                                 aria-label="Words per notification"
                                 type="number"
                                 min={1}
                                 max={10}
-                                value={lineConfig.line_words_per_notification}
-                                onChange={(event) =>
-                                    updateLine('line_words_per_notification', Number(event.target.value))
-                                }
+                                value={lineWordsInput}
+                                error={lineWordsError !== undefined}
+                                onChange={(event) => setLineWordsInput(event.target.value)}
                                 className="max-w-32 font-mono"
                             />
                         </FieldWrapper>

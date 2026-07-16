@@ -334,6 +334,8 @@ export interface Settings {
   line_timezone?: string;
   /** 同じローカル時刻での重複送信を防止するキー。 */
   line_last_push_key?: string;
+  /** 手動テスト送信の cooldown を判定する server timestamp。 */
+  line_last_test_at?: FirestoreTimestamp;
   /** Danh sách ngôn ngữ học riêng của user; thiếu field → dùng legacy defaults. */
   study_languages?: StudyLanguage[];
   /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
