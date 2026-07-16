@@ -1,9 +1,13 @@
 import { z } from 'zod'
-import type { Firestore } from 'firebase-admin/firestore'
+import { GrpcStatus, type Firestore } from 'firebase-admin/firestore'
 import type { Auth } from 'firebase-admin/auth'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
-import { userScopedId } from '@/lib/seed-defaults'
+import {
+  materializeUserDefaultDocument,
+  userScopedId,
+  type UserDefaultReferenceIds,
+} from '@/lib/seed-defaults'
 import { FormType } from '@/types'
 
 export const ADMIN_DEFAULT_COLLECTIONS = ['categories', 'card_types', 'topics', 'decks'] as const
@@ -42,6 +46,7 @@ export interface TemplateSyncPlan {
 
 export interface SyncAdminDefaultsArgs {
   apply: boolean
+  allowEmpty: boolean
   help: boolean
 }
 
@@ -53,6 +58,11 @@ export interface UserBackfillOperation extends DefaultTemplateDocument {
 export interface UserBackfillPlan {
   targetUserCount: number
   creates: UserBackfillOperation[]
+}
+
+export interface UserBackfillExecutionResult {
+  created: number
+  skippedExisting: number
 }
 
 const formTypeSchema = z.enum([FormType.LANGUAGE, FormType.IT, FormType.GENERAL])
@@ -305,11 +315,36 @@ export function templateSyncOperationCount(plan: TemplateSyncPlan): number {
   return plan.creates.length + plan.updates.length + plan.deletes.length
 }
 
+/** 既存 template がある collection を desired snapshot が空にする場合だけ destructive warning 対象とする。 */
+export function templateCollectionsEmptiedBySync(
+  desired: DefaultTemplateSnapshot,
+  current: DefaultTemplateSnapshot,
+): AdminDefaultCollection[] {
+  return ADMIN_DEFAULT_COLLECTIONS.filter(
+    (collection) => desired[collection].length === 0 && current[collection].length > 0,
+  )
+}
+
+export function assertEmptyTemplateCollectionsAllowed(
+  emptiedCollections: AdminDefaultCollection[],
+  allowEmpty: boolean,
+): void {
+  if (emptiedCollections.length === 0 || allowEmpty) return
+  throw new Error(
+    `Refusing to empty template collection(s): ${emptiedCollections.join(', ')}. ` +
+    'Review the dry-run and rerun with --apply --allow-empty if intentional.',
+  )
+}
+
 export function parseSyncAdminDefaultsArgs(args: string[]): SyncAdminDefaultsArgs {
-  const allowed = new Set(['--apply', '--help', '-h'])
+  const allowed = new Set(['--apply', '--allow-empty', '--help', '-h'])
   const unknown = args.filter((arg) => !allowed.has(arg))
   if (unknown.length > 0) throw new Error(`Unknown argument(s): ${unknown.join(', ')}`)
-  return { apply: args.includes('--apply'), help: args.includes('--help') || args.includes('-h') }
+  return {
+    apply: args.includes('--apply'),
+    allowEmpty: args.includes('--allow-empty'),
+    help: args.includes('--help') || args.includes('-h'),
+  }
 }
 
 /** owner ごとの 4 collections を並列取得。Firestore query を loop 内で逐次実行しない。 */
@@ -412,7 +447,11 @@ function logicalIdentity(collection: AdminDefaultCollection, data: Record<string
   switch (collection) {
     case 'card_types': {
       const code = normalizedString(data.code)
-      return code ? `code:${code.toLocaleLowerCase('en-US')}` : null
+      const formType = normalizedString(data.form_type)
+      const language = normalizedString(data.language)?.toLocaleLowerCase('en-US') ?? '*'
+      return code && formType
+        ? `form_type:${formType}|language:${language}|code:${code.toLocaleLowerCase('en-US')}`
+        : null
     }
     case 'decks': {
       const deckName = normalizedString(data.anki_deck_name)
@@ -427,41 +466,71 @@ function logicalIdentity(collection: AdminDefaultCollection, data: Record<string
   }
 }
 
+interface ExistingDocumentLookup {
+  byId: Map<string, AdminWorkspaceDocument>
+  byIdentity: Map<string, AdminWorkspaceDocument>
+}
+
+type ExistingWorkspaceIndex = Record<AdminDefaultCollection, Map<string, ExistingDocumentLookup>>
+
+function emptyExistingWorkspaceIndex(): ExistingWorkspaceIndex {
+  return {
+    categories: new Map(),
+    card_types: new Map(),
+    topics: new Map(),
+    decks: new Map(),
+  }
+}
+
+function buildExistingWorkspaceIndex(existing: AdminWorkspaceSnapshot): ExistingWorkspaceIndex {
+  const index = emptyExistingWorkspaceIndex()
+
+  for (const collection of ADMIN_DEFAULT_COLLECTIONS) {
+    const documents = [...existing[collection]].sort((left, right) => left.id.localeCompare(right.id))
+    for (const document of documents) {
+      const userId = normalizedString(document.data.user_id)
+      if (!userId) continue
+
+      let lookup = index[collection].get(userId)
+      if (!lookup) {
+        lookup = { byId: new Map(), byIdentity: new Map() }
+        index[collection].set(userId, lookup)
+      }
+      lookup.byId.set(document.id, document)
+
+      const identity = logicalIdentity(collection, document.data)
+      if (identity && !lookup.byIdentity.has(identity)) lookup.byIdentity.set(identity, document)
+    }
+  }
+
+  return index
+}
+
 function findExistingUserDocument(
   collection: AdminDefaultCollection,
-  existingDocuments: AdminWorkspaceDocument[],
+  lookup: ExistingDocumentLookup | undefined,
   desiredId: string,
   desiredData: Record<string, unknown>,
 ): AdminWorkspaceDocument | undefined {
-  const exact = existingDocuments.find((document) => document.id === desiredId)
+  const exact = lookup?.byId.get(desiredId)
   if (exact) return exact
 
   const desiredIdentity = logicalIdentity(collection, desiredData)
   if (!desiredIdentity) return undefined
-  return [...existingDocuments]
-    .sort((left, right) => left.id.localeCompare(right.id))
-    .find((document) => logicalIdentity(collection, document.data) === desiredIdentity)
-}
-
-function userDocuments(
-  existing: AdminWorkspaceSnapshot,
-  collection: AdminDefaultCollection,
-  userId: string,
-): AdminWorkspaceDocument[] {
-  return existing[collection].filter((document) => document.data.user_id === userId)
+  return lookup?.byIdentity.get(desiredIdentity)
 }
 
 function createUserOperation(
   collection: AdminDefaultCollection,
   template: DefaultTemplateDocument,
   userId: string,
-  data: Record<string, unknown> = template.data,
+  references: UserDefaultReferenceIds = {},
 ): UserBackfillOperation {
+  const materialized = materializeUserDefaultDocument(collection, template, userId, references)
   return {
     collection,
     userId,
-    id: userScopedId(template.id, userId),
-    data: { ...data, user_id: userId },
+    ...materialized,
   }
 }
 
@@ -472,13 +541,14 @@ export function buildUserBackfillPlanFromExisting(
   existing: AdminWorkspaceSnapshot,
 ): UserBackfillPlan {
   const creates: UserBackfillOperation[] = []
+  const existingIndex = buildExistingWorkspaceIndex(existing)
 
   for (const userId of userIds) {
     const resolvedCategoryIds = new Map<string, string>()
     const resolvedCardTypeIds = new Map<string, string>()
 
     for (const collection of ['categories', 'card_types', 'topics'] as const) {
-      const currentDocuments = userDocuments(existing, collection, userId)
+      const currentDocuments = existingIndex[collection].get(userId)
       for (const template of templates[collection]) {
         const desiredId = userScopedId(template.id, userId)
         const matched = findExistingUserDocument(collection, currentDocuments, desiredId, template.data)
@@ -489,20 +559,15 @@ export function buildUserBackfillPlanFromExisting(
       }
     }
 
-    const currentDecks = userDocuments(existing, 'decks', userId)
+    const currentDecks = existingIndex.decks.get(userId)
     for (const template of templates.decks) {
       const desiredId = userScopedId(template.id, userId)
       const matched = findExistingUserDocument('decks', currentDecks, desiredId, template.data)
       if (matched) continue
 
-      const cardTypeIds = template.data.default_card_type_ids as string[]
-      const categoryId = template.data.default_category_id as string | null
       creates.push(createUserOperation('decks', template, userId, {
-        ...template.data,
-        default_card_type_ids: cardTypeIds.map((id) => resolvedCardTypeIds.get(id) ?? userScopedId(id, userId)),
-        default_category_id: categoryId
-          ? resolvedCategoryIds.get(categoryId) ?? userScopedId(categoryId, userId)
-          : null,
+        cardTypeIds: resolvedCardTypeIds,
+        categoryIds: resolvedCategoryIds,
       }))
     }
   }
@@ -513,14 +578,6 @@ export function buildUserBackfillPlanFromExisting(
       `${left.userId}/${left.collection}/${left.id}`.localeCompare(`${right.userId}/${right.collection}/${right.id}`),
     ),
   }
-}
-
-/** Template snapshot を各 user の deterministic ID + owner/FK に展開する (pure、write なし)。 */
-export function buildUserBackfillCandidates(
-  templates: DefaultTemplateSnapshot,
-  userIds: string[],
-): UserBackfillOperation[] {
-  return buildUserBackfillPlanFromExisting(templates, userIds, emptyWorkspaceSnapshot()).creates
 }
 
 /** user_id IN query を collection/user chunk ごとに並列実行し、N+1 query を避ける。 */
@@ -559,22 +616,45 @@ export async function buildUserBackfillPlan(
   return buildUserBackfillPlanFromExisting(templates, targetUserIds, existing)
 }
 
-/** create() のみを使い、dry-run 後に doc が作られた race でも上書きしない。 */
+/** create() のみを使い、競合した 1 doc が他 user の write を巻き戻さないよう独立実行する。 */
 export async function executeUserBackfillPlan(
   db: Firestore,
   plan: UserBackfillPlan,
   now = new Date(),
-): Promise<void> {
-  const batches = chunkItems(plan.creates, FIRESTORE_BATCH_LIMIT).map((operations) => {
-    const batch = db.batch()
-    for (const operation of operations) {
-      batch.create(db.collection(operation.collection).doc(operation.id), {
-        ...operation.data,
-        created_at: now,
-        updated_at: now,
-      })
-    }
-    return batch
+): Promise<UserBackfillExecutionResult> {
+  const writer = db.bulkWriter()
+  let skippedExisting = 0
+  writer.onWriteError((error) => {
+    if (error.code === GrpcStatus.ALREADY_EXISTS) return false
+    const isRetryable = error.code === GrpcStatus.ABORTED || error.code === GrpcStatus.UNAVAILABLE
+    return isRetryable && error.failedAttempts < 10
   })
-  await Promise.all(batches.map((batch) => batch.commit()))
+
+  try {
+    await Promise.all(
+      plan.creates.map((operation) =>
+        writer.create(db.collection(operation.collection).doc(operation.id), {
+          ...operation.data,
+          created_at: now,
+          updated_at: now,
+        }).catch((error: unknown) => {
+          const code = error && typeof error === 'object' && 'code' in error
+            ? (error as { code: unknown }).code
+            : undefined
+          if (code === GrpcStatus.ALREADY_EXISTS || code === 'already-exists') {
+            skippedExisting += 1
+            return
+          }
+          throw error
+        }),
+      ),
+    )
+  } finally {
+    await writer.close()
+  }
+
+  return {
+    created: plan.creates.length - skippedExisting,
+    skippedExisting,
+  }
 }

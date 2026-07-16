@@ -5,6 +5,8 @@
  * Usage:
  *   npx tsx scripts/sync-admin-defaults.ts          # dry-run (no writes)
  *   npx tsx scripts/sync-admin-defaults.ts --apply  # write template changes
+ *   npx tsx scripts/sync-admin-defaults.ts --apply --allow-empty
+ *                                                   # explicitly allow emptying template collections
  *
  * Existing users receive missing documents only; their current documents are never
  * updated or deleted. Never run --apply without reviewing the dry-run output and
@@ -19,6 +21,7 @@ import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import {
   ADMIN_DEFAULT_COLLECTIONS,
+  assertEmptyTemplateCollectionsAllowed,
   buildAdminDefaultSnapshot,
   buildTemplateSyncPlan,
   buildUserBackfillPlan,
@@ -28,6 +31,7 @@ import {
   fetchOwnedWorkspaceSnapshot,
   listAllAuthUserIds,
   parseSyncAdminDefaultsArgs,
+  templateCollectionsEmptiedBySync,
   templateSyncOperationCount,
   type TemplateSyncPlan,
   type UserBackfillPlan,
@@ -41,9 +45,10 @@ function requiredEnv(name: string): string {
 }
 
 function printUsage(): void {
-  console.log('Usage: npx tsx scripts/sync-admin-defaults.ts [--apply]')
+  console.log('Usage: npx tsx scripts/sync-admin-defaults.ts [--apply] [--allow-empty]')
   console.log('  default   Preview exact __defaults__ and existing-user backfill changes')
   console.log('  --apply   Apply reviewed template changes and missing-user creates')
+  console.log('  --allow-empty  Confirm that --apply may empty one or more template collections')
 }
 
 function operationCountByCollection(
@@ -117,6 +122,7 @@ async function main(): Promise<void> {
   ])
   const desiredTemplates = buildAdminDefaultSnapshot(adminWorkspace, admin.uid)
   const templatePlan = buildTemplateSyncPlan(desiredTemplates, currentTemplates)
+  const emptiedCollections = templateCollectionsEmptiedBySync(desiredTemplates, currentTemplates)
   const targetUserIds = backfillTargetUserIds(allUserIds, admin.uid)
   const backfillPlan = await buildUserBackfillPlan(db, desiredTemplates, targetUserIds)
 
@@ -126,6 +132,11 @@ async function main(): Promise<void> {
   }
   printPlan(templatePlan)
   printBackfillPlan(backfillPlan)
+
+  if (emptiedCollections.length > 0) {
+    console.warn(`\nWARNING: this synchronization will empty: ${emptiedCollections.join(', ')}`)
+    console.warn('Use --allow-empty together with --apply only when this is intentional.')
+  }
 
   const templateOperationCount = templateSyncOperationCount(templatePlan)
   const operationCount = templateOperationCount + backfillPlan.creates.length
@@ -138,12 +149,14 @@ async function main(): Promise<void> {
     console.log('Review this output, then rerun with --apply after explicit approval.')
     return
   }
+  assertEmptyTemplateCollectionsAllowed(emptiedCollections, args.allowEmpty)
 
   await executeTemplateSyncPlan(db, templatePlan)
-  await executeUserBackfillPlan(db, backfillPlan)
+  const backfillResult = await executeUserBackfillPlan(db, backfillPlan)
   console.log(
     `\nApplied ${templateOperationCount} template operation(s) and ` +
-    `${backfillPlan.creates.length} user backfill create(s).`,
+    `${backfillResult.created} user backfill create(s); ` +
+    `${backfillResult.skippedExisting} concurrent existing document(s) skipped.`,
   )
 }
 

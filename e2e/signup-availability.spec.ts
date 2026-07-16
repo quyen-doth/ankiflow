@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { isPublicSignupEnabled } from '../lib/signup-policy'
 
-const signupEnabled = process.env.SIGNUP_ENABLED?.trim().toLowerCase() === 'true'
+const signupEnabled = isPublicSignupEnabled()
 const testBaseUrl = process.env.SIGNUP_TEST_BASE_URL?.replace(/\/$/, '') ?? ''
 const testUrl = (path: string) => `${testBaseUrl}${path}`
 

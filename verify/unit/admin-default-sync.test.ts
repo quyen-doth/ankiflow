@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  assertEmptyTemplateCollectionsAllowed,
   backfillTargetUserIds,
   buildAdminDefaultSnapshot,
   buildTemplateSyncPlan,
-  buildUserBackfillCandidates,
   buildUserBackfillPlanFromExisting,
   executeTemplateSyncPlan,
   executeUserBackfillPlan,
   listAllAuthUserIds,
   parseSyncAdminDefaultsArgs,
+  templateCollectionsEmptiedBySync,
   templateIdFromAdminId,
   type AdminWorkspaceSnapshot,
   type DefaultTemplateSnapshot,
@@ -17,7 +18,7 @@ import {
 import type { Firestore } from 'firebase-admin/firestore'
 import type { Auth } from 'firebase-admin/auth'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
-import { FormType } from '@/types'
+import { FormType, LanguageType } from '@/types'
 
 const ADMIN_UID = 'admin-uid'
 
@@ -123,6 +124,29 @@ function makeFakeBatchDb(existingPaths: string[] = []) {
         commit: async () => {
           commits += 1
           applied.push(...queued)
+        },
+      }
+    },
+    bulkWriter: () => {
+      let errorHandler: ((error: { code: number; failedAttempts: number }) => boolean) | undefined
+      return {
+        onWriteError: (handler: (error: { code: number; failedAttempts: number }) => boolean) => {
+          errorHandler = handler
+        },
+        create: async (ref: { path: string }, data: Record<string, unknown>) => {
+          if (existing.has(ref.path)) {
+            const error = Object.assign(new Error(`Document already exists: ${ref.path}`), {
+              code: 6,
+              failedAttempts: 1,
+            })
+            errorHandler?.(error)
+            throw error
+          }
+          existing.add(ref.path)
+          applied.push({ action: 'create', path: ref.path, data })
+        },
+        close: async () => {
+          commits += 1
         },
       }
     },
@@ -298,13 +322,39 @@ describe('buildTemplateSyncPlan', () => {
 
 describe('parseSyncAdminDefaultsArgs', () => {
   it('default は dry-run、--apply だけが write mode を有効化', () => {
-    expect(parseSyncAdminDefaultsArgs([])).toEqual({ apply: false, help: false })
-    expect(parseSyncAdminDefaultsArgs(['--apply'])).toEqual({ apply: true, help: false })
-    expect(parseSyncAdminDefaultsArgs(['--help'])).toEqual({ apply: false, help: true })
+    expect(parseSyncAdminDefaultsArgs([])).toEqual({ apply: false, allowEmpty: false, help: false })
+    expect(parseSyncAdminDefaultsArgs(['--apply'])).toEqual({ apply: true, allowEmpty: false, help: false })
+    expect(parseSyncAdminDefaultsArgs(['--apply', '--allow-empty'])).toEqual({
+      apply: true,
+      allowEmpty: true,
+      help: false,
+    })
+    expect(parseSyncAdminDefaultsArgs(['--help'])).toEqual({ apply: false, allowEmpty: false, help: true })
   })
 
   it('unknown argument を拒否する', () => {
     expect(() => parseSyncAdminDefaultsArgs(['--force'])).toThrow('Unknown argument(s): --force')
+  })
+})
+
+describe('templateCollectionsEmptiedBySync', () => {
+  it('既存 template がある collection だけを empty 化 warning 対象にする', () => {
+    const desired = emptySnapshot()
+    const current = emptySnapshot()
+    current.card_types.push({ id: 'ct-existing', data: { user_id: DEFAULTS_OWNER_ID } })
+
+    expect(templateCollectionsEmptiedBySync(desired, current)).toEqual(['card_types'])
+
+    desired.topics.push({ id: 'topic-new', data: { user_id: DEFAULTS_OWNER_ID } })
+    expect(templateCollectionsEmptiedBySync(desired, current)).toEqual(['card_types'])
+  })
+
+  it('empty 化は追加確認なしの apply を拒否し、明示確認時だけ許可する', () => {
+    expect(() => assertEmptyTemplateCollectionsAllowed(['card_types'], false)).toThrow(
+      'Refusing to empty template collection(s): card_types',
+    )
+    expect(() => assertEmptyTemplateCollectionsAllowed(['card_types'], true)).not.toThrow()
+    expect(() => assertEmptyTemplateCollectionsAllowed([], false)).not.toThrow()
   })
 })
 
@@ -358,7 +408,7 @@ describe('existing-user backfill', () => {
 
   it('template ID/owner と deck FK を user-scoped 値へ展開する', () => {
     const templates = buildAdminDefaultSnapshot(validSnapshot(), ADMIN_UID)
-    const candidates = buildUserBackfillCandidates(templates, ['user-a'])
+    const candidates = buildUserBackfillPlanFromExisting(templates, ['user-a'], emptySnapshot()).creates
     const category = candidates.find((operation) => operation.collection === 'categories')!
     const deck = candidates.find((operation) => operation.collection === 'decks')!
 
@@ -375,6 +425,30 @@ describe('existing-user backfill', () => {
         default_category_id: 'cat_daily__user-a',
       },
     })
+  })
+
+  it('template の custom field を保持し、template 側 system field は user doc にコピーしない', () => {
+    const templates: DefaultTemplateSnapshot = {
+      categories: [{
+        id: 'cat_custom',
+        data: {
+          user_id: DEFAULTS_OWNER_ID,
+          name: 'Custom',
+          custom_badge: 'Focus',
+          created_at: 'template-created-at',
+          updated_at: 'template-updated-at',
+        },
+      }],
+      card_types: [],
+      topics: [],
+      decks: [],
+    }
+
+    const operation = buildUserBackfillPlanFromExisting(templates, ['user-a'], emptySnapshot()).creates[0]
+
+    expect(operation.data).toMatchObject({ user_id: 'user-a', custom_badge: 'Focus' })
+    expect(operation.data).not.toHaveProperty('created_at')
+    expect(operation.data).not.toHaveProperty('updated_at')
   })
 
   it('既存 doc を除外し、missing documents だけを plan に含める', () => {
@@ -407,7 +481,12 @@ describe('existing-user backfill', () => {
     })
     existing.card_types.push({
       id: 'existing-card-type-id',
-      data: { user_id: 'user-a', code: 'admin_primary' },
+      data: {
+        user_id: 'user-a',
+        code: 'admin_primary',
+        form_type: FormType.GENERAL,
+        language: null,
+      },
     })
     existing.topics.push({
       id: 'existing-topic-id',
@@ -432,17 +511,92 @@ describe('existing-user backfill', () => {
     expect(buildUserBackfillPlanFromExisting(templates, ['user-a'], existing).creates).toEqual([])
   })
 
-  it('create-only batch で user data を追加し、set/delete は使わない', async () => {
+  it('同じ code の card type を form type/language で区別し、deck FK を別言語へ誤 remap しない', () => {
+    const templates: DefaultTemplateSnapshot = {
+      categories: [],
+      topics: [],
+      card_types: [
+        {
+          id: 'ct_pinyin_char',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            code: 'reading_to_word',
+            form_type: FormType.LANGUAGE,
+            language: LanguageType.CHINESE,
+          },
+        },
+        {
+          id: 'ct_hira_kanji',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            code: 'reading_to_word',
+            form_type: FormType.LANGUAGE,
+            language: LanguageType.JAPANESE,
+          },
+        },
+      ],
+      decks: [
+        {
+          id: 'deck_zh_hsk1',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            anki_deck_name: 'Language::Chinese::HSK1',
+            default_card_type_ids: ['ct_pinyin_char'],
+            default_category_id: null,
+          },
+        },
+      ],
+    }
+    const existing = emptySnapshot()
+    existing.card_types.push({
+      id: 'ct_hira_kanji__user-a',
+      data: {
+        user_id: 'user-a',
+        code: 'reading_to_word',
+        form_type: FormType.LANGUAGE,
+        language: LanguageType.JAPANESE,
+      },
+    })
+
+    const plan = buildUserBackfillPlanFromExisting(templates, ['user-a'], existing)
+
+    expect(plan.creates.map((operation) => `${operation.collection}/${operation.id}`)).toEqual([
+      'card_types/ct_pinyin_char__user-a',
+      'decks/deck_zh_hsk1__user-a',
+    ])
+    expect(plan.creates.at(-1)?.data.default_card_type_ids).toEqual(['ct_pinyin_char__user-a'])
+  })
+
+  it('create-only writer で user data を追加し、set/delete は使わない', async () => {
     const templates = buildAdminDefaultSnapshot(validSnapshot(), ADMIN_UID)
-    const creates = buildUserBackfillCandidates(templates, ['user-a'])
+    const creates = buildUserBackfillPlanFromExisting(templates, ['user-a'], emptySnapshot()).creates
     const fake = makeFakeBatchDb()
     const now = new Date('2026-07-15T10:30:00.000Z')
 
-    await executeUserBackfillPlan(fake.db, { targetUserCount: 1, creates }, now)
+    await expect(executeUserBackfillPlan(fake.db, { targetUserCount: 1, creates }, now)).resolves.toEqual({
+      created: 4,
+      skippedExisting: 0,
+    })
 
     expect(fake.commitCount()).toBe(1)
     expect(fake.applied).toHaveLength(4)
     expect(fake.applied.every((operation) => operation.action === 'create')).toBe(true)
     expect(fake.applied[0].data).toMatchObject({ created_at: now, updated_at: now })
+  })
+
+  it('plan 後に 1 doc が作成済みになっても競合だけを無視し、他の create は継続する', async () => {
+    const templates = buildAdminDefaultSnapshot(validSnapshot(), ADMIN_UID)
+    const creates = buildUserBackfillPlanFromExisting(templates, ['user-a'], emptySnapshot()).creates
+    const racedPath = 'card_types/ct_primary__user-a'
+    const fake = makeFakeBatchDb([racedPath])
+
+    await expect(executeUserBackfillPlan(fake.db, { targetUserCount: 1, creates })).resolves.toEqual({
+      created: creates.length - 1,
+      skippedExisting: 1,
+    })
+
+    expect(fake.applied).toHaveLength(creates.length - 1)
+    expect(fake.applied.map((operation) => operation.path)).not.toContain(racedPath)
+    expect(fake.applied.map((operation) => operation.path)).toContain('decks/deck_primary__user-a')
   })
 })

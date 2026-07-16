@@ -8,6 +8,7 @@ import {
   DEFAULT_DECKS,
 } from '@/lib/seed-defaults'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
+import { FormType, LanguageType } from '@/types'
 
 /**
  * Fake tối giản cho Firestore Admin SDK (khác firestore-stub.ts — stub đó mô phỏng
@@ -105,6 +106,20 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
     }
   })
 
+  it('language deck は Create の filter と同じ canonical BCP 47 code で seed する', async () => {
+    const db = makeFakeAdminDb()
+    await seedUserDefaults(db, 'user-language')
+
+    const languageDecks = [...db._dump('decks').values()].filter(
+      (deck) => deck.user_id === 'user-language' && deck.form_type === FormType.LANGUAGE,
+    )
+
+    expect(new Set(languageDecks.map((deck) => deck.language))).toEqual(
+      new Set([LanguageType.CHINESE, LanguageType.JAPANESE, LanguageType.ENGLISH]),
+    )
+    expect(languageDecks.every((deck) => ['zh', 'ja', 'en'].includes(deck.language as string))).toBe(true)
+  })
+
   it('idempotent — 再実行しても重複作成せず、既存 doc を上書きしない', async () => {
     const db = makeFakeAdminDb()
     await seedUserDefaults(db, 'user1')
@@ -163,6 +178,8 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
       form_type: 'form_general',
       sort_order: 11,
       is_active: false,
+      custom_badge: 'Focus',
+      created_at: 'template-created-at',
     })
     await db.collection('card_types').doc('ct_admin').set({
       user_id: DEFAULTS_OWNER_ID,
@@ -200,7 +217,11 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
     expect(db._dump('categories').get(userScopedId('cat_admin', 'user-fields'))).toMatchObject({
       form_type: 'form_general',
       is_active: false,
+      custom_badge: 'Focus',
     })
+    expect(db._dump('categories').get(userScopedId('cat_admin', 'user-fields'))?.created_at).not.toBe(
+      'template-created-at',
+    )
     expect(db._dump('card_types').get(userScopedId('ct_admin', 'user-fields'))).toMatchObject({
       description: 'Admin description',
       is_active: false,

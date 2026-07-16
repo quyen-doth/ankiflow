@@ -13,14 +13,13 @@ function containsProtectedEnv(value) {
         for (const match of value.matchAll(ENV_FILE_PATTERN)) {
             const before = value[match.index - 1];
             const after = value[match.index + match[0].length];
-            const startsAtFilenameBoundary = !before || !/[A-Za-z0-9_-]/.test(before);
             const endsAtFilenameBoundary = !after || !/[A-Za-z0-9_-]/.test(after);
+            const isAllowedExample = (
+                match[0] === ALLOWED_ENV_FILE &&
+                (!before || !/[A-Za-z0-9_-]/.test(before))
+            );
 
-            if (
-                startsAtFilenameBoundary &&
-                endsAtFilenameBoundary &&
-                match[0] !== ALLOWED_ENV_FILE
-            ) {
+            if (endsAtFilenameBoundary && !isAllowedExample) {
                 return true;
             }
         }
