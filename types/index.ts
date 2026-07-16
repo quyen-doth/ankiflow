@@ -246,6 +246,7 @@ export interface FormFieldConfig {
   sort_order: number;
   placeholder?: string | null;
   data_source?: string | null; // Tên collection để lấy dữ liệu cho dropdown/checkbox
+  options?: string[]; // Static options cho custom dropdown không dùng data_source
 }
 
 // ─── SRS (Spaced Repetition System) ─────────────────────

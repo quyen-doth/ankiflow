@@ -8,18 +8,32 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
+import { FormType } from '@/types'
 import type { CardTypeConfig, LanguageCode } from '@/types'
 
 type UIFormType = 'Language' | 'IT' | 'General'
 
 interface CardTypeSelectorProps {
-  formType?: UIFormType
+  formType?: UIFormType | FormType | string
   language?: LanguageCode | ''
   selectedIds: string[]
   onChange: (ids: string[]) => void
+  label?: string
 }
 
-export function CardTypeSelector({ formType = 'Language', language, selectedIds, onChange }: CardTypeSelectorProps) {
+function resolveDatabaseFormType(formType: UIFormType | FormType | string): FormType | string {
+  return formType in UI_FORM_TYPE_MAP
+    ? UI_FORM_TYPE_MAP[formType as UIFormType]
+    : formType
+}
+
+export function CardTypeSelector({
+  formType = FormType.LANGUAGE,
+  language,
+  selectedIds,
+  onChange,
+  label = 'Card types to generate',
+}: CardTypeSelectorProps) {
   const { user, loading: authLoading } = useAuth()
   const [cardTypes, setCardTypes] = useState<Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'language' | 'sort_order'>[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +44,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
     async function fetchCardTypes() {
       setLoading(true)
       try {
-        const dbFormType = UI_FORM_TYPE_MAP[formType]
+        const dbFormType = resolveDatabaseFormType(formType)
         const q = query(
           collection(db, 'card_types'),
           where('user_id', '==', uid),
@@ -41,7 +55,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
           .map(doc => ({ id: doc.id, ...(doc.data() as Pick<CardTypeConfig, 'name' | 'description' | 'language' | 'sort_order' | 'is_active'>) }))
           .filter(ct => ct.is_active !== false)
 
-        if (formType === 'Language' && language) {
+        if (dbFormType === FormType.LANGUAGE && language) {
           data = data.filter(ct => !ct.language || ct.language === language)
         }
 
@@ -73,7 +87,7 @@ export function CardTypeSelector({ formType = 'Language', language, selectedIds,
     >
       <div className="flex justify-between items-center mb-3">
         <label className="text-[11px] font-bold tracking-[0.04em] uppercase font-mono text-slate-400">
-          {loading ? 'Loading card types...' : 'Card types to generate'}
+          {loading ? 'Loading card types...' : label}
         </label>
         <div className="flex gap-3">
           <button type="button" onClick={selectAll} disabled={loading} className="text-[12px] font-bold text-primary hover:underline disabled:opacity-50">All</button>

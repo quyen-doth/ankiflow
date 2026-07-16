@@ -23,6 +23,7 @@ import {
   isProtectedGlobalContentTypeId,
   validateContentTypeConfig,
 } from '@/lib/contentTypes'
+import { validateContentTypeBlueprint } from '@/lib/create/formBlueprint'
 import {
   GLOBAL_CONTENT_TYPES_COLLECTION,
   USER_CONTENT_TYPES_COLLECTION,
@@ -67,6 +68,7 @@ const EMPTY_FIELD: FormFieldConfig = {
   sort_order: 0,
   placeholder: null,
   data_source: null,
+  options: [],
 }
 
 export type ContentTypeManagerScope = 'workspace' | 'global-defaults'
@@ -189,6 +191,12 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
     }, editing?.code)
     if (!validation.success) {
       toast.error(validation.issues[0]?.message ?? 'Invalid content type configuration.')
+      return
+    }
+
+    const blueprintValidation = validateContentTypeBlueprint(validation.data)
+    if (!blueprintValidation.success) {
+      toast.error(blueprintValidation.error)
       return
     }
 
@@ -532,6 +540,20 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
                   />
                 </FieldWrapper>
               </div>
+              {field.type === 'dropdown' && (
+                <FieldWrapper label="Options">
+                  <Input
+                    aria-label={`Options for field ${index}`}
+                    value={(field.options ?? []).join(', ')}
+                    onChange={(e) => updateField(
+                      index,
+                      'options',
+                      e.target.value.split(',').map(option => option.trim()).filter(Boolean),
+                    )}
+                    placeholder="Beginner, Intermediate, Advanced"
+                  />
+                </FieldWrapper>
+              )}
               <div className="flex flex-col gap-2">
                 <Toggle
                   label="Required"

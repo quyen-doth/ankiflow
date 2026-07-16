@@ -21,6 +21,7 @@ interface TopicSelectorProps {
   selectedNames: string[]
   onChange: (selection: TopicSelection) => void
   onLoadingChange?: (loading: boolean) => void
+  label?: string
 }
 
 export interface TopicSelection {
@@ -37,6 +38,7 @@ export function TopicSelector({
   selectedNames,
   onChange,
   onLoadingChange,
+  label = 'Topics',
 }: TopicSelectorProps) {
   const { user, loading: authLoading } = useAuth()
   const toast = useToast()
@@ -185,7 +187,7 @@ export function TopicSelector({
   return (
     <>
       <FieldWrapper
-        label="Topics"
+        label={label}
         {...verifyAttrs({ unit: 'TopicSelector', count: activeTopics.length, selected: selectedIds.length, loading })}
       >
         {loading ? (

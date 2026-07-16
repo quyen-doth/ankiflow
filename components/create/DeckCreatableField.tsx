@@ -18,6 +18,7 @@ interface DeckCreatableFieldProps {
   onChangeId: (deckId: string) => void
   onClear?: () => void
   label?: string
+  placeholder?: string
   filterFormType?: FormType | string
   filterLanguage?: LanguageCode
   /** form_type/ngôn ngữ gán cho deck MỚI khi tạo trong trang create. */
@@ -33,6 +34,7 @@ export function DeckCreatableField({
   onChangeId,
   onClear,
   label = 'Anki Deck',
+  placeholder = 'Select a deck…',
   filterFormType,
   filterLanguage,
   createFormType,
@@ -102,7 +104,7 @@ export function DeckCreatableField({
         onChange={onChangeId}
         onClear={onClear}
         onCreate={(q) => { setPendingName(q); setModalOpen(true) }}
-        placeholder="Select a deck…"
+        placeholder={placeholder}
         createNoun="deck"
         loading={loading}
       />

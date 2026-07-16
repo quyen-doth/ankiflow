@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PenLine, SlidersHorizontal } from "lucide-react";
 import { Input, Textarea, Select, FieldWrapper } from "@/components/ui/FormField";
@@ -22,7 +22,6 @@ import { useSession } from "@/hooks/useSession";
 import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
 import { useToast } from "@/components/ui/Toast";
 import { useDuplicateCheck } from "@/hooks/useDuplicateCheck";
-import { FormType } from "@/types";
 import { savePendingEntry } from "@/lib/pendingEntry";
 import { savePendingBatch } from "@/lib/pendingBatch";
 import { generateBatch } from "@/lib/create/batchGenerate";
@@ -37,10 +36,10 @@ import {
 import { verifyAttrs } from "@/verify/core/contract";
 import type { CardFormBlueprint, CoreField, ConfigBlock, ConfigLeaf } from "@/lib/create/formBlueprint";
 import type { LanguageDetection } from "@/lib/ai-agent";
+import type { SessionConfigKey, SessionState } from "@/lib/session";
 import type { LanguageCode, StudyLanguage } from "@/types";
 
 type StepStatus = "completed" | "active" | "pending";
-type UIFormType = "Language" | "IT" | "General";
 
 interface PendingLanguageAction {
     detection: LanguageDetection;
@@ -53,7 +52,25 @@ type PendingDuplicateCheck =
     | { batch: false; promise: Promise<DuplicateEntry[]> }
     | { batch: true; promise: Promise<BatchDuplicateResult[]> };
 
-interface CardFormProps {
+const SESSION_KEYS_BY_CONTROL: Partial<Record<ConfigLeaf["kind"], readonly SessionConfigKey[]>> = {
+    language: ["language"],
+    deck: ["deckId"],
+    category: ["categoryId"],
+    tags: ["tags"],
+    cardTypes: ["cardTypeIds"],
+    topic: ["topicIds", "topicNames"],
+    difficulty: ["difficulty"],
+};
+
+function flattenConfigBlocks(blocks: ConfigBlock[]): ConfigLeaf[] {
+    return blocks.flatMap((block) => block.kind === "row" ? block.blocks : [block]);
+}
+
+function isCoreFieldRequired(field: CoreField): boolean {
+    return field.required ?? !field.optional;
+}
+
+export interface CardFormProps {
     blueprint: CardFormBlueprint;
     batchMode?: boolean;
     onGenerateStart?: () => void;
@@ -66,7 +83,16 @@ interface CardFormProps {
     formId?: string;
 }
 
-export function CardForm({
+interface CardFormContentProps extends CardFormProps {
+    navigate: (path: string) => void;
+}
+
+export function CardForm(props: CardFormProps) {
+    const router = useRouter();
+    return <CardFormContent {...props} navigate={(path) => router.push(path)} />;
+}
+
+export function CardFormContent({
     blueprint,
     batchMode = false,
     onGenerateStart,
@@ -77,10 +103,27 @@ export function CardForm({
     onBatchProgress,
     registerCancel,
     formId,
-}: CardFormProps) {
-    const router = useRouter();
+    navigate,
+}: CardFormContentProps) {
     const toast = useToast();
-    const { session, updateSession, resetContent, isLoaded } = useSession(blueprint.formType);
+    const configLeaves = useMemo(() => flattenConfigBlocks(blueprint.configBlocks), [blueprint.configBlocks]);
+    const configKinds = useMemo(() => new Set(configLeaves.map(leaf => leaf.kind)), [configLeaves]);
+    const persistentValueKeys = useMemo(() => [
+        ...blueprint.coreFields.filter(field => field.persistent).map(field => field.key),
+        ...configLeaves
+            .filter(leaf => leaf.kind === "keywords" && leaf.persistent)
+            .map(leaf => leaf.fieldKey || "keywords"),
+    ], [blueprint.coreFields, configLeaves]);
+    const persistentValueKeySet = useMemo(() => new Set(persistentValueKeys), [persistentValueKeys]);
+    const persistentSessionKeys = useMemo(() => Array.from(new Set(
+        configLeaves
+            .filter(leaf => leaf.persistent)
+            .flatMap(leaf => SESSION_KEYS_BY_CONTROL[leaf.kind] ?? []),
+    )), [configLeaves]);
+    const keywordValueKeys = useMemo(() => configLeaves
+        .filter(leaf => leaf.kind === "keywords")
+        .map(leaf => leaf.fieldKey || "keywords"), [configLeaves]);
+    const { session, updateSession, updateFieldValue, resetContent, isLoaded } = useSession(blueprint.formType);
     const {
         languages,
         enabledLanguages,
@@ -90,6 +133,7 @@ export function CardForm({
     } = useStudyLanguages();
 
     const [values, setValues] = useState<Record<string, string>>({});
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [batchItems, setBatchItems] = useState<string[]>([""]);
     const [error, setError] = useState<string | null>(null);
     const {
@@ -104,7 +148,7 @@ export function CardForm({
     const [batchDuplicates, setBatchDuplicates] = useState<BatchDuplicateResult[]>([]);
     const [showBatchDuplicate, setShowBatchDuplicate] = useState(false);
     const [detectingLanguage, setDetectingLanguage] = useState(false);
-    const [topicsLoading, setTopicsLoading] = useState(blueprint.uiFormType === "IT");
+    const [topicsLoading, setTopicsLoading] = useState(configKinds.has("topic"));
     const [pendingLanguageAction, setPendingLanguageAction] = useState<PendingLanguageAction | null>(null);
     const pendingDuplicateRef = useRef<PendingDuplicateCheck | null>(null);
     const [savingDetectedLanguage, setSavingDetectedLanguage] = useState(false);
@@ -118,43 +162,71 @@ export function CardForm({
     // NOTE: async wrapper は useSession と同じ意図的なパターン — 同期 setState を effect 直下に
     // 置くと react-hooks/set-state-in-effect (error) に違反するため。await が無くても削らないこと。
     useEffect(() => {
+        if (!isLoaded || draftHydratedRef.current) return;
+
         async function hydrate() {
             const draft = loadDraft(blueprint.formType);
+            const validKeys = new Set([
+                ...blueprint.coreFields.map((field) => field.key),
+                ...keywordValueKeys,
+            ]);
+            const persistentValues = Object.fromEntries(
+                persistentValueKeys
+                    .filter(key => session?.fieldValues?.[key] !== undefined)
+                    .map(key => [key, session!.fieldValues![key]]),
+            );
+            let restoredValues: Record<string, string> = persistentValues;
             if (draft) {
                 // blueprint に現存する field のみ復元 — admin がフォーム定義を変更した後の
-                // stale key が dynamicFields 経由で AI に渡るのを防ぐ。"keywords" は IT flow の
-                // coreFields 外の固定入力 (下の renderLeaf 参照) のため明示的に許可する。
-                const validKeys = new Set([...blueprint.coreFields.map((field) => field.key), "keywords"]);
-                const restoredValues = Object.fromEntries(
+                // stale key が dynamicFields 経由で AI に渡るのを防ぐ。
+                const draftValues = Object.fromEntries(
                     Object.entries(draft.values).filter(([key]) => validKeys.has(key)),
                 );
+                restoredValues = { ...persistentValues, ...draftValues };
                 // batchItems と同じ基準: 空白のみの内容は復元しない (すぐ auto-clear されるだけ)。
-                if (Object.values(restoredValues).some((value) => value.trim().length > 0)) {
-                    setValues(restoredValues);
-                }
                 if (draft.batchItems.some((item) => item.trim().length > 0)) setBatchItems(draft.batchItems);
             }
+            if (Object.keys(restoredValues).length > 0) setValues(restoredValues);
             draftHydratedRef.current = true;
         }
         void hydrate();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [
+        blueprint.coreFields,
+        blueprint.formType,
+        isLoaded,
+        keywordValueKeys,
+        persistentValueKeys,
+        session,
+    ]);
 
     // 入力内容を debounce 保存し、すべて空になった場合は draft を削除する。
     useEffect(() => {
         if (!draftHydratedRef.current) return;
         const timer = setTimeout(() => {
-            if (hasDraftContent(values, batchItems)) {
-                saveDraft(blueprint.formType, { values, batchItems });
+            const draftValues = Object.fromEntries(
+                Object.entries(values).filter(([key]) => !persistentValueKeySet.has(key)),
+            );
+            if (hasDraftContent(draftValues, batchItems)) {
+                saveDraft(blueprint.formType, { values: draftValues, batchItems });
             } else {
                 clearDraft(blueprint.formType);
             }
         }, 400);
         return () => clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [values, batchItems]);
+    }, [batchItems, blueprint.formType, persistentValueKeySet, values]);
 
-    const setValue = (key: string, value: string) => setValues((prev) => ({ ...prev, [key]: value }));
+    const clearFieldError = (key: string) => setFieldErrors(current => {
+        if (!current[key]) return current;
+        const next = { ...current };
+        delete next[key];
+        return next;
+    });
+
+    const setValue = (key: string, value: string) => {
+        setValues((prev) => ({ ...prev, [key]: value }));
+        clearFieldError(key);
+        if (persistentValueKeySet.has(key)) updateFieldValue(key, value);
+    };
 
     const isLanguageFlow = blueprint.uiFormType === "Language";
     const storedLanguage = session?.language || "";
@@ -168,20 +240,54 @@ export function CardForm({
     const topicNames = session?.topicNames || [];
     const difficulty = session?.difficulty || "intermediate";
 
-    const primaryKey = blueprint.coreFields[0]?.key ?? "";
+    const primaryKey = blueprint.primaryFieldKey ?? blueprint.coreFields[0]?.key ?? "";
     const primaryValue = values[primaryKey] || "";
 
     const batchValidItems = batchItems.map((it) => it.trim()).filter(Boolean);
 
+    const configValuePresent = (leaf: ConfigLeaf): boolean => {
+        switch (leaf.kind) {
+            case "language":
+                // Language flow は submit 後に detector が入力から値を確定する。
+                return !!language || (isLanguageFlow && (batchMode ? batchValidItems.length > 0 : !!primaryValue.trim()));
+            case "deck": return !!deckId;
+            case "category": return !!category;
+            case "tags": return tags.length > 0;
+            case "cardTypes": return cardTypes.length > 0;
+            case "topic": return topicIds.length > 0;
+            case "difficulty": return !!difficulty;
+            case "keywords": return !!values[leaf.fieldKey || "keywords"]?.trim();
+        }
+    };
+
+    const collectRequiredFieldErrors = (forBatch: boolean): Record<string, string> => {
+        const errors: Record<string, string> = {};
+        for (const field of blueprint.coreFields) {
+            if (!isCoreFieldRequired(field)) continue;
+            const present = forBatch && field.key === primaryKey
+                ? batchValidItems.length > 0
+                : !!values[field.key]?.trim();
+            if (!present) errors[field.key] = `${field.label} is required.`;
+        }
+        for (const leaf of configLeaves) {
+            if (!leaf.required || configValuePresent(leaf)) continue;
+            const key = leaf.fieldKey || leaf.kind;
+            errors[key] = `${leaf.label || key} is required.`;
+        }
+        return errors;
+    };
+
+    const requiredFieldsValid = Object.keys(collectRequiredFieldErrors(batchMode)).length === 0;
+
     useEffect(() => {
         if (batchMode) {
-            onValidityChange?.(batchValidItems.length > 0 && !detectingLanguage && !topicsLoading);
+            onValidityChange?.(requiredFieldsValid && !detectingLanguage && !topicsLoading);
             onBatchCountChange?.(batchValidItems.length);
         } else {
-            onValidityChange?.(primaryValue.trim().length > 0 && !detectingLanguage && !topicsLoading);
+            onValidityChange?.(requiredFieldsValid && !detectingLanguage && !topicsLoading);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [primaryValue, batchMode, batchItems, detectingLanguage, topicsLoading, onValidityChange, onBatchCountChange]);
+    }, [requiredFieldsValid, batchMode, batchItems, detectingLanguage, topicsLoading, onValidityChange, onBatchCountChange]);
 
     const handleTopicChange = useCallback((selection: TopicSelection) => {
         updateSession({ topicIds: selection.ids, topicNames: selection.names });
@@ -190,6 +296,36 @@ export function CardForm({
     const languageNameFor = (code: LanguageCode | null): string | undefined => {
         if (!code) return undefined;
         return languages.find(item => canonicalizeLanguageCode(item.code) === canonicalizeLanguageCode(code))?.display_name;
+    };
+
+    const buildEffectiveSession = (submissionLanguage: LanguageCode | null): SessionState => ({
+        outputLanguage: aiOutputLanguage,
+        outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
+        ...(configKinds.has("language") ? {
+            language: submissionLanguage ?? session?.language,
+            languageName: languageNameFor(submissionLanguage),
+        } : {}),
+        ...(configKinds.has("deck") ? { deckId } : {}),
+        ...(configKinds.has("category") ? { categoryId: category } : {}),
+        ...(configKinds.has("tags") ? { tags } : {}),
+        ...(configKinds.has("cardTypes") ? { cardTypeIds: cardTypes } : {}),
+        ...(configKinds.has("topic") ? { topicIds, topicNames } : {}),
+        ...(configKinds.has("difficulty") ? { difficulty } : {}),
+        ...(session?.fieldValues ? { fieldValues: session.fieldValues } : {}),
+    });
+
+    const resetValuesAfterSuccess = () => {
+        const preservedValues = Object.fromEntries(
+            Object.entries(values).filter(([key]) => persistentValueKeySet.has(key)),
+        );
+        resetContent({
+            sessionKeys: persistentSessionKeys,
+            fieldKeys: persistentValueKeys,
+        });
+        draftHydratedRef.current = false;
+        clearDraft(blueprint.formType);
+        setValues(preservedValues);
+        setFieldErrors({});
     };
 
     const finishIfAborted = (controller = abortRef.current): boolean => {
@@ -226,13 +362,7 @@ export function CardForm({
 
         try {
             onStepUpdate?.(2, "active");
-            const effectiveSession = {
-                ...(session ?? {}),
-                language: submissionLanguage ?? session?.language,
-                languageName: languageNameFor(submissionLanguage),
-                outputLanguage: aiOutputLanguage,
-                outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
-            };
+            const effectiveSession = buildEffectiveSession(submissionLanguage);
 
             let generatedContent: Record<string, unknown>;
             if (blueprint.generate.mode === "api") {
@@ -263,18 +393,16 @@ export function CardForm({
                 formType: blueprint.formType,
                 language: submissionLanguage,
                 outputLanguage: aiOutputLanguage,
-                deckId: languageConfigReset.current ? "" : deckId,
-                categoryId: category,
-                cardTypeIds: languageConfigReset.current ? [] : cardTypes,
-                topicIds: blueprint.uiFormType === "IT" ? topicIds : undefined,
-                tags,
+                deckId: configKinds.has("deck") && !languageConfigReset.current ? deckId : "",
+                categoryId: configKinds.has("category") ? category : "",
+                cardTypeIds: configKinds.has("cardTypes") && !languageConfigReset.current ? cardTypes : [],
+                topicIds: configKinds.has("topic") ? topicIds : undefined,
+                tags: configKinds.has("tags") ? tags : [],
                 savedAt: new Date().toISOString(),
             });
 
-            resetContent();
-            clearDraft(blueprint.formType);
-            setValues({});
-            router.push("/preview");
+            resetValuesAfterSuccess();
+            navigate("/preview");
         } catch (err) {
             // Người dùng hủy giữa chừng → giữ nguyên dữ liệu để chỉnh sửa, không báo lỗi.
             if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
@@ -310,16 +438,11 @@ export function CardForm({
 
         try {
             onStepUpdate?.(2, "active");
-            const effectiveSession = {
-                ...(session ?? {}),
-                language: submissionLanguage ?? session?.language,
-                languageName: languageNameFor(submissionLanguage),
-                outputLanguage: aiOutputLanguage,
-                outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
-            };
+            const effectiveSession = buildEffectiveSession(submissionLanguage);
             const results = await generateBatch(blueprint, items, effectiveSession, {
                 onProgress: (done, total) => onBatchProgress?.(done, total),
                 signal: controller.signal,
+                baseValues: values,
             });
 
             // Người dùng hủy giữa chừng → giữ nguyên danh sách item để chỉnh sửa.
@@ -345,18 +468,17 @@ export function CardForm({
                 formType: blueprint.formType,
                 language: submissionLanguage,
                 outputLanguage: aiOutputLanguage,
-                deckId: languageConfigReset.current ? "" : deckId,
-                categoryId: category,
-                cardTypeIds: languageConfigReset.current ? [] : cardTypes,
-                topicIds: blueprint.uiFormType === "IT" ? topicIds : undefined,
-                tags,
+                deckId: configKinds.has("deck") && !languageConfigReset.current ? deckId : "",
+                categoryId: configKinds.has("category") ? category : "",
+                cardTypeIds: configKinds.has("cardTypes") && !languageConfigReset.current ? cardTypes : [],
+                topicIds: configKinds.has("topic") ? topicIds : undefined,
+                tags: configKinds.has("tags") ? tags : [],
                 savedAt: new Date().toISOString(),
             });
 
-            resetContent();
-            clearDraft(blueprint.formType);
+            resetValuesAfterSuccess();
             setBatchItems([""]);
-            router.push("/preview/batch");
+            navigate("/preview/batch");
         } catch (err) {
             if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
                 toast.info("Card generation cancelled");
@@ -522,6 +644,10 @@ export function CardForm({
         e.preventDefault();
         if (detectingLanguage || topicsLoading) return;
 
+        const validationErrors = collectRequiredFieldErrors(batchMode);
+        setFieldErrors(validationErrors);
+        if (Object.keys(validationErrors).length > 0) return;
+
         const items = batchMode ? batchValidItemsList() : [primaryValue.trim()].filter(Boolean);
         if (items.length === 0) return;
 
@@ -606,24 +732,25 @@ export function CardForm({
     if (!isLoaded || languagesLoading) return null;
 
     const renderCoreField = (field: CoreField, index: number) => {
-        const isPrimary = index === 0;
+        const isPrimary = field.key === primaryKey;
         const value = values[field.key] || "";
         const onChange = (v: string) => setValue(field.key, v);
+        const fieldError = fieldErrors[field.key];
 
         let control: React.ReactNode;
         if (isPrimary || field.type === "text") {
-            control = isPrimary ? (
-                <input
+            control = (
+                <Input
                     type="text"
                     aria-label={field.label}
-                    autoFocus
+                    autoFocus={isPrimary}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={field.placeholder}
-                    className="w-full h-[46px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[10px] px-[14px] text-[15px] font-semibold text-ink placeholder:text-slate-400/70 placeholder:font-normal focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg transition-shadow"
+                    error={!!fieldError}
+                    aria-invalid={!!fieldError}
+                    className={isPrimary ? "h-[46px] rounded-[10px] text-[15px] font-semibold" : undefined}
                 />
-            ) : (
-                <Input aria-label={field.label} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />
             );
         } else if (field.type === "textarea") {
             control = (
@@ -633,12 +760,20 @@ export function CardForm({
                     onChange={(e) => onChange(e.target.value)}
                     rows={4}
                     placeholder={field.placeholder}
+                    error={!!fieldError}
+                    aria-invalid={!!fieldError}
                     className="rounded-[10px]"
                 />
             );
         } else if (field.type === "dropdown") {
             control = (
-                <Select aria-label={field.label} value={value} onChange={(e) => onChange(e.target.value)}>
+                <Select
+                    aria-label={field.label}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    error={!!fieldError}
+                    aria-invalid={!!fieldError}
+                >
                     <option value="">Select…</option>
                     {(field.options ?? []).map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -647,7 +782,15 @@ export function CardForm({
             );
         } else {
             control = (
-                <Input type="number" aria-label={field.label} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />
+                <Input
+                    type="number"
+                    aria-label={field.label}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={field.placeholder}
+                    error={!!fieldError}
+                    aria-invalid={!!fieldError}
+                />
             );
         }
 
@@ -655,26 +798,33 @@ export function CardForm({
             <div key={field.key} className={index < blueprint.coreFields.length - 1 ? "mb-[22px]" : undefined}>
                 <label className="block text-[13px] font-bold text-ink mb-2">
                     {field.label}{" "}
-                    {isPrimary ? (
+                    {isCoreFieldRequired(field) ? (
                         <span className="text-danger">*</span>
                     ) : field.optional ? (
                         <span className="font-medium text-slate-400">optional</span>
                     ) : null}
                 </label>
                 {control}
+                {fieldError && <p className="text-[12px] text-danger mt-1.5">{fieldError}</p>}
                 {field.hint && <p className="text-[12px] text-slate-400 mt-1.5">{field.hint}</p>}
             </div>
         );
     };
 
     const renderLeaf = (leaf: ConfigLeaf): React.ReactNode => {
+        const fieldKey = leaf.fieldKey || leaf.kind;
         switch (leaf.kind) {
             case "language":
                 return (
                     <LanguageSelector
                         value={language}
                         languages={languages}
-                        onChange={(v) => updateSession({ language: v, deckId: "", cardTypeIds: [] })}
+                        label={leaf.label}
+                        placeholder={leaf.placeholder}
+                        onChange={(v) => {
+                            clearFieldError(fieldKey);
+                            updateSession({ language: v, deckId: "", cardTypeIds: [] });
+                        }}
                         onClear={() => updateSession({ language: "", deckId: "", cardTypeIds: [] })}
                     />
                 );
@@ -682,9 +832,14 @@ export function CardForm({
                 return (
                     <DeckCreatableField
                         value={deckId}
-                        onChangeId={(id) => updateSession({ deckId: id })}
+                        onChangeId={(id) => {
+                            clearFieldError(fieldKey);
+                            updateSession({ deckId: id });
+                        }}
                         onClear={() => updateSession({ deckId: "" })}
-                        filterFormType={leaf.filterByLanguage ? FormType.LANGUAGE : undefined}
+                        label={leaf.label}
+                        placeholder={leaf.placeholder}
+                        filterFormType={blueprint.formType}
                         filterLanguage={leaf.filterByLanguage ? (language || undefined) : undefined}
                         createFormType={blueprint.formType}
                         createLanguage={isLanguageFlow ? (language || undefined) : undefined}
@@ -693,25 +848,41 @@ export function CardForm({
             case "category":
                 return (
                     <CategoryCreatableField
-                        formType={(blueprint.uiFormType ?? "") as UIFormType | ""}
+                        formType={blueprint.formType}
                         value={category}
-                        onChange={(v) => updateSession({ categoryId: v })}
+                        onChange={(v) => {
+                            clearFieldError(fieldKey);
+                            updateSession({ categoryId: v });
+                        }}
                         onClear={() => updateSession({ categoryId: "" })}
+                        label={leaf.label}
+                        placeholder={leaf.placeholder}
                     />
                 );
             case "tags":
                 return (
-                    <FieldWrapper label="Tags">
-                        <TagInput tags={tags} onChange={(v) => updateSession({ tags: v })} />
+                    <FieldWrapper label={leaf.label || "Tags"}>
+                        <TagInput
+                            tags={tags}
+                            onChange={(v) => {
+                                clearFieldError(fieldKey);
+                                updateSession({ tags: v });
+                            }}
+                            placeholder={leaf.placeholder}
+                        />
                     </FieldWrapper>
                 );
             case "cardTypes":
                 return (
                     <CardTypeSelector
-                        formType={(blueprint.uiFormType ?? "Language") as UIFormType}
+                        formType={blueprint.formType}
                         language={language}
                         selectedIds={cardTypes}
-                        onChange={(v) => updateSession({ cardTypeIds: v })}
+                        onChange={(v) => {
+                            clearFieldError(fieldKey);
+                            updateSession({ cardTypeIds: v });
+                        }}
+                        label={leaf.label}
                     />
                 );
             case "topic":
@@ -719,14 +890,25 @@ export function CardForm({
                     <TopicSelector
                         selectedIds={topicIds}
                         selectedNames={topicNames}
-                        onChange={handleTopicChange}
+                        onChange={(selection) => {
+                            clearFieldError(fieldKey);
+                            handleTopicChange(selection);
+                        }}
                         onLoadingChange={setTopicsLoading}
+                        label={leaf.label}
                     />
                 );
             case "difficulty":
                 return (
-                    <FieldWrapper label="Difficulty">
-                        <Select aria-label="Difficulty" value={difficulty} onChange={(e) => updateSession({ difficulty: e.target.value })}>
+                    <FieldWrapper label={leaf.label || "Difficulty"}>
+                        <Select
+                            aria-label={leaf.label || "Difficulty"}
+                            value={difficulty}
+                            onChange={(e) => {
+                                clearFieldError(fieldKey);
+                                updateSession({ difficulty: e.target.value });
+                            }}
+                        >
                             <option value="beginner">Beginner</option>
                             <option value="intermediate">Intermediate</option>
                             <option value="advanced">Advanced</option>
@@ -735,8 +917,15 @@ export function CardForm({
                 );
             case "keywords":
                 return (
-                    <FieldWrapper label="Keywords">
-                        <Input value={values.keywords || ""} onChange={(e) => setValue("keywords", e.target.value)} placeholder="async, callback, event…" />
+                    <FieldWrapper label={leaf.label || "Keywords"}>
+                        <Input
+                            aria-label={leaf.label || "Keywords"}
+                            value={values[leaf.fieldKey || "keywords"] || ""}
+                            onChange={(e) => setValue(leaf.fieldKey || "keywords", e.target.value)}
+                            placeholder={leaf.placeholder || "async, callback, event…"}
+                            error={!!fieldErrors[fieldKey]}
+                            aria-invalid={!!fieldErrors[fieldKey]}
+                        />
                     </FieldWrapper>
                 );
             default:
@@ -748,15 +937,25 @@ export function CardForm({
         if (block.kind === "row") {
             return (
                 <div key={`row-${i}`} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {block.blocks.map((leaf, j) => (
+                    {block.blocks.map((leaf, j) => {
+                        const error = fieldErrors[leaf.fieldKey || leaf.kind];
+                        return (
                         <div key={`${leaf.kind}-${j}`} className={leaf.span === 2 ? "sm:col-span-2" : undefined}>
                             {renderLeaf(leaf)}
+                            {error && <p className="text-[12px] text-danger mt-1.5">{error}</p>}
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             );
         }
-        return <div key={`${block.kind}-${i}`}>{renderLeaf(block)}</div>;
+        const error = fieldErrors[block.fieldKey || block.kind];
+        return (
+            <div key={`${block.kind}-${i}`}>
+                {renderLeaf(block)}
+                {error && <p className="text-[12px] text-danger mt-1.5">{error}</p>}
+            </div>
+        );
     };
 
     return (
@@ -770,13 +969,24 @@ export function CardForm({
             <div className="flex flex-col bg-white border border-border rounded-card p-6">
                 <ColumnLabel label={batchMode ? "Core content — batch" : "Core content"} icon={PenLine} tone="green" />
                 {batchMode ? (
-                    <BatchItemList
-                        items={batchItems}
-                        onChange={setBatchItems}
-                        label={blueprint.coreFields[0]?.label ?? "Item"}
-                        placeholder={blueprint.coreFields[0]?.placeholder}
-                        hint={blueprint.coreFields[0]?.hint}
-                    />
+                    <>
+                        <BatchItemList
+                            items={batchItems}
+                            onChange={(items) => {
+                                setBatchItems(items);
+                                clearFieldError(primaryKey);
+                            }}
+                            label={blueprint.coreFields.find(field => field.key === primaryKey)?.label ?? "Item"}
+                            placeholder={blueprint.coreFields.find(field => field.key === primaryKey)?.placeholder}
+                            hint={blueprint.coreFields.find(field => field.key === primaryKey)?.hint}
+                        />
+                        {fieldErrors[primaryKey] && (
+                            <p className="text-[12px] text-danger mt-1.5">{fieldErrors[primaryKey]}</p>
+                        )}
+                        {blueprint.coreFields
+                            .filter(field => field.key !== primaryKey)
+                            .map(renderCoreField)}
+                    </>
                 ) : (
                     blueprint.coreFields.map(renderCoreField)
                 )}

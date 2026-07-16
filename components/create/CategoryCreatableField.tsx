@@ -15,14 +15,29 @@ import type { Category, FormType } from '@/types'
 type UIFormType = 'Language' | 'IT' | 'General'
 
 interface CategoryCreatableFieldProps {
-  formType: UIFormType | ''
+  formType: UIFormType | FormType | string
   value: string
   onChange: (value: string) => void
   onClear?: () => void
+  label?: string
+  placeholder?: string
+}
+
+function resolveDatabaseFormType(formType: UIFormType | FormType | string): FormType | string {
+  return formType in UI_FORM_TYPE_MAP
+    ? UI_FORM_TYPE_MAP[formType as UIFormType]
+    : formType
 }
 
 /** Pulldown category có tìm kiếm + tạo category mới ngay (không cần popup). Dùng trong Create. */
-export function CategoryCreatableField({ formType, value, onChange, onClear }: CategoryCreatableFieldProps) {
+export function CategoryCreatableField({
+  formType,
+  value,
+  onChange,
+  onClear,
+  label = 'Category',
+  placeholder = 'Select category…',
+}: CategoryCreatableFieldProps) {
   const toast = useToast()
   const { user, loading: authLoading } = useAuth()
   const [categories, setCategories] = useState<Pick<Category, 'id' | 'name' | 'sort_order'>[]>([])
@@ -39,7 +54,7 @@ export function CategoryCreatableField({ formType, value, onChange, onClear }: C
       }
       setLoading(true)
       try {
-        const dbFormType: FormType = UI_FORM_TYPE_MAP[formType]
+        const dbFormType = resolveDatabaseFormType(formType)
         const q = query(
           collection(db, 'categories'),
           where('user_id', '==', uid),
@@ -64,7 +79,7 @@ export function CategoryCreatableField({ formType, value, onChange, onClear }: C
     if (!formType) return
     setCreating(true)
     try {
-      const created = await createCategory({ name, formType: UI_FORM_TYPE_MAP[formType] })
+      const created = await createCategory({ name, formType: resolveDatabaseFormType(formType) })
       setCategories(prev => [...prev, { id: created.id, name: created.name, sort_order: 999 }])
       onChange(created.id)
       toast.success(`Đã tạo category “${created.name}”`)
@@ -78,18 +93,18 @@ export function CategoryCreatableField({ formType, value, onChange, onClear }: C
 
   return (
     <FieldWrapper
-      label="Category"
+      label={label}
       className="text-overline uppercase text-slate-600 tracking-wider font-bold"
       {...verifyAttrs({ unit: 'CategoryCreatableField', count: categories.length, loading })}
     >
       <CreatableSelect
-        ariaLabel="Category"
+        ariaLabel={label}
         options={categories.map(c => ({ id: c.id, label: c.name }))}
         value={value}
         onChange={onChange}
         onClear={onClear}
         onCreate={handleCreate}
-        placeholder="Select category…"
+        placeholder={placeholder}
         createNoun="category"
         createNeedsQuery
         loading={loading}

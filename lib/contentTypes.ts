@@ -74,6 +74,7 @@ export const formFieldConfigSchema = z.object({
   sort_order: z.number().int('Field sort order must be an integer').min(0),
   placeholder: z.string().nullable().optional(),
   data_source: z.string().nullable().optional(),
+  options: z.array(z.string().trim().min(1, 'Dropdown options cannot be empty')).optional(),
 })
 
 export const editableContentTypeSchema = z.object({
@@ -126,7 +127,10 @@ export function materializeUserContentType(
       name: source.name,
       description: source.description,
       icon: source.icon,
-      fields: source.fields.map(field => ({ ...field })),
+      fields: source.fields.map(field => ({
+        ...field,
+        ...(field.options ? { options: field.options.slice() } : {}),
+      })),
       is_active: source.is_active,
       sort_order: source.sort_order,
       ...(source.default_create_mode ? { default_create_mode: source.default_create_mode } : {}),

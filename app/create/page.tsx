@@ -89,7 +89,6 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
     const [progress, setProgress] = useState(0);
-    const [canSubmit, setCanSubmit] = useState(false);
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
     const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
@@ -111,7 +110,6 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                 if (prepared.conflictingCodes.length > 0) {
                     setContentTypes([]);
                     setActiveCode('');
-                    setCanSubmit(false);
                     setContentTypeError(
                         `Conflicting Content Type codes found: ${prepared.conflictingCodes.join(', ')}. Resolve them in Settings before creating cards.`,
                     );
@@ -133,14 +131,12 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                     }
                 } else {
                     setActiveCode('');
-                    setCanSubmit(false);
                 }
             } catch (error) {
                 console.error('Error fetching content types:', error);
                 if (!cancelled) {
                     setContentTypes([]);
                     setActiveCode('');
-                    setCanSubmit(false);
                     setContentTypeError('Unable to load your Content Types. Please try again or review them in Settings.');
                 }
             } finally {
@@ -179,7 +175,6 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
             // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
             const next = contentTypes.find((ct) => ct.code === code);
             setBatchMode(next?.default_create_mode === 'batch');
-            setCanSubmit(false);
             setBatchCount(0);
             saveCreateUiState({ activeCode: code, batchMode: next?.default_create_mode === 'batch' });
         },
@@ -189,7 +184,6 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
     const handleModeChange = useCallback(
         (batch: boolean) => {
             setBatchMode(batch);
-            setCanSubmit(false);
             setBatchCount(0);
             saveCreateUiState({ activeCode, batchMode: batch });
         },
@@ -210,18 +204,30 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
-                if (!canSubmit || isGenerating) return;
+                if (isGenerating) return;
                 const form = document.getElementById(FORM_ID) as HTMLFormElement | null;
                 form?.requestSubmit();
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [canSubmit, isGenerating]);
+    }, [isGenerating]);
 
-    const blueprint = useMemo(() => {
-        return activeType ? getBlueprintForContentType(activeType) : null;
+    const blueprintState = useMemo(() => {
+        if (!activeType) return { blueprint: null, error: null };
+        try {
+            return { blueprint: getBlueprintForContentType(activeType), error: null };
+        } catch (error) {
+            return {
+                blueprint: null,
+                error: error instanceof Error
+                    ? error.message
+                    : 'Invalid Content Type field configuration.',
+            };
+        }
     }, [activeType]);
+    const blueprint = blueprintState.blueprint;
+    const runtimeContentTypeError = contentTypeError ?? blueprintState.error;
 
     return (
         <MotionPage>
@@ -241,7 +247,7 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                 {...verifyAttrs({
                     unit: 'CreateContentTypes',
                     loading: loadingTypes,
-                    state: contentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
+                    state: runtimeContentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
                 })}
             >
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
@@ -296,7 +302,7 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                             type="submit"
                             form={FORM_ID}
                             size="md"
-                            disabled={!canSubmit || isGenerating}
+                            disabled={isGenerating}
                             className="shadow-button"
                         >
                             {batchMode ? `Generate ${batchCount} card${batchCount !== 1 ? 's' : ''}` : 'Generate'}
@@ -307,14 +313,14 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
 
                 {/* Workspace — Form (blueprint-driven, no hardcoded branches) */}
                 <div>
-                    {!loadingTypes && (contentTypeError || contentTypes.length === 0) && (
+                    {!loadingTypes && (runtimeContentTypeError || contentTypes.length === 0) && (
                         <div className="rounded-xl border border-[#e3e3df] bg-white px-6 py-10 text-center shadow-sm">
                             <BookOpen className="mx-auto mb-3 h-9 w-9 text-slate-400" />
                             <h2 className="text-base font-bold text-ink">
-                                {contentTypeError ? 'Content Type configuration needs attention' : 'No Content Types configured'}
+                                {runtimeContentTypeError ? 'Content Type configuration needs attention' : 'No Content Types configured'}
                             </h2>
                             <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
-                                {contentTypeError
+                                {runtimeContentTypeError
                                     ?? 'Create or activate a Content Type in Settings before creating cards.'}
                             </p>
                             <Link
@@ -339,7 +345,6 @@ export function CreateContent({ loadContentTypes = loadUserContentTypes }: Creat
                             onGenerateStart={handleGenerateStart}
                             onStepUpdate={handleStepUpdate}
                             onGenerateEnd={handleGenerateEnd}
-                            onValidityChange={setCanSubmit}
                             onBatchCountChange={setBatchCount}
                             onBatchProgress={handleBatchProgress}
                             registerCancel={(fn) => {

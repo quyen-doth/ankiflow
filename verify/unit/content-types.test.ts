@@ -139,12 +139,16 @@ describe('Content Type materialization', () => {
 
   it('fields[] を deep clone し、source と参照を共有しない', () => {
     const source = sourceDocument()
+    source.fields[0].options = ['First', 'Second']
     const materialized = materializeUserContentType(source, 'user-1')
 
     expect(materialized.data.fields).not.toBe(source.fields)
     expect(materialized.data.fields[0]).not.toBe(source.fields[0])
+    expect(materialized.data.fields[0].options).not.toBe(source.fields[0].options)
     source.fields[0].label = 'Changed after materialization'
+    source.fields[0].options![0] = 'Changed option'
     expect(materialized.data.fields[0].label).toBe('Term')
+    expect(materialized.data.fields[0].options).toEqual(['First', 'Second'])
   })
 })
 

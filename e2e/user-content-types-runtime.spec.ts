@@ -39,3 +39,23 @@ test('Resync は routing code の競合時に実行を無効化する', async ({
   await expect(page.getByRole('combobox', { name: 'Content type' }).locator('option')).toHaveText(['All'])
   await expect(page.getByRole('button', { name: 'Re-sync cards' })).toBeDisabled()
 })
+
+test('Configured CardForm は persistent core field を session から復元する', async ({ page }) => {
+  await page.goto('/verify/ConfiguredCardForm/persistent-field-hydrates?chrome=0')
+
+  await expect(page.getByRole('textbox', { name: 'Audience' })).toHaveValue('Software engineers')
+})
+
+test('Configured CardForm はすべての required field を検証する', async ({ page }) => {
+  await page.goto('/verify/ConfiguredCardForm/probe-all-required-fields?chrome=0')
+
+  await expect(page.getByText('Audience is required.')).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Audience' })).toHaveAttribute('aria-invalid', 'true')
+})
+
+test('Configured CardForm は成功後 nonpersistent field だけを reset する', async ({ page }) => {
+  await page.goto('/verify/ConfiguredCardForm/submit-resets-only-nonpersistent?chrome=0')
+
+  await expect(page.getByRole('textbox', { name: 'Prompt' })).toHaveValue('')
+  await expect(page.getByRole('textbox', { name: 'Audience' })).toHaveValue('Beginners')
+})

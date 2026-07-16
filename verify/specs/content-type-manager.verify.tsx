@@ -36,6 +36,7 @@ const SEED = {
       fields: [
         field({ field_key: 'word', label: 'Word', sort_order: 1 }),
         field({ field_key: 'note', label: 'Note', type: 'textarea', sort_order: 2 }),
+        field({ field_key: 'language', label: 'Language', type: 'dropdown', sort_order: 3 }),
       ],
     },
     {
@@ -204,6 +205,10 @@ registerUnit<VerifyProps>({
         await ctx.wait(0)
         setFieldValue(ctx.root, 'Name', 'Medical Terms')
         setFieldValue(ctx.root, 'Code', 'medical_terms')
+        clickButtonByText(ctx.root, 'Add Field')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Field Key', 'term')
+        setFieldValue(ctx.root, 'Label', 'Term')
         clickButtonByText(ctx.root, 'Save')
         await ctx.wait(80)
       },
@@ -291,6 +296,10 @@ registerUnit<VerifyProps>({
         await ctx.wait(0)
         setFieldValue(ctx.root, 'Name', 'Future Custom')
         setFieldValue(ctx.root, 'Code', 'future_custom')
+        clickButtonByText(ctx.root, 'Add Field')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Field Key', 'prompt')
+        setFieldValue(ctx.root, 'Label', 'Prompt')
         clickButtonByText(ctx.root, 'Save')
         await ctx.wait(80)
       },
@@ -341,8 +350,8 @@ registerUnit<VerifyProps>({
       onlyFixtures: ['loaded'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
-        // ct-lang có 2 field, ct-it có 1 field
-        return (text.includes('2') && text.includes('1')) || 'không thấy số field'
+        // ct-lang は language invariant を含む 3 fields、ct-it は 1 field。
+        return (text.includes('3') && text.includes('1')) || 'không thấy số field'
       },
     },
     {

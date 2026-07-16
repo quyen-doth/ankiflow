@@ -2,7 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { FormType } from '@/types';
-import { loadSession, saveSession, clearSession, resetContentFields, SessionState } from '@/lib/session';
+import {
+  loadSession,
+  saveSession,
+  clearSession,
+  resetContentFields,
+} from '@/lib/session';
+import type {
+  ResetContentFieldsOptions,
+  SessionState,
+} from '@/lib/session';
 
 export function useSession(formType: FormType | string) {
   const [session, setSessionState] = useState<SessionState | null>(null);
@@ -30,8 +39,19 @@ export function useSession(formType: FormType | string) {
     setSessionState(null);
   }, [formType]);
 
-  const resetContent = useCallback(() => {
-    const newSession = resetContentFields(formType);
+  const updateFieldValue = useCallback((key: string, value: string) => {
+    setSessionState(prev => {
+      const newState: SessionState = {
+        ...(prev || {}),
+        fieldValues: { ...(prev?.fieldValues || {}), [key]: value },
+      };
+      saveSession(formType, newState);
+      return newState;
+    });
+  }, [formType]);
+
+  const resetContent = useCallback((options?: ResetContentFieldsOptions) => {
+    const newSession = resetContentFields(formType, options);
     setSessionState(newSession || null);
   }, [formType]);
 
@@ -39,6 +59,7 @@ export function useSession(formType: FormType | string) {
     session,
     isLoaded,
     updateSession,
+    updateFieldValue,
     clear,
     resetContent
   };
