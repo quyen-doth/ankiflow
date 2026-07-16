@@ -44,12 +44,23 @@
         ]
       }
     ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/notify.sh \"🔔 [AnkiFlow] Codex\" \"Need approval\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/scripts/notify.sh \"✅ Claude Code\" \"Task completed\""
+            "command": "bash $HOME/.claude/scripts/notify.sh \"✅ [AnkiFlow] Codex\" \"Task completed\""
           }
         ]
       }

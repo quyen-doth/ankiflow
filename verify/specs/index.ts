@@ -27,6 +27,7 @@ import './page-header.verify'
 import './connected-badge.verify'
 import './navigation-sidebar.verify'
 import './app-shell.verify'
+import './login-form.verify'
 
 // Phase C — create/ + preview/ + history/
 import './section-divider.verify'

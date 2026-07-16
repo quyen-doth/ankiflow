@@ -8,6 +8,7 @@ import {
   DEFAULT_DECKS,
 } from '@/lib/seed-defaults'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
+import { FormType, LanguageType } from '@/types'
 
 /**
  * Fake tối giản cho Firestore Admin SDK (khác firestore-stub.ts — stub đó mô phỏng
@@ -105,6 +106,20 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
     }
   })
 
+  it('language deck は Create の filter と同じ canonical BCP 47 code で seed する', async () => {
+    const db = makeFakeAdminDb()
+    await seedUserDefaults(db, 'user-language')
+
+    const languageDecks = [...db._dump('decks').values()].filter(
+      (deck) => deck.user_id === 'user-language' && deck.form_type === FormType.LANGUAGE,
+    )
+
+    expect(new Set(languageDecks.map((deck) => deck.language))).toEqual(
+      new Set([LanguageType.CHINESE, LanguageType.JAPANESE, LanguageType.ENGLISH]),
+    )
+    expect(languageDecks.every((deck) => ['zh', 'ja', 'en'].includes(deck.language as string))).toBe(true)
+  })
+
   it('idempotent — 再実行しても重複作成せず、既存 doc を上書きしない', async () => {
     const db = makeFakeAdminDb()
     await seedUserDefaults(db, 'user1')
@@ -153,6 +168,74 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
     const cloned = db._dump('categories').get(userScopedId('cat_custom_admin', 'user3'))
     expect(cloned).toBeDefined()
     expect(cloned?.name).toBe('Custom Admin Category')
+  })
+
+  it('admin が編集した全 field (form type、description、active、template、deck FK) を user clone に保持', async () => {
+    const db = makeFakeAdminDb()
+    await db.collection('categories').doc('cat_admin').set({
+      user_id: DEFAULTS_OWNER_ID,
+      name: 'Admin Category',
+      form_type: 'form_general',
+      sort_order: 11,
+      is_active: false,
+      custom_badge: 'Focus',
+      created_at: 'template-created-at',
+    })
+    await db.collection('card_types').doc('ct_admin').set({
+      user_id: DEFAULTS_OWNER_ID,
+      code: 'admin_card',
+      name: 'Admin Card',
+      description: 'Admin description',
+      form_type: 'form_general',
+      language: null,
+      is_default: true,
+      is_active: false,
+      sort_order: 12,
+      template: { front: ['word'], back: ['meaning'] },
+    })
+    await db.collection('topics').doc('topic_admin').set({
+      user_id: DEFAULTS_OWNER_ID,
+      name: 'Admin Topic',
+      form_type: 'form_it',
+      is_active: false,
+      sort_order: 13,
+    })
+    await db.collection('decks').doc('deck_admin').set({
+      user_id: DEFAULTS_OWNER_ID,
+      anki_deck_name: 'Admin::Deck',
+      display_name: 'Admin Deck',
+      form_type: 'form_general',
+      language: null,
+      default_card_type_ids: ['ct_admin'],
+      default_category_id: 'cat_admin',
+      is_active: false,
+      sort_order: 14,
+    })
+
+    await seedUserDefaults(db, 'user-fields')
+
+    expect(db._dump('categories').get(userScopedId('cat_admin', 'user-fields'))).toMatchObject({
+      form_type: 'form_general',
+      is_active: false,
+      custom_badge: 'Focus',
+    })
+    expect(db._dump('categories').get(userScopedId('cat_admin', 'user-fields'))?.created_at).not.toBe(
+      'template-created-at',
+    )
+    expect(db._dump('card_types').get(userScopedId('ct_admin', 'user-fields'))).toMatchObject({
+      description: 'Admin description',
+      is_active: false,
+      template: { front: ['word'], back: ['meaning'] },
+    })
+    expect(db._dump('topics').get(userScopedId('topic_admin', 'user-fields'))).toMatchObject({
+      form_type: 'form_it',
+      is_active: false,
+    })
+    expect(db._dump('decks').get(userScopedId('deck_admin', 'user-fields'))).toMatchObject({
+      default_card_type_ids: [userScopedId('ct_admin', 'user-fields')],
+      default_category_id: userScopedId('cat_admin', 'user-fields'),
+      is_active: false,
+    })
   })
 
   it('少なくとも 1 種類のテンプレートが既にある場合は lazy-publish しない (admin の変更を上書きしないため)', async () => {
