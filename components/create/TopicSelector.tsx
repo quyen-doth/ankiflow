@@ -43,6 +43,8 @@ export function TopicSelector({
   const [topics, setTopics] = useState<Pick<Topic, 'id' | 'name' | 'sort_order' | 'is_active'>[]>([])
   const [loading, setLoading] = useState(true)
   const [loadSucceeded, setLoadSucceeded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [reactivateTarget, setReactivateTarget] = useState<Pick<Topic, 'id' | 'name'> | null>(null)
   const [reactivating, setReactivating] = useState(false)
@@ -53,6 +55,7 @@ export function TopicSelector({
     async function fetchTopics() {
       setLoading(true)
       setLoadSucceeded(false)
+      setLoadError(false)
       try {
         const q = query(
           collection(db, 'topics'),
@@ -70,12 +73,15 @@ export function TopicSelector({
         setLoadSucceeded(true)
       } catch (error) {
         console.error("Error fetching topics", error)
+        setLoadError(true)
       } finally {
         setLoading(false)
       }
     }
     fetchTopics()
-  }, [user, authLoading])
+  }, [user, authLoading, refreshKey])
+
+  const retryLoad = () => setRefreshKey(key => key + 1)
 
   const activeTopics = useMemo(
     () => topics.filter(topic => topic.is_active),
@@ -186,10 +192,17 @@ export function TopicSelector({
     <>
       <FieldWrapper
         label="Topics"
-        {...verifyAttrs({ unit: 'TopicSelector', count: activeTopics.length, selected: selectedIds.length, loading })}
+        {...verifyAttrs({ unit: 'TopicSelector', count: activeTopics.length, selected: selectedIds.length, loading, error: loadError })}
       >
         {loading ? (
           <span className="text-sm text-slate-600">Loading topics...</span>
+        ) : loadError ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-danger">Failed to load topics.</span>
+            <Button type="button" variant="ghost" size="sm" onClick={retryLoad}>
+              Retry
+            </Button>
+          </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
             {activeTopics.map(topic => (
