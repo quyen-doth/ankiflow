@@ -16,13 +16,22 @@ export interface SessionState {
   topicNames?: string[]
   difficulty?: string
   tags?: string[]
+  /** Content Type fields with is_session_persistent=true, keyed by field_key. */
+  fieldValues?: Record<string, string>
 }
 
 type SessionKey = keyof SessionState
 
-const SESSION_KEYS: SessionKey[] = [
+export const SESSION_CONFIG_KEYS = [
   'categoryId', 'language', 'deckId', 'cardTypeIds', 'topicIds', 'topicNames', 'difficulty', 'tags',
-]
+] as const satisfies readonly SessionKey[]
+
+export type SessionConfigKey = (typeof SESSION_CONFIG_KEYS)[number]
+
+export interface ResetContentFieldsOptions {
+  sessionKeys?: readonly SessionConfigKey[]
+  fieldKeys?: readonly string[]
+}
 
 const getStorageKey = (formType: FormType | string) => `ankiflow_session_${formType}`
 
@@ -53,17 +62,30 @@ export const clearSession = (formType: FormType | string): void => {
   localStorage.removeItem(getStorageKey(formType))
 }
 
-export const resetContentFields = (formType: FormType | string): SessionState | null => {
+export const resetContentFields = (
+  formType: FormType | string,
+  options?: ResetContentFieldsOptions,
+): SessionState | null => {
   if (typeof window === 'undefined') return null
   const current = loadSession(formType)
   if (!current) return null
 
   const preserved: SessionState = {}
-  for (const key of SESSION_KEYS) {
+  for (const key of options?.sessionKeys ?? SESSION_CONFIG_KEYS) {
     const value = current[key]
     if (value !== undefined) {
       (preserved as Record<string, unknown>)[key] = value
     }
+  }
+
+  const fieldKeys = options?.fieldKeys ?? []
+  if (current.fieldValues && fieldKeys.length > 0) {
+    const fieldValues = Object.fromEntries(
+      fieldKeys
+        .filter(key => current.fieldValues?.[key] !== undefined)
+        .map(key => [key, current.fieldValues![key]]),
+    )
+    if (Object.keys(fieldValues).length > 0) preserved.fieldValues = fieldValues
   }
 
   localStorage.setItem(getStorageKey(formType), JSON.stringify(preserved))

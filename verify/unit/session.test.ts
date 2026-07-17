@@ -91,6 +91,27 @@ describe('lib/session', () => {
     })
   })
 
+  it('Content Type の persistent config/field だけを保持する', () => {
+    saveSession('custom_type', {
+      deckId: 'deck-1',
+      tags: ['temporary'],
+      difficulty: 'advanced',
+      fieldValues: {
+        audience: 'Beginner',
+        temporary_note: 'Remove me',
+      },
+    })
+
+    expect(resetContentFields('custom_type', {
+      sessionKeys: ['deckId', 'difficulty'],
+      fieldKeys: ['audience'],
+    })).toEqual({
+      deckId: 'deck-1',
+      difficulty: 'advanced',
+      fieldValues: { audience: 'Beginner' },
+    })
+  })
+
   it('session がない場合 resetContentFields は null を返す', () => {
     expect(resetContentFields(FormType.LANGUAGE)).toBeNull()
   })

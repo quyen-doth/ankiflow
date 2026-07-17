@@ -49,7 +49,7 @@ export interface CreatedCategory {
 /** 新しい category を作成 (name + form_type のみ必要)。 */
 export async function createCategory(params: {
   name: string
-  formType: FormType
+  formType: FormType | string
 }): Promise<CreatedCategory> {
   const name = params.name.trim()
   const ref = await addDoc(collection(db, 'categories'), {

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  collection, query, orderBy, getDocs,
+  collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -19,6 +19,15 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
+import {
+  isProtectedGlobalContentTypeId,
+  validateContentTypeConfig,
+} from '@/lib/contentTypes'
+import { validateContentTypeBlueprint } from '@/lib/create/formBlueprint'
+import {
+  GLOBAL_CONTENT_TYPES_COLLECTION,
+  USER_CONTENT_TYPES_COLLECTION,
+} from '@/lib/constants'
 import type { ContentType, FormFieldConfig } from '@/types'
 
 const FIELD_TYPE_OPTIONS: { value: FormFieldConfig['type']; label: string }[] = [
@@ -59,13 +68,23 @@ const EMPTY_FIELD: FormFieldConfig = {
   sort_order: 0,
   placeholder: null,
   data_source: null,
+  options: [],
 }
 
-export function ContentTypeManager() {
-  // ADMIN-ONLY: content_types là SHARED toàn cục (doc id = form_type, routing cốt lõi
-  // toàn app) — sửa ảnh hưởng MỌI user ngay lập tức, không có bản per-user để bảo vệ.
-  const { user } = useAuth()
+export type ContentTypeManagerScope = 'workspace' | 'global-defaults'
+
+interface ContentTypeManagerProps {
+  scope?: ContentTypeManagerScope
+}
+
+export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerProps = {}) {
+  const { user, loading: authLoading } = useAuth()
+  const uid = user?.uid
   const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
+  const isGlobalScope = scope === 'global-defaults' && isAdmin
+  const collectionName = isGlobalScope
+    ? GLOBAL_CONTENT_TYPES_COLLECTION
+    : USER_CONTENT_TYPES_COLLECTION
 
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,23 +102,39 @@ export function ContentTypeManager() {
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
   useEffect(() => {
+    if (authLoading) return
+    if (!uid) return
+    let cancelled = false
+
     async function fetchContentTypes() {
       setLoading(true)
       try {
-        const q = query(collection(db, 'content_types'), orderBy('sort_order', 'asc'))
+        const source = collection(db, collectionName)
+        const q = isGlobalScope
+          ? query(source)
+          : query(source, where('user_id', '==', uid))
         const snapshot = await getDocs(q)
-        setContentTypes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ContentType)))
+        if (cancelled) return
+        setContentTypes(
+          snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() } as ContentType))
+            .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0)),
+        )
       } catch (error) {
+        if (cancelled) return
         console.error('Error fetching content types:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchContentTypes()
-  }, [refreshKey])
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey, collectionName, isGlobalScope, uid, authLoading])
 
-  const refresh = () => setRefreshKey(k => k + 1)
-  const handleReorder = useSortableList<ContentType>('content_types', setContentTypes, refresh)
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const handleReorder = useSortableList<ContentType>(collectionName, setContentTypes, refresh)
   const canReorder = !search && !filterStatus
 
   const filteredContentTypes = useMemo(() => {
@@ -147,18 +182,47 @@ export function ContentTypeManager() {
   }
 
   const handleSave = async () => {
+    if (!uid) return
+    const validation = validateContentTypeConfig({
+      ...draft,
+      code: draft.code.trim(),
+      name: draft.name.trim(),
+      fields,
+    }, editing?.code)
+    if (!validation.success) {
+      toast.error(validation.issues[0]?.message ?? 'Invalid content type configuration.')
+      return
+    }
+
+    const blueprintValidation = validateContentTypeBlueprint(validation.data)
+    if (!blueprintValidation.success) {
+      toast.error(blueprintValidation.error)
+      return
+    }
+
+    if (!editing) {
+      const normalizedCode = validation.data.code.toLocaleLowerCase('en-US')
+      const duplicate = contentTypes.some(contentType =>
+        contentType.code.trim().toLocaleLowerCase('en-US') === normalizedCode)
+      if (duplicate) {
+        toast.error('Content type code must be unique in this workspace.')
+        return
+      }
+    }
+
     setSaving(true)
     try {
       if (editing) {
-        await updateDoc(doc(db, 'content_types', editing.id), {
-          ...draft,
-          fields,
+        const { code: _immutableCode, ...editableData } = validation.data
+        void _immutableCode
+        await updateDoc(doc(db, collectionName, editing.id), {
+          ...editableData,
           updated_at: serverTimestamp(),
         })
       } else {
-        await addDoc(collection(db, 'content_types'), {
-          ...draft,
-          fields,
+        await addDoc(collection(db, collectionName), {
+          ...validation.data,
+          ...(isGlobalScope ? {} : { user_id: uid }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })
@@ -176,7 +240,7 @@ export function ContentTypeManager() {
 
   const handleToggleActive = async (contentType: ContentType) => {
     try {
-      await updateDoc(doc(db, 'content_types', contentType.id), {
+      await updateDoc(doc(db, collectionName, contentType.id), {
         is_active: !contentType.is_active,
         updated_at: serverTimestamp(),
       })
@@ -190,9 +254,14 @@ export function ContentTypeManager() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return
+    if (isGlobalScope && isProtectedGlobalContentTypeId(deleteTarget.id)) {
+      toast.error('Built-in defaults can be deactivated but cannot be deleted.')
+      setDeleteTarget(null)
+      return
+    }
     setDeleting(true)
     try {
-      await deleteDoc(doc(db, 'content_types', deleteTarget.id))
+      await deleteDoc(doc(db, collectionName, deleteTarget.id))
       setDeleteTarget(null)
       refresh()
       toast.success('Content type deleted')
@@ -238,34 +307,44 @@ export function ContentTypeManager() {
           <Button variant="ghost" size="sm" aria-label={`Edit fields ${row.name}`} onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="p-2 h-auto rounded-full">
             <Pencil className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="sm" aria-label={`Delete content type ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          {(!isGlobalScope || !isProtectedGlobalContentTypeId(row.id)) && (
+            <Button variant="ghost" size="sm" aria-label={`Delete content type ${row.name}`} onClick={(e) => { e.stopPropagation(); setDeleteTarget(row) }} className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </div>
       ),
     },
   ]
 
-  // Sau khi mọi hooks đã chạy (rules-of-hooks) — user thường thấy thông báo thay vì UI quản lý
-  if (!isAdmin) {
-    return (
-      <Card>
-        <h2 className="text-body font-bold font-semibold text-slate-600 mb-2">Content Types</h2>
-        <p className="text-sm text-slate-600">
-          Form layouts (Language / IT / General) are shared across all accounts and managed by the app owner.
-        </p>
-      </Card>
-    )
-  }
-
   return (
-    <Card {...verifyAttrs({ unit: 'ContentTypeManager', rows: contentTypes.length, modalOpen, loading })}>
+    <Card {...verifyAttrs({
+      unit: 'ContentTypeManager',
+      rows: contentTypes.length,
+      modalOpen,
+      loading,
+      scope: isGlobalScope ? 'global-defaults' : 'workspace',
+      collection: collectionName,
+    })}>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-body font-bold font-semibold text-slate-600">Content Types</h2>
+        <div>
+          <h2 className="text-body font-bold font-semibold text-slate-600">Content Types</h2>
+          <p className="text-[12.5px] text-slate-500 mt-0.5">
+            {isGlobalScope
+              ? 'Defaults copied to accounts created in the future.'
+              : 'Form configurations for your workspace.'}
+          </p>
+        </div>
         <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Add Content Type
         </Button>
       </div>
+
+      {isGlobalScope && (
+        <p className="text-[12.5px] text-slate-600 bg-[#fdfbf5] border border-[#f0e4cc] rounded-[9px] px-3 py-2 mb-4">
+          Built-in defaults can be deactivated but cannot be deleted. Custom defaults can be deleted.
+        </p>
+      )}
 
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1">
@@ -461,6 +540,20 @@ export function ContentTypeManager() {
                   />
                 </FieldWrapper>
               </div>
+              {field.type === 'dropdown' && (
+                <FieldWrapper label="Options">
+                  <Input
+                    aria-label={`Options for field ${index}`}
+                    value={(field.options ?? []).join(', ')}
+                    onChange={(e) => updateField(
+                      index,
+                      'options',
+                      e.target.value.split(',').map(option => option.trim()).filter(Boolean),
+                    )}
+                    placeholder="Beginner, Intermediate, Advanced"
+                  />
+                </FieldWrapper>
+              )}
               <div className="flex flex-col gap-2">
                 <Toggle
                   label="Required"

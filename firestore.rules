@@ -37,6 +37,10 @@ service cloud.firestore {
       return isSignedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
+    function isProtectedGlobalContentType(id) {
+      return id == 'form_language' || id == 'form_it' || id == 'form_general';
+    }
+
     // ─── ユーザーごとのマスターデータ + テンプレート "__defaults__" (admin が /admin 経由で編集) ───
     // decks / categories / card_types / topics: ユーザーは自分のデータを操作; admin は
     // サインアップ時に新規ユーザーがクローンするテンプレート版 (user_id == '__defaults__')
@@ -86,11 +90,24 @@ service cloud.firestore {
       // allow write なし — クライアントは revlog の書き込み/編集/削除ができない
     }
 
-    // ─── Content types — グローバルに SHARED (doc id = form_type、コアルーティング) ───
-    // 全ユーザーが読み取り可 (form blueprint); admin のみ書き込み可 (全員のフォームを変更)。
+    // ─── User Content Types — workspace ごとの動的フォーム設定 ───
+    // list query も `where('user_id', '==', request.auth.uid)` が必須。
+    // update では owner と routing key (code) を変更不可 — client SDK 直書きでも
+    // code 変更 (= 重複 route の温床) を防ぐ。
+    match /user_content_types/{id} {
+      allow read, delete: if owns(resource);
+      allow create: if creatingOwn();
+      allow update: if owns(resource)
+        && request.resource.data.user_id == resource.data.user_id
+        && request.resource.data.code == resource.data.code;
+    }
+
+    // ─── Content types — 新規ユーザー用のグローバル source snapshot ───
+    // 全ユーザーが読み取り可。admin は作成/更新できるが、3 built-in defaults は削除不可。
     match /content_types/{id} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin() && !isProtectedGlobalContentType(id);
     }
 
     // ─── Settings — 同じ collection 内の 3 種類の doc ───

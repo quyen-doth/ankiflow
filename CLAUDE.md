@@ -8,11 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Core workflow: `Sign in → Enter vocabulary → AI enriches content → Preview/edit → Export to Anki (or defer) → Study`
 
-Supported content types: Language vocab (English, Chinese, Japanese), IT vocabulary, and General knowledge — content types are data-driven and admin-editable.
+Supported built-in content types: Language vocab (English, Chinese, Japanese), IT vocabulary, and General knowledge. Form layouts are data-driven and customizable per user; the admin maintains only the defaults copied to new accounts.
 
 The app code lives in `ankiflow/`. The `anki_flow_design/` directory contains static HTML design mockups only.
 
-**Admin:** a single app owner. Identified two independent ways that must both be set: server-side by `ADMIN_EMAIL` env (session cookie email match, e.g. `/api/admin/*`), and in Firestore rules by the custom claim `admin:true` (rules cannot read env). `NEXT_PUBLIC_ADMIN_EMAIL` gates admin-only UI. Admin controls global feature flags (`settings/global`: TTS/Unsplash/AI availability) and editable new-user defaults (`__defaults__` template docs).
+**Admin:** a single app owner. Identified two independent ways that must both be set: server-side by `ADMIN_EMAIL` env (session cookie email match, e.g. `/api/admin/*`), and in Firestore rules by the custom claim `admin:true` (rules cannot read env). `NEXT_PUBLIC_ADMIN_EMAIL` gates admin-only UI. Admin controls global feature flags (`settings/global`: TTS/Unsplash/AI availability) and editable new-user defaults (`__defaults__` master-data templates plus global `content_types`).
 
 For directory structure, data flow, env variables, and git conventions, see **`docs/REFERENCE.md`**.
 
@@ -65,7 +65,8 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Folders: `kebab-case` · Components: `PascalCase.tsx` · Utilities/hooks: `camelCase.ts` · Constants: `UPPER_SNAKE_CASE`
 - Never call Firestore in a loop — use `Promise.all()` for batch fetches
 - Never hardcode string values for `form_type` or `status` — use the TypeScript enums in `types/index.ts`
-- **Per-user data**: every query on `entries` / `decks` / `categories` / `card_types` / `topics` / `notification_triggers` MUST filter `where('user_id', '==', uid)` (uid from `useAuth()` client-side, or the `withAuth` handler param server-side). Server writes set `user_id`; Firestore rules reject anything else. `content_types` is the exception — SHARED (doc id = `form_type`), read by all, written by admin only.
+- **Per-user data**: every query on `entries` / `decks` / `categories` / `card_types` / `topics` / `notification_triggers` / `user_content_types` MUST filter `where('user_id', '==', uid)` (uid from `useAuth()` client-side, or the `withAuth` handler param server-side). Server writes set `user_id`; Firestore rules reject anything else.
+- **Content Type scopes**: `content_types` is the admin-managed global source copied to future accounts; runtime Create/Resync reads only `user_content_types`. User snapshots are not automatically updated when a global default changes. A user Content Type's `code` is immutable after creation; runtime hides only routing-code conflicts and keeps non-conflicting types available. The global built-in IDs `form_language`, `form_it`, and `form_general` must never be deleted.
 - **`settings` is NOT a singleton** — three doc kinds: `settings/{uid}` (per-user prefs), `settings/global` (feature flags, admin-write via `/api/admin/global-config`), `settings/default` (LINE secrets, admin-only). Never read `settings/default` from a non-admin client (rules block it + it holds secrets).
 - All user-facing UI text (labels, toasts, descriptions, modals) must be in English — no other language. Chat with the user in Vietnamese (see Language Policy)
 
@@ -116,10 +117,10 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 - **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/REFERENCE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
 - **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`, etc. only exist when `language` matches. Never assume these fields have values.
-- **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Mismatched `form_type` causes silent wrong behavior.
+- **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Built-in routes must use the `FormType` enum; copied Content Type document IDs are never routing values. Resolve built-ins from `user_content_types.code`; custom Content Types use their validated code. Mismatches cause silent wrong behavior.
 - **No JOIN in Firestore** — related documents must be fetched with `Promise.all()`, never sequentially in a loop.
 - **Auth is enforced in layers** — middleware only checks the `__session` cookie *exists* (Edge can't run Admin SDK); real verification (`verifySessionCookie`) happens in each API route via `withAuth`/`verifySessionUser` (`lib/auth-guard.ts`). Client SDK reads/writes are guarded by Firestore rules. A forged cookie passes middleware but fails API verify (defense-in-depth). Client pages must wait for `useAuth().loading === false` before querying by `uid`.
-- **Firestore Security Rules are live** (`firestore.rules`, deployed) — the client SDK can only touch the current user's docs. When adding a new collection or query, update `firestore.rules` too, or client reads/writes will be denied. Admin SDK (server routes) bypasses rules.
+- **Firestore Security Rules are the client-access source of truth** (`firestore.rules`) — the client SDK can only touch the current user's docs. When adding a collection or query, update the rules and obtain explicit approval before deploying them; otherwise client reads/writes will be denied. Admin SDK (server routes) bypasses rules.
 - **Two admin mechanisms, keep both in sync** — server routes check `session.email === ADMIN_EMAIL`; Firestore rules check the `admin:true` custom claim (set via `scripts/set-admin-claim.ts` or auto on signup when email matches `ADMIN_EMAIL`; requires re-login to take effect). `NEXT_PUBLIC_ADMIN_EMAIL` only gates UI visibility, never security.
 - **Actions requiring user confirmation before execution:** writing/deleting Firestore documents, calling AnkiConnect (creates/deletes Anki notes), deleting codebase files, updating any file under `docs/`.
     > Enforced by `PreToolUse` hooks in `.claude/settings.json` for Firestore deletes, AnkiConnect deletes, and `docs/` edits — these are blocked automatically, not just by convention.

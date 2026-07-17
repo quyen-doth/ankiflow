@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
+import Link from 'next/link'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { FieldWrapper, Select } from '@/components/ui/FormField'
@@ -11,21 +12,72 @@ import { RefreshCw } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { regenerateNotesForEntry } from '@/lib/flashcard-service/client-ops'
+import {
+  prepareRuntimeContentTypes,
+  resolveRuntimeContentTypeCode,
+} from '@/lib/contentTypes'
+import { loadUserContentTypes } from '@/lib/userContentTypes'
+import { verifyAttrs } from '@/verify/core/contract'
 import type { CardTypeItem } from '@/lib/buildNotes'
-import type { Entry } from '@/types'
+import type { Entry, UserContentType } from '@/types'
 
 interface Option {
   value: string
   label: string
 }
 
-interface ResyncCardsProps {
-  ankiConnected: boolean
+export interface ResyncOptions {
+  contentTypes: UserContentType[]
+  decks: Option[]
+  cardTypes: Option[]
 }
 
-export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
+export type ResyncOptionsLoader = (uid: string) => Promise<ResyncOptions>
+
+interface ResyncCardsProps {
+  ankiConnected: boolean
+  loadOptions?: ResyncOptionsLoader
+}
+
+const loadResyncOptions: ResyncOptionsLoader = async uid => {
+  const [contentTypes, deckSnap, cardSnap] = await Promise.all([
+    loadUserContentTypes(uid),
+    getDocs(query(collection(db, 'decks'), where('user_id', '==', uid))),
+    getDocs(query(collection(db, 'card_types'), where('user_id', '==', uid))),
+  ])
+
+  return {
+    contentTypes,
+    decks: deckSnap.docs.map(document => {
+      const data = document.data() as {
+        anki_deck_name?: string
+        display_name?: string
+        sort_order?: number
+      }
+      return {
+        value: data.anki_deck_name || '',
+        label: data.display_name || data.anki_deck_name || document.id,
+        sort: data.sort_order || 0,
+      }
+    }).filter(option => option.value).sort((a, b) => a.sort - b.sort),
+    cardTypes: cardSnap.docs.map(document => {
+      const data = document.data() as { name?: string; sort_order?: number }
+      return {
+        value: document.id,
+        label: data.name || document.id,
+        sort: data.sort_order || 0,
+      }
+    }).sort((a, b) => a.sort - b.sort),
+  }
+}
+
+export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: ResyncCardsProps) {
   const { user, loading: authLoading } = useAuth()
+  const uid = user?.uid
   const [contentTypes, setContentTypes] = useState<Option[]>([])
+  const [contentTypesLoading, setContentTypesLoading] = useState(true)
+  const [contentTypeError, setContentTypeError] = useState<string | null>(null)
+  const [contentTypeWarning, setContentTypeWarning] = useState<string | null>(null)
   const [decks, setDecks] = useState<Option[]>([])
   const [cardTypes, setCardTypes] = useState<Option[]>([])
 
@@ -38,37 +90,54 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
   const toast = useToast()
 
   useEffect(() => {
-    if (authLoading || !user) return
-    const uid = user.uid
+    if (authLoading || !uid) return
+
+    let cancelled = false
+    const currentUid = uid
+
     async function fetchOptions() {
       try {
-        // content_types SHARED (doc id = form_type routing); decks/card_types per-user
-        // → sort in-memory để tránh composite index (user_id, sort_order)
-        const [ctSnap, deckSnap, cardSnap] = await Promise.all([
-          getDocs(query(collection(db, 'content_types'), orderBy('sort_order', 'asc'))),
-          getDocs(query(collection(db, 'decks'), where('user_id', '==', uid))),
-          getDocs(query(collection(db, 'card_types'), where('user_id', '==', uid))),
-        ])
-        // Filter theo form_type của entry — chính là DOC ID của content_type
-        // (form_language/form_it/form_general), KHÔNG phải field `code`.
-        setContentTypes(ctSnap.docs.map(d => {
-          const data = d.data() as { name?: string }
-          return { value: d.id, label: data.name || d.id }
-        }).filter(o => o.label))
-        setDecks(deckSnap.docs.map(d => {
-          const data = d.data() as { anki_deck_name?: string; display_name?: string; sort_order?: number }
-          return { value: data.anki_deck_name || '', label: data.display_name || data.anki_deck_name || d.id, sort: data.sort_order || 0 }
-        }).filter(o => o.value).sort((a, b) => a.sort - b.sort))
-        setCardTypes(cardSnap.docs.map(d => {
-          const data = d.data() as { name?: string; sort_order?: number }
-          return { value: d.id, label: data.name || d.id, sort: data.sort_order || 0 }
-        }).sort((a, b) => a.sort - b.sort))
+        setContentTypesLoading(true)
+        setContentTypeError(null)
+        // すべて user scope で読み込み、sort は composite index を避けるため client 側で行う。
+        const loaded = await loadOptions(currentUid)
+        if (cancelled) return
+
+        const prepared = prepareRuntimeContentTypes(loaded.contentTypes)
+        // 競合分だけ除外し、残りは再同期に使える。競合は非ブロッキング警告で通知。
+        setContentTypeWarning(
+          prepared.conflictingCodes.length > 0
+            ? `Some Content Types share a routing code and were hidden: ${prepared.conflictingCodes.join(', ')}. Fix them in Settings.`
+            : null,
+        )
+        const options = prepared.contentTypes.map(contentType => ({
+          value: resolveRuntimeContentTypeCode(contentType.code),
+          label: contentType.name || contentType.code,
+        }))
+        setContentTypes(options)
+        setFormType(current => (
+          current && !options.some(option => option.value === current) ? '' : current
+        ))
+        setDecks(loaded.decks)
+        setCardTypes(loaded.cardTypes)
       } catch (error) {
         console.error('Error loading resync options:', error)
+        if (!cancelled) {
+          setContentTypes([])
+          setFormType('')
+          setContentTypeWarning(null)
+          setContentTypeError('Unable to load your Content Types. Please try again or review them in Settings.')
+        }
+      } finally {
+        if (!cancelled) setContentTypesLoading(false)
       }
     }
-    fetchOptions()
-  }, [user, authLoading])
+    void fetchOptions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [uid, authLoading, loadOptions])
 
   const handleRun = async () => {
     setConfirmOpen(false)
@@ -129,7 +198,14 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
   }
 
   return (
-    <>
+    <div
+      {...verifyAttrs({
+        unit: 'ResyncCards',
+        contentTypesLoading,
+        contentTypeState: contentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
+        contentTypeWarning: !!contentTypeWarning,
+      })}
+    >
       <p className="text-sm text-slate-600 mb-4">
         Re-generate the Front/Back of already-exported cards to match the latest card type layout.
         Review history (SRS) and existing audio/images are preserved. Requires Anki Desktop to be open.
@@ -156,11 +232,38 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
         </FieldWrapper>
       </div>
 
+      {!contentTypesLoading && contentTypeWarning && (
+        <p className="text-xs text-[#b87514] mb-3">
+          {contentTypeWarning}{' '}
+          <Link href="/settings" className="font-semibold underline underline-offset-2">
+            Open Settings
+          </Link>
+        </p>
+      )}
+
+      {contentTypesLoading ? (
+        <p className="text-xs text-slate-400 mb-3">Loading Content Types...</p>
+      ) : contentTypeError ? (
+        <p className="text-xs text-red-600 mb-3">
+          {contentTypeError}{' '}
+          <Link href="/settings" className="font-semibold underline underline-offset-2">
+            Open Settings
+          </Link>
+        </p>
+      ) : contentTypes.length === 0 ? (
+        <p className="text-xs text-slate-500 mb-3">
+          No active Content Types are configured.{' '}
+          <Link href="/settings" className="font-semibold text-primary underline underline-offset-2">
+            Manage them in Settings
+          </Link>
+        </p>
+      ) : null}
+
       <Button
         variant="primary"
         size="sm"
         leftIcon={<RefreshCw className={running ? 'w-4 h-4 animate-spin' : 'w-4 h-4'} />}
-        disabled={running || !ankiConnected}
+        disabled={running || !ankiConnected || Boolean(contentTypeError)}
         onClick={() => setConfirmOpen(true)}
       >
         {running ? 'Re-syncing...' : 'Re-sync cards'}
@@ -179,6 +282,6 @@ export function ResyncCards({ ankiConnected }: ResyncCardsProps) {
           <Button variant="primary" onClick={handleRun}>Re-sync</Button>
         </div>
       </Modal>
-    </>
+    </div>
   )
 }

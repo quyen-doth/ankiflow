@@ -179,10 +179,8 @@ registerUnit<ITFormProps>({
         if (JSON.stringify(pending.topicIds) !== JSON.stringify(['t-be'])) {
           return `topicIds=${JSON.stringify(pending.topicIds)}`
         }
-        return (
-          JSON.stringify(pending.tags) === JSON.stringify(['it']) ||
-          `tags=${JSON.stringify(pending.tags)}`
-        )
+        return JSON.stringify(pending.tags) === JSON.stringify([])
+          || `tags=${JSON.stringify(pending.tags)}`
       },
     },
     {
