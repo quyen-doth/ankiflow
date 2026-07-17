@@ -1,0 +1,19 @@
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { USER_CONTENT_TYPES_COLLECTION } from '@/lib/constants'
+import type { UserContentType } from '@/types'
+
+export type UserContentTypeLoader = (uid: string) => Promise<UserContentType[]>
+
+/** 認証済み user の workspace snapshot だけを読み込む。Global fallback は行わない。 */
+export const loadUserContentTypes: UserContentTypeLoader = async uid => {
+  const snapshot = await getDocs(query(
+    collection(db, USER_CONTENT_TYPES_COLLECTION),
+    where('user_id', '==', uid),
+  ))
+
+  return snapshot.docs.map(document => ({
+    id: document.id,
+    ...document.data(),
+  }) as UserContentType)
+}

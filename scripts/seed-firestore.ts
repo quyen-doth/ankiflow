@@ -25,7 +25,8 @@ dotenv.config({ path: '.env' });
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { seedUserDefaults, publishTemplateDefaults } from '../lib/seed-defaults';
-import { GLOBAL_SETTINGS_DOC_ID } from '../lib/constants';
+import { DEFAULT_CONTENT_TYPES } from '../lib/contentTypes';
+import { GLOBAL_CONTENT_TYPES_COLLECTION, GLOBAL_SETTINGS_DOC_ID } from '../lib/constants';
 
 // Khởi tạo Firebase Admin
 const app = initializeApp({
@@ -55,68 +56,14 @@ async function seedDoc(collection: string, id: string, data: Record<string, unkn
 async function seedContentTypes() {
     console.log('\n📋 Seeding content_types (shared)...');
 
-    const contentTypes = [
-        {
-            id: 'form_language',
-            code: 'language',
-            name: 'Ngôn ngữ',
-            description: 'Từ vựng tiếng Anh, Trung, Nhật',
-            icon: '🌍',
-            sort_order: 1,
-            default_create_mode: 'batch' as const,
-            fields: [
-                { field_key: 'language', label: 'Ngôn ngữ', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: null, placeholder: null },
-                { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 2, data_source: 'decks', placeholder: null },
-                { field_key: 'category_id', label: 'Category', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 3, data_source: 'categories', placeholder: null },
-                { field_key: 'tags', label: 'Tags', type: 'tags', is_required: false, is_session_persistent: true, sort_order: 4, data_source: null, placeholder: 'Thêm tag...' },
-                { field_key: 'word', label: 'Từ vựng', type: 'text', is_required: true, is_session_persistent: false, sort_order: 5, data_source: null, placeholder: 'Nhập từ vựng...' },
-                { field_key: 'note', label: 'Ghi chú', type: 'text', is_required: false, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'Ghi chú cá nhân (optional)' },
-                { field_key: 'card_type_ids', label: 'Loại card', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 7, data_source: 'card_types', placeholder: null },
-            ],
-        },
-        {
-            id: 'form_it',
-            code: 'it',
-            name: 'IT Vocabulary',
-            description: 'Thuật ngữ lập trình, công nghệ',
-            icon: '💻',
-            sort_order: 2,
-            default_create_mode: 'single' as const,
-            fields: [
-                { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'decks', placeholder: null },
-                { field_key: 'topic_ids', label: 'Chủ đề', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 2, data_source: 'topics', placeholder: null },
-                { field_key: 'difficulty', label: 'Độ khó', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 3, data_source: null, placeholder: null },
-                { field_key: 'term', label: 'Thuật ngữ', type: 'text', is_required: true, is_session_persistent: false, sort_order: 4, data_source: null, placeholder: 'Ví dụ: REST API, Docker...' },
-                { field_key: 'definition', label: 'Định nghĩa ngắn', type: 'text', is_required: true, is_session_persistent: false, sort_order: 5, data_source: null, placeholder: 'Mô tả ngắn gọn bằng tiếng Việt...' },
-                { field_key: 'keywords', label: 'Keywords', type: 'tags', is_required: false, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'Thêm keyword liên quan...' },
-                { field_key: 'card_type_ids', label: 'Loại card', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 7, data_source: 'card_types', placeholder: null },
-            ],
-        },
-        {
-            id: 'form_general',
-            code: 'general',
-            name: 'Kiến thức chung',
-            description: 'Bất kỳ nội dung nào khác',
-            icon: '📚',
-            sort_order: 3,
-            default_create_mode: 'single' as const,
-            fields: [
-                { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'decks', placeholder: null },
-                { field_key: 'title', label: 'Tiêu đề / Khái niệm', type: 'text', is_required: true, is_session_persistent: false, sort_order: 2, data_source: null, placeholder: 'Nhập tiêu đề...' },
-                { field_key: 'content', label: 'Nội dung', type: 'textarea', is_required: true, is_session_persistent: false, sort_order: 3, data_source: null, placeholder: 'Nội dung chi tiết...' },
-                { field_key: 'tags', label: 'Tags', type: 'tags', is_required: false, is_session_persistent: false, sort_order: 4, data_source: null, placeholder: 'Thêm tag...' },
-            ],
-        },
-    ];
-
-    for (const ct of contentTypes) {
-        await seedDoc('content_types', ct.id, {
+    for (const ct of DEFAULT_CONTENT_TYPES) {
+        await seedDoc(GLOBAL_CONTENT_TYPES_COLLECTION, ct.id, {
             code: ct.code,
             name: ct.name,
             description: ct.description,
             icon: ct.icon,
-            fields: ct.fields,
-            is_active: true,
+            fields: ct.fields.map(field => ({ ...field })),
+            is_active: ct.is_active,
             sort_order: ct.sort_order,
             default_create_mode: ct.default_create_mode,
             created_at: now,

@@ -1,17 +1,22 @@
 'use client';
 
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { CardForm } from '@/components/create/CardForm';
+import Link from 'next/link';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { CardForm, CardFormContent } from '@/components/create/CardForm';
 import { ModeToggle } from '@/components/create/ModeToggle';
 import { MotionPage } from '@/components/ui/MotionPage';
-import { getBlueprintForContentType, resolveBuiltinFormType } from '@/lib/create/formBlueprint';
+import { getBlueprintForContentType } from '@/lib/create/formBlueprint';
+import {
+    prepareRuntimeContentTypes,
+    resolveContentTypeFormType,
+} from '@/lib/contentTypes';
+import { loadUserContentTypes } from '@/lib/userContentTypes';
 import { loadCreateUiState, saveCreateUiState } from '@/lib/create/draftCache';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { verifyAttrs } from '@/verify/core/contract';
 import {
     Languages,
     Terminal,
@@ -22,6 +27,7 @@ import {
 } from 'lucide-react';
 import { FormType } from '@/types';
 import type { ContentType } from '@/types';
+import type { UserContentTypeLoader } from '@/lib/userContentTypes';
 
 const ICON_MAP: Record<string, React.ElementType> = {
     Languages,
@@ -54,7 +60,7 @@ const INITIAL_STEPS: LoadingStep[] = [
 const FORM_ID = 'create-form';
 
 function resolveIcon(contentType: ContentType): React.ElementType {
-    const ft = resolveBuiltinFormType(contentType.id) ?? resolveBuiltinFormType(contentType.code);
+    const ft = resolveContentTypeFormType(contentType.code);
     if (ft && BUILTIN_ICONS[ft]) return BUILTIN_ICONS[ft];
     if (contentType.icon && ICON_MAP[contentType.icon]) return ICON_MAP[contentType.icon];
     return BookOpen;
@@ -69,32 +75,53 @@ export default function CreatePage() {
     );
 }
 
-function CreateContent() {
-    const router = useRouter();
+interface CreateContentProps {
+    loadContentTypes?: UserContentTypeLoader;
+    navigate?: (path: string) => void;
+}
+
+export function CreateContent({
+    loadContentTypes = loadUserContentTypes,
+    navigate,
+}: CreateContentProps = {}) {
+    const { user, loading: authLoading } = useAuth();
+    const uid = user?.uid;
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
     const [loadingTypes, setLoadingTypes] = useState(true);
+    const [contentTypeError, setContentTypeError] = useState<string | null>(null);
+    const [contentTypeWarning, setContentTypeWarning] = useState<string | null>(null);
     const [activeCode, setActiveCode] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(INITIAL_STEPS);
     const [progress, setProgress] = useState(0);
-    const [canSubmit, setCanSubmit] = useState(false);
     const [batchMode, setBatchMode] = useState(false);
     const [batchCount, setBatchCount] = useState(0);
     const [batchProgress, setBatchProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
     const cancelRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
+        if (authLoading || !uid) return;
+
+        let cancelled = false;
+        const currentUid = uid;
+
         async function fetchContentTypes() {
             try {
-                const q = query(
-                    collection(db, 'content_types'),
-                    where('is_active', '==', true),
-                    orderBy('sort_order', 'asc'),
+                setLoadingTypes(true);
+                setContentTypeError(null);
+                const prepared = prepareRuntimeContentTypes(await loadContentTypes(currentUid));
+                if (cancelled) return;
+
+                // 競合した Content Type だけ非表示にし、残りはそのまま作成に使える。
+                setContentTypeWarning(
+                    prepared.conflictingCodes.length > 0
+                        ? `Some Content Types share a routing code and were hidden: ${prepared.conflictingCodes.join(', ')}. Fix them in Settings.`
+                        : null,
                 );
-                const snapshot = await getDocs(q);
-                const types = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as ContentType);
+
+                const types = prepared.contentTypes;
                 setContentTypes(types);
-                if (types.length > 0 && !activeCode) {
+                if (types.length > 0) {
                     // 前回選択したタブ/モードを復元し、現在の types に無ければ先頭へ戻す。
                     const savedUi = loadCreateUiState();
                     const restored = savedUi ? types.find((type) => type.code === savedUi.activeCode) : undefined;
@@ -105,15 +132,27 @@ function CreateContent() {
                         setActiveCode(types[0].code);
                         setBatchMode(types[0].default_create_mode === 'batch');
                     }
+                } else {
+                    setActiveCode('');
                 }
             } catch (error) {
                 console.error('Error fetching content types:', error);
+                if (!cancelled) {
+                    setContentTypes([]);
+                    setActiveCode('');
+                    setContentTypeWarning(null);
+                    setContentTypeError('Unable to load your Content Types. Please try again or review them in Settings.');
+                }
             } finally {
-                setLoadingTypes(false);
+                if (!cancelled) setLoadingTypes(false);
             }
         }
-        fetchContentTypes();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+        void fetchContentTypes();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [authLoading, loadContentTypes, uid]);
 
     const activeType = contentTypes.find((t) => t.code === activeCode);
 
@@ -140,7 +179,6 @@ function CreateContent() {
             // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
             const next = contentTypes.find((ct) => ct.code === code);
             setBatchMode(next?.default_create_mode === 'batch');
-            setCanSubmit(false);
             setBatchCount(0);
             saveCreateUiState({ activeCode: code, batchMode: next?.default_create_mode === 'batch' });
         },
@@ -150,7 +188,6 @@ function CreateContent() {
     const handleModeChange = useCallback(
         (batch: boolean) => {
             setBatchMode(batch);
-            setCanSubmit(false);
             setBatchCount(0);
             saveCreateUiState({ activeCode, batchMode: batch });
         },
@@ -171,18 +208,30 @@ function CreateContent() {
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                 e.preventDefault();
-                if (!canSubmit || isGenerating) return;
+                if (isGenerating) return;
                 const form = document.getElementById(FORM_ID) as HTMLFormElement | null;
                 form?.requestSubmit();
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [canSubmit, isGenerating]);
+    }, [isGenerating]);
 
-    const blueprint = useMemo(() => {
-        return activeType ? getBlueprintForContentType(activeType) : null;
+    const blueprintState = useMemo(() => {
+        if (!activeType) return { blueprint: null, error: null };
+        try {
+            return { blueprint: getBlueprintForContentType(activeType), error: null };
+        } catch (error) {
+            return {
+                blueprint: null,
+                error: error instanceof Error
+                    ? error.message
+                    : 'Invalid Content Type field configuration.',
+            };
+        }
     }, [activeType]);
+    const blueprint = blueprintState.blueprint;
+    const runtimeContentTypeError = contentTypeError ?? blueprintState.error;
 
     return (
         <MotionPage>
@@ -197,13 +246,26 @@ function CreateContent() {
                 <h1 className="text-page-title font-extrabold text-ink tracking-[-0.02em]">New flashcard</h1>
             </div>
 
-            <div className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6">
+            <div
+                className="max-w-6xl mx-auto w-full pb-6 flex flex-col gap-6"
+                {...verifyAttrs({
+                    unit: 'CreateContentTypes',
+                    loading: loadingTypes,
+                    state: runtimeContentTypeError ? 'error' : contentTypes.length > 0 ? 'ready' : 'empty',
+                    warning: !!contentTypeWarning,
+                })}
+            >
+                {!loadingTypes && contentTypeWarning && (
+                    <div className="rounded-[11px] border border-[#f0e4cc] bg-[#fdfbf5] px-4 py-3">
+                        <p className="text-[12.5px] text-[#b87514] leading-relaxed">{contentTypeWarning}</p>
+                    </div>
+                )}
                 {/* Content Type tabs + mode toggle + Generate button (same row) */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-3">
                         {loadingTypes ? (
                             <div className="h-[46px] w-72 bg-[#ececea] rounded-[11px] animate-pulse" />
-                        ) : (
+                        ) : contentTypes.length > 0 ? (
                             <div className="inline-flex flex-wrap gap-1 bg-[#ececea] rounded-[11px] p-1">
                                 {contentTypes.map((ct) => {
                                     const Icon = resolveIcon(ct);
@@ -226,9 +288,8 @@ function CreateContent() {
                                         </button>
                                     );
                                 })}
-                                <button
-                                    type="button"
-                                    onClick={() => router.push('/admin?tab=content-types')}
+                                <Link
+                                    href="/settings"
                                     className={cn(
                                         'inline-flex items-center gap-2 px-4 py-[9px] rounded-[8px] text-[13.5px] font-bold transition-colors duration-150 outline-none',
                                         'focus-visible:ring-2 focus-visible:ring-primary/30 bg-transparent text-[#7c7f87] hover:text-ink',
@@ -237,28 +298,72 @@ function CreateContent() {
                                     <SlidersHorizontal className="w-4 h-4" />
                                     <span>Custom</span>
                                     <ArrowUpRight className="w-3 h-3 text-[#aeb0b7]" />
-                                </button>
+                                </Link>
                             </div>
-                        )}
+                        ) : null}
 
-                        <ModeToggle batch={batchMode} onChange={handleModeChange} />
+                        {contentTypes.length > 0 && (
+                            <ModeToggle batch={batchMode} onChange={handleModeChange} />
+                        )}
                     </div>
 
-                    <Button
-                        type="submit"
-                        form={FORM_ID}
-                        size="md"
-                        disabled={!canSubmit || isGenerating}
-                        className="shadow-button"
-                    >
-                        {batchMode ? `Generate ${batchCount} card${batchCount !== 1 ? 's' : ''}` : 'Generate'}
-                        <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
-                    </Button>
+                    {contentTypes.length > 0 && (
+                        <Button
+                            type="submit"
+                            form={FORM_ID}
+                            size="md"
+                            disabled={isGenerating}
+                            className="shadow-button"
+                        >
+                            {batchMode ? `Generate ${batchCount} card${batchCount !== 1 ? 's' : ''}` : 'Generate'}
+                            <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘↵</kbd>
+                        </Button>
+                    )}
                 </div>
 
                 {/* Workspace — Form (blueprint-driven, no hardcoded branches) */}
                 <div>
-                    {blueprint && (
+                    {!loadingTypes && (runtimeContentTypeError || contentTypes.length === 0) && (
+                        <div className="rounded-xl border border-[#e3e3df] bg-white px-6 py-10 text-center shadow-sm">
+                            <BookOpen className="mx-auto mb-3 h-9 w-9 text-slate-400" />
+                            <h2 className="text-base font-bold text-ink">
+                                {runtimeContentTypeError ? 'Content Type configuration needs attention' : 'No Content Types configured'}
+                            </h2>
+                            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+                                {runtimeContentTypeError
+                                    ?? 'Create or activate a Content Type in Settings before creating cards.'}
+                            </p>
+                            <Link
+                                href="/settings"
+                                className={cn(
+                                    'mt-5 inline-flex items-center justify-center rounded-[9px] px-3 py-1.5',
+                                    'text-secondary font-bold gap-1.5 transition-all duration-150',
+                                    'bg-white text-slate-600 border border-border hover:bg-surface active:scale-[0.98]',
+                                    'focus:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-bg',
+                                    'focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
+                                )}
+                            >
+                                Open Content Type settings
+                            </Link>
+                        </div>
+                    )}
+                    {blueprint && (navigate ? (
+                        <CardFormContent
+                            key={activeCode}
+                            blueprint={blueprint}
+                            batchMode={batchMode}
+                            onGenerateStart={handleGenerateStart}
+                            onStepUpdate={handleStepUpdate}
+                            onGenerateEnd={handleGenerateEnd}
+                            onBatchCountChange={setBatchCount}
+                            onBatchProgress={handleBatchProgress}
+                            registerCancel={(fn) => {
+                                cancelRef.current = fn;
+                            }}
+                            formId={FORM_ID}
+                            navigate={navigate}
+                        />
+                    ) : (
                         <CardForm
                             key={activeCode}
                             blueprint={blueprint}
@@ -266,7 +371,6 @@ function CreateContent() {
                             onGenerateStart={handleGenerateStart}
                             onStepUpdate={handleStepUpdate}
                             onGenerateEnd={handleGenerateEnd}
-                            onValidityChange={setCanSubmit}
                             onBatchCountChange={setBatchCount}
                             onBatchProgress={handleBatchProgress}
                             registerCancel={(fn) => {
@@ -274,7 +378,7 @@ function CreateContent() {
                             }}
                             formId={FORM_ID}
                         />
-                    )}
+                    ))}
                 </div>
             </div>
 

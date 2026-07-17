@@ -151,11 +151,17 @@ export async function runFixture<P>(
       reactRoot = createRoot(container)
     }
     const root = reactRoot
+    const authValue = fixture.mocks?.auth
+      ? {
+          user: fixture.mocks.auth.user,
+          loading: fixture.mocks.auth.loading ?? false,
+        }
+      : { user: { ...TEST_AUTH_USER }, loading: false }
     flushSync(() => {
       root.render(
         createElement(
           AuthContext.Provider,
-          { value: { user: { ...TEST_AUTH_USER }, loading: false } },
+          { value: authValue },
           unit.render(fixture.props),
         ),
       )
