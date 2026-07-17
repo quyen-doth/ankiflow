@@ -32,6 +32,24 @@
 
 ---
 
+## One-time ユーザーデータコピーの metadata
+
+`scripts/copy-user-data.ts` で account A から account B へ作成された
+`categories` / `card_types` / `topics` / `decks` / `user_content_types` / `entries` は、
+元の `created_at` を保持したまま次の optional field を持ちます。
+
+| Field | Type | 説明 |
+|---|---|---|
+| `copied_from` | string | コピー元 document ID。再実行時の idempotency 判定に使用 |
+| `copied_at` | timestamp | コピーを作成した時刻 |
+
+これらの document は `updated_at` をコピー実行時刻へ更新し、`user_id` をコピー先 UID に置換します。
+`review_events` は append-only のため元の `created_at` を保持し、`user_id` / `entry_id` を remap した上で
+`copied_from` だけを追加します (`copied_at` / `updated_at` は追加しません)。
+`settings`、global `content_types`、`notification_triggers`、`line_link_codes` はコピー対象外です。
+
+---
+
 ## コレクション詳細
 
 ### `entries` — 作成された語彙
