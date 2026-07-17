@@ -147,6 +147,8 @@ IT ボキャブラリー専用。Entries は複数のトピックに属するこ
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
+**作成経路:** seed・管理者テンプレート (`/api/admin/topics`) に加え、**Create ページ**からユーザー自身がクライアント SDK で IT トピックを作成・再有効化できる (`lib/create/createTopic.ts`)。重複は名前の正規化 (`normalizeTopicName`) で判定し、同名の無効トピックがある場合は新規作成せず再有効化を促す。
+
 ---
 
 ### `decks` — Anki Deck Config
