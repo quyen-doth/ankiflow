@@ -301,22 +301,6 @@ export interface ReviewEvent {
   created_at: string; // ISO
 }
 
-// ─── Collection: notification_triggers ───────────────────
-
-export interface NotificationTrigger {
-  id: string;
-  type: 'vocab_review';
-  name: string;
-  schedule_hours: number[];
-  timezone: string;
-  deck_filter: string[];
-  language_filter: string[];
-  words_per_notification: number;
-  is_active: boolean;
-  created_at: FirestoreTimestamp;
-  updated_at: FirestoreTimestamp;
-}
-
 // ─── Collection: settings ─────────────────────────────
 
 /**
