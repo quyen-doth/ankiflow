@@ -76,6 +76,18 @@ registerUnit<CardPreviewProps>({
   ],
   invariants: [
     {
+      id: 'flip-control-covers-iframe',
+      description: 'Flip control là button phủ cùng container với iframe để bắt click thật.',
+      check: ({ root }) => {
+        const control = root.querySelector('[title="Click to flip"]')
+        if (!(control instanceof HTMLButtonElement)) return 'flip control không phải button'
+        if (!control.parentElement?.querySelector('iframe')) return 'flip control không phủ CardIframe'
+        return (
+          control.classList.contains('absolute') && control.classList.contains('inset-0')
+        ) || 'flip control không phủ toàn bộ iframe'
+      },
+    },
+    {
       id: 'tabs-per-card-type',
       description: 'Mỗi card type đã chọn có một tab',
       check: ({ root }) => {
@@ -103,6 +115,8 @@ registerUnit<CardPreviewProps>({
       onlyFixtures: ['act-flip'],
       check: ({ root, contract }) => {
         if (contract.flipped !== 'true') return `contract.flipped="${contract.flipped}"`
+        const control = root.querySelector('[title="Click to flip"]')
+        if (control?.getAttribute('aria-pressed') !== 'true') return 'flip control chưa phản ánh trạng thái back'
         const html = srcdoc(root)
         if (!html.includes('id="answer"')) return 'không thấy hr mặt sau'
         return html.includes('ăn') || 'không thấy nghĩa ở mặt sau'

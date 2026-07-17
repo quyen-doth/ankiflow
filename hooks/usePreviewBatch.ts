@@ -5,6 +5,8 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingBatch, clearPendingBatch } from '@/lib/pendingBatch'
+import type { PendingBatch } from '@/lib/pendingBatch'
+import { FormType } from '@/types'
 import type { Entry, CardTypeConfig } from '@/types'
 
 type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
@@ -19,6 +21,27 @@ interface PreviewBatchState {
   setSelectedDeckId: React.Dispatch<React.SetStateAction<string>>
   isLoading: boolean
   error: string | null
+}
+
+export function mapPendingBatchToPreview(
+  pending: PendingBatch,
+  ankiDeckName: string,
+): Partial<Entry>[] {
+  return pending.items.map((content) => ({
+    form_type: pending.formType,
+    language: pending.language ?? undefined,
+    output_language: pending.outputLanguage,
+    anki_deck: ankiDeckName,
+    category_id: pending.categoryId || null,
+    card_type_ids: pending.cardTypeIds,
+    tags: pending.tags,
+    ...(content as Partial<Entry>),
+    ...(pending.formType === FormType.IT ? { topic_ids: pending.topicIds ?? [] } : {}),
+    word_type:
+      ((content as Record<string, unknown>).word_type as string) ||
+      ((content as Record<string, unknown>).word_type_vi as string) ||
+      '',
+  }))
 }
 
 /**
@@ -63,21 +86,7 @@ export function usePreviewBatch(): PreviewBatchState {
       }
       setSelectedDeckId(pending.deckId || '')
 
-      const mapped: Partial<Entry>[] = pending.items.map((content) => ({
-        form_type: pending.formType,
-        language: pending.language ?? undefined,
-        output_language: pending.outputLanguage,
-        anki_deck: ankiDeckName,
-        category_id: pending.categoryId || null,
-        card_type_ids: pending.cardTypeIds,
-        tags: pending.tags,
-        ...(content as Partial<Entry>),
-        word_type:
-          ((content as Record<string, unknown>).word_type as string) ||
-          ((content as Record<string, unknown>).word_type_vi as string) ||
-          '',
-      }))
-      setEntries(mapped)
+      setEntries(mapPendingBatchToPreview(pending, ankiDeckName))
 
       try {
         const q = query(

@@ -148,6 +148,15 @@ function makeSpec(
   }
 }
 
+function withDynamicContext(message: string, fields?: Record<string, string>): string {
+  if (!fields) return message
+  const context = Object.entries(fields)
+    .filter(([, value]) => value.trim())
+    .map(([key, value]) => `- ${key}: ${value}`)
+    .join('\n')
+  return context ? `${message}\n\nAdditional context:\n${context}` : message
+}
+
 /**
  * form_type/language に応じて正しい schema + prompt + user message を選択。
  * 英中日は専用 profile、それ以外の有効な BCP 47 言語は汎用 profile を使用。
@@ -165,21 +174,21 @@ export function resolveCardSpec(input: GenerateCardInput): CardSpec {
         return makeSpec(
           buildEnglishCardSchema(outputName),
           buildEnglishSystemPrompt(outputName),
-          buildEnglishUserMessage(input.word),
+          withDynamicContext(buildEnglishUserMessage(input.word), input.dynamicFields),
           'Submit the enriched English vocabulary card.',
         )
       case LanguageType.CHINESE:
         return makeSpec(
           buildChineseCardSchema(outputName, isVietnamese),
           buildChineseSystemPrompt(outputName, isVietnamese),
-          buildChineseUserMessage(input.word),
+          withDynamicContext(buildChineseUserMessage(input.word), input.dynamicFields),
           'Submit the enriched Chinese vocabulary card.',
         )
       case LanguageType.JAPANESE:
         return makeSpec(
           buildJapaneseCardSchema(outputName, isVietnamese),
           buildJapaneseSystemPrompt(outputName, isVietnamese),
-          buildJapaneseUserMessage(input.word),
+          withDynamicContext(buildJapaneseUserMessage(input.word), input.dynamicFields),
           'Submit the enriched Japanese vocabulary card.',
         )
       default: {
@@ -192,7 +201,10 @@ Return structured data only through the submit_card tool.`
         return makeSpec(
           buildGenericLanguageCardSchema(outputName),
           systemPrompt,
-          `Create a ${languageName} vocabulary flashcard for: "${input.word}"`,
+          withDynamicContext(
+            `Create a ${languageName} vocabulary flashcard for: "${input.word}"`,
+            input.dynamicFields,
+          ),
           `Submit an enriched ${languageName} vocabulary flashcard.`,
         )
       }
@@ -203,7 +215,7 @@ Return structured data only through the submit_card tool.`
     return makeSpec(
       buildItVocabCardSchema(outputName),
       buildItVocabSystemPrompt(outputName),
-      buildItVocabUserMessage(input.term, input.topics),
+      withDynamicContext(buildItVocabUserMessage(input.term, input.topics), input.dynamicFields),
       'Submit the enriched IT vocabulary card.',
     )
   }

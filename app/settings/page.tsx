@@ -25,6 +25,7 @@ import { ResyncCards } from '@/components/settings/ResyncCards';
 import { LineNotificationSettings } from '@/components/settings/LineNotificationSettings';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
+import { ContentTypeManager } from '@/components/admin/ContentTypeManager';
 import { LanguagePicker } from '@/components/ui/LanguagePicker';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
@@ -383,6 +384,9 @@ export default function SettingsPage() {
                         onChange={(languages) => updateField('study_languages', languages)}
                     />
                 </Card>
+
+                {/* Workspace-owned Create form configuration. */}
+                <ContentTypeManager />
 
                 {/* Integrations */}
                 <Card>

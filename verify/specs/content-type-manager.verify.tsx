@@ -3,6 +3,7 @@ import { ContentTypeManager } from '@/components/admin/ContentTypeManager'
 import { registerUnit } from '@/verify/core/registry'
 import { FormType } from '@/types'
 import type { FormFieldConfig } from '@/types'
+import type { ContentTypeManagerScope } from '@/components/admin/ContentTypeManager'
 import {
   clickButtonByText,
   collectionDocs,
@@ -23,17 +24,19 @@ function field(overrides: Partial<FormFieldConfig> & { field_key: string }): For
 }
 
 const SEED = {
-  content_types: [
+  user_content_types: [
     {
       id: 'ct-lang',
       code: FormType.LANGUAGE,
       name: 'Language',
       description: 'Vocab card form',
+      icon: 'Languages',
       is_active: true,
       sort_order: 1,
       fields: [
         field({ field_key: 'word', label: 'Word', sort_order: 1 }),
         field({ field_key: 'note', label: 'Note', type: 'textarea', sort_order: 2 }),
+        field({ field_key: 'language', label: 'Language', type: 'dropdown', sort_order: 3 }),
       ],
     },
     {
@@ -41,9 +44,21 @@ const SEED = {
       code: FormType.IT,
       name: 'IT',
       description: 'IT term form',
+      icon: 'Code',
       is_active: true,
       sort_order: 2,
       fields: [field({ field_key: 'term', label: 'Term', sort_order: 1 })],
+    },
+    {
+      id: 'other-user-type',
+      user_id: 'other-user',
+      code: 'private_other',
+      name: 'Other user private type',
+      description: 'Must not be visible',
+      icon: 'Lock',
+      is_active: true,
+      sort_order: 3,
+      fields: [field({ field_key: 'secret', label: 'Secret', sort_order: 1 })],
     },
   ],
 }
@@ -54,13 +69,17 @@ function clickEditFirst(root: HTMLElement): void {
   btn.click()
 }
 
-registerUnit<Record<string, never>>({
+interface VerifyProps {
+  scope?: ContentTypeManagerScope
+}
+
+registerUnit<VerifyProps>({
   id: 'ContentTypeManager',
   title: 'ContentTypeManager',
   description: 'Admin content types: edit fields[], toggle is_active, delete (vitest-only).',
   kind: 'component',
-  render: () => <ContentTypeManager />,
-  propsSchema: z.object({}),
+  render: (props) => <ContentTypeManager scope={props.scope} />,
+  propsSchema: z.object({ scope: z.enum(['workspace', 'global-defaults']).optional() }),
   fixtures: [
     {
       id: 'loaded',
@@ -75,7 +94,24 @@ registerUnit<Record<string, never>>({
       id: 'empty',
       description: 'Collection rỗng — empty message.',
       props: {},
-      mocks: { firestore: { content_types: [] } },
+      mocks: { firestore: { user_content_types: [] } },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'non-admin-access',
+      description: '一般 user も自分の workspace Content Types manager を利用できる。',
+      props: {},
+      mocks: {
+        auth: { user: { uid: 'regular-user', email: 'regular@example.com' } },
+        firestore: {
+          user_content_types: [
+            { ...SEED.user_content_types[0], user_id: 'regular-user' },
+            { ...SEED.user_content_types[1], user_id: 'other-user' },
+          ],
+        },
+      },
       act: async ctx => {
         await ctx.wait(50)
       },
@@ -138,12 +174,13 @@ registerUnit<Record<string, never>>({
       props: {},
       mocks: {
         firestore: {
-          content_types: [
+          user_content_types: [
             {
               id: 'ct-empty',
               code: FormType.GENERAL,
               name: 'General',
               description: 'Empty form',
+              icon: 'BookOpen',
               is_active: true,
               sort_order: 1,
               fields: [],
@@ -157,6 +194,116 @@ registerUnit<Record<string, never>>({
         await ctx.wait(0)
       },
     },
+    {
+      id: 'act-create-workspace',
+      description: 'Workspace create は authenticated UID を user_id に設定する。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Add Content Type')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Name', 'Medical Terms')
+        setFieldValue(ctx.root, 'Code', 'medical_terms')
+        clickButtonByText(ctx.root, 'Add Field')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Field Key', 'term')
+        setFieldValue(ctx.root, 'Label', 'Term')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-invalid-code',
+      description: 'lowercase snake_case でない code は create を拒否する。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Add Content Type')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Name', 'Invalid')
+        setFieldValue(ctx.root, 'Code', 'Invalid-Code')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(30)
+      },
+    },
+    {
+      id: 'act-duplicate-code',
+      description: '同一 workspace の duplicate code は create を拒否する。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Add Content Type')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Name', 'Duplicate Language')
+        setFieldValue(ctx.root, 'Code', FormType.LANGUAGE)
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(30)
+      },
+    },
+    {
+      id: 'protected-builtins',
+      description: 'Built-in global document は delete action を表示せず、custom document だけ表示する。',
+      props: { scope: 'global-defaults' },
+      mocks: {
+        firestore: {
+          content_types: [
+            { ...SEED.user_content_types[0], id: FormType.LANGUAGE },
+            { ...SEED.user_content_types[1], id: 'custom_it' },
+          ],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'act-delete-global-custom',
+      description: 'Global custom default は delete できる。',
+      props: { scope: 'global-defaults' },
+      mocks: {
+        firestore: {
+          content_types: [
+            { ...SEED.user_content_types[0], id: FormType.LANGUAGE },
+            { ...SEED.user_content_types[1], id: 'custom_it' },
+          ],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        const button = ctx.root.querySelector<HTMLButtonElement>('button[aria-label="Delete content type IT"]')
+        if (!button) throw new Error('custom global delete button が見つからない')
+        button.click()
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Delete')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-create-global-custom',
+      description: 'Global custom create は user_id を追加しない。',
+      props: { scope: 'global-defaults' },
+      mocks: {
+        firestore: {
+          content_types: [{ ...SEED.user_content_types[0], id: FormType.LANGUAGE }],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Add Content Type')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Name', 'Future Custom')
+        setFieldValue(ctx.root, 'Code', 'future_custom')
+        clickButtonByText(ctx.root, 'Add Field')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Field Key', 'prompt')
+        setFieldValue(ctx.root, 'Label', 'Prompt')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
   ],
   invariants: [
     {
@@ -167,12 +314,34 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'rows-match-store',
-      description: 'Số row bảng = số doc trong store',
+      description: 'Workspace table は authenticated user の doc 数だけ表示する',
       onlyFixtures: ['loaded', 'empty'],
       check: ({ root }) => {
         const rows = tableRows(root)
-        const store = collectionDocs('content_types').length
+        const store = collectionDocs('user_content_types').filter(doc => doc.user_id === 'test-user').length
         return rows === store || `tableRows=${rows}, store=${store}`
+      },
+    },
+    {
+      id: 'workspace-query-isolated',
+      description: '他 user の Content Type を workspace table に表示しない',
+      onlyFixtures: ['loaded'],
+      check: ({ root, contract }) => {
+        if (contract.collection !== 'user_content_types') return `collection="${contract.collection}"`
+        if (contract.scope !== 'workspace') return `scope="${contract.scope}"`
+        return !(root.textContent ?? '').includes('Other user private type') || '他 user の data が表示された'
+      },
+    },
+    {
+      id: 'non-admin-manages-own-workspace',
+      description: '一般 user に admin gate を表示せず、自分の document だけ表示する',
+      onlyFixtures: ['non-admin-access'],
+      check: ({ root, contract }) => {
+        if (contract.scope !== 'workspace') return `scope="${contract.scope}"`
+        if (tableRows(root) !== 1) return `rows=${tableRows(root)}, expected=1`
+        const text = root.textContent ?? ''
+        if (!text.includes('Language')) return '自分の Content Type が表示されない'
+        return !text.includes('IT') || '他 user の Content Type が表示された'
       },
     },
     {
@@ -181,8 +350,8 @@ registerUnit<Record<string, never>>({
       onlyFixtures: ['loaded'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
-        // ct-lang có 2 field, ct-it có 1 field
-        return (text.includes('2') && text.includes('1')) || 'không thấy số field'
+        // ct-lang は language invariant を含む 3 fields、ct-it は 1 field。
+        return (text.includes('3') && text.includes('1')) || 'không thấy số field'
       },
     },
     {
@@ -208,7 +377,7 @@ registerUnit<Record<string, never>>({
       description: 'Save: store doc fields[0].label cập nhật, modal đóng',
       onlyFixtures: ['act-edit-save'],
       check: ({ root }) => {
-        const doc = collectionDocs('content_types').find(d => d.id === 'ct-lang')
+        const doc = collectionDocs('user_content_types').find(d => d.id === 'ct-lang')
         if (!doc) return 'mất doc ct-lang'
         const fields = doc.fields as FormFieldConfig[]
         const updated = fields.find(f => f.field_key === 'word')
@@ -222,19 +391,21 @@ registerUnit<Record<string, never>>({
       description: 'Toggle: doc ct-lang đảo is_active sang false',
       onlyFixtures: ['act-toggle-active'],
       check: () => {
-        const doc = collectionDocs('content_types').find(d => d.id === 'ct-lang')
+        const doc = collectionDocs('user_content_types').find(d => d.id === 'ct-lang')
         if (!doc) return 'mất doc ct-lang'
         return doc.is_active === false || `is_active=${doc.is_active}`
       },
     },
     {
       id: 'delete-removes-doc',
-      description: 'Delete: ct-lang bị xóa khỏi store, còn lại 1 doc, modal đóng',
+      description: 'Delete: workspace の ct-lang だけ削除し、他 user doc は保持する',
       onlyFixtures: ['act-delete'],
       check: ({ root }) => {
-        const docs = collectionDocs('content_types')
-        if (docs.length !== 1) return `store=${docs.length}, expected=1`
+        const docs = collectionDocs('user_content_types')
+        const ownDocs = docs.filter(doc => doc.user_id === 'test-user')
+        if (ownDocs.length !== 1) return `ownDocs=${ownDocs.length}, expected=1`
         if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang vẫn còn trong store'
+        if (!docs.find(d => d.id === 'other-user-type')) return '他 user doc まで削除された'
         return !modalOpen(root) || 'modal vẫn mở sau Delete'
       },
     },
@@ -245,6 +416,74 @@ registerUnit<Record<string, never>>({
       check: ({ root }) => {
         if (!modalOpen(root)) return 'modal không mở'
         return !(root.textContent ?? '').includes('undefined') || 'leak "undefined" ra UI'
+      },
+    },
+    {
+      id: 'protected-builtins-hide-delete',
+      description: 'Built-in global Content Type は削除不可、custom global だけ削除ボタンを持つ',
+      onlyFixtures: ['protected-builtins'],
+      check: ({ root }) => {
+        const buttons = root.querySelectorAll<HTMLButtonElement>('button[aria-label^="Delete content type"]')
+        if (buttons.length !== 1) return `deleteButtons=${buttons.length}, expected=1`
+        return buttons[0].getAttribute('aria-label') === 'Delete content type IT'
+          || `aria-label="${buttons[0].getAttribute('aria-label')}"`
+      },
+    },
+    {
+      id: 'workspace-create-owns-document',
+      description: 'Workspace create は code を正規化し authenticated UID を保存する',
+      onlyFixtures: ['act-create-workspace'],
+      check: ({ root }) => {
+        const created = collectionDocs('user_content_types').find(doc => doc.code === 'medical_terms')
+        if (!created) return '作成された Content Type が見つからない'
+        if (created.user_id !== 'test-user') return `user_id="${created.user_id}"`
+        return !modalOpen(root) || 'modal が閉じていない'
+      },
+    },
+    {
+      id: 'invalid-code-blocked',
+      description: 'Invalid code は Firestore に作成しない',
+      onlyFixtures: ['act-invalid-code'],
+      check: () => !collectionDocs('user_content_types').some(doc => doc.code === 'Invalid-Code')
+        || 'invalid code が保存された',
+    },
+    {
+      id: 'duplicate-code-blocked',
+      description: 'Duplicate code は同一 workspace に作成しない',
+      onlyFixtures: ['act-duplicate-code'],
+      check: () => {
+        const matches = collectionDocs('user_content_types').filter(
+          doc => doc.user_id === 'test-user' && doc.code === FormType.LANGUAGE,
+        )
+        return matches.length === 1 || `duplicates=${matches.length}`
+      },
+    },
+    {
+      id: 'code-is-immutable-in-editor',
+      description: 'Existing Content Type の code input は disabled',
+      onlyFixtures: ['act-open-edit-modal'],
+      check: ({ root }) => root.querySelector<HTMLInputElement>('input[aria-label="Content type code"]')?.disabled
+        || 'code input が編集可能',
+    },
+    {
+      id: 'global-custom-delete-works',
+      description: 'Global scope は custom default だけ削除できる',
+      onlyFixtures: ['act-delete-global-custom'],
+      check: ({ contract }) => {
+        if (contract.collection !== 'content_types') return `collection="${contract.collection}"`
+        const docs = collectionDocs('content_types')
+        if (docs.some(doc => doc.id === 'custom_it')) return 'custom global が残っている'
+        return docs.some(doc => doc.id === FormType.LANGUAGE) || 'built-in global が消えた'
+      },
+    },
+    {
+      id: 'global-create-has-no-owner',
+      description: 'Global custom default create は user_id を保存しない',
+      onlyFixtures: ['act-create-global-custom'],
+      check: () => {
+        const created = collectionDocs('content_types').find(doc => doc.code === 'future_custom')
+        if (!created) return 'global custom が作成されていない'
+        return created.user_id === undefined || `user_id="${created.user_id}"`
       },
     },
   ],

@@ -7,7 +7,12 @@ import {
   DEFAULT_CARD_TYPES,
   DEFAULT_DECKS,
 } from '@/lib/seed-defaults'
-import { DEFAULTS_OWNER_ID } from '@/lib/constants'
+import { DEFAULT_CONTENT_TYPES, userContentTypeId } from '@/lib/contentTypes'
+import {
+  DEFAULTS_OWNER_ID,
+  GLOBAL_CONTENT_TYPES_COLLECTION,
+  USER_CONTENT_TYPES_COLLECTION,
+} from '@/lib/constants'
 import { FormType, LanguageType } from '@/types'
 
 /**
@@ -35,6 +40,15 @@ function makeFakeAdminDb() {
         set: async (data: Record<string, unknown>) => {
           docs.set(id, data)
         },
+        create: async (data: Record<string, unknown>) => {
+          if (docs.has(id)) {
+            throw Object.assign(new Error('Document already exists'), { code: 6 })
+          }
+          docs.set(id, data)
+        },
+      }),
+      get: async () => ({
+        docs: [...docs.entries()].map(([id, data]) => ({ id, data: () => data })),
       }),
       where: (field: string, _op: string, value: unknown) => ({
         get: async () => {
@@ -52,6 +66,16 @@ function makeFakeAdminDb() {
     collection,
     _dump: (name: string) => store.get(name) ?? new Map(),
   } as unknown as FirebaseFirestore.Firestore & { _dump: (name: string) => Map<string, Record<string, unknown>> }
+}
+
+async function seedGlobalContentTypes(db: FirebaseFirestore.Firestore): Promise<void> {
+  await Promise.all(DEFAULT_CONTENT_TYPES.map(({ id, ...config }) =>
+    db.collection(GLOBAL_CONTENT_TYPES_COLLECTION).doc(id).set({
+      ...config,
+      fields: config.fields.map(field => ({ ...field })),
+      created_at: 'global-created-at',
+      updated_at: 'global-updated-at',
+    })))
 }
 
 beforeEach(() => {
@@ -133,6 +157,84 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
 
     expect(db._dump('categories').size).toBe(sizeAfterFirst)
     expect(db._dump('categories').get(scopedId)?.name).toBe('Customized by user')
+  })
+})
+
+describe('seedUserDefaults — Content Type snapshot', () => {
+  it('global Content Types をすべて user-owned snapshot として作成する', async () => {
+    const db = makeFakeAdminDb()
+    await seedGlobalContentTypes(db)
+
+    await seedUserDefaults(db, 'content-user')
+
+    const userContentTypes = db._dump(USER_CONTENT_TYPES_COLLECTION)
+    expect(userContentTypes.size).toBe(DEFAULT_CONTENT_TYPES.length)
+
+    for (const source of DEFAULT_CONTENT_TYPES) {
+      const snapshot = userContentTypes.get(userContentTypeId(source.id, 'content-user'))
+      expect(snapshot).toMatchObject({
+        user_id: 'content-user',
+        source_content_type_id: source.id,
+        code: source.code,
+        name: source.name,
+        is_active: source.is_active,
+      })
+      expect(snapshot?.created_at).toBeInstanceOf(Date)
+      expect(snapshot?.updated_at).toBeInstanceOf(Date)
+      expect(snapshot?.created_at).not.toBe('global-created-at')
+      expect(snapshot?.updated_at).not.toBe('global-updated-at')
+    }
+  })
+
+  it('deterministic document と user-created document を上書きまたは削除しない', async () => {
+    const db = makeFakeAdminDb()
+    await seedGlobalContentTypes(db)
+    const existingId = userContentTypeId(DEFAULT_CONTENT_TYPES[0].id, 'existing-user')
+    await db.collection(USER_CONTENT_TYPES_COLLECTION).doc(existingId).set({
+      user_id: 'existing-user',
+      source_content_type_id: DEFAULT_CONTENT_TYPES[0].id,
+      code: DEFAULT_CONTENT_TYPES[0].code,
+      name: 'Customized content type',
+    })
+    await db.collection(USER_CONTENT_TYPES_COLLECTION).doc('user-created-id').set({
+      user_id: 'existing-user',
+      code: 'custom_type',
+      name: 'User-created content type',
+    })
+
+    await seedUserDefaults(db, 'existing-user')
+
+    const userContentTypes = db._dump(USER_CONTENT_TYPES_COLLECTION)
+    expect(userContentTypes.get(existingId)?.name).toBe('Customized content type')
+    expect(userContentTypes.get('user-created-id')).toEqual({
+      user_id: 'existing-user',
+      code: 'custom_type',
+      name: 'User-created content type',
+    })
+    expect(userContentTypes.size).toBe(DEFAULT_CONTENT_TYPES.length + 1)
+  })
+
+  it('global の fields と設定を後から変更しても既存 snapshot を変更しない', async () => {
+    const db = makeFakeAdminDb()
+    await seedGlobalContentTypes(db)
+    await seedUserDefaults(db, 'snapshot-user')
+
+    const sourceId = DEFAULT_CONTENT_TYPES[0].id
+    const snapshotId = userContentTypeId(sourceId, 'snapshot-user')
+    const globalDocument = db._dump(GLOBAL_CONTENT_TYPES_COLLECTION).get(sourceId)!
+    const userDocument = db._dump(USER_CONTENT_TYPES_COLLECTION).get(snapshotId)!
+    const originalLabel = (userDocument.fields as Array<{ label: string }>)[0].label
+
+    globalDocument.name = 'Changed global name'
+    ;(globalDocument.fields as Array<{ label: string }>)[0].label = 'Changed global label'
+
+    expect(userDocument.name).toBe(DEFAULT_CONTENT_TYPES[0].name)
+    expect((userDocument.fields as Array<{ label: string }>)[0].label).toBe(originalLabel)
+
+    await seedUserDefaults(db, 'snapshot-user')
+
+    expect(db._dump(USER_CONTENT_TYPES_COLLECTION).get(snapshotId)?.name)
+      .toBe(DEFAULT_CONTENT_TYPES[0].name)
   })
 })
 

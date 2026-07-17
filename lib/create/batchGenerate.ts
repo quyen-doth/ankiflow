@@ -26,6 +26,8 @@ interface GenerateBatchOptions {
   onProgress?: (done: number, total: number) => void
   /** 途中でのキャンセルを許可 — fetch に渡し、新しい item の取得を止める。 */
   signal?: AbortSignal
+  /** Primary item 以外の shared core fields (batch form で 1 回だけ入力)。 */
+  baseValues?: Record<string, string>
 }
 
 /** blueprint.generate (api または local) に基づいて 1 item のコンテンツを生成。 */
@@ -33,10 +35,11 @@ async function generateOne(
   blueprint: CardFormBlueprint,
   item: string,
   session: SessionState,
+  baseValues: Record<string, string>,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const primaryKey = blueprint.coreFields[0]?.key ?? 'word'
-  const values: Record<string, string> = { [primaryKey]: item }
+  const primaryKey = blueprint.primaryFieldKey ?? blueprint.coreFields[0]?.key ?? 'word'
+  const values: Record<string, string> = { ...baseValues, [primaryKey]: item }
 
   if (blueprint.generate.mode === 'api') {
     const res = await fetch('/api/generate', {
@@ -65,7 +68,7 @@ export async function generateBatch(
   session: SessionState,
   options: GenerateBatchOptions = {},
 ): Promise<BatchGenResult[]> {
-  const { onProgress, signal } = options
+  const { onProgress, signal, baseValues = {} } = options
 
   const results: BatchGenResult[] = new Array(items.length)
   let done = 0
@@ -77,7 +80,7 @@ export async function generateBatch(
       const index = cursor++
       const item = items[index]
       try {
-        const content = await generateOne(blueprint, item, session, signal)
+        const content = await generateOne(blueprint, item, session, baseValues, signal)
         results[index] = { item, ok: true, content }
       } catch (err) {
         if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return

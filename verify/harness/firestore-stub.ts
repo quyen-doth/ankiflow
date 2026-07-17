@@ -46,6 +46,15 @@ const SERVER_TIMESTAMP = { __kind: 'serverTimestamp' } as const
 let store = new Map<string, DocSeed[]>()
 let autoId = 0
 
+function maybeThrow(operation: 'addDoc' | 'updateDoc', collectionName: string): void {
+  const failure = (store.get('__verify_failures__') ?? []).find(doc => (
+    doc.operation === operation && doc.collection === collectionName
+  ))
+  if (failure) {
+    throw new Error(typeof failure.message === 'string' ? failure.message : 'Simulated Firestore failure')
+  }
+}
+
 function seed(data: Record<string, DocSeed[]>): void {
   // Auto-inject user_id='test-user' (khớp TEST_AUTH_USER trong runner) khi seed
   // không khai báo — components multi-user filter where('user_id'...) vẫn thấy docs.
@@ -56,10 +65,12 @@ function seed(data: Record<string, DocSeed[]>): void {
       docs.map(d => ({ user_id: 'test-user', ...d })),
     ]),
   )
+  autoId = 0
 }
 
 function reset(): void {
   store = new Map()
+  autoId = 0
 }
 
 // Runner seed/reset store qua global hooks (không import được module alias này trực tiếp)
@@ -157,6 +168,7 @@ export async function getDoc(ref: DocRef): Promise<SnapshotDoc | { exists: () =>
 }
 
 export async function addDoc(ref: CollectionRef, data: Record<string, unknown>): Promise<DocRef> {
+  maybeThrow('addDoc', ref.name)
   const id = `stub-${++autoId}`
   const docs = store.get(ref.name) ?? []
   docs.push({ id, ...data })
@@ -165,6 +177,7 @@ export async function addDoc(ref: CollectionRef, data: Record<string, unknown>):
 }
 
 export async function updateDoc(ref: DocRef, data: Record<string, unknown>): Promise<void> {
+  maybeThrow('updateDoc', ref.collection)
   const docs = store.get(ref.collection) ?? []
   const target = docs.find(d => d.id === ref.id)
   if (!target) throw new Error(`firestore-stub: không tìm thấy doc ${ref.collection}/${ref.id}`)

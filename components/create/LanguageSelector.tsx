@@ -11,6 +11,8 @@ interface LanguageSelectorProps {
   languages?: StudyLanguage[]
   onChange: (value: LanguageCode) => void
   onClear?: () => void
+  label?: string
+  placeholder?: string
 }
 
 export function LanguageSelector({
@@ -18,22 +20,24 @@ export function LanguageSelector({
   languages = DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language })),
   onChange,
   onClear,
+  label = 'Language',
+  placeholder = 'Select language...',
 }: LanguageSelectorProps) {
   const enabledLanguages = languages.filter(language => language.enabled)
   return (
     <FieldWrapper
-      label="Language"
+      label={label}
       className="text-overline uppercase text-slate-600 tracking-wider font-bold"
       {...verifyAttrs({ unit: 'LanguageSelector', value })}
     >
       <div className="relative">
         <Select
-          aria-label="Language"
+          aria-label={label}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
         >
-          <option value="" disabled>Select language...</option>
+          <option value="" disabled>{placeholder}</option>
           {enabledLanguages.map(lang => (
             <option key={lang.code} value={lang.code}>
               {lang.display_name}

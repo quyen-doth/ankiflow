@@ -228,6 +228,12 @@ export interface ContentType {
   updated_at: FirestoreTimestamp;
 }
 
+/** ユーザー workspace 内の Content Type snapshot。 */
+export interface UserContentType extends ContentType {
+  user_id: string;
+  source_content_type_id?: string;
+}
+
 /**
  * Cấu hình từng trường (field) trong Form
  */
@@ -240,6 +246,7 @@ export interface FormFieldConfig {
   sort_order: number;
   placeholder?: string | null;
   data_source?: string | null; // Tên collection để lấy dữ liệu cho dropdown/checkbox
+  options?: string[]; // Static options cho custom dropdown không dùng data_source
 }
 
 // ─── SRS (Spaced Repetition System) ─────────────────────
@@ -292,22 +299,6 @@ export interface ReviewEvent {
   prev: ReviewStateSnapshot | null; // null = entry chưa từng có review_state
   next: ReviewStateSnapshot;
   created_at: string; // ISO
-}
-
-// ─── Collection: notification_triggers ───────────────────
-
-export interface NotificationTrigger {
-  id: string;
-  type: 'vocab_review';
-  name: string;
-  schedule_hours: number[];
-  timezone: string;
-  deck_filter: string[];
-  language_filter: string[];
-  words_per_notification: number;
-  is_active: boolean;
-  created_at: FirestoreTimestamp;
-  updated_at: FirestoreTimestamp;
 }
 
 // ─── Collection: settings ─────────────────────────────

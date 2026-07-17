@@ -98,11 +98,18 @@ export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeI
 
       {/* Thẻ render bằng iframe — bấm để lật mặt trước/sau */}
       <div
-        className="cursor-pointer select-none mt-4 rounded-[12px] overflow-hidden border border-[#efe0c6]"
-        onClick={() => setFlipped(f => !f)}
-        title="Click to flip"
+        className="relative select-none mt-4 rounded-[12px] overflow-hidden border border-[#efe0c6]"
       >
         <CardIframe html={html} />
+        {/* iframe 内の click は親へ bubble しないため、透明な button で全面を覆う。 */}
+        <button
+          type="button"
+          className="absolute inset-0 z-[1] cursor-pointer rounded-[12px] bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+          onClick={() => setFlipped(f => !f)}
+          title="Click to flip"
+          aria-label={flipped ? 'Show card front' : 'Reveal card answer'}
+          aria-pressed={flipped}
+        />
       </div>
 
       {/* Nút phát audio (không thể tương tác trong iframe sandbox) */}

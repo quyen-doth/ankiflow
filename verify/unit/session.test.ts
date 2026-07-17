@@ -14,14 +14,18 @@ describe('lib/session', () => {
 
   it('saveSession → loadSession の round-trip (各 FormType ごと)', () => {
     saveSession(FormType.LANGUAGE, { language: 'english', deckId: 'd1', tags: ['n5'] })
-    saveSession(FormType.IT, { topicIds: ['t1'], difficulty: 'medium' })
+    saveSession(FormType.IT, { topicIds: ['t1'], topicNames: ['Backend'], difficulty: 'medium' })
 
     expect(loadSession(FormType.LANGUAGE)).toEqual({
       language: 'english',
       deckId: 'd1',
       tags: ['n5'],
     })
-    expect(loadSession(FormType.IT)).toEqual({ topicIds: ['t1'], difficulty: 'medium' })
+    expect(loadSession(FormType.IT)).toEqual({
+      topicIds: ['t1'],
+      topicNames: ['Backend'],
+      difficulty: 'medium',
+    })
     // Sessions của các form_type độc lập với nhau
     expect(loadSession(FormType.GENERAL)).toBeNull()
   })
@@ -71,6 +75,41 @@ describe('lib/session', () => {
       tags: ['hsk1'],
     })
     expect(loadSession(FormType.LANGUAGE)).toEqual(preserved)
+  })
+
+  it('resetContentFields は IT Topic の ID と名前を一緒に保持する', () => {
+    saveSession(FormType.IT, {
+      topicIds: ['t1'],
+      topicNames: ['Backend'],
+      difficulty: 'advanced',
+    })
+
+    expect(resetContentFields(FormType.IT)).toEqual({
+      topicIds: ['t1'],
+      topicNames: ['Backend'],
+      difficulty: 'advanced',
+    })
+  })
+
+  it('Content Type の persistent config/field だけを保持する', () => {
+    saveSession('custom_type', {
+      deckId: 'deck-1',
+      tags: ['temporary'],
+      difficulty: 'advanced',
+      fieldValues: {
+        audience: 'Beginner',
+        temporary_note: 'Remove me',
+      },
+    })
+
+    expect(resetContentFields('custom_type', {
+      sessionKeys: ['deckId', 'difficulty'],
+      fieldKeys: ['audience'],
+    })).toEqual({
+      deckId: 'deck-1',
+      difficulty: 'advanced',
+      fieldValues: { audience: 'Beginner' },
+    })
   })
 
   it('session がない場合 resetContentFields は null を返す', () => {

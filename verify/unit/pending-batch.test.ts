@@ -44,6 +44,12 @@ describe('lib/pendingBatch', () => {
     expect(loaded?.items[1].word).toBe('ephemeral')
   })
 
+  it('IT Topic ID を batch preview handoff 用に保持する', () => {
+    const batch = makeBatch({ formType: FormType.IT, topicIds: ['topic-1', 'topic-2'] })
+    savePendingBatch(batch)
+    expect(loadPendingBatch()?.topicIds).toEqual(['topic-1', 'topic-2'])
+  })
+
   it('loadPendingBatch returns null when empty', () => {
     expect(loadPendingBatch()).toBeNull()
   })

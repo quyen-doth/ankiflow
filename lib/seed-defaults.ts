@@ -15,12 +15,20 @@
  * `publishTemplateDefaults()` は初回に hardcode をテンプレートとして書き込む
  * (id はサフィックスなし — hardcode の id と同一)。
  *
- * 注記: `content_types` はユーザーごとではない — その doc ID (form_language/form_it/
- * form_general) はアプリ全体のルーティングが依存する `form_type` の値そのもの。
- * content_types をユーザーごとにするには `code` を doc id から分離する必要がある (backlog)。
+ * `content_types` は admin が管理する新規ユーザー用 source。新規 account 作成時に
+ * `user_content_types` へ snapshot を作り、それ以降は自動同期しない。
  */
-import type { Firestore } from 'firebase-admin/firestore';
-import { DEFAULTS_OWNER_ID } from '@/lib/constants';
+import { GrpcStatus, type Firestore } from 'firebase-admin/firestore';
+import {
+    DEFAULTS_OWNER_ID,
+    GLOBAL_CONTENT_TYPES_COLLECTION,
+    USER_CONTENT_TYPES_COLLECTION,
+} from '@/lib/constants';
+import {
+    materializeUserContentType,
+    parseContentTypeConfig,
+    type ContentTypeSourceDocument,
+} from '@/lib/contentTypes';
 import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
 import { FormType, LanguageType } from '@/types';
 
@@ -362,6 +370,48 @@ async function seedDocIfMissing(db: Firestore, collection: string, id: string, d
     await ref.set(data);
 }
 
+function errorCode(error: unknown): unknown {
+    return error && typeof error === 'object' && 'code' in error
+        ? (error as { code: unknown }).code
+        : undefined;
+}
+
+async function createUserContentTypeIfMissing(
+    db: Firestore,
+    uid: string,
+    source: ContentTypeSourceDocument,
+    now: Date,
+): Promise<void> {
+    const snapshot = materializeUserContentType(source, uid);
+    try {
+        await db.collection(USER_CONTENT_TYPES_COLLECTION).doc(snapshot.id).create({
+            ...snapshot.data,
+            created_at: now,
+            updated_at: now,
+        });
+    } catch (error) {
+        const code = errorCode(error);
+        if (code === GrpcStatus.ALREADY_EXISTS || code === 'already-exists') return;
+        throw new Error(
+            `Failed to seed ${USER_CONTENT_TYPES_COLLECTION} for user ${uid}`,
+            { cause: error },
+        );
+    }
+}
+
+/** Global Content Types を一度だけ読み、editable config と source ID に正規化する。 */
+async function fetchGlobalContentTypes(db: Firestore): Promise<ContentTypeSourceDocument[]> {
+    try {
+        const snapshot = await db.collection(GLOBAL_CONTENT_TYPES_COLLECTION).get();
+        return snapshot.docs.map((document) => ({
+            id: document.id,
+            ...parseContentTypeConfig(document.data()),
+        }));
+    } catch (error) {
+        throw new Error(`Failed to load ${GLOBAL_CONTENT_TYPES_COLLECTION} defaults`, { cause: error });
+    }
+}
+
 /** 1 つの collection のテンプレート docs (`user_id == DEFAULTS_OWNER_ID`) を読み込む — 未 publish なら空。 */
 async function fetchTemplates(db: Firestore, collection: UserDefaultCollection): Promise<UserDefaultTemplateDocument[]> {
     const snap = await db.collection(collection).where('user_id', '==', DEFAULTS_OWNER_ID).get();
@@ -458,12 +508,16 @@ export async function publishTemplateDefaults(db: Firestore): Promise<void> {
 export async function seedUserDefaults(db: Firestore, uid: string): Promise<void> {
     const now = new Date();
 
-    let [catTemplates, ctTemplates, topicTemplates, deckTemplates] = await Promise.all([
-        fetchTemplates(db, 'categories'),
-        fetchTemplates(db, 'card_types'),
-        fetchTemplates(db, 'topics'),
-        fetchTemplates(db, 'decks'),
+    const [initialTemplates, globalContentTypes] = await Promise.all([
+        Promise.all([
+            fetchTemplates(db, 'categories'),
+            fetchTemplates(db, 'card_types'),
+            fetchTemplates(db, 'topics'),
+            fetchTemplates(db, 'decks'),
+        ]),
+        fetchGlobalContentTypes(db),
     ]);
+    let [catTemplates, ctTemplates, topicTemplates, deckTemplates] = initialTemplates;
 
     // テンプレートが一つも publish されていない — hardcode から lazy publish して読み直す。
     if (catTemplates.length === 0 && ctTemplates.length === 0 && topicTemplates.length === 0 && deckTemplates.length === 0) {
@@ -498,6 +552,9 @@ export async function seedUserDefaults(db: Firestore, uid: string): Promise<void
                 created_at: now,
                 updated_at: now,
             }),
+        ),
+        ...globalContentTypes.map((contentType) =>
+            createUserContentTypeIfMissing(db, uid, contentType, now),
         ),
         seedDocIfMissing(db, 'settings', uid, { ...DEFAULT_USER_PREFS, updated_at: now }),
     ]);

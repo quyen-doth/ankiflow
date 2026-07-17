@@ -22,6 +22,7 @@ export interface PendingBatch {
   deckId?: string
   categoryId?: string
   cardTypeIds: string[]
+  topicIds?: string[]
   tags: string[]
 
   /** 保存時刻 — stale データを検出するため。 */

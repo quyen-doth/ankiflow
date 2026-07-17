@@ -140,4 +140,25 @@ describe('generateBatch — local mode', () => {
       meaning_vi: 'def of Photosynthesis',
     })
   })
+
+  it('primary item と shared core fields を同じ values に渡す', async () => {
+    const blueprint: CardFormBlueprint = {
+      ...localBlueprint,
+      primaryFieldKey: 'title',
+      coreFields: [
+        { key: 'context', label: 'Context', type: 'textarea' },
+        { key: 'title', label: 'Title', type: 'text' },
+      ],
+      generate: {
+        mode: 'local',
+        content: values => ({ title: values.title, context: values.context }),
+      },
+    }
+
+    const results = await generateBatch(blueprint, ['Mitosis'], {}, {
+      baseValues: { context: 'Cell biology' },
+    })
+
+    expect(results[0].content).toEqual({ title: 'Mitosis', context: 'Cell biology' })
+  })
 })

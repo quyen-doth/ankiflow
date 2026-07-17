@@ -103,4 +103,20 @@ describe('resolveCardSpec — AI output language', () => {
       expect(schemaProperties(english)).not.toHaveProperty('han_viet')
     }
   })
+
+  it('built-in strategy は dynamicFields を schema を変えず prompt context に追加する', () => {
+    const spec = resolveCardSpec({
+      form_type: FormType.IT,
+      term: 'event loop',
+      dynamicFields: {
+        definition: 'Coordinates asynchronous callbacks',
+        audience: 'Beginners',
+      },
+    })
+
+    expect(spec.userMessage).toContain('Additional context:')
+    expect(spec.userMessage).toContain('definition: Coordinates asynchronous callbacks')
+    expect(spec.userMessage).toContain('audience: Beginners')
+    expect(schemaProperties(spec)).not.toHaveProperty('audience')
+  })
 })
