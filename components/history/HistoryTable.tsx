@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Eye, Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { languageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
-import type { Entry } from '@/types'
+import { FormType, type Entry } from '@/types'
 
 interface HistoryTableProps {
   data: Entry[]
@@ -33,7 +33,7 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   }
 
   function langCode(row: Entry): string | null {
-    if (row.form_type !== 'form_language' || !row.language) return null
+    if (row.form_type !== FormType.LANGUAGE || !row.language) return null
     return primaryLanguageSubtag(row.language)?.toUpperCase() ?? row.language.toUpperCase()
   }
 
@@ -120,17 +120,6 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
             title="Edit"
           >
             <Pencil className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={(e) => {
-              e.stopPropagation()
-              router.push(`/history/${row.id}`)
-            }}
-            className="p-2 h-auto text-slate-600 hover:text-primary hover:bg-primary-bg rounded-full"
-            title="View details"
-          >
-            <Eye className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
