@@ -126,9 +126,11 @@ export function BatchItemList({ items, onChange, label, placeholder, hint }: Bat
       </button>
 
       {hint && <p className="text-[12px] text-slate-400 mt-2.5">{hint}</p>}
-      <p className="text-[12px] text-slate-400 mt-1">
-        Press <kbd className="font-mono">Enter</kbd> to add a row · shared config applies to all
-        cards.
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-slate-400 mt-3">
+        <kbd className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] border border-[#e3e3de] bg-[#fcfcfb] font-mono text-[11px] font-semibold text-slate-500">
+          ⏎ Enter
+        </kbd>
+        <span>adds a row · shared config applies to all cards.</span>
       </p>
     </div>
   )

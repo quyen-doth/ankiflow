@@ -149,6 +149,47 @@ describe('getBlueprintForContentType', () => {
     expect(bp.configBlocks.map(block => block.kind)).toEqual(['language'])
   })
 
+  it('language + deck 隣接 → 同じ row にまとめ、span-2 control は full width のまま', () => {
+    const bp = getBlueprintForContentType(makeCt({
+      id: FormType.LANGUAGE,
+      code: 'language',
+      fields: defaultFields(FormType.LANGUAGE),
+    }))
+
+    const [first, ...rest] = bp.configBlocks
+    expect(first.kind).toBe('row')
+    // row 内は language → deck の 2 カラム
+    expect(first.kind === 'row' && first.blocks.map(leaf => leaf.kind)).toEqual(['language', 'deck'])
+    // 残りは full width の block
+    expect(rest.map(block => block.kind)).toEqual(['category', 'tags', 'cardTypes'])
+  })
+
+  it('span-1 control が 3 つ連続 → 2 つで 1 row、余りは full width', () => {
+    const bp = getBlueprintForContentType(makeCt({
+      id: FormType.LANGUAGE,
+      code: 'language',
+      fields: [
+        field({ field_key: 'language', label: 'Language', type: 'dropdown', is_required: true, sort_order: 0 }),
+        field({ field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', data_source: 'decks', sort_order: 1 }),
+        field({ field_key: 'difficulty', label: 'Difficulty', type: 'dropdown', sort_order: 2 }),
+        field({ field_key: 'word', label: 'Word', is_required: true, sort_order: 3 }),
+      ],
+    }))
+
+    expect(bp.configBlocks.map(block => block.kind)).toEqual(['row', 'difficulty'])
+  })
+
+  it('span-1 control が単独 → row にせず full width（半端な列を作らない）', () => {
+    const bp = getBlueprintForContentType(makeCt({
+      id: FormType.IT,
+      code: 'it',
+      fields: defaultFields(FormType.IT),
+    }))
+
+    // deck は単独の span-1 → row にならない
+    expect(bp.configBlocks.map(block => block.kind)).toEqual(['deck', 'topic', 'difficulty', 'keywords', 'cardTypes'])
+  })
+
   it('標準 control alias を fields[] の順序で mapping する', () => {
     const bp = getBlueprintForContentType(makeCt({
       id: 'custom',
