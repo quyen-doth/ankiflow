@@ -190,6 +190,7 @@ Custom global default の document ID は routing に使用せず、`code` が r
 | `description` | string | 説明 |
 | `icon` | string | Icon name |
 | `fields` | object[] | Embedded field 設定の配列 (下記参照) |
+| `ai_output_profiles` | object[]? | AI output schema variants (下記参照)。General は未設定 |
 | `default_create_mode` | string | `single` / `batch` |
 | `is_active` | boolean | — |
 | `sort_order` | number | — |
@@ -216,6 +217,7 @@ Custom global default の document ID は routing に使用せず、`code` が r
 | `description` | string | 説明 |
 | `icon` | string | Icon name |
 | `fields` | object[] | 下記の embedded field 設定 |
+| `ai_output_profiles` | object[]? | Workspace ごとの AI output schema variants。Global snapshot から deep-copy |
 | `default_create_mode` | string | `single` / `batch` |
 | `is_active` | boolean | Create / Resync の選択肢に表示するか |
 | `sort_order` | number | 表示順。UID filter 後に client 側で sort |
@@ -250,6 +252,34 @@ Built-in は `code` から既存の `FormType` / AI schema / generation strategy
 label、placeholder、required、session persistence を制御します。Language は `language` + `word`、IT は
 `term`、General は `title` が必須です。Custom Content Type は少なくとも 1 つの core input が必要です。
 未対応 type/control/data source や重複 `field_key` は保存時と render 前に明示的に拒否します。
+
+---
+
+### `ai_output_profiles[]` — Embedded AI output schema
+
+`content_types` / `user_content_types` に直接埋め込み、AI が生成する field と instruction を Content Type ごとに
+定義します。`profile` は `default` または primary BCP 47 subtag (`en` / `zh` / `ja` など)。Generate 時は
+study language と一致する profile を優先し、存在しない場合は `default` を使用します。
+
+| Field | Type | 説明 |
+|---|---|---|
+| `profile` | string | `default` または lowercase language subtag。document 内で unique、`default` は必須 |
+| `fields` | object[] | 1〜30 件の output field 宣言 |
+| `fields[].key` | string | lowercase snake_case、profile 内で unique。application metadata の reserved key は不可 |
+| `fields[].type` | string | `string` / `string_array` |
+| `fields[].instruction` | string | 1〜300 文字。`{output_language}` / `{study_language}` placeholder を使用可能 |
+| `fields[].include_when` | string? | `always` (default) / `output_vi` |
+| `fields[].max_items` | number? | `string_array` のみ、1〜20。未指定時は engine default 10 |
+
+すべての profile は Content Type の primary field (`word` / `term` / custom primary) を unconditional field として
+含める必要があります。Engine は tool schema を `additionalProperties:false` で生成し、primary value は model output
+ではなく request input から復元します。Built-in Language は `default` / `en` / `zh` / `ja`、IT は `default` を seed。
+General は AI API を使用しないため profile を持ちません。
+
+Profile がない legacy document は editor 上で built-in または generic fallback を materialize し、Save 時に保存します。
+Runtime は profile が保存されるまで旧 resolver を使用します。既存 built-in の backfill は
+`npm run migrate:ai-output-profiles` (dry-run) で確認し、明示承認後だけ `--apply` を使用します。この migration は
+field 未設定 document だけを transaction で update し、既存 customization を上書きしません。
 
 ---
 
