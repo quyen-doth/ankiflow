@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { DataTable } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -12,13 +11,31 @@ import { FormType, type Entry } from '@/types'
 
 interface HistoryTableProps {
   data: Entry[]
+  selectedIds: ReadonlySet<string>
+  onToggleSelect: (id: string) => void
+  onToggleSelectAll: () => void
+  onOpen?: (entry: Entry) => void
   onEdit?: (entry: Entry) => void
   onDelete?: (id: string) => void
 }
 
-export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
-  const router = useRouter()
+export function HistoryTable({
+  data,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  onOpen,
+  onEdit,
+  onDelete,
+}: HistoryTableProps) {
   const { languages } = useStudyLanguages()
+
+  const selectableIds = data.flatMap(entry => (
+    typeof entry.id === 'string' && entry.id ? [entry.id] : []
+  ))
+  const allSelected = selectableIds.length > 0
+    && selectableIds.every(id => selectedIds.has(id))
+  const someSelected = selectableIds.some(id => selectedIds.has(id))
 
   function truncateDeck(deck: string | undefined): string {
     if (!deck) return '—'
@@ -38,6 +55,38 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   }
 
   const columns = [
+    {
+      key: 'selection',
+      header: (
+        <input
+          ref={input => {
+            if (input) input.indeterminate = someSelected && !allSelected
+          }}
+          type="checkbox"
+          checked={allSelected}
+          onChange={onToggleSelectAll}
+          aria-label="Select all visible cards"
+          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+        />
+      ),
+      width: '48px',
+      align: 'center' as const,
+      render: (_: unknown, row: Entry) => {
+        const id = typeof row.id === 'string' ? row.id : ''
+        const label = row.word || row.term || row.title || 'card'
+        return (
+          <input
+            type="checkbox"
+            checked={!!id && selectedIds.has(id)}
+            disabled={!id}
+            onClick={event => event.stopPropagation()}
+            onChange={() => { if (id) onToggleSelect(id) }}
+            aria-label={`Select ${label}`}
+            className="h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:cursor-not-allowed"
+          />
+        )
+      },
+    },
     {
       key: 'word',
       header: 'Word',
@@ -140,13 +189,13 @@ export function HistoryTable({ data, onEdit, onDelete }: HistoryTableProps) {
   return (
     <div
       className="bg-white rounded-card border border-border/40 overflow-hidden"
-      {...verifyAttrs({ unit: 'HistoryTable', rows: data.length })}
+      {...verifyAttrs({ unit: 'HistoryTable', rows: data.length, selected: selectedIds.size })}
     >
       <DataTable
         data={data}
         columns={columns}
         keyField="id"
-        onRowClick={(row) => router.push(`/history/${row.id}`)}
+        onRowClick={onOpen}
         emptyMessage="No vocabulary cards created yet."
       />
     </div>

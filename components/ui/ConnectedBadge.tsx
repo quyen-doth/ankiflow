@@ -54,7 +54,7 @@ export function ConnectedBadge({ connected: propConnected, unsyncedCount = 0, on
         )}
       </div>
 
-      {unsyncedCount > 0 && connected && onSync && (
+      {connected && onSync && (
         <button
           type="button"
           onClick={onSync}
@@ -62,7 +62,11 @@ export function ConnectedBadge({ connected: propConnected, unsyncedCount = 0, on
           className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-dark hover:text-amber transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-          {isSyncing ? 'Syncing...' : `Sync ${unsyncedCount} card${unsyncedCount > 1 ? 's' : ''}`}
+          {isSyncing
+            ? 'Syncing...'
+            : unsyncedCount > 0
+              ? `Sync ${unsyncedCount} card${unsyncedCount > 1 ? 's' : ''}`
+              : 'Sync'}
         </button>
       )}
 

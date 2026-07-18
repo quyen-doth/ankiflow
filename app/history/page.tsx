@@ -10,11 +10,14 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { Select } from '@/components/ui/FormField'
+import { Modal } from '@/components/ui/Modal'
+import { useToast } from '@/components/ui/Toast'
 import { HistoryTable } from '@/components/history/HistoryTable'
 import { EntryEditModal } from '@/components/history/EntryEditModal'
 import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
-import { PlusCircle } from 'lucide-react'
+import { useEntryDelete } from '@/hooks/useEntryDelete'
+import { PlusCircle, Trash2 } from 'lucide-react'
 import { FormType, type Entry, type UserContentType } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
@@ -42,7 +45,12 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<HistoryFilters>(DEFAULT_HISTORY_FILTERS)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Entry[] | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [deleting, setDeleting] = useState(false)
   const { saveEntry } = useEntryEdit()
+  const { deleteEntries } = useEntryDelete()
+  const toast = useToast()
 
   useEffect(() => {
     // Chưa có user (authLoading hoặc null) → giữ spinner; middleware đảm bảo đã login
@@ -111,6 +119,47 @@ export default function HistoryPage() {
     () => filterHistoryEntries(entries, filters),
     [entries, filters],
   )
+  const selectedEntries = useMemo(
+    () => filteredEntries.filter(entry => !!entry.id && selectedIds.has(entry.id)),
+    [filteredEntries, selectedIds],
+  )
+
+  const applyFilters = (nextFilters: HistoryFilters) => {
+    // Filter 変更時、非表示になる entry を選択状態から外して誤削除を防ぐ。
+    const visibleIds = new Set(filterHistoryEntries(entries, nextFilters).flatMap(entry => (
+      typeof entry.id === 'string' && entry.id ? [entry.id] : []
+    )))
+    setFilters(nextFilters)
+    setSelectedIds(current => {
+      const next = new Set([...current].filter(id => visibleIds.has(id)))
+      return next.size === current.size ? current : next
+    })
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(current => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllVisible = () => {
+    const visibleIds = filteredEntries.flatMap(entry => (
+      typeof entry.id === 'string' && entry.id ? [entry.id] : []
+    ))
+    setSelectedIds(current => {
+      const next = new Set(current)
+      const allVisibleSelected = visibleIds.length > 0
+        && visibleIds.every(id => next.has(id))
+      visibleIds.forEach(id => {
+        if (allVisibleSelected) next.delete(id)
+        else next.add(id)
+      })
+      return next
+    })
+  }
   const filteredNoteCount = filteredEntries.reduce(
     (sum, entry) => sum + (entry.card_type_ids?.length || 0),
     0,
@@ -141,29 +190,51 @@ export default function HistoryPage() {
   }, [contentTypeOptions, filters, languageOptions])
 
   const changeContentType = (contentType: string) => {
-    setFilters(current => ({
-      ...current,
+    applyFilters({
+      ...filters,
       contentType,
       language: contentType === FormType.LANGUAGE
-        ? current.language
+        ? filters.language
         : ALL_HISTORY_FILTERS,
-    }))
+    })
   }
 
   const removeFilter = (key: string) => {
-    setFilters(current => {
-      if (key === 'search') return { ...current, search: '' }
-      if (key === 'contentType') {
-        return {
-          ...current,
-          contentType: ALL_HISTORY_FILTERS,
-          language: ALL_HISTORY_FILTERS,
-        }
+    let nextFilters = filters
+    if (key === 'search') nextFilters = { ...filters, search: '' }
+    if (key === 'contentType') {
+      nextFilters = {
+        ...filters,
+        contentType: ALL_HISTORY_FILTERS,
+        language: ALL_HISTORY_FILTERS,
       }
-      if (key === 'language') return { ...current, language: ALL_HISTORY_FILTERS }
-      if (key === 'status') return { ...current, status: ALL_HISTORY_FILTERS }
-      return current
-    })
+    }
+    if (key === 'language') nextFilters = { ...filters, language: ALL_HISTORY_FILTERS }
+    if (key === 'status') nextFilters = { ...filters, status: ALL_HISTORY_FILTERS }
+    applyFilters(nextFilters)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteTarget.length === 0 || deleting) return
+    const targets = deleteTarget
+    const targetIds = new Set(targets.flatMap(entry => entry.id ? [entry.id] : []))
+    const hasAnkiNotes = targets.some(entry => (entry.anki_note_ids?.length ?? 0) > 0)
+    setDeleting(true)
+
+    try {
+      const result = await deleteEntries(targets)
+      setEntries(current => current.filter(entry => !entry.id || !targetIds.has(entry.id)))
+      setSelectedIds(new Set())
+      setDeleteTarget(null)
+      toast.success(`Deleted ${result.deleted} card${result.deleted === 1 ? '' : 's'}`)
+      if (!result.ankiCleaned && hasAnkiNotes) {
+        toast.info('Anki notes will be removed on next Sync')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete cards')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -185,10 +256,10 @@ export default function HistoryPage() {
             <FilterBar
               searchPlaceholder="Search vocabulary, meaning…"
               searchValue={filters.search}
-              onSearchChange={search => setFilters(current => ({ ...current, search }))}
+              onSearchChange={search => applyFilters({ ...filters, search })}
               activeFilters={activeFilters}
               onRemoveFilter={removeFilter}
-              onClearAll={() => setFilters({ ...DEFAULT_HISTORY_FILTERS })}
+              onClearAll={() => applyFilters({ ...DEFAULT_HISTORY_FILTERS })}
             />
           </div>
           <div className="w-full sm:w-[200px]">
@@ -207,10 +278,10 @@ export default function HistoryPage() {
               <Select
                 aria-label="Language"
                 value={filters.language}
-                onChange={event => setFilters(current => ({
-                  ...current,
+                onChange={event => applyFilters({
+                  ...filters,
                   language: event.target.value,
-                }))}
+                })}
               >
                 {languageOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -222,10 +293,10 @@ export default function HistoryPage() {
             <Select
               aria-label="Status"
               value={filters.status}
-              onChange={event => setFilters(current => ({
-                ...current,
+              onChange={event => applyFilters({
+                ...filters,
                 status: event.target.value as HistoryStatusFilter,
-              }))}
+              })}
             >
               {STATUS_FILTER_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -237,6 +308,33 @@ export default function HistoryPage() {
           </span>
         </div>
 
+        {selectedIds.size > 0 && (
+          <div className="flex flex-col gap-3 rounded-[9px] border border-danger/20 bg-danger-bg px-4 py-3 sm:flex-row sm:items-center">
+            <span className="text-sm font-bold text-danger">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex gap-2 sm:ml-auto">
+              <Button
+                variant="destructive"
+                size="sm"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => setDeleteTarget(selectedEntries)}
+                disabled={deleting || selectedEntries.length === 0}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                disabled={deleting}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center min-h-[40vh]">
@@ -245,7 +343,15 @@ export default function HistoryPage() {
         ) : (
           <HistoryTable
             data={filteredEntries}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelected}
+            onToggleSelectAll={toggleAllVisible}
+            onOpen={(entry) => router.push(`/history/${entry.id}`)}
             onEdit={(entry) => setEditEntry(entry)}
+            onDelete={(id) => {
+              const entry = entries.find(candidate => candidate.id === id)
+              if (entry) setDeleteTarget([entry])
+            }}
           />
         )}
       </div>
@@ -264,6 +370,27 @@ export default function HistoryPage() {
           }}
         />
       )}
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null) }}
+        onConfirm={confirmDelete}
+        title={deleteTarget?.length === 1 ? 'Delete card?' : `Delete ${deleteTarget?.length ?? 0} cards?`}
+        size="sm"
+      >
+        <p className="text-sm text-slate-600">
+          Delete {deleteTarget?.length === 1 ? 'this card' : 'these cards'} permanently? Cards already exported to Anki will also be removed
+          from Anki immediately if it is open, or on the next Sync.
+        </p>
+        <div className="flex gap-3 justify-end mt-5">
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </Modal>
     </MotionPage>
   )
 }

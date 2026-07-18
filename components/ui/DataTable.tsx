@@ -8,7 +8,7 @@ import { verifyAttrs } from '@/verify/core/contract'
 
 interface Column<T> {
   key: keyof T | string
-  header: string
+  header: React.ReactNode
   width?: string
   align?: 'left' | 'center' | 'right'
   render?: (value: unknown, row: T) => React.ReactNode

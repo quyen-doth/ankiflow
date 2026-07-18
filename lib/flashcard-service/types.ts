@@ -32,6 +32,7 @@ export interface IFlashcardService {
   suspend(cardIds: number[]): Promise<boolean>
   unsuspend(cardIds: number[]): Promise<boolean>
   changeDeck(cardIds: number[], deckName: string): Promise<void>
+  deleteNotes(noteIds: number[]): Promise<void>
   deleteDecks(deckNames: string[], cardsToo?: boolean): Promise<void>
   storeMediaFile(filename: string, base64Data: string): Promise<string>
   getModelNames(): Promise<string[]>

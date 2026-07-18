@@ -354,6 +354,8 @@ export interface Settings {
   study_languages?: StudyLanguage[];
   /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
   ai_output_language?: string;
+  /** 次回の browser-side Sync で削除する Anki note ID の retry queue。 */
+  pending_anki_note_deletions?: number[];
   updated_at: FirestoreTimestamp;
 }
 

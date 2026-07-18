@@ -5,7 +5,7 @@
  *
  * Chỉ implement phần API mà components của AnkiFlow dùng:
  * collection / query / where (equality) / orderBy / getDocs / doc /
- * addDoc / updateDoc / deleteDoc / serverTimestamp.
+ * addDoc / updateDoc / deleteDoc / serverTimestamp / arrayRemove.
  */
 import type { DocSeed } from '@/verify/core/types'
 
@@ -42,6 +42,11 @@ interface QueryRef {
 }
 
 const SERVER_TIMESTAMP = { __kind: 'serverTimestamp' } as const
+
+interface ArrayRemoveSentinel {
+  __kind: 'arrayRemove'
+  values: unknown[]
+}
 
 let store = new Map<string, DocSeed[]>()
 let autoId = 0
@@ -181,7 +186,20 @@ export async function updateDoc(ref: DocRef, data: Record<string, unknown>): Pro
   const docs = store.get(ref.collection) ?? []
   const target = docs.find(d => d.id === ref.id)
   if (!target) throw new Error(`firestore-stub: không tìm thấy doc ${ref.collection}/${ref.id}`)
-  Object.assign(target, data)
+  Object.entries(data).forEach(([key, value]) => {
+    if (
+      typeof value === 'object'
+      && value !== null
+      && '__kind' in value
+      && value.__kind === 'arrayRemove'
+    ) {
+      const sentinel = value as ArrayRemoveSentinel
+      const current = Array.isArray(target[key]) ? target[key] : []
+      target[key] = current.filter(item => !sentinel.values.includes(item))
+      return
+    }
+    target[key] = value
+  })
 }
 
 export async function deleteDoc(ref: DocRef): Promise<void> {
@@ -191,6 +209,10 @@ export async function deleteDoc(ref: DocRef): Promise<void> {
 
 export function serverTimestamp(): typeof SERVER_TIMESTAMP {
   return SERVER_TIMESTAMP
+}
+
+export function arrayRemove(...values: unknown[]): ArrayRemoveSentinel {
+  return { __kind: 'arrayRemove', values }
 }
 
 export function onSnapshot(
