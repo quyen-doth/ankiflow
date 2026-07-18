@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { generateBatch } from '@/lib/create/batchGenerate'
+import { DEFAULT_CONTENT_TYPES } from '@/lib/contentTypes'
+import { getBlueprintForContentType } from '@/lib/create/formBlueprint'
 import { FormType, LanguageType } from '@/types'
 import type { CardFormBlueprint } from '@/lib/create/formBlueprint'
 
@@ -76,6 +78,32 @@ describe('generateBatch — api mode', () => {
     await generateBatch(apiBlueprint, ['x'], {})
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string)
     expect(body.language).toBeUndefined()
+  })
+
+  it('workspace blueprint の authoritative content_type_id を全 batch request に渡す', async () => {
+    const languageDefault = DEFAULT_CONTENT_TYPES.find(contentType => (
+      contentType.id === FormType.LANGUAGE
+    ))
+    if (!languageDefault) throw new Error('Language Content Type default is required')
+    const workspaceBlueprint = getBlueprintForContentType({
+      ...languageDefault,
+      id: 'form_language__user-1',
+      created_at: { seconds: 0, nanoseconds: 0, toDate: () => new Date(0) },
+      updated_at: { seconds: 0, nanoseconds: 0, toDate: () => new Date(0) },
+    })
+
+    await generateBatch(
+      workspaceBlueprint,
+      ['book', 'pen'],
+      { language: LanguageType.ENGLISH },
+    )
+
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+    const bodies = fetchMock.mock.calls.map(call => (
+      JSON.parse(call[1].body as string) as Record<string, unknown>
+    ))
+    expect(bodies).toHaveLength(2)
+    expect(bodies.every(body => body.content_type_id === 'form_language__user-1')).toBe(true)
   })
 })
 

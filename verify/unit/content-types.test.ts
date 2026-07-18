@@ -17,6 +17,7 @@ import {
   USER_CONTENT_TYPES_COLLECTION,
 } from '@/lib/constants'
 import { FormType } from '@/types'
+import { createGenericAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import type {
   ContentTypeSourceDocument,
   EditableContentTypeData,
@@ -112,6 +113,11 @@ describe('default global Content Types', () => {
       },
     ])
     expect(DEFAULT_CONTENT_TYPES.every(contentType => contentType.is_active)).toBe(true)
+    expect(DEFAULT_CONTENT_TYPES[0].ai_output_profiles?.map(profile => profile.profile))
+      .toEqual(['default', 'en', 'zh', 'ja'])
+    expect(DEFAULT_CONTENT_TYPES[1].ai_output_profiles?.map(profile => profile.profile))
+      .toEqual(['default'])
+    expect(DEFAULT_CONTENT_TYPES[2].ai_output_profiles).toBeUndefined()
   })
 })
 
@@ -135,6 +141,16 @@ describe('Content Type materialization', () => {
     })
     expect(materialized.data).not.toHaveProperty('created_at')
     expect(materialized.data).not.toHaveProperty('updated_at')
+  })
+
+  it('AI output profiles を user snapshot へ deep clone する', () => {
+    const source = sourceDocument()
+    source.ai_output_profiles = createGenericAiOutputProfiles('term', 'Term')
+
+    const materialized = materializeUserContentType(source, 'user-1')
+    materialized.data.ai_output_profiles![0].fields[0].instruction = 'Changed snapshot'
+
+    expect(source.ai_output_profiles[0].fields[0].instruction).toBe('Primary value for Term')
   })
 
   it('fields[] を deep clone し、source と参照を共有しない', () => {
@@ -234,6 +250,22 @@ describe('runtime Content Type preparation', () => {
 })
 
 describe('Content Type validation', () => {
+  it('valid AI output profiles を parse し、不正 profile を拒否する', () => {
+    const valid = validateContentTypeConfig(validConfig({
+      ai_output_profiles: createGenericAiOutputProfiles('term', 'Term'),
+    }))
+    expect(valid.success).toBe(true)
+
+    const invalid = validateContentTypeConfig({
+      ...validConfig(),
+      ai_output_profiles: [{
+        profile: 'default',
+        fields: [{ key: 'status', type: 'string', instruction: 'Reserved metadata' }],
+      }],
+    })
+    expect(invalid.success).toBe(false)
+  })
+
   it.each(['', 'MedicalTerms', 'medical-terms', '_medical', '2medical'])(
     'invalid code %j を拒否する',
     code => {

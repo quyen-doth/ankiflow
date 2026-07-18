@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { resolveCardSpec, type CardSpec } from './card-schemas'
+import { normalizeGeneratedCard, resolveCardSpec } from './card-schemas'
+import type { CardSpec } from './card-spec'
 import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
 import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
 import type {
@@ -52,7 +53,8 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
         ? await this.runWithSearch(spec)
         : await this.runForced(spec)
       // 出力が正しいスキーマか validate (旧 provider は validate していなかった)。
-      return spec.schema.parse(raw) as Record<string, unknown>
+      const parsed = spec.schema.parse(raw) as Record<string, unknown>
+      return normalizeGeneratedCard(input, parsed)
     } catch (error) {
       if (retries > 0) {
         console.warn(`Claude generation failed, retrying... (${retries} left)`)
@@ -164,7 +166,7 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
 
       // Model が提出せずに停止 → 提出するよう促してから再試行。
       messages.push({ role: 'assistant', content: res.content })
-      messages.push({ role: 'user', content: `Hãy gọi tool ${spec.toolName} để nộp kết quả cuối cùng.` })
+      messages.push({ role: 'user', content: `Call the ${spec.toolName} tool to submit the final result.` })
     }
 
     throw new Error('Model did not submit card after web_search loop')

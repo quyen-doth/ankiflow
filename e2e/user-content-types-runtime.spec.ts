@@ -67,3 +67,44 @@ test('Configured CardForm は成功後 nonpersistent field だけを reset す�
   await expect(page.getByRole('textbox', { name: 'Prompt' })).toHaveValue('')
   await expect(page.getByRole('textbox', { name: 'Audience' })).toHaveValue('Beginners')
 })
+
+test('Create generate payload は selected workspace content_type_id を送信する', async ({ page }) => {
+  let generateBody: Record<string, unknown> | null = null
+
+  await page.route('**/api/entries/check-duplicate', async route => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ duplicates: [] }) })
+  })
+  await page.route('**/api/generate', async route => {
+    generateBody = route.request().postDataJSON() as Record<string, unknown>
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        content: {
+          prompt: 'Event loop',
+          answer: 'Runtime scheduling',
+        },
+      }),
+    })
+  })
+
+  await page.goto('/verify/CreateContentTypes/e2e-authoritative-payload?chrome=0')
+  await page.getByRole('textbox', { name: 'Prompt' }).fill('Event loop')
+  await page.getByRole('button', { name: /Generate/ }).click()
+
+  await expect.poll(() => generateBody).not.toBeNull()
+  expect(generateBody).toMatchObject({
+    form_type: 'quiz',
+    content_type_id: 'quiz-type__test-user',
+    word: 'Event loop',
+  })
+  await expect.poll(() => page.evaluate(() => {
+    const raw = localStorage.getItem('ankiflow_pending_result')
+    if (!raw) return null
+    const pending = JSON.parse(raw) as { generatedContent?: Record<string, unknown> }
+    return pending.generatedContent
+  })).toEqual({
+    prompt: 'Event loop',
+    answer: 'Runtime scheduling',
+  })
+})
