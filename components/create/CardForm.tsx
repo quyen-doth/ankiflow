@@ -986,9 +986,13 @@ export function CardFormContent({
                         {fieldErrors[primaryKey] && (
                             <p className="text-[12px] text-danger mt-1.5">{fieldErrors[primaryKey]}</p>
                         )}
-                        {blueprint.coreFields
-                            .filter(field => field.key !== primaryKey)
-                            .map(renderCoreField)}
+                        {blueprint.coreFields.some(field => field.key !== primaryKey) && (
+                            <div className="mt-[22px] pt-[22px] border-t border-[#f0f0ec]">
+                                {blueprint.coreFields
+                                    .filter(field => field.key !== primaryKey)
+                                    .map(renderCoreField)}
+                            </div>
+                        )}
                     </>
                 ) : (
                     blueprint.coreFields.map(renderCoreField)

@@ -57,6 +57,49 @@ export interface CardFormBlueprint {
   generate: GenerateStrategy
 }
 
+/** Bề rộng ưa thích của mỗi control trong lưới 2 cột của cột Configuration. */
+const CONTROL_SPAN: Record<ConfigLeaf['kind'], 1 | 2> = {
+  language: 1,
+  deck: 1,
+  difficulty: 1,
+  category: 2,
+  tags: 2,
+  cardTypes: 2,
+  topic: 2,
+  keywords: 2,
+}
+
+/**
+ * Nhóm các leaf thành block để render, tôn trọng thứ tự sort_order:
+ * - Các leaf span-1 liền kề được ghép thành từng CẶP → `row` (2 cột).
+ * - Leaf span-1 lẻ/đơn độc → block full width (không để nửa dòng trơ trọi).
+ * - Leaf span-2 → luôn là block full width riêng.
+ */
+export function groupConfigLeaves(leaves: ConfigLeaf[]): ConfigBlock[] {
+  const blocks: ConfigBlock[] = []
+  let pending: ConfigLeaf[] = []
+
+  const flushPending = () => {
+    for (let i = 0; i < pending.length; i += 2) {
+      const pair = pending.slice(i, i + 2)
+      blocks.push(pair.length === 2 ? { kind: 'row', blocks: pair } : pair[0])
+    }
+    pending = []
+  }
+
+  for (const leaf of leaves) {
+    if (CONTROL_SPAN[leaf.kind] === 1) {
+      pending.push(leaf)
+      continue
+    }
+    flushPending()
+    blocks.push(leaf)
+  }
+  flushPending()
+
+  return blocks
+}
+
 const csv = (s?: string): string[] | undefined =>
   s ? s.split(',').map(k => k.trim()).filter(Boolean) : undefined
 
@@ -94,8 +137,8 @@ const LANGUAGE_BLUEPRINT: CardFormBlueprint = {
     { kind: 'row', blocks: [
       { kind: 'language', fieldKey: 'language', label: 'Language', required: true, persistent: true },
       { kind: 'deck', fieldKey: 'anki_deck', label: 'Anki Deck', required: true, persistent: true, filterByLanguage: true },
-      { kind: 'category', fieldKey: 'category_id', label: 'Category', persistent: true, span: 2 },
     ] },
+    { kind: 'category', fieldKey: 'category_id', label: 'Category', persistent: true },
     { kind: 'tags', fieldKey: 'tags', label: 'Tags', persistent: true },
     { kind: 'cardTypes', fieldKey: 'card_type_ids', label: 'Card types to generate', persistent: true },
   ],
@@ -262,7 +305,7 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
   const seenKeys = new Set<string>()
   const seenControls = new Set<ConfigLeaf['kind']>()
   const coreFields: CoreField[] = []
-  const configBlocks: ConfigBlock[] = []
+  const configLeaves: ConfigLeaf[] = []
 
   for (const field of sorted) {
     const key = field.field_key.trim()
@@ -285,7 +328,7 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
       if (dataSource && !control.dataSources.includes(dataSource)) {
         throw fieldError(field, `data source "${dataSource}" is not supported for this configuration control.`)
       }
-      configBlocks.push({
+      configLeaves.push({
         kind: control.kind,
         fieldKey: key,
         label: field.label,
@@ -331,11 +374,11 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
     throw new Error(`Built-in Content Type "${source.code}" must define the "${primaryFieldKey}" core field.`)
   }
   if (builtInFormType === FormType.LANGUAGE
-    && !configBlocks.some(block => block.kind !== 'row' && block.kind === 'language')) {
+    && !configLeaves.some(leaf => leaf.kind === 'language')) {
     throw new Error('Built-in Language Content Type must define the "language" configuration field.')
   }
 
-  return { coreFields, configBlocks, primaryFieldKey }
+  return { coreFields, configBlocks: groupConfigLeaves(configLeaves), primaryFieldKey }
 }
 
 export function validateContentTypeBlueprint(
