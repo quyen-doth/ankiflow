@@ -8,6 +8,8 @@
  * (`getAnkiClientFromSettings()` 経由) ようにするため `client` を引数として受け取る。
  */
 import type { IFlashcardService } from './types'
+import { arrayRemove, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import {
   ANKI_MODEL_NAME,
   ANKI_MODEL_FIELDS,
@@ -39,6 +41,38 @@ export async function ensureModel(client: IFlashcardService): Promise<void> {
     css: ANKI_CARD_CSS,
     cardTemplates: ANKI_CARD_TEMPLATES,
   })
+}
+
+/**
+ * settings/{uid} の pending note deletion queue を AnkiConnect で処理する。
+ * Anki/Firestore のどちらかが失敗した場合は queue を残し、次回 Sync で再試行する。
+ */
+export async function drainPendingAnkiDeletions(
+  client: IFlashcardService,
+  uid: string,
+): Promise<number> {
+  if (!uid) return 0
+
+  try {
+    const settingsRef = doc(db, 'settings', uid)
+    const snapshot = await getDoc(settingsRef)
+    if (!snapshot.exists()) return 0
+
+    const rawIds = snapshot.data().pending_anki_note_deletions
+    if (!Array.isArray(rawIds)) return 0
+    const noteIds = [...new Set(rawIds.filter(
+      (value): value is number => Number.isSafeInteger(value) && value > 0,
+    ))]
+    if (noteIds.length === 0) return 0
+
+    await client.deleteNotes(noteIds)
+    await updateDoc(settingsRef, {
+      pending_anki_note_deletions: arrayRemove(...noteIds),
+    })
+    return noteIds.length
+  } catch {
+    return 0
+  }
 }
 
 // ─── Deck operations (app/api/anki/decks POST を鏡写し) ─────────────────────────

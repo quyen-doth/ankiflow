@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { z } from 'zod'
 import { ConnectedBadge } from '@/components/ui/ConnectedBadge'
 import { registerUnit } from '@/verify/core/registry'
+import { fn } from '@/verify/core/schema-helpers'
 
 type ConnectedBadgeProps = ComponentProps<typeof ConnectedBadge>
 
@@ -9,6 +10,7 @@ type ConnectedBadgeProps = ComponentProps<typeof ConnectedBadge>
 const EXPECTED_CONNECTED: Record<string, boolean> = {
   'prop-connected': true,
   'prop-disconnected': false,
+  'connected-zero-sync': true,
   'polled-ok': true,
   'polled-down': false,
   'probe-fetch-throws': false,
@@ -22,6 +24,8 @@ registerUnit<ConnectedBadgeProps>({
   render: props => <ConnectedBadge {...props} />,
   propsSchema: z.object({
     connected: z.boolean().optional(),
+    unsyncedCount: z.number().optional(),
+    onSync: fn<() => void>().optional(),
   }),
   fixtures: [
     {
@@ -33,6 +37,11 @@ registerUnit<ConnectedBadgeProps>({
       id: 'prop-disconnected',
       description: 'Trạng thái offline truyền qua prop.',
       props: { connected: false },
+    },
+    {
+      id: 'connected-zero-sync',
+      description: 'Anki connected + không có card chờ sync vẫn hiển thị nút Sync để drain deletion queue.',
+      props: { connected: true, unsyncedCount: 0, onSync: () => undefined },
     },
     {
       id: 'polled-ok',
@@ -96,6 +105,16 @@ registerUnit<ConnectedBadgeProps>({
         const text = root.textContent ?? ''
         const expected = contract.connected === 'true' ? 'Anki connected' : 'Anki offline'
         return text.includes(expected) || `không thấy "${expected}" trong "${text.trim()}"`
+      },
+    },
+    {
+      id: 'sync-remains-available-with-zero-cards',
+      description: 'Nút Sync vẫn khả dụng khi queue xóa có thể tồn tại nhưng unsyncedCount = 0',
+      onlyFixtures: ['connected-zero-sync'],
+      check: ({ root }) => {
+        const button = Array.from(root.querySelectorAll('button'))
+          .find(element => element.textContent?.trim() === 'Sync')
+        return !!button || 'không thấy nút Sync khi unsyncedCount = 0'
       },
     },
   ],

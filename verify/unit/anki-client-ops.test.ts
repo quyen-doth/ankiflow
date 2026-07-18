@@ -28,6 +28,7 @@ function makeClient(overrides: Partial<Record<keyof IFlashcardService, unknown>>
     suspend: vi.fn(async () => true),
     unsuspend: vi.fn(async () => true),
     changeDeck: vi.fn(async () => {}),
+    deleteNotes: vi.fn(async () => {}),
     deleteDecks: vi.fn(async () => {}),
     storeMediaFile: vi.fn(async (f: string) => f),
     getModelNames: vi.fn(async () => []),
