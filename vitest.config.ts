@@ -20,7 +20,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['verify/**/*.test.ts'],
+    include: ['verify/**/*.test.{ts,tsx}'],
     setupFiles: ['verify/test-setup.ts'],
     globals: false,
   },
