@@ -4,7 +4,7 @@ import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { buildReviewMessage } from '@/lib/line/flex-message'
 import { pushMessage } from '@/lib/line/client'
-import { currentHourInTimeZone } from '@/lib/notifications/schedule'
+import { resolvePushKey } from '@/lib/notifications/schedule'
 import { pickDueForReview } from '@/lib/srs/prioritize'
 import type { Entry } from '@/types'
 
@@ -44,8 +44,9 @@ function scheduleHours(value: unknown): number[] {
 }
 
 /**
- * GET /api/cron/srs-push — GitHub Actions から毎時呼び出し、各 user の timezone と
- * 管理者設定の配信時刻に基づいて LINE 復習通知を送る。
+ * GET /api/cron/srs-push — GitHub Actions から毎時 3 回 (7,27,47 分) 呼び出され、
+ * 各 user の timezone と管理者設定の配信時刻に基づいて LINE 復習通知を送る。
+ * cron run の遅延・欠落に備え、直前の時への catch-up は resolvePushKey が行う。
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -90,8 +91,8 @@ export async function GET(request: Request) {
 
     if (!lineUserId) return { pushed: 0, skipped: 1, failed: 0 }
 
-    const { hour, key } = currentHourInTimeZone(now, userSettings.line_timezone)
-    if (!hours.includes(hour) || userSettings.line_last_push_key === key) {
+    const key = resolvePushKey(now, userSettings.line_timezone, hours, userSettings.line_last_push_key)
+    if (key === null) {
       return { pushed: 0, skipped: 1, failed: 0 }
     }
 

@@ -2,7 +2,9 @@ name: SRS LINE Push
 
 on:
     schedule:
-        - cron: '0 * * * *'
+        # 毎時 3 回、0 分を避けて実行 (GitHub Actions は 0 分が最も混雑し、
+        # run の遅延・欠落が起きやすい)。欠落した時間帯は API 側の catch-up で補完。
+        - cron: '7,27,47 * * * *'
     workflow_dispatch: {}
 
 jobs:
