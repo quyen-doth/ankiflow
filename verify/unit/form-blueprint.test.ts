@@ -282,4 +282,38 @@ describe('IT blueprint payload', () => {
       topics: ['JavaScript Runtime'],
     })
   })
+
+  it('workspace snapshot ID を authoritative content_type_id として渡す', () => {
+    const blueprint = getBlueprintForContentType(makeCt({
+      id: 'form_it__user-1',
+      code: 'it',
+      name: 'IT Vocabulary',
+      fields: defaultFields(FormType.IT),
+    }))
+    if (blueprint.generate.mode !== 'api') throw new Error('IT blueprint must use API generation')
+
+    expect(blueprint.generate.payload(
+      { term: 'Event Loop' },
+      { topicNames: ['JavaScript Runtime'] },
+    )).toMatchObject({
+      form_type: FormType.IT,
+      content_type_id: 'form_it__user-1',
+    })
+  })
+
+  it('custom Content Type payload にも workspace snapshot ID を含める', () => {
+    const blueprint = getBlueprintForContentType(makeCt({
+      id: 'custom_prompt_user-1',
+      code: 'custom_prompt',
+      name: 'Custom Prompt',
+      fields: [field({ field_key: 'prompt', label: 'Prompt', is_required: true })],
+    }))
+    if (blueprint.generate.mode !== 'api') throw new Error('Custom blueprint must use API generation')
+
+    expect(blueprint.generate.payload({ prompt: 'Explain closures' }, {})).toMatchObject({
+      word: 'Explain closures',
+      form_type: 'custom_prompt',
+      content_type_id: 'custom_prompt_user-1',
+    })
+  })
 })

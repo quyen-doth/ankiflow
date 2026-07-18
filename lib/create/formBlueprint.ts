@@ -381,6 +381,11 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
   return { coreFields, configBlocks: groupConfigLeaves(configLeaves), primaryFieldKey }
 }
 
+/** Server/client 共通で Content Type の primary input key を同じ規則から解決する。 */
+export function getContentTypePrimaryFieldKey(source: ContentTypeBlueprintSource): string {
+  return buildBlueprintLayout(source).primaryFieldKey
+}
+
 export function validateContentTypeBlueprint(
   source: ContentTypeBlueprintSource,
 ): ContentTypeBlueprintValidationResult {
@@ -407,11 +412,21 @@ export function blueprintFromContentType(ct: ContentType): CardFormBlueprint {
   const builtIn = builtInFormType ? BUILTIN_BLUEPRINTS[builtInFormType] : undefined
 
   if (builtIn) {
+    const builtInGenerate = builtIn.generate
     return {
       ...builtIn,
       primaryFieldKey: layout.primaryFieldKey,
       coreFields: layout.coreFields,
       configBlocks: layout.configBlocks,
+      generate: builtInGenerate.mode === 'api'
+        ? {
+            mode: 'api',
+            payload: (values, session) => ({
+              ...builtInGenerate.payload(values, session),
+              content_type_id: ct.id,
+            }),
+          }
+        : builtInGenerate,
     }
   }
 
@@ -427,6 +442,7 @@ export function blueprintFromContentType(ct: ContentType): CardFormBlueprint {
         form_type: ct.code,
         output_language: s.outputLanguage,
         output_language_name: s.outputLanguageName,
+        content_type_id: ct.id,
         contentTypeName: ct.name,
         dynamicFields: v,
       }),
