@@ -9,6 +9,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 }))
 
 import { ClaudeAgentProvider } from '@/lib/ai-agent/claude-agent-provider'
+import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
 import { FormType, LanguageType } from '@/types'
 
 const validEnglish = {
@@ -22,6 +23,7 @@ const validEnglish = {
   collocations: ['highly resilient (rất kiên cường)'],
   unsplash_search_keyword: 'resilience',
 }
+const normalizedEnglish = { ...validEnglish, word_type: validEnglish.word_type_vi }
 
 const enInput = { form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'resilient' }
 
@@ -46,6 +48,7 @@ const validFrench = {
   related_words: ['salut (chào)'],
   unsplash_search_keyword: 'greeting',
 }
+const normalizedFrench = { ...validFrench, word_type: validFrench.word_type_vi }
 
 function toolUseResponse(input: unknown) {
   return { content: [{ type: 'tool_use', name: 'submit_card', input }], stop_reason: 'tool_use' }
@@ -70,7 +73,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
 
     const result = await provider.generateCard(enInput)
 
-    expect(result).toEqual(validEnglish)
+    expect(result).toEqual(normalizedEnglish)
     expect(createMock).toHaveBeenCalledTimes(1)
     const params = createMock.mock.calls[0][0]
     expect(params.model).toBe('claude-haiku-4-5')
@@ -90,7 +93,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
 
     const result = await provider.generateCard(enInput)
 
-    expect(result).toEqual(validEnglish)
+    expect(result).toEqual(normalizedEnglish)
     expect(createMock).toHaveBeenCalledTimes(2)
   })
 
@@ -104,7 +107,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
       word: 'bonjour',
     })
 
-    expect(result).toEqual(validFrench)
+    expect(result).toEqual(normalizedFrench)
     expectCachedSystem(createMock.mock.calls[0][0].system, 'French')
   })
 
@@ -112,7 +115,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     createMock.mockResolvedValueOnce(toolUseResponse(validEnglish))
     const provider = new ClaudeAgentProvider('claude-haiku-4-5', true)
 
-    expect(await provider.generateCard(enInput)).toEqual(validEnglish)
+    expect(await provider.generateCard(enInput)).toEqual(normalizedEnglish)
     const params = createMock.mock.calls[0][0]
     expect(params.tool_choice).toEqual({ type: 'auto' })
     expectCachedSystem(params.system, '英語')
@@ -124,6 +127,84 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
 
     await expect(provider.generateCard(enInput)).rejects.toThrow()
     expect(createMock).toHaveBeenCalledTimes(3) // 1 + 2 retries
+  })
+
+  it('authoritative built-in definition は engine schema を使い、primary と definition alias を補正する', async () => {
+    createMock.mockResolvedValueOnce(toolUseResponse({
+      term: 'Model rewrite',
+      definition_vi: 'Coordinates asynchronous callbacks',
+      definition_short: 'Runtime scheduler',
+      example_usage: 'JavaScript uses an event loop.',
+      keywords: ['runtime'],
+      related_topics: ['JavaScript'],
+      analogy_vi: 'A traffic controller',
+      unsplash_search_keyword: 'loop',
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.generateCard({
+      form_type: FormType.IT,
+      term: 'Event Loop',
+      output_language: 'en',
+      output_language_name: 'English',
+      content_type: {
+        name: 'IT Vocabulary',
+        primary_field_key: 'term',
+        ai_output_profiles: resolveBuiltinAiOutputProfiles(FormType.IT)!,
+      },
+    })
+
+    expect(result.term).toBe('Event Loop')
+    expect(result.definition).toBe('Coordinates asynchronous callbacks')
+    expectCachedSystem(createMock.mock.calls[0][0].system, 'IT Vocabulary')
+    expect(JSON.stringify(createMock.mock.calls[0][0].tools[0].input_schema)).toContain('English')
+  })
+
+  it('authoritative custom definition は configured primary key を input.word から復元する', async () => {
+    createMock.mockResolvedValueOnce(toolUseResponse({
+      prompt: 'Model rewrite',
+      answer: 'The runtime schedules queued work.',
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.generateCard({
+      form_type: 'quiz',
+      word: 'Why do event loops matter?',
+      dynamicFields: { prompt: 'Why do event loops matter?', audience: 'Beginners' },
+      content_type: {
+        name: 'Quiz',
+        primary_field_key: 'prompt',
+        ai_output_profiles: [{
+          profile: 'default',
+          fields: [
+            { key: 'prompt', type: 'string', instruction: 'Original question' },
+            { key: 'answer', type: 'string', instruction: 'Answer in {output_language}' },
+          ],
+        }],
+        field_labels: { prompt: 'Question', audience: 'Audience' },
+      },
+    })
+
+    expect(result).toEqual({
+      prompt: 'Why do event loops matter?',
+      answer: 'The runtime schedules queued work.',
+    })
+    expect(createMock.mock.calls[0][0].messages[0].content).toContain('Audience: Beginners')
+  })
+
+  it('web_search の最終提出 instruction も English を使用する', async () => {
+    createMock
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'Research complete' }], stop_reason: 'end_turn' })
+      .mockResolvedValueOnce(toolUseResponse(validEnglish))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5', true)
+
+    await provider.generateCard(enInput)
+
+    const followUp = createMock.mock.calls[1][0].messages.at(-1)
+    expect(followUp).toEqual({
+      role: 'user',
+      content: 'Call the submit_card tool to submit the final result.',
+    })
   })
 })
 

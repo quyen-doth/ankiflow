@@ -5,6 +5,7 @@ import { buildChineseSystemPrompt, buildChineseUserMessage } from '@/lib/prompts
 import { buildJapaneseSystemPrompt, buildJapaneseUserMessage } from '@/lib/prompts/japanese'
 import { buildItVocabSystemPrompt, buildItVocabUserMessage } from '@/lib/prompts/it-vocab'
 import { inferLanguageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
+import { buildEngineCardSpec } from './promptEngine'
 import type { GenerateCardInput } from './types'
 
 /**
@@ -162,6 +163,38 @@ function withDynamicContext(message: string, fields?: Record<string, string>): s
  * 英中日は専用 profile、それ以外の有効な BCP 47 言語は汎用 profile を使用。
  */
 export function resolveCardSpec(input: GenerateCardInput): CardSpec {
+  if (input.content_type) {
+    const primaryValue = input.form_type === FormType.IT
+      ? input.term
+      : input.word
+    if (!primaryValue) throw new Error('Invalid parameters for generating content')
+
+    const outputLanguageCode = input.output_language ?? 'vi'
+    return buildEngineCardSpec({
+      definition: input.content_type,
+      ...(input.language
+        ? {
+            studyLanguage: {
+              code: input.language,
+              name: input.language_name?.trim() || inferLanguageDisplayName(input.language),
+            },
+          }
+        : {}),
+      outputLanguage: {
+        code: outputLanguageCode,
+        name: input.output_language_name?.trim() || inferLanguageDisplayName(outputLanguageCode),
+      },
+      primaryValue,
+      formValues: input.dynamicFields,
+      topics: input.topics,
+    })
+  }
+
+  return resolveLegacyCardSpec(input)
+}
+
+/** Legacy requests/documents without output profiles stay on the previous resolver. */
+export function resolveLegacyCardSpec(input: GenerateCardInput): CardSpec {
   const outputName = input.output_language_name?.trim() || 'Vietnamese'
   const isVietnamese = (input.output_language ?? 'vi') === 'vi'
 
@@ -225,6 +258,35 @@ Return structured data only through the submit_card tool.`
   }
 
   throw new Error('Invalid parameters for generating content')
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+/** Restore trusted identity and legacy aliases after validating the model output. */
+export function normalizeGeneratedCard(
+  input: GenerateCardInput,
+  generated: Record<string, unknown>,
+): Record<string, unknown> {
+  const normalized = { ...generated }
+  const primaryKey = input.content_type?.primary_field_key
+    ?? (input.form_type === FormType.IT ? 'term' : 'word')
+  const primaryValue = input.form_type === FormType.IT
+    ? input.term
+    : input.word
+
+  if (primaryValue) normalized[primaryKey] = primaryValue
+
+  const wordType = nonEmptyString(normalized.word_type)
+    ?? nonEmptyString(normalized.word_type_vi)
+  if (wordType) normalized.word_type = wordType
+
+  const definition = nonEmptyString(normalized.definition)
+    ?? nonEmptyString(normalized.definition_vi)
+  if (definition) normalized.definition = definition
+
+  return normalized
 }
 
 function buildDynamicSpec(

@@ -79,7 +79,12 @@ test('Create generate payload は selected workspace content_type_id を送信�
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ content: { word: 'Event loop', meaning_vi: 'Runtime scheduling' } }),
+      body: JSON.stringify({
+        content: {
+          prompt: 'Event loop',
+          answer: 'Runtime scheduling',
+        },
+      }),
     })
   })
 
@@ -92,5 +97,14 @@ test('Create generate payload は selected workspace content_type_id を送信�
     form_type: 'quiz',
     content_type_id: 'quiz-type__test-user',
     word: 'Event loop',
+  })
+  await expect.poll(() => page.evaluate(() => {
+    const raw = localStorage.getItem('ankiflow_pending_result')
+    if (!raw) return null
+    const pending = JSON.parse(raw) as { generatedContent?: Record<string, unknown> }
+    return pending.generatedContent
+  })).toEqual({
+    prompt: 'Event loop',
+    answer: 'Runtime scheduling',
   })
 })

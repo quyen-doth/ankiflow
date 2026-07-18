@@ -61,4 +61,59 @@ describe('preview Topic mapping', () => {
     }), 'General')
     expect(entry).not.toHaveProperty('topic_ids')
   })
+
+  it('single preview は AI content より session/application metadata を優先する', () => {
+    const entry = mapPendingEntryToPreview(makeEntry({
+      language: 'en',
+      outputLanguage: 'vi',
+      generatedContent: {
+        term: 'Event Loop',
+        form_type: 'forged',
+        language: 'ja',
+        output_language: 'en',
+        anki_deck: 'forged',
+        category_id: 'forged',
+        card_type_ids: ['forged'],
+        tags: ['forged'],
+        topic_ids: ['forged'],
+      },
+    }), 'IT::Runtime')
+
+    expect(entry).toMatchObject({
+      form_type: FormType.IT,
+      language: 'en',
+      output_language: 'vi',
+      anki_deck: 'IT::Runtime',
+      category_id: 'category-it',
+      card_type_ids: ['card-type-it'],
+      tags: ['javascript'],
+      topic_ids: ['topic-runtime'],
+    })
+  })
+
+  it('batch preview は aliases を補い、trusted metadata を全 item に適用する', () => {
+    const entries = mapPendingBatchToPreview(makeBatch({
+      outputLanguage: 'en',
+      items: [{
+        term: 'Event Loop',
+        definition_vi: 'Runtime scheduler',
+        form_type: 'forged',
+        output_language: 'vi',
+      }, {
+        term: 'Microtask Queue',
+        word_type_vi: 'concept',
+        tags: ['forged'],
+      }],
+    }), 'IT::Runtime')
+
+    expect(entries[0]).toMatchObject({
+      definition: 'Runtime scheduler',
+      form_type: FormType.IT,
+      output_language: 'en',
+    })
+    expect(entries[1]).toMatchObject({
+      word_type: 'concept',
+      tags: ['javascript'],
+    })
+  })
 })
