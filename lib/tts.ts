@@ -2,13 +2,41 @@ import { LanguageType } from '@/types'
 import { canonicalizeLanguageCode } from '@/lib/studyLanguages'
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 
-let client: TextToSpeechClient;
+type TtsClientOptions = ConstructorParameters<typeof TextToSpeechClient>[0]
 
+/**
+ * env から TextToSpeechClient の constructor options を解決する。
+ * - GOOGLE_TTS_CREDENTIALS_JSON: service account JSON の中身そのもの (serverless 用 —
+ *   Vercel にはファイルシステム上の key file が存在しないため、パスではなく中身を渡す)。
+ * - GOOGLE_APPLICATION_CREDENTIALS: key file へのパス (ローカル開発用 — ライブラリが自動で読む)。
+ * - どちらもなければ null (TTS 無効)。
+ */
+export function resolveTtsClientOptions(
+  env: Record<string, string | undefined> = process.env,
+): TtsClientOptions | null {
+  const json = env.GOOGLE_TTS_CREDENTIALS_JSON?.trim()
+  if (json) {
+    try {
+      return { credentials: JSON.parse(json) }
+    } catch {
+      throw new Error('GOOGLE_TTS_CREDENTIALS_JSON is not valid JSON. Paste the full service account JSON (minified).')
+    }
+  }
+  if (env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return {}
+  }
+  return null
+}
 
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    client = new TextToSpeechClient();
-} else {
-  console.warn("GOOGLE_APPLICATION_CREDENTIALS not found. TTS will not work.");
+let client: TextToSpeechClient | null | undefined
+
+/** Lazy init — import 時ではなく最初の生成時に初期化 (env 未設定でも import が warn しない)。 */
+function getTtsClient(): TextToSpeechClient | null {
+  if (client === undefined) {
+    const options = resolveTtsClientOptions()
+    client = options === null ? null : new TextToSpeechClient(options)
+  }
+  return client
 }
 
 export interface TtsVoice {
@@ -52,8 +80,9 @@ export function resolveTtsVoice(language: string): TtsVoice {
 }
 
 export const generateAudio = async (text: string, language: string): Promise<Buffer> => {
-  if (!client) {
-    throw new Error("TextToSpeechClient is not initialized. Please check GOOGLE_APPLICATION_CREDENTIALS.");
+  const ttsClient = getTtsClient()
+  if (!ttsClient) {
+    throw new Error("Google TTS is not configured. Set GOOGLE_TTS_CREDENTIALS_JSON (service account JSON contents) or GOOGLE_APPLICATION_CREDENTIALS (key file path).");
   }
 
   const voice = resolveTtsVoice(language)
@@ -64,7 +93,7 @@ export const generateAudio = async (text: string, language: string): Promise<Buf
     audioConfig: { audioEncoding: "MP3" as const },
   };
 
-  const [response] = await client.synthesizeSpeech(request);
+  const [response] = await ttsClient.synthesizeSpeech(request);
   
   if (!response.audioContent) {
     throw new Error("Failed to generate audio content");
