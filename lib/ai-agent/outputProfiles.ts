@@ -131,10 +131,11 @@ export function cloneAiOutputProfiles(profiles: readonly AiOutputProfile[]): AiO
   }))
 }
 
-/** Legacy/custom Content Type が profile 未設定の場合に editor/save で materialize する fallback。 */
+/** Profile 未設定の custom Content Type/request を engine definition に materialize する。 */
 export function createGenericAiOutputProfiles(
   primaryFieldKey: string,
   primaryFieldLabel = primaryFieldKey,
+  additionalFieldKeys: readonly string[] = [],
 ): AiOutputProfile[] {
   const genericFields = [
     {
@@ -162,9 +163,16 @@ export function createGenericAiOutputProfiles(
       type: 'string' as const,
       instruction: 'Short English keyword for an illustration image search',
     },
+    ...additionalFieldKeys
+      .filter(key => AI_OUTPUT_FIELD_KEY_PATTERN.test(key) && !RESERVED_AI_OUTPUT_KEYS.has(key))
+      .map(key => ({
+        key,
+        type: 'string' as const,
+        instruction: `Additional content for ${key}`,
+      })),
   ].filter((field, index, fields) => (
     fields.findIndex(candidate => candidate.key === field.key) === index
-  ))
+  )).slice(0, MAX_AI_OUTPUT_FIELDS)
 
   return parseAiOutputProfiles(
     [{ profile: 'default', fields: genericFields }],

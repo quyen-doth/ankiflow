@@ -18,7 +18,7 @@ export interface GenerateCardInput {
   dynamicFields?: Record<string, string>
   /** Name of the custom content type (for prompt context) */
   contentTypeName?: string
-  /** Server-validated workspace definition. Legacy requests may omit it and use fallback logic. */
+  /** Server-validated workspace definition. Older requests may omit it and use an engine-derived fallback. */
   content_type?: EngineDefinition
 }
 

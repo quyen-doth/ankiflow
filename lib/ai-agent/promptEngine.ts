@@ -6,9 +6,9 @@ import {
   parseAiOutputProfiles,
   selectAiOutputProfile,
 } from '@/lib/ai-agent/outputProfiles'
-import { TOOL_NAME, toToolInputSchema } from '@/lib/ai-agent/card-schemas'
+import { TOOL_NAME, toToolInputSchema } from '@/lib/ai-agent/card-spec'
 import type { AiOutputProfile } from '@/types'
-import type { CardSpec } from '@/lib/ai-agent/card-schemas'
+import type { CardSpec } from '@/lib/ai-agent/card-spec'
 
 export interface EngineDefinition {
   name: string

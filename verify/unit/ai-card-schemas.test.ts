@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildEnglishCardSchema,
   normalizeGeneratedCard,
   resolveCardSpec,
-  resolveLegacyCardSpec,
   toToolInputSchema,
   TOOL_NAME,
 } from '@/lib/ai-agent/card-schemas'
@@ -22,7 +20,11 @@ const validEnglish = {
   unsplash_search_keyword: 'resilience',
 }
 
-const englishCardSchema = buildEnglishCardSchema('Vietnamese')
+const englishCardSchema = resolveCardSpec({
+  form_type: FormType.LANGUAGE,
+  language: LanguageType.ENGLISH,
+  word: 'resilient',
+}).schema
 
 describe('ai-agent/card-schemas — zod validation', () => {
   it('正しいスキーマの output を受け入れる', () => {
@@ -66,14 +68,14 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'book' })
     expect(spec.toolName).toBe(TOOL_NAME)
     expect(spec.inputSchema).toHaveProperty('properties.ipa')
-    expect(spec.systemPrompt).toContain('英語')
+    expect(spec.systemPrompt).toContain('English language')
     expect(spec.userMessage).toContain('book')
   })
 
   it('英語 variant に対して専用スキーマを選択', () => {
     const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: 'en-GB', word: 'lift' })
     expect(spec.inputSchema).toHaveProperty('properties.ipa')
-    expect(spec.systemPrompt).toContain('英語')
+    expect(spec.systemPrompt).toContain('English language')
   })
 
   it('任意の BCP 47 言語に対して汎用スキーマを選択', () => {
@@ -88,7 +90,7 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
       form_type: FormType.LANGUAGE,
       language: 'not a language',
       word: 'hello',
-    })).toThrow('Invalid BCP 47 language code')
+    })).toThrow('Invalid BCP 47 study language code')
   })
 
   it('IT スキーマを選択し、topics を user message に含める', () => {
@@ -157,18 +159,32 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
     expect(JSON.stringify(spec.inputSchema)).toContain('English')
   })
 
-  it('definition がない legacy document/request は旧 resolver を維持する', () => {
-    const input = {
+  it('definition がない旧 request も data-driven engine fallback を使用する', () => {
+    const resolved = resolveCardSpec({
       form_type: FormType.LANGUAGE,
       language: LanguageType.ENGLISH,
       word: 'book',
-    }
-    const resolved = resolveCardSpec(input)
-    const legacy = resolveLegacyCardSpec(input)
-    expect(resolved.systemPrompt).toBe(legacy.systemPrompt)
-    expect(resolved.userMessage).toBe(legacy.userMessage)
-    expect(resolved.inputSchema).toEqual(legacy.inputSchema)
-    expect(resolved.systemPrompt).toContain('英語')
+    })
+    expect(resolved.systemPrompt).toContain('You are an expert in English language')
+    expect(resolved.systemPrompt).not.toMatch(/[ぁ-んァ-ヶ]/)
+    expect(resolved.inputSchema).toHaveProperty('properties.word')
+    expect(resolved.inputSchema).toHaveProperty('properties.ipa')
+  })
+
+  it('旧 custom request は safe dynamic fields を generic engine profile に含める', () => {
+    const resolved = resolveCardSpec({
+      form_type: 'science_note',
+      word: 'Photosynthesis',
+      contentTypeName: 'Science Note',
+      dynamicFields: {
+        context: 'Plant biology',
+        status: 'must not become generated metadata',
+      },
+    })
+
+    expect(resolved.systemPrompt).toContain('the "Science Note" content type')
+    expect(resolved.inputSchema).toHaveProperty('properties.context')
+    expect(resolved.inputSchema).not.toHaveProperty('properties.status')
   })
 })
 

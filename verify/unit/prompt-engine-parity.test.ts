@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildChineseCardSchema,
-  buildEnglishCardSchema,
-  buildGenericLanguageCardSchema,
-  buildItVocabCardSchema,
-  buildJapaneseCardSchema,
-  toToolInputSchema,
-  type CardSpec,
-} from '@/lib/ai-agent/card-schemas'
+import type { CardSpec } from '@/lib/ai-agent/card-spec'
 import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
 import { buildEngineCardSpec } from '@/lib/ai-agent/promptEngine'
 import { inferLanguageDisplayName } from '@/lib/studyLanguages'
@@ -53,46 +45,63 @@ function itSpec(): CardSpec {
   })
 }
 
-describe('prompt engine — legacy schema parity', () => {
+describe('prompt engine — built-in output contract', () => {
   const cases = [
-    { name: 'English', engine: () => languageSpec('en'), legacy: () => buildEnglishCardSchema('Vietnamese') },
-    { name: 'Chinese vi', engine: () => languageSpec('zh'), legacy: () => buildChineseCardSchema('Vietnamese', true) },
-    { name: 'Chinese en', engine: () => languageSpec('zh', 'en', 'English'), legacy: () => buildChineseCardSchema('English', false) },
-    { name: 'Japanese vi', engine: () => languageSpec('ja'), legacy: () => buildJapaneseCardSchema('Vietnamese', true) },
-    { name: 'Japanese en', engine: () => languageSpec('ja', 'en', 'English'), legacy: () => buildJapaneseCardSchema('English', false) },
-    { name: 'generic French', engine: () => languageSpec('fr'), legacy: () => buildGenericLanguageCardSchema('Vietnamese') },
+    {
+      name: 'English',
+      engine: () => languageSpec('en'),
+      keys: ['word', 'ipa', 'meaning_vi', 'word_type_vi', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'unsplash_search_keyword'],
+    },
+    {
+      name: 'Chinese vi',
+      engine: () => languageSpec('zh'),
+      keys: ['word', 'pinyin', 'han_viet', 'meaning_vi', 'word_type', 'word_type_vi', 'level', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'related_words', 'unsplash_search_keyword'],
+    },
+    {
+      name: 'Chinese en',
+      engine: () => languageSpec('zh', 'en', 'English'),
+      keys: ['word', 'pinyin', 'meaning_vi', 'word_type', 'word_type_vi', 'level', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'related_words', 'unsplash_search_keyword'],
+    },
+    {
+      name: 'Japanese vi',
+      engine: () => languageSpec('ja'),
+      keys: ['word', 'hiragana', 'katakana', 'romaji', 'han_viet', 'meaning_vi', 'word_type_vi', 'level', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'related_words', 'unsplash_search_keyword'],
+    },
+    {
+      name: 'Japanese en',
+      engine: () => languageSpec('ja', 'en', 'English'),
+      keys: ['word', 'hiragana', 'katakana', 'romaji', 'meaning_vi', 'word_type_vi', 'level', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'related_words', 'unsplash_search_keyword'],
+    },
+    {
+      name: 'generic French',
+      engine: () => languageSpec('fr'),
+      keys: ['word', 'ipa', 'meaning_vi', 'word_type_vi', 'level', 'example_sentence', 'example_translation', 'example_blank', 'collocations', 'related_words', 'unsplash_search_keyword'],
+    },
   ]
 
   for (const testCase of cases) {
-    it(`${testCase.name}: field keys と descriptions を維持する`, () => {
+    it(`${testCase.name}: stable field keys を維持する`, () => {
       const engineProperties = properties(testCase.engine())
-      const legacyProperties = (
-        toToolInputSchema(testCase.legacy()) as { properties: Record<string, JsonProperty> }
-      ).properties
-
-      expect(Object.keys(engineProperties)).toEqual(Object.keys(legacyProperties))
-      for (const key of Object.keys(legacyProperties)) {
-        if (key === 'han_viet') {
-          expect(engineProperties[key]?.description).toContain('Sino-Vietnamese')
-          continue
-        }
-        expect(engineProperties[key]?.description, key).toBe(legacyProperties[key]?.description)
-      }
+      expect(Object.keys(engineProperties)).toEqual(testCase.keys)
+      expect(engineProperties.meaning_vi?.description).toContain(
+        testCase.name.endsWith(' en') ? 'English' : 'Vietnamese',
+      )
     })
   }
 
-  it('IT: field keys と descriptions を維持する', () => {
+  it('IT: stable field keys と descriptions を維持する', () => {
     const engineProperties = properties(itSpec())
-    const legacyProperties = (
-      toToolInputSchema(buildItVocabCardSchema('Vietnamese')) as {
-        properties: Record<string, JsonProperty>
-      }
-    ).properties
-
-    expect(Object.keys(engineProperties)).toEqual(Object.keys(legacyProperties))
-    for (const key of Object.keys(legacyProperties)) {
-      expect(engineProperties[key]?.description, key).toBe(legacyProperties[key]?.description)
-    }
+    expect(Object.keys(engineProperties)).toEqual([
+      'term',
+      'definition_vi',
+      'definition_short',
+      'example_usage',
+      'keywords',
+      'related_topics',
+      'analogy_vi',
+      'unsplash_search_keyword',
+    ])
+    expect(engineProperties.definition_vi?.description).toBe('Clear, complete definition in Vietnamese')
   })
 
   it('言語固有の重要要件を system prompt に保持する', () => {

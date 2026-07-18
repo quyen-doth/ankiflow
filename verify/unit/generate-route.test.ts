@@ -170,7 +170,7 @@ describe('POST /api/generate — customizable languages', () => {
     expect(generateMock).not.toHaveBeenCalled()
   })
 
-  it('legacy document に profiles がなくても authoritative name + fallback を維持する', async () => {
+  it('profile 未設定 document も authoritative engine fallback を materialize する', async () => {
     contentTypeDocs.set('legacy-language', languageContentType({ ai_output_profiles: undefined }))
     generateMock.mockResolvedValue({ word: 'book' })
 
@@ -184,7 +184,14 @@ describe('POST /api/generate — customizable languages', () => {
     expect(response.status).toBe(200)
     expect(generateMock).toHaveBeenCalledWith(expect.objectContaining({
       contentTypeName: 'Workspace Language',
-      content_type: undefined,
+      content_type: expect.objectContaining({
+        name: 'Workspace Language',
+        primary_field_key: 'word',
+        ai_output_profiles: expect.arrayContaining([
+          expect.objectContaining({ profile: 'default' }),
+          expect.objectContaining({ profile: 'en' }),
+        ]),
+      }),
     }))
   })
 

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { normalizeGeneratedCard, resolveCardSpec, type CardSpec } from './card-schemas'
+import { normalizeGeneratedCard, resolveCardSpec } from './card-schemas'
+import type { CardSpec } from './card-spec'
 import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
 import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
 import type {

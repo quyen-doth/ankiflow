@@ -47,7 +47,11 @@ export function materializeContentTypeAiProfiles(
     primaryFieldKey,
     usesAiGeneration,
     profiles: usesAiGeneration
-      ? builtInProfiles ?? createGenericAiOutputProfiles(primaryFieldKey, primaryLabel)
+      ? builtInProfiles ?? createGenericAiOutputProfiles(
+          primaryFieldKey,
+          primaryLabel,
+          source.fields.map(field => field.field_key),
+        )
       : [],
   }
 }

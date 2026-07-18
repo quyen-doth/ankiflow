@@ -50,11 +50,15 @@ describe('materializeContentTypeAiProfiles', () => {
     expect(stored[0].fields[0].instruction).toBe('Primary value for Prompt')
   })
 
-  it('legacy custom document は primary field を含む generic default を materialize する', () => {
+  it('profile 未設定 custom document は safe core fields を含む generic default を materialize する', () => {
     const result = materializeContentTypeAiProfiles({
       code: 'medical_terms',
       name: 'Medical Terms',
-      fields: [field('clinical_term', 0, { label: 'Clinical term' })],
+      fields: [
+        field('clinical_term', 0, { label: 'Clinical term' }),
+        field('clinical_note', 1),
+        field('status', 2),
+      ],
     })
 
     expect(result.profiles).toHaveLength(1)
@@ -65,6 +69,7 @@ describe('materializeContentTypeAiProfiles', () => {
       'example_sentence',
       'example_translation',
       'unsplash_search_keyword',
+      'clinical_note',
     ])
   })
 

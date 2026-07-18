@@ -80,7 +80,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_card' })
     expect(params.tools[0].name).toBe('submit_card')
     expect(params.tools[0].input_schema.additionalProperties).toBe(false)
-    expectCachedSystem(params.system, '英語')
+    expectCachedSystem(params.system, 'English language')
   })
 
   it('output が無効な場合 retry し、次回成功する', async () => {
@@ -118,7 +118,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     expect(await provider.generateCard(enInput)).toEqual(normalizedEnglish)
     const params = createMock.mock.calls[0][0]
     expect(params.tool_choice).toEqual({ type: 'auto' })
-    expectCachedSystem(params.system, '英語')
+    expectCachedSystem(params.system, 'English language')
   })
 
   it('model が submit_card を呼ばない場合 (retry を使い切った後) エラーを throw', async () => {

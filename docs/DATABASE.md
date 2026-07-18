@@ -276,8 +276,8 @@ study language と一致する profile を優先し、存在しない場合は `
 ではなく request input から復元します。Built-in Language は `default` / `en` / `zh` / `ja`、IT は `default` を seed。
 General は AI API を使用しないため profile を持ちません。
 
-Profile がない legacy document は editor 上で built-in または generic fallback を materialize し、Save 時に保存します。
-Runtime は profile が保存されるまで旧 resolver を使用します。既存 built-in の backfill は
+Profile がない document は editor と runtime の両方で built-in または generic fallback を materialize し、
+editor の Save 時に保存します。Generate は保存前でも同じ data-driven engine を使用します。既存 built-in の backfill は
 `npm run migrate:ai-output-profiles` (dry-run) で確認し、明示承認後だけ `--apply` を使用します。この migration は
 field 未設定 document だけを transaction で update し、既存 customization を上書きしません。
 
