@@ -195,6 +195,34 @@ describe('GET /api/cron/srs-push — user ごとの配信', () => {
     expect(pushMessageMock.mock.calls[0][1]).toBe('line-user-1')
   })
 
+  it('cron run が配信時刻を過ぎて実行された場合、直前の時の key で catch-up 送信する', async () => {
+    // system time 03:00Z = Asia/Tokyo 12:00。配信時刻は 11 時のみ → 11 時の run が
+    // 欠落したケースを想定し、12 時台の run が 11 時分を catch-up する。
+    globalSettings.line_schedule_hours = [11]
+    entriesByUser.user1 = [dueEntry('e1')]
+
+    const response = await GET(makeRequest('cron-secret-xyz'))
+
+    expect(await response.json()).toEqual({ pushed: 1, skipped: 0, failed: 0 })
+    expect(settingsUpdates).toEqual([
+      {
+        uid: 'user1',
+        data: { line_last_push_key: '2026-07-16T11@Asia/Tokyo' },
+      },
+    ])
+  })
+
+  it('catch-up 済みの直前時 key があれば重複送信しない', async () => {
+    globalSettings.line_schedule_hours = [11]
+    userSettings.user1.line_last_push_key = '2026-07-16T11@Asia/Tokyo'
+    entriesByUser.user1 = [dueEntry('e1')]
+
+    const response = await GET(makeRequest('cron-secret-xyz'))
+
+    expect(await response.json()).toEqual({ pushed: 0, skipped: 1, failed: 0 })
+    expect(pushMessageMock).not.toHaveBeenCalled()
+  })
+
   it('同じローカル時刻の guard key があれば skip する', async () => {
     userSettings.user1.line_last_push_key = '2026-07-16T12@Asia/Tokyo'
     entriesByUser.user1 = [dueEntry('e1')]
