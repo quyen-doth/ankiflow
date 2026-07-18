@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select } from '@/components/ui/FormField'
+import { AiOutputProfilesEditor } from '@/components/admin/AiOutputProfilesEditor'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -20,15 +21,25 @@ import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { cn } from '@/lib/utils'
 import {
+  resolveContentTypeFormType,
   isProtectedGlobalContentTypeId,
   validateContentTypeConfig,
 } from '@/lib/contentTypes'
-import { validateContentTypeBlueprint } from '@/lib/create/formBlueprint'
+import {
+  getContentTypePrimaryFieldKey,
+  validateContentTypeBlueprint,
+} from '@/lib/create/formBlueprint'
+import {
+  cloneStoredContentTypeAiProfiles,
+  materializeContentTypeAiProfiles,
+} from '@/lib/ai-agent/contentTypeProfiles'
+import { parseAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import {
   GLOBAL_CONTENT_TYPES_COLLECTION,
   USER_CONTENT_TYPES_COLLECTION,
 } from '@/lib/constants'
-import type { ContentType, FormFieldConfig } from '@/types'
+import { FormType } from '@/types'
+import type { AiOutputProfile, ContentType, FormFieldConfig } from '@/types'
 
 const FIELD_TYPE_OPTIONS: { value: FormFieldConfig['type']; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -92,6 +103,7 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
   const [editing, setEditing] = useState<ContentType | null>(null)
   const [draft, setDraft] = useState<ContentTypeDraft>(EMPTY_DRAFT)
   const [fields, setFields] = useState<FormFieldConfig[]>([])
+  const [aiOutputProfiles, setAiOutputProfiles] = useState<AiOutputProfile[]>([])
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ContentType | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -151,6 +163,7 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
     setEditing(null)
     setDraft(EMPTY_DRAFT)
     setFields([])
+    setAiOutputProfiles([])
     setModalOpen(true)
   }
 
@@ -166,7 +179,40 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
       default_create_mode: contentType.default_create_mode ?? 'single',
     })
     setFields([...contentType.fields].sort((a, b) => a.sort_order - b.sort_order).map(f => ({ ...f })))
+    try {
+      setAiOutputProfiles(materializeContentTypeAiProfiles(contentType).profiles)
+    } catch {
+      setAiOutputProfiles(cloneStoredContentTypeAiProfiles(contentType))
+    }
     setModalOpen(true)
+  }
+
+  const aiProfileContext = useMemo(() => {
+    const code = draft.code.trim()
+    if (resolveContentTypeFormType(code) === FormType.GENERAL) {
+      return { primaryFieldKey: 'title', disabledReason: 'General Knowledge uses local form content and does not call the AI generator.' }
+    }
+    try {
+      return {
+        primaryFieldKey: getContentTypePrimaryFieldKey({ code, name: draft.name, fields }),
+        disabledReason: undefined,
+      }
+    } catch {
+      return { primaryFieldKey: null, disabledReason: undefined }
+    }
+  }, [draft.code, draft.name, fields])
+
+  const initializeAiOutputProfiles = () => {
+    try {
+      const materialized = materializeContentTypeAiProfiles({
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+        fields,
+      })
+      setAiOutputProfiles(materialized.profiles)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Add a valid primary form field first.')
+    }
   }
 
   const updateField = <K extends keyof FormFieldConfig>(index: number, key: K, value: FormFieldConfig[K]) => {
@@ -200,6 +246,25 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
       return
     }
 
+    const primaryFieldKey = getContentTypePrimaryFieldKey(validation.data)
+    let profilesToPersist = aiOutputProfiles
+    const usesAiGeneration = resolveContentTypeFormType(validation.data.code) !== FormType.GENERAL
+    if (usesAiGeneration && profilesToPersist.length === 0) {
+      profilesToPersist = materializeContentTypeAiProfiles(validation.data).profiles
+    }
+    if (profilesToPersist.length > 0) {
+      try {
+        profilesToPersist = parseAiOutputProfiles(profilesToPersist, primaryFieldKey)
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Invalid AI output profiles.')
+        return
+      }
+    }
+    const completeData = {
+      ...validation.data,
+      ...(profilesToPersist.length > 0 ? { ai_output_profiles: profilesToPersist } : {}),
+    }
+
     if (!editing) {
       const normalizedCode = validation.data.code.toLocaleLowerCase('en-US')
       const duplicate = contentTypes.some(contentType =>
@@ -213,7 +278,7 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
     setSaving(true)
     try {
       if (editing) {
-        const { code: _immutableCode, ...editableData } = validation.data
+        const { code: _immutableCode, ...editableData } = completeData
         void _immutableCode
         await updateDoc(doc(db, collectionName, editing.id), {
           ...editableData,
@@ -221,7 +286,7 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
         })
       } else {
         await addDoc(collection(db, collectionName), {
-          ...validation.data,
+          ...completeData,
           ...(isGlobalScope ? {} : { user_id: uid }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
@@ -576,6 +641,14 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
               No fields yet. Click &quot;Add Field&quot; to define form fields.
             </p>
           )}
+
+          <AiOutputProfilesEditor
+            profiles={aiOutputProfiles}
+            primaryFieldKey={aiProfileContext.primaryFieldKey}
+            disabledReason={aiProfileContext.disabledReason}
+            onInitialize={initializeAiOutputProfiles}
+            onChange={setAiOutputProfiles}
+          />
 
           <div className="flex gap-3 justify-end mt-2">
             <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>

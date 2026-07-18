@@ -1,4 +1,5 @@
 import { FormType } from '@/types'
+import { cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import type { AiOutputField, AiOutputProfile } from '@/types'
 
 const field = (
@@ -137,8 +138,5 @@ const BUILTIN_AI_OUTPUT_PROFILES: Readonly<Partial<Record<FormType, readonly AiO
 export function resolveBuiltinAiOutputProfiles(formType: FormType | string): AiOutputProfile[] | null {
   const profiles = BUILTIN_AI_OUTPUT_PROFILES[formType as FormType]
   if (!profiles) return null
-  return profiles.map(profile => ({
-    profile: profile.profile,
-    fields: profile.fields.map(outputField => ({ ...outputField })),
-  }))
+  return cloneAiOutputProfiles(profiles)
 }

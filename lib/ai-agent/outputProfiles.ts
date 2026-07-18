@@ -120,10 +120,56 @@ export function parseAiOutputProfiles(input: unknown, primaryFieldKey?: string):
       }
     }
   }
+  return cloneAiOutputProfiles(profiles)
+}
+
+/** Firestore/default data と editor state が object を共有しないよう deep clone する。 */
+export function cloneAiOutputProfiles(profiles: readonly AiOutputProfile[]): AiOutputProfile[] {
   return profiles.map(profile => ({
     profile: profile.profile,
     fields: profile.fields.map(field => ({ ...field })),
   }))
+}
+
+/** Legacy/custom Content Type が profile 未設定の場合に editor/save で materialize する fallback。 */
+export function createGenericAiOutputProfiles(
+  primaryFieldKey: string,
+  primaryFieldLabel = primaryFieldKey,
+): AiOutputProfile[] {
+  const genericFields = [
+    {
+      key: primaryFieldKey,
+      type: 'string' as const,
+      instruction: `Primary value for ${primaryFieldLabel}`,
+    },
+    {
+      key: 'meaning_vi',
+      type: 'string' as const,
+      instruction: 'Meaning or explanation in {output_language}',
+    },
+    {
+      key: 'example_sentence',
+      type: 'string' as const,
+      instruction: 'Short illustrative example sentence',
+    },
+    {
+      key: 'example_translation',
+      type: 'string' as const,
+      instruction: '{output_language} translation of the example sentence',
+    },
+    {
+      key: 'unsplash_search_keyword',
+      type: 'string' as const,
+      instruction: 'Short English keyword for an illustration image search',
+    },
+  ].filter((field, index, fields) => (
+    fields.findIndex(candidate => candidate.key === field.key) === index
+  ))
+
+  return parseAiOutputProfiles(
+    [{ profile: 'default', fields: genericFields }],
+    primaryFieldKey,
+  )
 }
 
 /** study language に一致する profile、なければ default を返す。 */

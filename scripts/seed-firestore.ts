@@ -63,6 +63,14 @@ async function seedContentTypes() {
             description: ct.description,
             icon: ct.icon,
             fields: ct.fields.map(field => ({ ...field })),
+            ...(ct.ai_output_profiles
+                ? {
+                    ai_output_profiles: ct.ai_output_profiles.map(profile => ({
+                        profile: profile.profile,
+                        fields: profile.fields.map(field => ({ ...field })),
+                    })),
+                }
+                : {}),
             is_active: ct.is_active,
             sort_order: ct.sort_order,
             default_create_mode: ct.default_create_mode,

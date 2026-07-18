@@ -142,6 +142,57 @@ registerUnit<VerifyProps>({
       },
     },
     {
+      id: 'act-edit-ai-profile-save',
+      description: 'Legacy built-in fallback を表示し、編集した AI instruction を workspace doc に保存する。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickEditFirst(ctx.root)
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Instruction', 'Workspace primary identity')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'probe-ai-primary-locked',
+      probe: true,
+      description: 'Probe: legacy fallback でも primary AI output は locked で削除できない。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickEditFirst(ctx.root)
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-invalid-ai-reserved-key',
+      description: 'Reserved AI output key は validation で拒否し、Firestore を更新しない。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickEditFirst(ctx.root)
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Add Output Field')
+        await ctx.wait(0)
+        const keyInputs = ctx.root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]')
+        const instructionInputs = ctx.root.querySelectorAll<HTMLTextAreaElement>('textarea[aria-label^="AI output instruction"]')
+        const keyInput = keyInputs[keyInputs.length - 1]
+        const instructionInput = instructionInputs[instructionInputs.length - 1]
+        const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        const textareaSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+        inputSetter?.call(keyInput, 'status')
+        keyInput.dispatchEvent(new Event('input', { bubbles: true }))
+        textareaSetter?.call(instructionInput, 'Override trusted status')
+        instructionInput.dispatchEvent(new Event('input', { bubbles: true }))
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(30)
+      },
+    },
+    {
       id: 'act-toggle-active',
       description: 'Act: click badge Active row đầu → updateDoc lật is_active sang false.',
       props: {},
@@ -304,6 +355,24 @@ registerUnit<VerifyProps>({
         await ctx.wait(80)
       },
     },
+    {
+      id: 'act-global-ai-profile-save',
+      description: 'Global defaults editor も同じ AI output profile を永続化する。',
+      props: { scope: 'global-defaults' },
+      mocks: {
+        firestore: {
+          content_types: [{ ...SEED.user_content_types[0], id: FormType.LANGUAGE }],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickEditFirst(ctx.root)
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Instruction', 'Global primary identity')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
   ],
   invariants: [
     {
@@ -384,6 +453,45 @@ registerUnit<VerifyProps>({
         if (!updated) return 'mất field word'
         if (updated.label !== 'Vocabulary Item') return `label="${updated.label}"`
         return !modalOpen(root) || 'modal vẫn mở sau Save'
+      },
+    },
+    {
+      id: 'ai-profile-save-materializes-fallback',
+      description: 'Legacy workspace doc は Save 時に完全な AI profiles と編集済み instruction を保存する',
+      onlyFixtures: ['act-edit-ai-profile-save'],
+      check: ({ root }) => {
+        const doc = collectionDocs('user_content_types').find(item => item.id === 'ct-lang')
+        const profiles = doc?.ai_output_profiles as Array<{
+          profile: string
+          fields: Array<{ key: string; instruction: string }>
+        }> | undefined
+        if (profiles?.map(profile => profile.profile).join(',') !== 'default,en,zh,ja') {
+          return `profiles=${profiles?.map(profile => profile.profile).join(',')}`
+        }
+        const word = profiles[0].fields.find(field => field.key === 'word')
+        if (word?.instruction !== 'Workspace primary identity') return `instruction="${word?.instruction}"`
+        return !modalOpen(root) || 'modal vẫn mở sau Save'
+      },
+    },
+    {
+      id: 'ai-primary-output-is-locked',
+      description: 'Primary output key input は disabled で remove action を持たない',
+      onlyFixtures: ['probe-ai-primary-locked'],
+      check: ({ root }) => {
+        const primaryInput = root.querySelector<HTMLInputElement>('input[aria-label="AI output key 0"]')
+        if (!primaryInput?.disabled) return 'primary output key is editable'
+        return !root.querySelector('button[aria-label="Remove AI output word"]')
+          || 'primary output has a remove action'
+      },
+    },
+    {
+      id: 'reserved-ai-output-key-is-blocked',
+      description: 'Reserved key を含む draft は modal を維持し、stored profile を変更しない',
+      onlyFixtures: ['act-invalid-ai-reserved-key'],
+      check: ({ root }) => {
+        const doc = collectionDocs('user_content_types').find(item => item.id === 'ct-lang')
+        if (doc?.ai_output_profiles !== undefined) return 'invalid profiles were persisted'
+        return modalOpen(root) || 'modal closed after invalid profile save'
       },
     },
     {
@@ -484,6 +592,21 @@ registerUnit<VerifyProps>({
         const created = collectionDocs('content_types').find(doc => doc.code === 'future_custom')
         if (!created) return 'global custom が作成されていない'
         return created.user_id === undefined || `user_id="${created.user_id}"`
+      },
+    },
+    {
+      id: 'global-ai-profile-save-persists',
+      description: 'Global defaults scope は output profiles を content_types に保存する',
+      onlyFixtures: ['act-global-ai-profile-save'],
+      check: () => {
+        const doc = collectionDocs('content_types').find(item => item.id === FormType.LANGUAGE)
+        const profiles = doc?.ai_output_profiles as Array<{
+          profile: string
+          fields: Array<{ key: string; instruction: string }>
+        }> | undefined
+        const word = profiles?.[0].fields.find(field => field.key === 'word')
+        return word?.instruction === 'Global primary identity'
+          || `instruction="${word?.instruction}"`
       },
     },
   ],
