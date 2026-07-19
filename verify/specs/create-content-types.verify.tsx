@@ -17,7 +17,7 @@ const USER_CONTENT_TYPE = {
   updated_at: { seconds: 0, nanoseconds: 0, toDate: () => new Date(0) },
 }
 
-type E2EState = 'empty' | 'conflict'
+type E2EState = 'empty' | 'conflict' | 'authoritative'
 
 interface VerifyProps {
   e2eState?: E2EState
@@ -25,6 +25,17 @@ interface VerifyProps {
 
 function e2eContentTypes(state: E2EState): UserContentType[] {
   if (state === 'empty') return []
+  if (state === 'authoritative') {
+    return [{
+      ...USER_CONTENT_TYPE,
+      id: 'quiz-type__test-user',
+      code: 'quiz',
+      name: 'Quiz',
+      fields: [
+        { field_key: 'prompt', label: 'Prompt', type: 'text', is_required: true, is_session_persistent: false, sort_order: 1, data_source: null, placeholder: null },
+      ],
+    }]
+  }
   // language ↔ form_language は同じ route で競合 (両方非表示)、quiz は競合せず利用可能。
   return [
     USER_CONTENT_TYPE,
@@ -54,7 +65,7 @@ registerUnit<VerifyProps>({
       navigate={props.e2eState ? () => undefined : undefined}
     />
   ),
-  propsSchema: z.object({ e2eState: z.enum(['empty', 'conflict']).optional() }),
+  propsSchema: z.object({ e2eState: z.enum(['empty', 'conflict', 'authoritative']).optional() }),
   fixtures: [
     {
       id: 'auth-loading',
@@ -133,6 +144,14 @@ registerUnit<VerifyProps>({
         await ctx.wait(50)
       },
     },
+    {
+      id: 'e2e-authoritative-payload',
+      description: 'E2E: selected workspace Content Type ID được gửi trong generate payload.',
+      props: { e2eState: 'authoritative' },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
   ],
   invariants: [
     {
@@ -186,6 +205,17 @@ registerUnit<VerifyProps>({
         (contract.state === 'empty'
           && root.textContent?.includes('No Content Types configured')
           && root.querySelector('a[href="/settings"]')?.textContent?.includes('Open Content Type settings'))
+        || `state=${contract.state}, text=${root.textContent}`
+      ),
+    },
+    {
+      id: 'e2e-authoritative-form-ready',
+      description: 'Authoritative payload fixture hiển thị đúng custom form để Playwright submit.',
+      onlyFixtures: ['e2e-authoritative-payload'],
+      check: ({ root, contract }) => (
+        (contract.state === 'ready'
+          && root.textContent?.includes('Quiz')
+          && !!root.querySelector('input[aria-label="Prompt"]'))
         || `state=${contract.state}, text=${root.textContent}`
       ),
     },

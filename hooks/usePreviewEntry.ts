@@ -21,12 +21,24 @@ interface PreviewEntryState {
   error: string | null
 }
 
+function nonEmptyGeneratedString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
 export function mapPendingEntryToPreview(
   pending: PendingEntry,
   ankiDeckName: string,
 ): Partial<Entry> {
   const content = pending.generatedContent as Record<string, unknown>
+  const wordType = nonEmptyGeneratedString(content.word_type)
+    ?? nonEmptyGeneratedString(content.word_type_vi)
+    ?? ''
+  const definition = nonEmptyGeneratedString(content.definition)
+    ?? nonEmptyGeneratedString(content.definition_vi)
   return {
+    ...(content as Partial<Entry>),
+    word_type: wordType,
+    ...(definition ? { definition } : {}),
     form_type: pending.formType,
     language: pending.language ?? undefined,
     output_language: pending.outputLanguage,
@@ -34,9 +46,7 @@ export function mapPendingEntryToPreview(
     category_id: pending.categoryId || null,
     card_type_ids: pending.cardTypeIds,
     tags: pending.tags,
-    ...(content as Partial<Entry>),
     ...(pending.formType === FormType.IT ? { topic_ids: pending.topicIds ?? [] } : {}),
-    word_type: (content.word_type as string) || (content.word_type_vi as string) || '',
   }
 }
 

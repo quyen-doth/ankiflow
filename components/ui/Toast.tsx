@@ -56,7 +56,7 @@ export function Toast({ variant, message, onClose }: { variant: ToastVariant; me
       <button
         type="button"
         onClick={onClose}
-        aria-label="Đóng thông báo"
+        aria-label="Close notification"
         className="text-slate-400 hover:text-ink flex-shrink-0"
       >
         <X className="w-4 h-4" />

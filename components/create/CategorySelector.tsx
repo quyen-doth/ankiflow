@@ -75,7 +75,7 @@ export function CategorySelector({ formType, value, onChange, onClear }: Categor
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </Select>
-        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Xóa category đã chọn" />
+        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Clear selected category" />
       </div>
     </FieldWrapper>
   )

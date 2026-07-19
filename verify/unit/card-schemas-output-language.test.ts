@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCardSpec, type CardSpec } from '@/lib/ai-agent/card-schemas'
+import { resolveCardSpec } from '@/lib/ai-agent/card-schemas'
+import type { CardSpec } from '@/lib/ai-agent/card-spec'
 import type { GenerateCardInput } from '@/lib/ai-agent/types'
 import { FormType } from '@/types'
 
@@ -7,7 +8,6 @@ interface BranchCase {
   name: string
   input: GenerateCardInput
   languageBranch: boolean
-  specializedPrompt: boolean
 }
 
 const BRANCHES: BranchCase[] = [
@@ -15,31 +15,26 @@ const BRANCHES: BranchCase[] = [
     name: 'English',
     input: { form_type: FormType.LANGUAGE, language: 'en', word: 'book' },
     languageBranch: true,
-    specializedPrompt: true,
   },
   {
     name: 'Chinese',
     input: { form_type: FormType.LANGUAGE, language: 'zh', word: '书' },
     languageBranch: true,
-    specializedPrompt: true,
   },
   {
     name: 'Japanese',
     input: { form_type: FormType.LANGUAGE, language: 'ja', word: '本' },
     languageBranch: true,
-    specializedPrompt: true,
   },
   {
     name: 'generic language',
     input: { form_type: FormType.LANGUAGE, language: 'fr', word: 'livre' },
     languageBranch: true,
-    specializedPrompt: false,
   },
   {
     name: 'IT',
     input: { form_type: FormType.IT, term: 'event loop' },
     languageBranch: false,
-    specializedPrompt: true,
   },
   {
     name: 'dynamic',
@@ -50,7 +45,6 @@ const BRANCHES: BranchCase[] = [
       contentTypeName: 'Science',
     },
     languageBranch: false,
-    specializedPrompt: false,
   },
 ]
 
@@ -79,7 +73,8 @@ describe('resolveCardSpec — AI output language', () => {
       const spec = resolveCardSpec(branch.input)
 
       expect(spec.systemPrompt).toContain('Vietnamese')
-      if (branch.specializedPrompt) expect(spec.systemPrompt).toContain('Vietnamese話者')
+      expect(spec.systemPrompt).toContain('Vietnamese speakers')
+      expect(spec.systemPrompt).not.toMatch(/[ぁ-んァ-ヶ]/)
       expect(JSON.stringify(spec.inputSchema)).toContain('Vietnamese')
     })
   }

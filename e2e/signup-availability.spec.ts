@@ -37,3 +37,27 @@ test('無効時の signup API は Firebase に到達する前に 403 を返す',
   expect(response.status()).toBe(403)
   expect(await response.json()).toEqual({ error: 'Sign-ups are currently closed' })
 })
+
+test('cookie だけ残った signed-out session は削除して login に戻す', async ({
+  context,
+  page,
+}) => {
+  await page.goto(testUrl('/login'))
+  await context.addCookies([
+    {
+      name: '__session',
+      value: 'stale-session-cookie',
+      url: new URL(page.url()).origin,
+    },
+  ])
+
+  await page.goto(testUrl('/dashboard'))
+
+  await expect(page).toHaveURL(/\/login$/)
+  await expect
+    .poll(async () => {
+      const cookies = await context.cookies()
+      return cookies.some((cookie) => cookie.name === '__session')
+    })
+    .toBe(false)
+})

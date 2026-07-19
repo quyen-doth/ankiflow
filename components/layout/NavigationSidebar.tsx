@@ -10,7 +10,7 @@ import { useUnsyncedCount } from '@/hooks/useUnsyncedCount';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/auth';
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
-import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
+import { createNotesForEntry, drainPendingAnkiDeletions, ensureModel } from '@/lib/flashcard-service/client-ops';
 import { cn } from '@/lib/utils';
 import { useConfirmNavigation } from '@/hooks/useUnsavedChangesGuard';
 import { verifyAttrs } from '@/verify/core/contract';
@@ -27,6 +27,7 @@ const navItems = [
 export function NavigationSidebar() {
     const pathname = usePathname();
     const { user } = useAuth();
+    const userId = user?.uid;
     const [mobileOpen, setMobileOpen] = useState(false);
     const [lastPathname, setLastPathname] = useState(pathname);
     const unsyncedCount = useUnsyncedCount();
@@ -45,36 +46,42 @@ export function NavigationSidebar() {
     }, [confirmNavigation]);
 
     const handleSync = useCallback(async () => {
-        setIsSyncing(true)
-        setSyncResult(null)
+        setIsSyncing(true);
+        setSyncResult(null);
         try {
+            const client = await getAnkiClientFromSettings();
+            const deletedNotes = userId
+                ? await drainPendingAnkiDeletions(client, userId)
+                : 0;
+
             // 1. Lấy các entry reviewed + card_types từ server (server không đụng Anki).
-            const res = await fetch('/api/entries/sync', { cache: 'no-store' })
-            const { jobs } = await res.json()
+            const res = await fetch('/api/entries/sync', { cache: 'no-store' });
+            const { jobs } = await res.json();
             if (!jobs || jobs.length === 0) {
-                setSyncResult('Nothing to sync')
-                return
+                setSyncResult(deletedNotes > 0
+                    ? `Removed ${deletedNotes} Anki note${deletedNotes === 1 ? '' : 's'}`
+                    : 'Nothing to sync');
+                return;
             }
 
             // 2. Tạo note trong Anki của user (browser → localhost:8765).
             //    createNotesForEntry dùng chung với export trực tiếp — kèm store audio/image.
-            const client = await getAnkiClientFromSettings()
-            await ensureModel(client)
+            await ensureModel(client);
 
-            const results: { entryId: string; noteIds: number[] }[] = []
-            let ankiFailed = 0
+            const results: { entryId: string; noteIds: number[] }[] = [];
+            let ankiFailed = 0;
             for (const job of jobs) {
                 try {
-                    const noteIds = await createNotesForEntry(client, job.entry, job.cardTypes)
-                    results.push({ entryId: job.entryId, noteIds })
+                    const noteIds = await createNotesForEntry(client, job.entry, job.cardTypes);
+                    results.push({ entryId: job.entryId, noteIds });
                 } catch {
-                    ankiFailed++
+                    ankiFailed++;
                 }
             }
 
             if (results.length === 0) {
-                setSyncResult('Sync failed')
-                return
+                setSyncResult('Sync failed');
+                return;
             }
 
             // 3. Báo kết quả về server để cập nhật status → synced.
@@ -84,28 +91,28 @@ export function NavigationSidebar() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ results }),
-            })
+            });
             if (!postRes.ok) {
-                setSyncResult('Sync incomplete — status not saved')
-                return
+                setSyncResult('Sync incomplete — status not saved');
+                return;
             }
-            const { synced = 0, failed: persistFailed = 0 } = await postRes.json()
+            const { synced = 0, failed: persistFailed = 0 } = await postRes.json();
 
-            const failed = ankiFailed + persistFailed
+            const failed = ankiFailed + persistFailed;
             if (synced > 0 && failed === 0) {
-                setSyncResult(`Synced ${synced} cards`)
+                setSyncResult(`Synced ${synced} cards`);
             } else if (synced > 0) {
-                setSyncResult(`Synced ${synced}, failed ${failed}`)
+                setSyncResult(`Synced ${synced}, failed ${failed}`);
             } else {
-                setSyncResult('Sync failed')
+                setSyncResult('Sync failed');
             }
         } catch {
-            setSyncResult('Sync error')
+            setSyncResult('Sync error');
         } finally {
-            setIsSyncing(false)
-            setTimeout(() => setSyncResult(null), 4000)
+            setIsSyncing(false);
+            setTimeout(() => setSyncResult(null), 4000);
         }
-    }, [])
+    }, [userId]);
 
     if (pathname !== lastPathname) {
         setLastPathname(pathname);
@@ -200,10 +207,6 @@ export function NavigationSidebar() {
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-
-                <span className="px-2.5 pb-1.5 text-[9px] font-semibold tracking-[0.1em] uppercase font-mono text-[#aeb0b7]">
-                    Menu
-                </span>
 
                 {nav}
 

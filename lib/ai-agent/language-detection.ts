@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { CardSpec } from '@/lib/ai-agent/card-schemas'
+import type { CardSpec } from '@/lib/ai-agent/card-spec'
 import type { DetectLanguagesInput } from '@/lib/ai-agent/types'
 
 export const LANGUAGE_DETECTION_TOOL_NAME = 'submit_language_detection'

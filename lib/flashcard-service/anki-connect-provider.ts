@@ -109,6 +109,11 @@ export class AnkiConnectProvider implements IFlashcardService {
     await this.invoke<null>('changeDeck', { cards: cardIds, deck: deckName });
   }
 
+  async deleteNotes(noteIds: number[]): Promise<void> {
+    if (noteIds.length === 0) return;
+    await this.invoke<null>('deleteNotes', { notes: noteIds });
+  }
+
   async deleteDecks(deckNames: string[], cardsToo = false): Promise<void> {
     if (deckNames.length === 0) return;
     await this.invoke<null>('deleteDecks', { decks: deckNames, cardsToo });

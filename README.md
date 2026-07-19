@@ -215,7 +215,8 @@ npm run dev
 | --------------------------------------------- | -------------------------------------- |
 | `FIREBASE_ADMIN_*` / `NEXT_PUBLIC_FIREBASE_*` | Firebase Console（Auth + Firestore）   |
 | `ANTHROPIC_API_KEY`                           | Anthropic Console                      |
-| `GOOGLE_TTS_API_KEY`                          | Google Cloud Console                   |
+| `GOOGLE_TTS_CREDENTIALS_JSON`                 | GCP サービスアカウント JSON の中身（Vercel などの serverless では必須） |
+| `GOOGLE_APPLICATION_CREDENTIALS`              | GCP サービスアカウント key file のパス（ローカル開発用の代替）          |
 | `UNSPLASH_ACCESS_KEY`                         | Unsplash Developers                    |
 | `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Messaging API / webhook     |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`             | LINE 公式アカウント追加 URL             |

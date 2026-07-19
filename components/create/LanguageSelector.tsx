@@ -35,7 +35,9 @@ export function LanguageSelector({
           aria-label={label}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
+          // h-auto loại bỏ h-[42px] của base Select — nếu giữ, py-3 làm content-box (16px)
+          // thấp hơn line-height (20px) và chữ bị cắt. Bỏ height cố định → khớp CreatableSelect (deck).
+          className="w-full h-auto bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
         >
           <option value="" disabled>{placeholder}</option>
           {enabledLanguages.map(lang => (

@@ -183,6 +183,10 @@ describe('seedUserDefaults — Content Type snapshot', () => {
       expect(snapshot?.updated_at).toBeInstanceOf(Date)
       expect(snapshot?.created_at).not.toBe('global-created-at')
       expect(snapshot?.updated_at).not.toBe('global-updated-at')
+      if (source.ai_output_profiles) {
+        expect(snapshot?.ai_output_profiles).toEqual(source.ai_output_profiles)
+        expect(snapshot?.ai_output_profiles).not.toBe(source.ai_output_profiles)
+      }
     }
   })
 

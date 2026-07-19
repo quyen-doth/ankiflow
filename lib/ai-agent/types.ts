@@ -1,4 +1,5 @@
 import type { FormType, LanguageCode } from '@/types'
+import type { EngineDefinition } from '@/lib/ai-agent/promptEngine'
 
 /**
  * カード 1 枚のコンテンツを生成するための入力パラメータ。`/api/generate` の
@@ -17,6 +18,8 @@ export interface GenerateCardInput {
   dynamicFields?: Record<string, string>
   /** Name of the custom content type (for prompt context) */
   contentTypeName?: string
+  /** Server-validated workspace definition. Older requests may omit it and use an engine-derived fallback. */
+  content_type?: EngineDefinition
 }
 
 export interface LanguageDetectionCandidate {

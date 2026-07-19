@@ -210,6 +210,27 @@ export interface DeckConfig {
 
 // ─── Collection: content_types ────────────────────────
 
+/** AI が生成する 1 field の宣言。 */
+export interface AiOutputField {
+  key: string;
+  type: 'string' | 'string_array';
+  /** `{output_language}` / `{study_language}` を解決して tool schema の説明に使用する。 */
+  instruction: string;
+  /** `output_vi` は出力言語の primary subtag が `vi` の場合だけ field を含める。 */
+  include_when?: 'always' | 'output_vi';
+  /** `string_array` の出力件数上限。省略時は engine default を使用する。 */
+  max_items?: number;
+}
+
+/**
+ * Content Type の AI output schema variant。
+ * `default` は fallback、その他は primary BCP 47 subtag (`en` / `zh` / `ja` など)。
+ */
+export interface AiOutputProfile {
+  profile: string;
+  fields: AiOutputField[];
+}
+
 /**
  * Cấu hình giao diện Form cho từng loại nội dung
  */
@@ -220,6 +241,8 @@ export interface ContentType {
   description: string;
   icon: string;
   fields: FormFieldConfig[];
+  /** AI output schema。未設定の legacy document は built-in/dynamic fallback を使用する。 */
+  ai_output_profiles?: AiOutputProfile[];
   is_active: boolean;
   sort_order: number;
   /** Chế độ tạo thẻ mặc định khi chọn content type này trong trang Create. */
@@ -331,6 +354,8 @@ export interface Settings {
   study_languages?: StudyLanguage[];
   /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
   ai_output_language?: string;
+  /** 次回の browser-side Sync で削除する Anki note ID の retry queue。 */
+  pending_anki_note_deletions?: number[];
   updated_at: FirestoreTimestamp;
 }
 

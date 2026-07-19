@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { AuthSessionGuard } from '@/components/layout/AuthSessionGuard'
 import { NavigationSidebar } from '@/components/layout/NavigationSidebar'
 import { UnsavedChangesProvider } from '@/components/providers/UnsavedChangesProvider'
 import { verifyAttrs } from '@/verify/core/contract'
@@ -30,6 +31,8 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
   return (
     <UnsavedChangesProvider>
+      {/* cookie 有効 + client auth 喪失の split-brain を検出して /login へ強制遷移する */}
+      <AuthSessionGuard />
       <NavigationSidebar />
       {/* Main: offset for mobile top bar, then for the sidebar at md+ */}
       <main

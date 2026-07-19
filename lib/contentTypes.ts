@@ -3,6 +3,8 @@ import {
   CONTENT_TYPE_CODE_PATTERN,
   PROTECTED_GLOBAL_CONTENT_TYPE_IDS,
 } from '@/lib/constants'
+import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
+import { aiOutputProfilesSchema, cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import { FormType } from '@/types'
 import type { ContentType, UserContentType } from '@/types'
 
@@ -13,6 +15,7 @@ export type EditableContentTypeData = Pick<
   | 'description'
   | 'icon'
   | 'fields'
+  | 'ai_output_profiles'
   | 'is_active'
   | 'sort_order'
   | 'default_create_mode'
@@ -86,6 +89,7 @@ export const editableContentTypeSchema = z.object({
   description: z.string(),
   icon: z.string(),
   fields: z.array(formFieldConfigSchema),
+  ai_output_profiles: aiOutputProfilesSchema.optional(),
   is_active: z.boolean(),
   sort_order: z.number().int('Content type sort order must be an integer').min(0),
   default_create_mode: z.enum(['single', 'batch']).optional(),
@@ -131,6 +135,9 @@ export function materializeUserContentType(
         ...field,
         ...(field.options ? { options: field.options.slice() } : {}),
       })),
+      ...(source.ai_output_profiles
+        ? { ai_output_profiles: cloneAiOutputProfiles(source.ai_output_profiles) }
+        : {}),
       is_active: source.is_active,
       sort_order: source.sort_order,
       ...(source.default_create_mode ? { default_create_mode: source.default_create_mode } : {}),
@@ -255,6 +262,7 @@ export const DEFAULT_CONTENT_TYPES: ContentTypeSeedDefinition[] = [
     sort_order: 1,
     default_create_mode: 'batch',
     is_active: true,
+    ai_output_profiles: resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)!,
     fields: [
       { field_key: 'language', label: 'Language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: null, placeholder: null },
       { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 2, data_source: 'decks', placeholder: null },
@@ -274,6 +282,7 @@ export const DEFAULT_CONTENT_TYPES: ContentTypeSeedDefinition[] = [
     sort_order: 2,
     default_create_mode: 'single',
     is_active: true,
+    ai_output_profiles: resolveBuiltinAiOutputProfiles(FormType.IT)!,
     fields: [
       { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'decks', placeholder: null },
       { field_key: 'topic_ids', label: 'Topics', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 2, data_source: 'topics', placeholder: null },

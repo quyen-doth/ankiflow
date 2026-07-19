@@ -9,32 +9,49 @@ import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { MotionPage } from '@/components/ui/MotionPage'
 import { FilterBar } from '@/components/ui/FilterBar'
+import { Select } from '@/components/ui/FormField'
+import { Modal } from '@/components/ui/Modal'
+import { useToast } from '@/components/ui/Toast'
 import { HistoryTable } from '@/components/history/HistoryTable'
 import { EntryEditModal } from '@/components/history/EntryEditModal'
 import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
-import { PlusCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { FormType, type Entry } from '@/types'
+import { useEntryDelete } from '@/hooks/useEntryDelete'
+import { PlusCircle, Trash2 } from 'lucide-react'
+import { FormType, type Entry, type UserContentType } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
+import { loadUserContentTypes } from '@/lib/userContentTypes'
+import {
+  ALL_HISTORY_FILTERS,
+  buildHistoryContentTypeOptions,
+  DEFAULT_HISTORY_FILTERS,
+  filterHistoryEntries,
+  type HistoryFilters,
+  type HistoryStatusFilter,
+} from '@/lib/history/filterEntries'
 
-const ALL_LANGUAGES = '__all_languages__'
-const IT_CONTENT = '__it_content__'
-
-const SYNC_FILTERS = ['All', 'Unsynced', 'Synced'] as const
-type SyncFilter = (typeof SYNC_FILTERS)[number]
+const STATUS_FILTER_OPTIONS: Array<{ value: HistoryStatusFilter; label: string }> = [
+  { value: ALL_HISTORY_FILTERS, label: 'All statuses' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'reviewed', label: 'Unsynced' },
+  { value: 'synced', label: 'Synced' },
+]
 
 export default function HistoryPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { languages } = useStudyLanguages()
   const [entries, setEntries] = useState<Entry[]>([])
+  const [contentTypes, setContentTypes] = useState<UserContentType[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [langFilter, setLangFilter] = useState(ALL_LANGUAGES)
-  const [syncFilter, setSyncFilter] = useState<SyncFilter>('All')
+  const [filters, setFilters] = useState<HistoryFilters>(DEFAULT_HISTORY_FILTERS)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Entry[] | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [deleting, setDeleting] = useState(false)
   const { saveEntry } = useEntryEdit()
+  const { deleteEntries } = useEntryDelete()
+  const toast = useToast()
 
   useEffect(() => {
     // Chưa có user (authLoading hoặc null) → giữ spinner; middleware đảm bảo đã login
@@ -46,9 +63,13 @@ export default function HistoryPage() {
           where('user_id', '==', uid),
           orderBy('created_at', 'desc')
         )
-        const snapshot = await getDocs(q)
+        const [snapshot, workspaceContentTypes] = await Promise.all([
+          getDocs(q),
+          loadUserContentTypes(uid),
+        ])
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entry))
         setEntries(data)
+        setContentTypes(workspaceContentTypes)
       } catch (error) {
         console.error('Error fetching history:', error)
       } finally {
@@ -59,13 +80,12 @@ export default function HistoryPage() {
     fetchHistory(user.uid)
   }, [user, authLoading])
 
-  const totalCards = entries.reduce((sum, e) => sum + (e.card_type_ids?.length || 0), 0)
+  const contentTypeOptions = useMemo(() => {
+    return buildHistoryContentTypeOptions(contentTypes, entries)
+  }, [contentTypes, entries])
 
-  const unsyncedCount = entries.filter(e => e.status === 'reviewed').length
-
-  const languageFilters = useMemo(() => {
-    // Chip = ngôn ngữ đang enabled ∪ ngôn ngữ có entry thật — ngôn ngữ disabled
-    // không có dữ liệu thì không chiếm chỗ trên thanh filter.
+  const languageOptions = useMemo(() => {
+    // 有効な設定言語と実データに残る言語を統合する。
     const codes = new Set<string>()
     languages.forEach(language => {
       if (!language.enabled) return
@@ -77,31 +97,132 @@ export default function HistoryPage() {
       codes.add(canonicalizeLanguageCode(entry.language) ?? entry.language)
     })
     return [
-      { value: ALL_LANGUAGES, label: 'All' },
+      { value: ALL_HISTORY_FILTERS, label: 'All languages' },
       ...Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) })),
-      { value: IT_CONTENT, label: 'IT' },
     ]
   }, [entries, languages])
 
-  const filteredEntries = entries.filter(entry => {
-    if (syncFilter === 'Unsynced' && entry.status !== 'reviewed') return false
-    if (syncFilter === 'Synced' && entry.status !== 'synced') return false
+  const filteredEntries = useMemo(
+    () => filterHistoryEntries(entries, filters),
+    [entries, filters],
+  )
+  const selectedEntries = useMemo(
+    () => filteredEntries.filter(entry => !!entry.id && selectedIds.has(entry.id)),
+    [filteredEntries, selectedIds],
+  )
 
-    if (langFilter !== ALL_LANGUAGES) {
-      if (langFilter === IT_CONTENT) {
-        if (entry.form_type !== FormType.IT) return false
-      } else {
-        if (entry.form_type !== FormType.LANGUAGE) return false
-        const lang = entry.language ? canonicalizeLanguageCode(entry.language) ?? entry.language : ''
-        if (lang !== langFilter) return false
+  const applyFilters = (nextFilters: HistoryFilters) => {
+    // Filter 変更時、非表示になる entry を選択状態から外して誤削除を防ぐ。
+    const visibleIds = new Set(filterHistoryEntries(entries, nextFilters).flatMap(entry => (
+      typeof entry.id === 'string' && entry.id ? [entry.id] : []
+    )))
+    setFilters(nextFilters)
+    setSelectedIds(current => {
+      const next = new Set([...current].filter(id => visibleIds.has(id)))
+      return next.size === current.size ? current : next
+    })
+  }
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(current => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAllVisible = () => {
+    const visibleIds = filteredEntries.flatMap(entry => (
+      typeof entry.id === 'string' && entry.id ? [entry.id] : []
+    ))
+    setSelectedIds(current => {
+      const next = new Set(current)
+      const allVisibleSelected = visibleIds.length > 0
+        && visibleIds.every(id => next.has(id))
+      visibleIds.forEach(id => {
+        if (allVisibleSelected) next.delete(id)
+        else next.add(id)
+      })
+      return next
+    })
+  }
+  const filteredNoteCount = filteredEntries.reduce(
+    (sum, entry) => sum + (entry.card_type_ids?.length || 0),
+    0,
+  )
+
+  const activeFilters = useMemo(() => {
+    const active: Array<{ key: string; label: string }> = []
+    if (filters.search) active.push({ key: 'search', label: `Search: ${filters.search}` })
+    if (filters.contentType !== ALL_HISTORY_FILTERS) {
+      const label = contentTypeOptions.find(option => option.value === filters.contentType)?.label
+        ?? filters.contentType
+      active.push({ key: 'contentType', label: `Content type: ${label}` })
+    }
+    if (
+      filters.contentType === FormType.LANGUAGE
+      && filters.language !== ALL_HISTORY_FILTERS
+    ) {
+      const label = languageOptions.find(option => option.value === filters.language)?.label
+        ?? filters.language
+      active.push({ key: 'language', label: `Language: ${label}` })
+    }
+    if (filters.status !== ALL_HISTORY_FILTERS) {
+      const label = STATUS_FILTER_OPTIONS.find(option => option.value === filters.status)?.label
+        ?? filters.status
+      active.push({ key: 'status', label: `Status: ${label}` })
+    }
+    return active
+  }, [contentTypeOptions, filters, languageOptions])
+
+  const changeContentType = (contentType: string) => {
+    applyFilters({
+      ...filters,
+      contentType,
+      language: contentType === FormType.LANGUAGE
+        ? filters.language
+        : ALL_HISTORY_FILTERS,
+    })
+  }
+
+  const removeFilter = (key: string) => {
+    let nextFilters = filters
+    if (key === 'search') nextFilters = { ...filters, search: '' }
+    if (key === 'contentType') {
+      nextFilters = {
+        ...filters,
+        contentType: ALL_HISTORY_FILTERS,
+        language: ALL_HISTORY_FILTERS,
       }
     }
-    if (!searchTerm) return true
-    const searchLower = searchTerm.toLowerCase()
-    const word = (entry.word || entry.term || entry.title || '').toLowerCase()
-    const meaning = (entry.meaning_vi || entry.definition || entry.content || '').toLowerCase()
-    return word.includes(searchLower) || meaning.includes(searchLower)
-  })
+    if (key === 'language') nextFilters = { ...filters, language: ALL_HISTORY_FILTERS }
+    if (key === 'status') nextFilters = { ...filters, status: ALL_HISTORY_FILTERS }
+    applyFilters(nextFilters)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleteTarget.length === 0 || deleting) return
+    const targets = deleteTarget
+    const targetIds = new Set(targets.flatMap(entry => entry.id ? [entry.id] : []))
+    const hasAnkiNotes = targets.some(entry => (entry.anki_note_ids?.length ?? 0) > 0)
+    setDeleting(true)
+
+    try {
+      const result = await deleteEntries(targets)
+      setEntries(current => current.filter(entry => !entry.id || !targetIds.has(entry.id)))
+      setSelectedIds(new Set())
+      setDeleteTarget(null)
+      toast.success(`Deleted ${result.deleted} card${result.deleted === 1 ? '' : 's'}`)
+      if (!result.ankiCleaned && hasAnkiNotes) {
+        toast.info('Anki notes will be removed on next Sync')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete cards')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <MotionPage>
@@ -116,53 +237,90 @@ export default function HistoryPage() {
       />
 
       <div className="max-w-6xl mx-auto w-full pb-12 flex flex-col gap-6">
-        {/* Filter Bar + Language pills + Count */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[200px]">
+        {/* Search と data-driven dropdown を desktop で 1 行にまとめる。 */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+          <div className="flex-1 min-w-[240px]">
             <FilterBar
               searchPlaceholder="Search vocabulary, meaning…"
-              searchValue={searchTerm}
-              onSearchChange={setSearchTerm}
+              searchValue={filters.search}
+              onSearchChange={search => applyFilters({ ...filters, search })}
+              activeFilters={activeFilters}
+              onRemoveFilter={removeFilter}
+              onClearAll={() => applyFilters({ ...DEFAULT_HISTORY_FILTERS })}
             />
           </div>
-          <div className="flex items-center gap-1.5">
-            {languageFilters.map(filter => (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => setLangFilter(filter.value)}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-pill text-[12.5px] font-semibold transition-colors',
-                  langFilter === filter.value
-                    ? 'bg-primary text-white'
-                    : 'text-slate-600 hover:bg-surface'
-                )}
-              >
-                {filter.label}
-              </button>
-            ))}
+          <div className="w-full sm:w-[200px]">
+            <Select
+              aria-label="Content type"
+              value={filters.contentType}
+              onChange={event => changeContentType(event.target.value)}
+            >
+              {contentTypeOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </Select>
           </div>
-          <div className="flex items-center gap-1.5">
-            {SYNC_FILTERS.map(f => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setSyncFilter(f)}
-                className={cn(
-                  'px-3.5 py-1.5 rounded-pill text-[12.5px] font-semibold transition-colors',
-                  syncFilter === f
-                    ? 'bg-amber text-white'
-                    : 'text-slate-600 hover:bg-surface'
-                )}
+          {filters.contentType === FormType.LANGUAGE && (
+            <div className="w-full sm:w-[180px]">
+              <Select
+                aria-label="Language"
+                value={filters.language}
+                onChange={event => applyFilters({
+                  ...filters,
+                  language: event.target.value,
+                })}
               >
-                {f}{f === 'Unsynced' && unsyncedCount > 0 ? ` (${unsyncedCount})` : ''}
-              </button>
-            ))}
+                {languageOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <div className="w-full sm:w-[160px]">
+            <Select
+              aria-label="Status"
+              value={filters.status}
+              onChange={event => applyFilters({
+                ...filters,
+                status: event.target.value as HistoryStatusFilter,
+              })}
+            >
+              {STATUS_FILTER_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </Select>
           </div>
-          <span className="text-[13px] font-mono text-slate-400 whitespace-nowrap">
-            {entries.length} cards · {totalCards} notes
+          <span className="h-[42px] flex items-center text-[13px] font-mono text-slate-400 whitespace-nowrap">
+            {filteredEntries.length}/{entries.length} cards · {filteredNoteCount} notes
           </span>
         </div>
+
+        {selectedIds.size > 0 && (
+          <div className="flex flex-col gap-3 rounded-[9px] border border-danger/20 bg-danger-bg px-4 py-3 sm:flex-row sm:items-center">
+            <span className="text-sm font-bold text-danger">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex gap-2 sm:ml-auto">
+              <Button
+                variant="destructive"
+                size="sm"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => setDeleteTarget(selectedEntries)}
+                disabled={deleting || selectedEntries.length === 0}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+                disabled={deleting}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         {loading ? (
@@ -172,7 +330,15 @@ export default function HistoryPage() {
         ) : (
           <HistoryTable
             data={filteredEntries}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelected}
+            onToggleSelectAll={toggleAllVisible}
+            onOpen={(entry) => router.push(`/history/${entry.id}`)}
             onEdit={(entry) => setEditEntry(entry)}
+            onDelete={(id) => {
+              const entry = entries.find(candidate => candidate.id === id)
+              if (entry) setDeleteTarget([entry])
+            }}
           />
         )}
       </div>
@@ -191,6 +357,27 @@ export default function HistoryPage() {
           }}
         />
       )}
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => { if (!deleting) setDeleteTarget(null) }}
+        onConfirm={confirmDelete}
+        title={deleteTarget?.length === 1 ? 'Delete card?' : `Delete ${deleteTarget?.length ?? 0} cards?`}
+        size="sm"
+      >
+        <p className="text-sm text-slate-600">
+          Delete {deleteTarget?.length === 1 ? 'this card' : 'these cards'} permanently? Cards already exported to Anki will also be removed
+          from Anki immediately if it is open, or on the next Sync.
+        </p>
+        <div className="flex gap-3 justify-end mt-5">
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </Modal>
     </MotionPage>
   )
 }

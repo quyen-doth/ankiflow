@@ -23,25 +23,35 @@ interface PreviewBatchState {
   error: string | null
 }
 
+function nonEmptyGeneratedString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
 export function mapPendingBatchToPreview(
   pending: PendingBatch,
   ankiDeckName: string,
 ): Partial<Entry>[] {
-  return pending.items.map((content) => ({
-    form_type: pending.formType,
-    language: pending.language ?? undefined,
-    output_language: pending.outputLanguage,
-    anki_deck: ankiDeckName,
-    category_id: pending.categoryId || null,
-    card_type_ids: pending.cardTypeIds,
-    tags: pending.tags,
-    ...(content as Partial<Entry>),
-    ...(pending.formType === FormType.IT ? { topic_ids: pending.topicIds ?? [] } : {}),
-    word_type:
-      ((content as Record<string, unknown>).word_type as string) ||
-      ((content as Record<string, unknown>).word_type_vi as string) ||
-      '',
-  }))
+  return pending.items.map((content) => {
+    const generated = content as Record<string, unknown>
+    const wordType = nonEmptyGeneratedString(generated.word_type)
+      ?? nonEmptyGeneratedString(generated.word_type_vi)
+      ?? ''
+    const definition = nonEmptyGeneratedString(generated.definition)
+      ?? nonEmptyGeneratedString(generated.definition_vi)
+    return {
+      ...(content as Partial<Entry>),
+      word_type: wordType,
+      ...(definition ? { definition } : {}),
+      form_type: pending.formType,
+      language: pending.language ?? undefined,
+      output_language: pending.outputLanguage,
+      anki_deck: ankiDeckName,
+      category_id: pending.categoryId || null,
+      card_type_ids: pending.cardTypeIds,
+      tags: pending.tags,
+      ...(pending.formType === FormType.IT ? { topic_ids: pending.topicIds ?? [] } : {}),
+    }
+  })
 }
 
 /**

@@ -100,7 +100,7 @@ export function CollocationEditor({ items, onChange }: CollocationEditorProps) {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={addItem}
-                placeholder="term (nghĩa)…"
+                placeholder="term (meaning)…"
                 aria-label="Add collocation"
                 className="text-[13px] bg-[#fcfcfb] border border-[#e3e3de] rounded-[8px] px-[11px] py-1.5 focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-bg text-ink placeholder:text-slate-400/70 w-44"
               />

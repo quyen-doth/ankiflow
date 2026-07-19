@@ -141,7 +141,7 @@ export function FlashcardReviewLayout({
                       value={entry.han_viet || ''}
                       onSave={(v) => updateField('han_viet', v)}
                       className="text-[13px] font-bold uppercase tracking-[0.08em] text-[#b87514]"
-                      placeholder="Hán Việt…"
+                      placeholder="Sino-Vietnamese reading…"
                     />
                   </div>
                 )}
