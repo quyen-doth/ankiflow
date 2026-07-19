@@ -26,6 +26,7 @@
 # misc
 .DS_Store
 *.pem
+*.bak
 
 # debug
 npm-debug.log*
@@ -54,3 +55,6 @@ mcp-browser-data/
 
 # Plan working documents (kept out of Git)
 plans/
+
+# Personal AI task-runner artifacts
+.claude/task-runner/

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node '/Users/hong-quyen/Documents/study/flashcard/ankiflow/scripts/agent-hooks/block-env.mjs'"
+            "command": "node scripts/agent-hooks/block-env.mjs"
           }
         ]
       },

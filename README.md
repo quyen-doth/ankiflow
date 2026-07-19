@@ -12,7 +12,7 @@
 ![Firebase](https://img.shields.io/badge/Auth_+_Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-524_passing-success)
+![Tests](https://img.shields.io/badge/tests-1009_passing-success)
 ![CI](https://github.com/quyen-doth/ankiflow/actions/workflows/ci.yml/badge.svg)
 
 </div>
@@ -25,7 +25,7 @@
 
 - **対象コンテンツ**: 語学（英語 / 中国語 / 日本語）、IT 用語、一般知識をはじめ、コンテンツタイプを自由に追加可能
 - **連携先**: Anki Desktop（AnkiConnect 経由）/ LINE Messaging API（復習通知）
-- **規模**: TypeScript 約 17,500 行 / 67 コンポーネント / 23 API ルート / 11 ページ / 524 自動テスト
+- **規模**: TypeScript 約 20,000 行（テスト除く） / 79 コンポーネント / 26 API ルート / 14 ページ / 1,009 自動テスト
 
 ## 主な機能
 
@@ -63,7 +63,7 @@
 | 機能                        | 説明                                                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | **Anki エクスポート**       | AnkiConnect 経由で複数カードタイプを一括生成（音声・画像メディア同期対応）                                                     |
-| **LINE 通知による受動 SRS** | FSRS アルゴリズムに基づき、復習タイミングを LINE に Flex Message で自動プッシュ通知（Vercel Cron、毎日）。Anki Desktop を開かなくても隙間時間に復習可能 |
+| **LINE 通知による受動 SRS** | FSRS アルゴリズムに基づき、復習タイミングを LINE に Flex Message で自動プッシュ通知（GitHub Actions cron による毎時実行・管理者が設定した配信時刻を各ユーザーのタイムゾーンで解釈）。Anki Desktop を開かなくても隙間時間に復習可能 |
 | **セッション永続化**        | デッキ・言語・タグなどの設定を保持し、次回入力を高速化                                                                         |
 
 ## システム構成
@@ -132,7 +132,7 @@
 - 同一のコードパス（`runFixture()`）が CLI・ブラウザ（`/verify`）・コンソール API の 3 環境で動作
 - スキーマ・不変条件・DOM コントラクト・アクセシビリティの 4 種の検証器をプラガブルに追加可能
 - Firestore / fetch / Router / 認証コンテキスト / `localStorage` をモック注入し、外部依存のあるコンポーネントも単体で検証
-- 524 件のテストが安定して通過
+- 1,009 件のテストが安定して通過
 
 ### 4. 型安全なドメインモデリング
 
@@ -153,7 +153,7 @@ npm run lint          # ESLint
 npm run build         # 本番ビルド
 ```
 
-- 524 テストが安定して通過
+- 1,009 テストが安定して通過
 - 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404）
 - 詳細は [`docs/VERIFICATION.md`](docs/VERIFICATION.md) を参照
 
@@ -171,7 +171,7 @@ ankiflow/
 │   ├── admin/       # 設定データの管理（CMS / テンプレート編集）
 │   └── settings/    # 個人設定（連携状態・各種トグル）
 │       └── admin/   # アプリ全体設定（機能可否・AI モデル・LINE 通知、管理者のみ）
-├── components/      # UI コンポーネント（67 ファイル）
+├── components/      # UI コンポーネント（79 ファイル）
 │   └── providers/   # Auth / GlobalConfig などの React コンテキスト
 ├── hooks/           # カスタムフック
 ├── lib/             # 共通ユーティリティ（firebase, auth, ai-agent, flashcard-service, seed-defaults ...）
@@ -221,6 +221,8 @@ npm run dev
 | `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Messaging API / webhook     |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`             | LINE 公式アカウント追加 URL             |
 | `CRON_SECRET`                                 | LINE 通知 cron API の bearer 認証       |
+| `NEXT_PUBLIC_LINE_BOT_ID`                     | LINE 公式アカウントの ID（モバイル連携ディープリンク用・任意） |
+| `SIGNUP_ENABLED`                              | 公開サインアップの有効化（`true` のみ有効・既定は無効） |
 | `ADMIN_EMAIL`                                 | サーバー側の管理者判定用メール         |
 | `NEXT_PUBLIC_ADMIN_EMAIL`                     | クライアント側の管理者 UI 表示用メール |
 
@@ -242,4 +244,3 @@ npm run dev
 個人開発プロジェクトです。要件定義・アーキテクチャ設計・実装・テスト基盤の整備・セキュリティ設計まで一人で担当しました。
 
 - **GitHub**: https://github.com/quyen-doth
-  </content>

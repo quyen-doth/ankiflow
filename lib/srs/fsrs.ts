@@ -1,7 +1,7 @@
 import { fsrs, createEmptyCard, dateDiffInDays, Rating, State, type Card, type Grade } from 'ts-fsrs'
 import type { ReviewState, SRSRating, SRSQueue } from '@/types'
 
-// FSRS (Free Spaced Repetition Scheduler) — thay thế SM-2 (xem `sm2.ts.bak`).
+// FSRS (Free Spaced Repetition Scheduler) — 旧 SM-2 実装を置き換えたもの (Git 履歴参照)。
 // Giữ nguyên public API (`createDefaultReviewState`, `applyRating`, `calculateNextIntervals`,
 // `isDue`, `masteryLevel`) để mọi caller hiện có (webhook-handler.ts, flex-message.ts) không
 // cần sửa. Field "mirror" cũ (ease_factor/interval_days/due_date/lapses/total_reviews/queue)
