@@ -17,7 +17,7 @@ interface BatchAnkiExportOptions {
   entries: Partial<Entry>[]
   selectedCardTypeIds: string[]
   cardTypes: CardTypeItem[]
-  /** Nhảy tới thẻ lỗi đầu tiên khi validation thất bại. */
+  /** validation 失敗時に最初のエラーカードへジャンプする。 */
   onInvalid: (index: number) => void
 }
 
@@ -50,7 +50,7 @@ export function useBatchAnkiExport({
 
   const clearInvalid = () => setInvalid([])
 
-  // Quy tắc: BẤT KỲ thẻ nào lỗi → KHÔNG tạo thẻ nào. Gom hết lỗi để hiện banner + đánh dấu nav strip.
+  // ルール: 1 枚でもエラー → 1 枚も作成しない。全エラーを集めて banner 表示 + nav strip にマーク。
   const checkAll = (): boolean => {
     const bad = collectInvalidCards(entries, selectedCardTypeIds)
     setInvalid(bad)

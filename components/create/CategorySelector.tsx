@@ -10,7 +10,7 @@ import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { verifyAttrs } from '@/verify/core/contract'
 import type { Category, FormType } from '@/types'
 
-// Nhận formType theo UI label — mapping sang Firestore enum trong nội bộ component
+// formType を UI ラベルで受け取る — Firestore enum への mapping は component 内部で行う
 type UIFormType = 'Language' | 'IT' | 'General'
 
 interface CategorySelectorProps {

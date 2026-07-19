@@ -15,6 +15,10 @@ import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation
 import { ArrowLeft, Check } from 'lucide-react'
 import type { Entry, CardTemplate } from '@/types'
 import { languageDisplayName } from '@/lib/studyLanguages'
+import { findEntryContentType, resolveCustomFields } from '@/lib/entryCustomFields'
+import { buildHistoryEntryUpdates } from '@/lib/historyEntryUpdates'
+import { loadUserContentTypes } from '@/lib/userContentTypes'
+import type { UserContentType } from '@/types'
 
 interface CardTypeItem {
   id: string
@@ -34,6 +38,7 @@ export default function HistoryDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
+  const [contentType, setContentType] = useState<UserContentType | null>(null)
   const [selectedCardTypeIds, setSelectedCardTypeIds] = useState<string[]>([])
   const [selectedDeckId, setSelectedDeckId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -48,7 +53,7 @@ export default function HistoryDetailPage() {
       if (!id) return
       try {
         const snap = await getDoc(doc(db, 'entries', id))
-        // Ownership check: entry của user khác → hiển thị như không tồn tại
+        // Ownership check: 他 user の entry → 存在しないものとして表示
         if (!snap.exists() || snap.data()?.user_id !== user?.uid) {
           setNotFound(true)
           return
@@ -56,14 +61,18 @@ export default function HistoryDetailPage() {
         const data = { id: snap.id, ...snap.data() } as Entry
         setEntry(data)
 
-        // Card types theo form_type + language của entry (per-user)
+        // entry の form_type + language に応じた card types (per-user)
         try {
           const q = query(
             collection(db, 'card_types'),
             where('user_id', '==', user!.uid),
             where('form_type', '==', data.form_type),
           )
-          const ctSnap = await getDocs(q)
+          const [ctSnap, contentTypes] = await Promise.all([
+            getDocs(q),
+            loadUserContentTypes(user!.uid),
+          ])
+          setContentType(findEntryContentType(contentTypes, data.form_type) ?? null)
           type Fetched = { id: string; name: string; description?: string; sort_order?: number; is_active?: boolean; language?: string | null; template?: CardTemplate }
           const fetched: Fetched[] = ctSnap.docs
             .map(d => ({ id: d.id, ...(d.data() as Omit<Fetched, 'id'>) }))
@@ -110,6 +119,7 @@ export default function HistoryDetailPage() {
   const updateField = (field: keyof Entry, value: unknown) => {
     setEntry(prev => ({ ...prev, [field]: value }))
   }
+  const customFields = resolveCustomFields(entry, contentType ?? undefined)
 
   const handleSave = async () => {
     if (!entry.id) return
@@ -121,31 +131,12 @@ export default function HistoryDetailPage() {
     setSaving(true)
     setSavedAt(null)
     try {
-      const raw: Partial<Entry> = {
-        word: entry.word,
-        term: entry.term,
-        title: entry.title,
-        meaning_vi: entry.meaning_vi,
-        definition: entry.definition,
-        word_type: entry.word_type,
-        hiragana: entry.hiragana,
-        pinyin: entry.pinyin,
-        han_viet: entry.han_viet,
-        ipa: entry.ipa,
-        example_sentence: entry.example_sentence,
-        example_translation: entry.example_translation,
-        collocations: entry.collocations,
-        image_url: entry.image_url,
-        image_credit: entry.image_credit,
-        audio_url: media.audioUrl ?? entry.audio_url,
-        anki_deck: entry.anki_deck,
-        card_type_ids: selectedCardTypeIds,
-        category_id: entry.category_id ?? null,
-      }
-      // Firestore rejects undefined values
-      const updates = Object.fromEntries(
-        Object.entries(raw).filter(([, v]) => v !== undefined),
-      ) as Partial<Entry>
+      const updates = buildHistoryEntryUpdates(
+        entry,
+        customFields,
+        selectedCardTypeIds,
+        media.audioUrl,
+      )
 
       await saveEntry(entry as Entry, updates)
       setEntry(prev => ({ ...prev, ...updates }))
@@ -194,6 +185,10 @@ export default function HistoryDetailPage() {
       }
       entry={entry}
       updateField={updateField}
+      customFields={customFields}
+      onCustomFieldChange={(key, value) => {
+        setEntry(prev => ({ ...prev, [key]: value }))
+      }}
       images={media.images}
       imageLoading={media.imageLoading}
       onImageSelect={media.handleImageSelect}

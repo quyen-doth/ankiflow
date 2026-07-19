@@ -74,7 +74,7 @@
 | `keywords` | string[] | IT キーワード (IT vocab 固有) |
 | `topic_ids` | string[] | `topics` への参照 |
 | `difficulty` | string | 難易度: `easy` / `medium` / `hard` (IT vocab 固有) |
-| `review_state` | object | 現在の SRS 状態 (ease/interval/due_date/queue/`source`/`fsrs`...) — nullable。FSRS (`lib/srs/fsrs.ts`、旧 SM-2 は `sm2.ts.bak` に退避) を使用；`fsrs` block (stability/difficulty/state/reps/scheduled_days/last_review) が正データ、旧フィールドは後方互換の mirror。2 つの writer: Anki sync (`source:'anki_sync'`) と LINE rating (`source:'builtin'`)、**precedence guard** あり (`review_events` 参照) |
+| `review_state` | object | 現在の SRS 状態 (ease/interval/due_date/queue/`source`/`fsrs`...) — nullable。FSRS (`lib/srs/fsrs.ts`、旧 SM-2 実装は Git 履歴を参照) を使用；`fsrs` block (stability/difficulty/state/reps/scheduled_days/last_review) が正データ、旧フィールドは後方互換の mirror。2 つの writer: Anki sync (`source:'anki_sync'`) と LINE rating (`source:'builtin'`)、**precedence guard** あり (`review_events` 参照) |
 | `integration_source` | string | 外部システム連携元 (例 `'knowledge-hub'`) — `/api/integrations/term-drafts` 経由の entry のみ、nullable |
 | `source_url` / `source_title` | string | 連携元の参照 URL / タイトル — 同上、nullable |
 | `context_quote` | string | 連携元の引用テキスト (≤200 文字) — 同上、nullable |

@@ -7,9 +7,9 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider'
 
 /**
- * "Mức trần" (effective = global AND user): admin tắt tính năng → không ai dùng được,
- * bất kể lựa chọn cá nhân; admin bật lại → mỗi user quay về lựa chọn cá nhân cũ
- * (không bị admin ghi đè, vì 2 giá trị nằm ở 2 doc Firestore tách biệt).
+ * "上限モデル" (effective = global AND user): admin が機能を無効化 → 個人設定に関わらず
+ * 誰も使えない; admin が再有効化 → 各 user は元の個人設定に戻る
+ * (2 つの値は別々の Firestore doc にあるため、admin に上書きされない)。
  */
 export function useEffectiveMediaFlags(): { effectiveTts: boolean; effectiveUnsplash: boolean; loading: boolean } {
   const { user, loading: authLoading } = useAuth()
@@ -35,7 +35,7 @@ export function useEffectiveMediaFlags(): { effectiveTts: boolean; effectiveUnsp
         }
       })
       .catch(() => {
-        /* fail-open — giữ mặc định true */
+        /* fail-open — 既定の true を維持 */
       })
       .finally(() => {
         if (!cancelled) setPrefsLoading(false)

@@ -7,10 +7,10 @@ import { canonicalizeLanguageCode } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
 
 /**
- * POST /api/integrations/term-drafts — nhận term draft từ hệ thống ngoài (Knowledge Hub).
- * KHÔNG dùng session cookie (client ngoài không có), auth bằng header `x-integration-token`
- * so `INTEGRATION_TOKEN` (constant-time). Mọi draft tạo cho 1 user cố định
- * (`INTEGRATION_TARGET_UID`) — route KHÔNG gọi /api/generate, user tự duyệt + Generate từ UI.
+ * POST /api/integrations/term-drafts — 外部システム (Knowledge Hub) から term draft を受け取る。
+ * session cookie は使わない (外部 client は持たない)。auth は header `x-integration-token` を
+ * `INTEGRATION_TOKEN` と比較 (constant-time)。draft はすべて固定の 1 user
+ * (`INTEGRATION_TARGET_UID`) に作成 — route は /api/generate を呼ばず、user が UI から確認 + Generate する。
  */
 
 const DEFAULT_DECK_NAME = 'Vocabulary::IT'
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   try {
     const db = getAdminDb()
 
-    // Duplicate check: 1 query duy nhất, so trong bộ nhớ (giống app/api/entries/check-duplicate).
+    // Duplicate check: query は 1 回だけ、メモリ内で比較 (app/api/entries/check-duplicate と同様)。
     const existingSnap = await db.collection('entries').where('user_id', '==', targetUid).get()
     const existingNormalized = new Set(
       existingSnap.docs.map((doc) => {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       }),
     )
 
-    // Default anki_deck/card_type_ids: lấy từ deck mặc định form_it của chính target user.
+    // Default anki_deck/card_type_ids: target user 自身の form_it 既定 deck から取得。
     const deckSnap = await db
       .collection('decks')
       .where('user_id', '==', targetUid)

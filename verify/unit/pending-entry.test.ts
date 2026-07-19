@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   clearPendingEntry,
   isPendingEntryStale,
@@ -25,6 +25,10 @@ function makeEntry(overrides: Partial<PendingEntry> = {}): PendingEntry {
 describe('lib/pendingEntry', () => {
   beforeEach(() => {
     localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('savePendingEntry → loadPendingEntry round-trip', () => {
@@ -55,12 +59,15 @@ describe('lib/pendingEntry', () => {
   })
 
   it('isPendingEntryStale: 保存直後は false、30 分超過で true', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-19T00:00:00.000Z'))
+
     expect(isPendingEntryStale(makeEntry())).toBe(false)
 
     const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000).toISOString()
     expect(isPendingEntryStale(makeEntry({ savedAt: thirtyOneMinutesAgo }))).toBe(true)
 
-    // Biên 30 phút: đúng 30 phút chưa được tính là stale (điều kiện strict >)
+    // 30 分ちょうどは stale と判定しない（strict > 条件）
     const exactlyThirty = new Date(Date.now() - 30 * 60 * 1000).toISOString()
     expect(isPendingEntryStale(makeEntry({ savedAt: exactlyThirty }))).toBe(false)
   })

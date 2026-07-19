@@ -42,21 +42,21 @@ import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
 
 /**
- * Trang Settings CÁ NHÂN — mọi user (per-user preferences trong `settings/{uid}`):
- * SRS sync, cập nhật layout thẻ, trạng thái tích hợp, và các toggle unsplash/tts/
- * auto_audio/auto_image/allow_duplicate + anki_connect_url. Save lần đầu tự tạo doc.
+ * 個人設定ページ — 全ユーザー対象 (per-user preferences は `settings/{uid}`):
+ * SRS sync・カードレイアウト更新・連携状態・unsplash/tts/auto_audio/auto_image/
+ * allow_duplicate の各トグル + anki_connect_url。初回 Save で doc を自動作成する。
  *
- * Cấu hình TOÀN CỤC của chủ app (feature availability, AI model, LINE notifications)
- * đã tách sang `/settings/admin` (chỉ admin) — trang này KHÔNG đọc `settings/default`
- * (tránh lộ LINE token) và KHÔNG ghi `settings/global`.
+ * アプリ所有者のグローバル設定 (feature availability・AI model・LINE 通知) は
+ * `/settings/admin` (admin 専用) に分離済み — このページは `settings/default` を
+ * 読まない (LINE token 漏洩防止) し、`settings/global` にも書き込まない。
  */
 
 /**
- * Callout hướng dẫn khi Anki không reachable từ trang này. Vì browser giấu chi tiết CORS
- * khỏi JS, "Anki đóng" và "CORS chưa cho phép origin" đều biểu hiện giống nhau → gộp cả hai.
+ * このページから Anki に到達できない場合の案内 callout。browser は CORS の詳細を JS から
+ * 隠すため、「Anki 未起動」と「CORS 未許可」は同じ症状になる → 両方をまとめて案内する。
  */
 function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
-    // Chỉ mount khi checkingAnki=false (đã client-side) → đọc origin ngay ở lazy init, không cần effect.
+    // checkingAnki=false (client-side 確定後) にのみ mount される → origin は lazy init で読めて effect 不要。
     const [origin] = useState(() => (typeof window !== 'undefined' ? window.location.origin : ''));
     const [copied, setCopied] = useState(false);
     const [rechecking, setRechecking] = useState(false);
@@ -69,7 +69,7 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
         } catch {
-            /* clipboard unavailable — bỏ qua */
+            /* clipboard 使用不可 — 無視 */
         }
     };
 
@@ -132,8 +132,8 @@ export default function SettingsPage() {
     const [ankiConnected, setAnkiConnected] = useState(false);
     const [checkingAnki, setCheckingAnki] = useState(true);
     const [syncingSRS, setSyncingSRS] = useState(false);
-    // Danh sách code study_languages tại thời điểm load trang — mốc để phát hiện
-    // ngôn ngữ được thêm từ luồng khác (Create flow) trong lúc trang đang mở.
+    // ページ読み込み時点の study_languages code 一覧 — ページを開いている間に
+    // 別フロー (Create flow) から追加された言語を検出するための基準点。
     const baselineLanguageCodesRef = useRef<string[]>([]);
     const toast = useToast();
 
@@ -143,9 +143,9 @@ export default function SettingsPage() {
         if (authLoading || !user) return;
         async function fetchSettings(uid: string) {
             try {
-                // CHỈ đọc prefs cá nhân. Feature flags toàn cục (ai_model/tts_available/
-                // unsplash_available) đã có realtime qua GlobalConfigProvider — không cần
-                // đọc settings/global ở đây. KHÔNG đọc settings/default (secrets của admin).
+                // 個人 prefs のみ読む。グローバル feature flags (ai_model/tts_available/
+                // unsplash_available) は GlobalConfigProvider が realtime 提供済み —
+                // ここで settings/global は読まない。settings/default (admin secrets) も読まない。
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
                 const studyLanguages = normalizeStudyLanguages(prefs.study_languages);
@@ -172,7 +172,7 @@ export default function SettingsPage() {
     const handleSyncSrs = useCallback(async () => {
         setSyncingSRS(true);
         try {
-            // 1. Lấy note ids của entry đã synced (server không đụng Anki).
+            // 1. synced 済み entry の note ids を取得 (server は Anki に触れない)。
             const getRes = await fetch('/api/anki/sync-srs', { cache: 'no-store' });
             const { noteIds } = await getRes.json();
             if (!noteIds || noteIds.length === 0) {
@@ -180,9 +180,9 @@ export default function SettingsPage() {
                 return;
             }
 
-            // 2. Đọc trạng thái SRS từ Anki của user (browser → AnkiConnect).
-            //    Anki search hỗ trợ nid:id1,id2,... → gộp query theo chunk thay vì
-            //    1 round-trip mỗi note (500 thẻ = 1-2 request thay vì 500).
+            // 2. user の Anki から SRS 状態を読む (browser → AnkiConnect)。
+            //    Anki search は nid:id1,id2,... をサポート → note ごとに round-trip せず
+            //    chunk 単位でまとめて query (500 枚 = 500 ではなく 1-2 request)。
             const client = await getAnkiClientFromSettings();
             const CHUNK = 500;
             const chunks: number[][] = [];
@@ -197,7 +197,7 @@ export default function SettingsPage() {
             }
             const cardsInfo = await client.cardsInfo(allCardIds);
 
-            // 3. Gửi về server để map ReviewState + cập nhật Firestore.
+            // 3. server に送って ReviewState を map + Firestore を更新。
             const postRes = await fetch('/api/anki/sync-srs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -216,7 +216,7 @@ export default function SettingsPage() {
         }
     }, [toast]);
 
-    // Recheck dùng cho nút trong callout — KHÔNG bật checkingAnki (tránh unmount callout giữa chừng).
+    // callout 内ボタン用の Recheck — checkingAnki は立てない (callout が途中で unmount されるのを防ぐ)。
     const recheckAnki = useCallback(async (): Promise<boolean> => {
         try {
             const client = await getAnkiClientFromSettings();
@@ -254,8 +254,8 @@ export default function SettingsPage() {
         }
         setSaving(true);
         try {
-            // Đọc lại bản mới nhất để không ghi đè mất ngôn ngữ được thêm từ luồng khác
-            // (ví dụ DetectedLanguageModal ở Create flow) trong lúc trang này đang mở.
+            // 最新版を再読込し、このページを開いている間に別フロー (Create flow の
+            // DetectedLanguageModal など) で追加された言語を上書きで失わないようにする。
             const freshSnap = await getDoc(doc(db, 'settings', user.uid));
             const serverLanguages = normalizeStudyLanguages(
                 freshSnap.exists() ? freshSnap.data()?.study_languages : undefined,
@@ -266,7 +266,7 @@ export default function SettingsPage() {
                 serverLanguages,
             ));
 
-            // Preferences cá nhân → settings/{uid} (save lần đầu tự tạo).
+            // 個人 preferences → settings/{uid} (初回 save で自動作成)。
             const prefsUpdate = {
                 unsplash_enabled: settings.unsplash_enabled,
                 tts_enabled: settings.tts_enabled,

@@ -31,8 +31,8 @@ interface AnkiExportState {
 }
 
 /**
- * Đảm bảo model AnkiFlow-Basic tồn tại. Gọi 1 lần trước khi tạo note (kể cả batch).
- * Best-effort: lỗi kết nối sẽ được surfaced lại ở bước addNotes của exportEntryToAnki.
+ * AnkiFlow-Basic model の存在を保証する。note 作成前に 1 回呼ぶ (batch 含む)。
+ * best-effort: 接続エラーは exportEntryToAnki の addNotes 段階で改めて表面化する。
  */
 export async function ensureAnkiModel(): Promise<void> {
     try {
@@ -51,10 +51,10 @@ export interface ExportEntryResult {
 
 /**
  * Export 1 entry sang Anki (client-side): store media → buildNotes → createDeck + addNotes
- * trực tiếp qua AnkiConnect của user (qua `createNotesForEntry` dùng chung với sidebar sync)
+ * user の AnkiConnect を直接呼ぶ (sidebar sync と共用の `createNotesForEntry` 経由)
  * → persist entry (status 'synced') qua /api/entries/save.
- * KHÔNG ensure-model (gọi ensureAnkiModel() riêng 1 lần) và KHÔNG điều hướng — dùng được
- * cho cả luồng đơn lẫn batch. Trả về kết quả thay vì toast.
+ * ensure-model はしない (ensureAnkiModel() を別途 1 回呼ぶ) し、画面遷移もしない —
+ * 単体・batch 両フローで使用可能。toast ではなく結果を返す。
  */
 export async function exportEntryToAnki(
     entry: Partial<Entry>,
@@ -66,7 +66,7 @@ export async function exportEntryToAnki(
         const client = await getAnkiClientFromSettings();
         const noteIds = await createNotesForEntry(client, entry, selectedTypes);
 
-        // Persist entry vào Firestore với note ids + status 'synced'
+        // note ids + status 'synced' で entry を Firestore に永続化
         const saved = await saveEntryToFirestore(entry, selectedTypes, { ankiNoteIds: noteIds, status: 'synced' });
         if (!saved.ok) {
             return { ok: false, error: saved.error || 'Created in Anki but failed to save entry', noteCount };

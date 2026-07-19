@@ -13,21 +13,21 @@ import { languageDisplayName } from '@/lib/studyLanguages'
 interface NewDeckModalProps {
   open: boolean
   onClose: () => void
-  /** Tên gợi ý ban đầu (từ ô tìm kiếm). */
+  /** 初期候補名 (検索欄から)。 */
   defaultDisplayName: string
   formType: FormType | string
   language?: LanguageCode | null
   onCreated: (deck: CreatedDeck) => void
 }
 
-/** Popup điền thông tin Anki Deck mới (display name + anki deck name) rồi tạo. */
+/** 新規 Anki Deck の情報 (display name + anki deck name) を入力して作成する popup。 */
 export function NewDeckModal({ open, onClose, defaultDisplayName, formType, language, onCreated }: NewDeckModalProps) {
   const { languages } = useStudyLanguages()
   const languageName = language ? languageDisplayName(language, languages) : undefined
 
   return (
     <Modal open={open} onClose={onClose} title="New Anki Deck" description="Create a deck without leaving the Create page.">
-      {/* key=defaultDisplayName → remount form mỗi lần mở để khởi tạo state từ props (không cần effect). */}
+      {/* key=defaultDisplayName → 開くたびに form を remount して props から state を初期化 (effect 不要)。 */}
       {open && (
         <NewDeckForm
           key={defaultDisplayName}
@@ -61,7 +61,7 @@ function NewDeckForm({ defaultDisplayName, formType, language, languageName, onC
 
   const handleDisplayChange = (v: string) => {
     setDisplayName(v)
-    // Đồng bộ gợi ý anki deck name khi người dùng chưa sửa tay.
+    // user が手動編集していない間は anki deck name の候補を同期。
     if (!touchedAnki) setAnkiDeckName(suggestAnkiDeckName(v, formType, language, languageName))
   }
 

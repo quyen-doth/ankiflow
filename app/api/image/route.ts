@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/auth-guard';
 import { getAdminDb } from '@/lib/firebase-admin';
 import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
 
-/** Cổng chi phí: admin có thể tắt Unsplash cho mọi user qua /api/admin/global-config. Fail-open nếu doc chưa seed. */
+/** コストゲート: admin は /api/admin/global-config で全 user の Unsplash を無効化できる。doc 未 seed なら fail-open。 */
 async function isUnsplashAvailable(): Promise<boolean> {
   try {
     const snap = await getAdminDb().collection('settings').doc(GLOBAL_SETTINGS_DOC_ID).get();

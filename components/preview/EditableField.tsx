@@ -11,7 +11,7 @@ interface EditableFieldProps {
   multiline?: boolean
   className?: string
   placeholder?: string
-  /** Khi ở chế độ hiển thị, tô sáng (case-insensitive) từ khóa này trong nội dung. */
+  /** 表示モード時、このキーワードを内容中でハイライトする (case-insensitive)。 */
   highlight?: string
 }
 

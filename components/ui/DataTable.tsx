@@ -21,7 +21,7 @@ interface DataTableProps<T extends object> {
   keyField?: keyof T
   emptyMessage?: string
   className?: string
-  /** Khi cung cấp, bật kéo-thả để đổi thứ tự. Nhận về mảng đã sắp xếp lại. */
+  /** 指定すると drag-drop での並べ替えが有効になる。並べ替え後の配列を受け取る。 */
   onReorder?: (reordered: T[]) => void
 }
 

@@ -4,7 +4,11 @@ import { createAIAgentProvider } from '@/lib/ai-agent'
 import { withAuth } from '@/lib/auth-guard'
 import { readAISettings } from '@/lib/ai-settings'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { parseGenerationContentTypeDocument } from '@/lib/ai-agent/contentTypeDefinition'
+import {
+  generationContentTypeInlineSchema,
+  parseGenerationContentTypeDocument,
+  parseInlineGenerationContentType,
+} from '@/lib/ai-agent/contentTypeDefinition'
 import { CONTENT_TYPE_CODE_PATTERN, USER_CONTENT_TYPES_COLLECTION } from '@/lib/constants'
 import { FormType } from '@/types'
 import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
@@ -41,6 +45,7 @@ const generateRequestSchema = z.object({
     id => !id.includes('/'),
     'content_type_id must be a Firestore document ID',
   ).optional(),
+  content_type_inline: generationContentTypeInlineSchema.optional(),
 })
 
 export const POST = withAuth(async (request, _ctx, uid) => {
@@ -70,6 +75,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     topics,
     dynamicFields,
     content_type_id,
+    content_type_inline,
   } = parsedRequest.data
 
   if (form_type === FormType.LANGUAGE && !word) {
@@ -95,7 +101,25 @@ export const POST = withAuth(async (request, _ctx, uid) => {
 
   let authoritativeName = parsedRequest.data.contentTypeName
   let contentTypeDefinition: EngineDefinition | undefined
-  if (content_type_id) {
+  if (content_type_inline) {
+    try {
+      const contentType = parseInlineGenerationContentType(content_type_inline)
+      if (contentType.routingCode !== form_type) {
+        return NextResponse.json(
+          { error: 'Inline content type does not match form_type' },
+          { status: 400 },
+        )
+      }
+      authoritativeName = contentType.name
+      contentTypeDefinition = contentType.definition
+    } catch (error) {
+      console.error('Invalid inline content type:', error)
+      return NextResponse.json(
+        { error: 'Inline content type configuration is invalid' },
+        { status: 400 },
+      )
+    }
+  } else if (content_type_id) {
     const snapshot = await getAdminDb()
       .collection(USER_CONTENT_TYPES_COLLECTION)
       .doc(content_type_id)

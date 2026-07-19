@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { GrpcStatus, type Firestore } from 'firebase-admin/firestore'
 import type { Auth } from 'firebase-admin/auth'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
+import { cardTemplateSchema } from '@/lib/anki/cardFieldSource'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import {
   materializeUserDefaultDocument,
@@ -84,10 +85,7 @@ const cardTypeSchema = z.object({
   is_default: z.boolean(),
   is_active: z.boolean(),
   sort_order: z.number().finite(),
-  template: z.object({
-    front: z.array(z.string()).min(1),
-    back: z.array(z.string()).min(1),
-  }).optional(),
+  template: cardTemplateSchema.optional(),
 })
 
 const topicSchema = z.object({

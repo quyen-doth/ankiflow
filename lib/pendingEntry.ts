@@ -34,7 +34,7 @@ export function savePendingEntry(data: PendingEntry): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (e) {
-    console.error('Lỗi khi lưu pending entry:', e)
+    console.error('Error saving pending entry:', e)
   }
 }
 
@@ -46,7 +46,7 @@ export function loadPendingEntry(): PendingEntry | null {
     if (!raw) return null
     return JSON.parse(raw) as PendingEntry
   } catch (e) {
-    console.error('Lỗi khi đọc pending entry:', e)
+    console.error('Error reading pending entry:', e)
     return null
   }
 }

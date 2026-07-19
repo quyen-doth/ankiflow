@@ -17,7 +17,7 @@ type GlobalConfigValue = Pick<
   | 'line_words_per_notification'
 >
 
-/** Fail-open: nếu doc chưa tồn tại (chưa chạy seed) mọi tính năng vẫn khả dụng. */
+/** Fail-open: doc が未作成 (seed 未実行) でも全機能を利用可能にする。 */
 const DEFAULT_CONFIG: GlobalConfigValue = {
   ai_model: 'claude-haiku-4-5',
   web_search_enabled: false,
@@ -36,9 +36,9 @@ interface GlobalConfigContextValue {
 const GlobalConfigContext = createContext<GlobalConfigContextValue>({ config: DEFAULT_CONFIG, loading: true })
 
 /**
- * Feature flags toàn cục do admin kiểm soát (`settings/global`) — realtime (onSnapshot)
- * để mọi tab đang mở cập nhật ngay khi admin bật/tắt, không cần reload.
- * KHÔNG chứa secrets — an toàn đọc bằng client SDK cho mọi user đã đăng nhập.
+ * admin が管理するグローバル feature flags (`settings/global`) — realtime (onSnapshot) で
+ * admin の on/off が開いている全タブへ reload なしで即反映される。
+ * secrets は含まない — ログイン済み user が client SDK で読んでも安全。
  */
 export function GlobalConfigProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [config, setConfig] = useState<GlobalConfigValue>(DEFAULT_CONFIG)

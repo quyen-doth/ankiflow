@@ -21,9 +21,13 @@ import { useToast } from '@/components/ui/Toast'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
-import type { CardTypeConfig, CardTemplate, LanguageCode } from '@/types'
+import type { CardTypeConfig, CardTemplate, ContentType, LanguageCode } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
+import { cardTemplateSchema } from '@/lib/anki/cardFieldSource'
+import { resolveCardTemplateCustomFields } from '@/lib/anki/cardTemplateFields'
+import { loadGlobalContentTypes, loadUserContentTypes } from '@/lib/userContentTypes'
+import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
 
 /** Slugify name → code (vd "Word → Meaning" → "word_to_meaning"). */
@@ -68,8 +72,8 @@ const EMPTY_DRAFT: CardTypeDraft = {
 }
 
 interface CardTypeManagerProps {
-  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
-   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  /** 編集対象 docs の所有者 — 既定は現在 user の uid。admin は `__defaults__`
+   *  (DEFAULTS_OWNER_ID) を渡し、新規 user が seedUserDefaults で受け取る template を編集する。 */
   ownerId?: string
 }
 
@@ -78,6 +82,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
   const { languages, enabledLanguages } = useStudyLanguages()
   const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
+  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CardTypeConfig | null>(null)
@@ -111,6 +116,12 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
   }, [draft.language, enabledLanguages, languages])
 
+  const customFields = useMemo(() => resolveCardTemplateCustomFields(
+    contentTypes,
+    draft.form_type,
+    draft.language === NO_LANGUAGE ? null : draft.language,
+  ), [contentTypes, draft.form_type, draft.language])
+
   useEffect(() => {
     if (authLoading || !ownerId) return
     async function fetchCardTypes() {
@@ -133,6 +144,30 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     fetchCardTypes()
   }, [refreshKey, ownerId, authLoading])
 
+  useEffect(() => {
+    if (authLoading || !ownerId || !user?.uid) return
+    let cancelled = false
+    const contentTypeOwnerId = ownerId
+
+    async function fetchContentTypes() {
+      try {
+        const loaded = contentTypeOwnerId === DEFAULTS_OWNER_ID
+          ? await loadGlobalContentTypes()
+          : await loadUserContentTypes(contentTypeOwnerId)
+        if (!cancelled) setContentTypes(loaded)
+      } catch (error) {
+        if (cancelled) return
+        console.error('Error fetching content types for card templates:', error)
+        setContentTypes([])
+      }
+    }
+
+    fetchContentTypes()
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, ownerId, user?.uid])
+
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<CardTypeConfig>('card_types', setCardTypes, refresh)
   const canReorder = !search && !filterFormType && !filterLanguage && !filterStatus
@@ -149,14 +184,15 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     return result
   }, [cardTypes, search, filterFormType, filterLanguage, filterStatus])
 
-  // Validation: name & code không rỗng, mỗi mặt Front/Back ≥ 1 field.
+  // Validation: name & code は非空、Front/Back 各面に ≥ 1 field。
   const errors = {
     name: !draft.name.trim(),
     code: !draft.code.trim(),
     front: draft.template.front.length === 0,
     back: draft.template.back.length === 0,
+    template: !cardTemplateSchema.safeParse(draft.template).success,
   }
-  const hasErrors = errors.name || errors.code || errors.front || errors.back
+  const hasErrors = errors.name || errors.code || errors.front || errors.back || errors.template
 
   const openCreate = () => {
     setEditing(null)
@@ -182,11 +218,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     })
     setShowAdvanced(false)
     setShowErrors(false)
-    setCodeEdited(true) // card có sẵn: không tự đổi code theo name
+    setCodeEdited(true) // 既存 card: name に応じた code の自動変更はしない
     setModalOpen(true)
   }
 
-  // Đổi name → tự sinh code (chỉ khi tạo mới & người dùng chưa sửa tay code).
+  // name 変更 → code を自動生成 (新規作成時、かつ user が code を手動編集していない場合のみ)。
   const handleNameChange = (name: string) => {
     setDraft(d => {
       if (editing || codeEdited) return { ...d, name }
@@ -415,12 +451,18 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
               <CardStructureEditor
                 code={draft.code}
                 template={draft.template}
+                customFields={customFields}
                 showErrors={showErrors}
                 onChange={template => setDraft(d => ({ ...d, template }))}
               />
               {showErrors && (errors.front || errors.back) && (
                 <p className="text-overline text-danger mt-2">
                   Each side must have at least one field.
+                </p>
+              )}
+              {showErrors && errors.template && !errors.front && !errors.back && (
+                <p className="text-overline text-danger mt-2">
+                  Card fields must be supported built-in fields or valid custom fields.
                 </p>
               )}
             </div>
@@ -468,7 +510,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
 
           {/* RIGHT: sticky preview */}
           <div className="md:sticky md:top-0 md:self-start">
-            <CardPreview template={draft.template} language={draft.language === NO_LANGUAGE ? null : draft.language} />
+            <CardPreview
+              template={draft.template}
+              language={draft.language === NO_LANGUAGE ? null : draft.language}
+              customFields={customFields}
+            />
           </div>
         </div>
 

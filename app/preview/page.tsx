@@ -16,6 +16,7 @@ import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider"
 import { languageDisplayName } from "@/lib/studyLanguages";
 import { ValidationBanner } from "@/components/review/ValidationBanner";
 import { validateCardEntry, type InvalidCard } from "@/lib/cardValidation";
+import { resolveCustomFields } from "@/lib/entryCustomFields";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry } from "@/types";
@@ -27,6 +28,7 @@ export default function PreviewPage() {
     const {
         entry,
         setEntry,
+        contentType,
         cardTypes,
         selectedCardTypeIds,
         setSelectedCardTypeIds,
@@ -92,7 +94,7 @@ export default function PreviewPage() {
         }
     }, [entry, selectedCardTypeIds, cardTypes, toast, router]);
 
-    // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi / ảnh quá lớn.
+    // 確認 modal を開く前に validate — 必須 field 不足 / 画像サイズ超過なら阻止。
     const requestConfirm = useCallback(() => {
         const errors = validateCardEntry(entry, selectedCardTypeIds);
         if (errors.length > 0) {
@@ -131,6 +133,7 @@ export default function PreviewPage() {
     const updateField = (field: keyof Entry, value: unknown) => {
         setEntry((prev) => ({ ...prev, [field]: value }));
     };
+    const customFields = resolveCustomFields(entry, contentType ?? undefined);
 
     const wordLabel = entry.word || entry.term || entry.title || "card";
 
@@ -197,6 +200,10 @@ export default function PreviewPage() {
                 }
                 entry={entry}
                 updateField={updateField}
+                customFields={customFields}
+                onCustomFieldChange={(key, value) => {
+                    setEntry((prev) => ({ ...prev, [key]: value }));
+                }}
                 images={media.images}
                 imageLoading={media.imageLoading}
                 onImageSelect={media.handleImageSelect}

@@ -5,15 +5,18 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
+import { findEntryContentType } from '@/lib/entryCustomFields'
+import { loadUserContentTypes } from '@/lib/userContentTypes'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
-import type { Entry, CardTypeConfig } from '@/types'
+import type { Entry, CardTypeConfig, UserContentType } from '@/types'
 
 type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
 
 interface PreviewEntryState {
   entry: Partial<Entry>
   setEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>>
+  contentType: UserContentType | null
   cardTypes: CardTypeItem[]
   selectedCardTypeIds: string[]
   setSelectedCardTypeIds: React.Dispatch<React.SetStateAction<string[]>>
@@ -54,6 +57,7 @@ export function usePreviewEntry(): PreviewEntryState {
   const { user, loading: authLoading } = useAuth()
   const [entry, setEntry] = useState<Partial<Entry>>({})
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
+  const [contentType, setContentType] = useState<UserContentType | null>(null)
   const [selectedCardTypeIds, setSelectedCardTypeIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -93,7 +97,11 @@ export function usePreviewEntry(): PreviewEntryState {
           where('user_id', '==', uid),
           where('form_type', '==', pending.formType),
         )
-        const snapshot = await getDocs(q)
+        const [snapshot, contentTypes] = await Promise.all([
+          getDocs(q),
+          loadUserContentTypes(uid),
+        ])
+        setContentType(findEntryContentType(contentTypes, pending.formType) ?? null)
 
         type FetchedCardType = {
           id: string
@@ -128,7 +136,7 @@ export function usePreviewEntry(): PreviewEntryState {
         setSelectedCardTypeIds(preSelected)
 
       } catch (firestoreErr) {
-        console.error('Lỗi fetch card_types:', firestoreErr)
+        console.error('Error fetching card_types:', firestoreErr)
       }
 
       clearPendingEntry()
@@ -138,5 +146,14 @@ export function usePreviewEntry(): PreviewEntryState {
     init()
   }, [user, authLoading])
 
-  return { entry, setEntry, cardTypes, selectedCardTypeIds, setSelectedCardTypeIds, isLoading, error }
+  return {
+    entry,
+    setEntry,
+    contentType,
+    cardTypes,
+    selectedCardTypeIds,
+    setSelectedCardTypeIds,
+    isLoading,
+    error,
+  }
 }

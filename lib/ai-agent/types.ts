@@ -39,6 +39,12 @@ export interface LanguageDetection {
   confidence: number
 }
 
+export interface SuggestInstructionInput {
+  fieldKey: string
+  type: 'string' | 'string_array'
+  description: string
+}
+
 /**
  * カードコンテンツを生成する AI provider の Abstraction — `IFlashcardService`
  * (lib/flashcard-service) のパターンを鏡写しにしている。将来 provider を
@@ -47,4 +53,5 @@ export interface LanguageDetection {
 export interface IAIAgentProvider {
   generateCard(input: GenerateCardInput): Promise<Record<string, unknown>>
   detectLanguages(input: DetectLanguagesInput): Promise<LanguageDetection[]>
+  suggestInstruction(input: SuggestInstructionInput): Promise<string>
 }

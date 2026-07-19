@@ -58,6 +58,10 @@ function detectionToolResponse(input: unknown) {
   return { content: [{ type: 'tool_use', name: 'submit_language_detection', input }], stop_reason: 'tool_use' }
 }
 
+function instructionToolResponse(input: unknown) {
+  return { content: [{ type: 'tool_use', name: 'submit_instruction_suggestion', input }], stop_reason: 'tool_use' }
+}
+
 beforeEach(() => {
   createMock.mockReset()
 })
@@ -239,6 +243,46 @@ describe('ClaudeAgentProvider — language detection', () => {
     const result = await provider.detectLanguages({ items: ['안녕'], candidateLanguages: [] })
 
     expect(result[0].code).toBe('ko')
+    expect(createMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('ClaudeAgentProvider — instruction suggestion', () => {
+  it('forces the suggestion tool and returns a validated English instruction', async () => {
+    const instruction = 'Return related words as short strings. Return an empty array if no useful relations exist.'
+    createMock.mockResolvedValueOnce(instructionToolResponse({ instruction }))
+    const provider = new ClaudeAgentProvider('claude-sonnet-4-6', true)
+
+    const result = await provider.suggestInstruction({
+      fieldKey: 'related_words',
+      type: 'string_array',
+      description: 'Useful related vocabulary',
+    })
+
+    expect(result).toBe(instruction)
+    expect(createMock).toHaveBeenCalledTimes(1)
+    const params = createMock.mock.calls[0][0]
+    expect(params.model).toBe('claude-sonnet-4-6')
+    expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_instruction_suggestion' })
+    expect(params.tools[0].input_schema.additionalProperties).toBe(false)
+    expect(params.messages[0].content).toContain('related_words')
+    expect(params.messages[0].content).toContain('Useful related vocabulary')
+    expectCachedSystem(params.system, 'Return an empty array if')
+    expectCachedSystem(params.system, '{output_language}')
+  })
+
+  it('retries an invalid suggestion and then succeeds', async () => {
+    const validInstruction = 'Return a concise definition. Return an empty string if the meaning is unknown.'
+    createMock
+      .mockResolvedValueOnce(instructionToolResponse({ instruction: 'x'.repeat(301) }))
+      .mockResolvedValueOnce(instructionToolResponse({ instruction: validInstruction }))
+    const provider = new ClaudeAgentProvider('claude-sonnet-4-6')
+
+    await expect(provider.suggestInstruction({
+      fieldKey: 'meaning',
+      type: 'string',
+      description: 'A concise definition',
+    })).resolves.toBe(validInstruction)
     expect(createMock).toHaveBeenCalledTimes(2)
   })
 })

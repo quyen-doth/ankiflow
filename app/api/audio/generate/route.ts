@@ -5,7 +5,7 @@ import { getAdminDb } from '@/lib/firebase-admin';
 import { GLOBAL_SETTINGS_DOC_ID } from '@/lib/constants';
 import { canonicalizeLanguageCode } from '@/lib/studyLanguages';
 
-/** Cổng chi phí: admin có thể tắt TTS cho mọi user qua /api/admin/global-config. Fail-open nếu doc chưa seed. */
+/** コストゲート: admin は /api/admin/global-config で全 user の TTS を無効化できる。doc 未 seed なら fail-open。 */
 async function isTtsAvailable(): Promise<boolean> {
   try {
     const snap = await getAdminDb().collection('settings').doc(GLOBAL_SETTINGS_DOC_ID).get();
