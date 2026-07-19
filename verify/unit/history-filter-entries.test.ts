@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALL_HISTORY_FILTERS,
+  buildHistoryContentTypeOptions,
   DEFAULT_HISTORY_FILTERS,
   filterHistoryEntries,
   type HistoryFilters,
@@ -82,6 +83,22 @@ describe('filterHistoryEntries', () => {
     expect(result.map(entry => entry.id)).toEqual(['custom-synced'])
   })
 
+  it.each<[string, string]>([
+    ['language', FormType.LANGUAGE],
+    [FormType.LANGUAGE, 'language'],
+    ['it', FormType.IT],
+    [FormType.IT, 'it'],
+    ['general', FormType.GENERAL],
+    [FormType.GENERAL, 'general'],
+  ])('filter alias %s と entry route %s を同じ Content Type として扱う', (
+    filterCode,
+    entryCode,
+  ) => {
+    const aliasedEntry = makeEntry({ id: 'alias-entry', form_type: entryCode })
+    const result = filterHistoryEntries([aliasedEntry], filters({ contentType: filterCode }))
+    expect(result.map(entry => entry.id)).toEqual(['alias-entry'])
+  })
+
   it('Language 選択時だけ canonical language code を適用する', () => {
     const languageResult = filterHistoryEntries(entries, filters({
       contentType: FormType.LANGUAGE,
@@ -119,5 +136,47 @@ describe('filterHistoryEntries', () => {
       language: ALL_HISTORY_FILTERS,
     }))
     expect(result.map(entry => entry.id)).toEqual(['language-draft', 'language-synced'])
+  })
+})
+
+describe('buildHistoryContentTypeOptions', () => {
+  it('short built-in codes と entry form_* routes を一つの option に統合する', () => {
+    const options = buildHistoryContentTypeOptions([
+      { code: 'general', name: 'General Knowledge', sort_order: 3 },
+      { code: 'language', name: 'Language', sort_order: 1 },
+      { code: 'it', name: 'IT Vocabulary', sort_order: 2 },
+    ], entries)
+
+    expect(options).toEqual([
+      { value: ALL_HISTORY_FILTERS, label: 'All content types' },
+      { value: FormType.LANGUAGE, label: 'Language' },
+      { value: FormType.IT, label: 'IT Vocabulary' },
+      { value: FormType.GENERAL, label: 'General Knowledge' },
+      { value: 'medical_term', label: 'medical_term' },
+    ])
+  })
+
+  it('同じ built-in route の alias definitions を deterministic に一つへまとめる', () => {
+    const options = buildHistoryContentTypeOptions([
+      { code: FormType.LANGUAGE, name: 'Later alias', sort_order: 20 },
+      { code: 'language', name: 'Language', sort_order: 10 },
+    ], [])
+
+    expect(options).toEqual([
+      { value: ALL_HISTORY_FILTERS, label: 'All content types' },
+      { value: FormType.LANGUAGE, label: 'Language' },
+    ])
+  })
+
+  it('workspace definition がない orphaned entry route を filter option として残す', () => {
+    const options = buildHistoryContentTypeOptions([], [
+      { form_type: 'legacy_medical' },
+      { form_type: 'legacy_medical' },
+    ])
+
+    expect(options).toEqual([
+      { value: ALL_HISTORY_FILTERS, label: 'All content types' },
+      { value: 'legacy_medical', label: 'legacy_medical' },
+    ])
   })
 })

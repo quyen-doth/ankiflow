@@ -23,6 +23,7 @@ import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLangua
 import { loadUserContentTypes } from '@/lib/userContentTypes'
 import {
   ALL_HISTORY_FILTERS,
+  buildHistoryContentTypeOptions,
   DEFAULT_HISTORY_FILTERS,
   filterHistoryEntries,
   type HistoryFilters,
@@ -80,21 +81,7 @@ export default function HistoryPage() {
   }, [user, authLoading])
 
   const contentTypeOptions = useMemo(() => {
-    const labels = new Map<string, string>()
-    const sortedContentTypes = [...contentTypes].sort((a, b) => (
-      a.sort_order - b.sort_order || a.name.localeCompare(b.name)
-    ))
-    sortedContentTypes.forEach(contentType => {
-      if (!labels.has(contentType.code)) labels.set(contentType.code, contentType.name)
-    })
-    entries.forEach(entry => {
-      if (!labels.has(entry.form_type)) labels.set(entry.form_type, entry.form_type)
-    })
-
-    return [
-      { value: ALL_HISTORY_FILTERS, label: 'All content types' },
-      ...Array.from(labels, ([value, label]) => ({ value, label })),
-    ]
+    return buildHistoryContentTypeOptions(contentTypes, entries)
   }, [contentTypes, entries])
 
   const languageOptions = useMemo(() => {

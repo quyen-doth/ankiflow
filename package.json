@@ -12,6 +12,7 @@
     "verify:watch": "vitest",
     "test:e2e": "playwright test",
     "migrate:ai-output-profiles": "tsx scripts/migrate-ai-output-profiles.ts",
+    "migrate:content-type-english": "tsx scripts/migrate-content-type-english.ts",
     "migrate:user-content-types": "tsx scripts/migrate-user-content-types.ts",
     "user:create": "tsx scripts/create-user.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"

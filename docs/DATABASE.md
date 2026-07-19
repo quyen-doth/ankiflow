@@ -229,6 +229,11 @@ Snapshot は **create-only** です。Signup seed の再実行や既存ユーザ
 ユーザーの customization を保持します。同じ runtime route に解決される code が複数ある場合、競合した
 documents だけを Create / Resync から除外して警告し、競合していない Content Types は継続利用できます。
 
+一回限りの `migrate:content-type-english` はこの snapshot 非同期原則の例外で、global/user built-in に残る
+既知の旧ベトナム語 default と完全一致する表示 metadata だけを英語へ更新します。Dry-run が既定で、apply は
+transaction 内で再確認します。Custom Content Type と一致しない customization は更新せず、create/delete、
+document ID、`code`、`user_id`、`source_content_type_id`、`ai_output_profiles` には触れません。
+
 ---
 
 ### `fields[]` — Embedded フィールド設定

@@ -86,7 +86,7 @@ export function DeckSelector({ value, onChange, onChangeId, onClear, label = 'An
             <option key={deck.id} value={deck.id}>{deck.display_name}</option>
           ))}
         </Select>
-        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Xóa deck đã chọn" />
+        <ClearSelectButton show={!!value && !!onClear} onClear={onClear} label="Clear selected deck" />
       </div>
     </FieldWrapper>
   )

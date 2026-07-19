@@ -32,7 +32,7 @@ registerUnit<ToastProps>({
       props: { variant: 'success', message: 'x', onClose: recordClose },
       act: async ctx => {
         closeSpy.count = 0
-        await ctx.click('button[aria-label="Đóng thông báo"]')
+        await ctx.click('button[aria-label="Close notification"]')
       },
     },
     {
@@ -60,7 +60,7 @@ registerUnit<ToastProps>({
     {
       id: 'has-close-button',
       description: 'Có nút đóng (aria-label)',
-      check: ({ root }) => !!root.querySelector('button[aria-label="Đóng thông báo"]') || 'không thấy nút đóng',
+      check: ({ root }) => !!root.querySelector('button[aria-label="Close notification"]') || '閉じるボタンが見つからない',
     },
     {
       id: 'close-fires-once',
