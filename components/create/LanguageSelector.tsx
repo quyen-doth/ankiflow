@@ -35,8 +35,8 @@ export function LanguageSelector({
           aria-label={label}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          // h-auto loại bỏ h-[42px] của base Select — nếu giữ, py-3 làm content-box (16px)
-          // thấp hơn line-height (20px) và chữ bị cắt. Bỏ height cố định → khớp CreatableSelect (deck).
+          // h-auto で base Select の h-[42px] を打ち消す — 残すと py-3 により content-box (16px) が
+          // line-height (20px) より低くなり文字が欠ける。固定高を外す → CreatableSelect (deck) と揃う。
           className="w-full h-auto bg-surface hover:bg-canvas transition-colors border border-transparent rounded-lg px-4 py-3 text-sm text-ink focus-visible:ring-2 focus-visible:ring-primary-bg cursor-pointer appearance-none"
         >
           <option value="" disabled>{placeholder}</option>

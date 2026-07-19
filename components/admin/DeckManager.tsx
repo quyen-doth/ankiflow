@@ -33,8 +33,8 @@ import type { DeckConfig, LanguageCode } from '@/types';
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages';
 
 /**
- * Đồng bộ deck với Anki client-side (browser → AnkiConnect của user); throw nếu Anki offline / lỗi.
- * Giữ chữ ký `{ op, ... }` để không đổi call site.
+ * deck を client-side で Anki と同期 (browser → user の AnkiConnect); Anki offline/エラー時は throw。
+ * call site を変えないよう `{ op, ... }` のシグネチャを維持。
  */
 async function postDeckSync(body: Record<string, unknown>): Promise<void> {
     const client = await getAnkiClientFromSettings();
@@ -86,8 +86,8 @@ const EMPTY_DRAFT: DeckDraft = {
 };
 
 interface DeckManagerProps {
-    /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
-     *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+    /** 編集対象 docs の所有者 — 既定は現在 user の uid。admin は `__defaults__`
+     *  (DEFAULTS_OWNER_ID) を渡し、新規 user が seedUserDefaults で受け取る template を編集する。 */
     ownerId?: string;
 }
 

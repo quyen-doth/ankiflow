@@ -29,7 +29,7 @@ function resolveDatabaseFormType(formType: UIFormType | FormType | string): Form
     : formType
 }
 
-/** Pulldown category có tìm kiếm + tạo category mới ngay (không cần popup). Dùng trong Create. */
+/** 検索 + その場で category 新規作成できる pulldown (popup 不要)。Create で使用。 */
 export function CategoryCreatableField({
   formType,
   value,

@@ -29,8 +29,8 @@ interface TopicDraft {
 const EMPTY_DRAFT: TopicDraft = { name: '', sort_order: 0, is_active: true }
 
 interface TopicManagerProps {
-  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
-   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  /** 編集対象 docs の所有者 — 既定は現在 user の uid。admin は `__defaults__`
+   *  (DEFAULTS_OWNER_ID) を渡し、新規 user が seedUserDefaults で受け取る template を編集する。 */
   ownerId?: string
 }
 

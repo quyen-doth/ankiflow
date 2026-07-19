@@ -8,7 +8,7 @@ interface ClearSelectButtonProps {
   label: string
 }
 
-/** Nút × để xóa lựa chọn trong dropdown (đặt cạnh chevron của Select). */
+/** dropdown の選択を解除する × ボタン (Select の chevron の隣に配置)。 */
 export function ClearSelectButton({ show, onClear, label }: ClearSelectButtonProps) {
   if (!show || !onClear) return null
   return (

@@ -5,7 +5,7 @@ import { Plus, X } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface BatchItemListProps {
-  /** Danh sách item chính (mỗi phần tử = 1 thẻ sẽ được tạo). */
+  /** メイン item 一覧 (各要素 = 作成される 1 カード)。 */
   items: string[]
   onChange: (items: string[]) => void
   label: string
@@ -14,21 +14,21 @@ interface BatchItemListProps {
 }
 
 /**
- * Danh sách input field chính cho chế độ batch. Vận hành đầy đủ bằng bàn phím:
- * - Enter trong 1 dòng → thêm dòng trống bên dưới + focus.
- * - Backspace ở dòng rỗng (khi >1 dòng) → xóa dòng + focus dòng trước.
- * - Nút "+ Add item" và × để thêm/xóa bằng chuột.
+ * batch モード用のメイン入力 field リスト。キーボードだけで完結:
+ * - 行内で Enter → 下に空行を追加 + focus。
+ * - 空行で Backspace (>1 行の時) → 行を削除 + 前の行へ focus。
+ * - "+ Add item" ボタンと × でマウス操作の追加/削除も可能。
  */
 export function BatchItemList({ items, onChange, label, placeholder, hint }: BatchItemListProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const focusTarget = useRef<number | null>(null)
 
-  // Khi mount (vào chế độ batch): con trỏ vào dòng nhập đầu tiên.
+  // mount 時 (batch モード開始): カーソルを最初の入力行へ。
   useEffect(() => {
     inputRefs.current[0]?.focus()
   }, [])
 
-  // Sau khi danh sách đổi, focus vào dòng được đánh dấu (thêm/xóa).
+  // リスト変更後、マークされた行 (追加/削除) へ focus。
   useEffect(() => {
     if (focusTarget.current !== null) {
       inputRefs.current[focusTarget.current]?.focus()

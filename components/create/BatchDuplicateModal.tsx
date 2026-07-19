@@ -9,19 +9,19 @@ import type { BatchDuplicateResult } from '@/hooks/useDuplicateCheck'
 interface BatchDuplicateModalProps {
   open: boolean
   onClose: () => void
-  /** Tạo tất cả (kể cả từ đã tồn tại). */
+  /** すべて作成 (既存の単語も含む)。 */
   onProceedAll: () => void
-  /** Chỉ tạo các từ MỚI, bỏ qua từ đã tồn tại. */
+  /** 新規の単語のみ作成し、既存はスキップ。 */
   onSkipDuplicates: () => void
-  /** Chỉ chứa những từ CÓ bản trùng. */
+  /** 重複がある単語のみを含む。 */
   duplicates: BatchDuplicateResult[]
-  /** Tổng số từ trong batch để hiển thị "X/Y trùng". */
+  /** "X/Y 重複" 表示用の batch 内の総単語数。 */
   totalCount: number
 }
 
 /**
- * Cảnh báo trùng cho chế độ batch: liệt kê các từ đã tồn tại, cho phép vẫn tạo tất cả
- * hoặc chỉ tạo từ mới. Quy tắc kiểm tra TOÀN CỤC (không kể deck/ngôn ngữ).
+ * batch モードの重複警告: 既存の単語を列挙し、全件作成か新規のみ作成かを選ばせる。
+ * チェックはグローバル (deck/言語を問わない)。
  */
 export function BatchDuplicateModal({
   open,
