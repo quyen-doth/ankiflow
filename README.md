@@ -12,7 +12,7 @@
 ![Firebase](https://img.shields.io/badge/Auth_+_Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1009_passing-success)
+![Tests](https://img.shields.io/badge/Vitest-1059_passing-success)
 ![CI](https://github.com/quyen-doth/ankiflow/actions/workflows/ci.yml/badge.svg)
 
 </div>
@@ -25,7 +25,7 @@
 
 - **対象コンテンツ**: 語学（英語 / 中国語 / 日本語）、IT 用語、一般知識をはじめ、コンテンツタイプを自由に追加可能
 - **連携先**: Anki Desktop（AnkiConnect 経由）/ LINE Messaging API（復習通知）
-- **規模**: TypeScript 約 20,000 行（テスト除く） / 79 コンポーネント / 26 API ルート / 14 ページ / 1,009 自動テスト
+- **規模**: TypeScript 約 20,000 行（テスト除く） / 79 コンポーネント / 27 API ルート / 14 ページ / 1,059 Vitest + 35 Playwright E2E
 
 ## 主な機能
 
@@ -104,7 +104,8 @@
 | 暗記アプリ連携 | AnkiConnect（クライアントから `localhost:8765` へ直接）                            |
 | プッシュ通知   | LINE Messaging API                                                                 |
 | バリデーション | Zod v4                                                                             |
-| テスト         | Vitest + jsdom（自作ランタイム検証基盤）                                           |
+| ランタイム検証 | Vitest + jsdom（移植・カスタマイズしたランタイム検証基盤）                       |
+| E2E テスト     | Playwright（Chromium）                                                            |
 
 ## 技術的ハイライト
 
@@ -125,14 +126,14 @@
 - **新規ユーザー向けデフォルトの編集**: 既存の管理画面を「テンプレート編集モード」で再利用し、新規登録時に配布されるデフォルトデータをコードではなく UI から編集可能に
 - **サーバー側での権限強制**: グローバル設定の書き込みは必ずサーバー API を経由し、環境変数の管理者メールで検証（クライアント側チェックだけに依存しない）
 
-### 3. 自作のランタイム検証フレームワーク（`verify/`）
+### 3. 移植・カスタマイズしたランタイム検証基盤（`verify/`）
 
-「単体テストでは UI の実挙動まで担保しづらい」という課題に対し、実際のコンポーネントをマウントし、操作（クリック・入力）後に DOM を観測して合否を判定する独自の検証基盤を設計・実装しました。
+「単体テストでは UI の実挙動まで担保しづらい」という課題に対し、[anthropics/cwc-workshops — phase-3-verify](https://github.com/anthropics/cwc-workshops/tree/main/how-we-claude-code/phase-3-verify) を Next.js App Router + React 19 + Zod 4 向けに移植・カスタマイズしました。実際のコンポーネントをマウントし、操作（クリック・入力）後の DOM を観測して合否を判定します。
 
 - 同一のコードパス（`runFixture()`）が CLI・ブラウザ（`/verify`）・コンソール API の 3 環境で動作
 - スキーマ・不変条件・DOM コントラクト・アクセシビリティの 4 種の検証器をプラガブルに追加可能
 - Firestore / fetch / Router / 認証コンテキスト / `localStorage` をモック注入し、外部依存のあるコンポーネントも単体で検証
-- 1,009 件のテストが安定して通過
+- 1,059 件の Vitest が安定して通過
 
 ### 4. 型安全なドメインモデリング
 
@@ -149,12 +150,15 @@
 ```bash
 npm run verify        # 検証マトリクス + 単体テスト（Vitest）
 npm run verify:watch  # ウォッチモード
+npm run test:e2e      # Playwright E2E（Chromium）
 npm run lint          # ESLint
 npm run build         # 本番ビルド
 ```
 
-- 1,009 テストが安定して通過
+- Vitest 1,059 件と Playwright E2E 35 件（13 spec）を整備
 - 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404）
+- GitHub Actions CI はすべての PR と `main` / `develop` への push で ESLint・`tsc --noEmit`・Vitest を実行
+- ローカル Git hooks は `commit-msg` で Conventional Commits 形式・日本語件名・AI co-author 禁止を検証し、`pre-commit` / `pre-push` で `main` / `develop` への直接操作を防止
 - 詳細は [`docs/VERIFICATION.md`](docs/VERIFICATION.md) を参照
 
 ## ディレクトリ構成
@@ -163,7 +167,7 @@ npm run build         # 本番ビルド
 ankiflow/
 ├── app/
 │   ├── (auth)/      # ログイン・サインアップ（サイドバーなしレイアウト）
-│   ├── api/         # サーバーロジック（23 API ルート、integrations/cron はトークン認証）
+│   ├── api/         # サーバーロジック（27 API ルート、integrations/cron はトークン認証）
 │   ├── dashboard/   # 統計サマリー・クイックアクション
 │   ├── create/      # カード作成フォーム
 │   ├── preview/     # 生成カードの確認・編集・エクスポート（バッチ対応）
@@ -178,7 +182,8 @@ ankiflow/
 ├── middleware.ts    # ルート保護（セッション Cookie チェック）
 ├── firestore.rules  # Firestore セキュリティルール（ユーザー間分離）
 ├── types/           # 型定義・列挙型（ドメインの真実源）
-├── verify/          # 自作ランタイム検証フレームワーク
+├── verify/          # 移植・カスタマイズしたランタイム検証基盤
+├── e2e/             # Playwright E2E テスト
 ├── scripts/         # seed / migration / admin-claim スクリプト
 └── docs/            # 設計ドキュメント
 ```
