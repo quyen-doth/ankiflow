@@ -19,3 +19,24 @@ test('Card Template editor は custom field option を追加して preview す�
   await expect(page.locator('iframe[title="Card preview"]'))
     .toHaveAttribute('srcdoc', /Sample Traditional form/)
 })
+
+test('Preview additional fields は custom value を編集できる', async ({ page }) => {
+  await page.goto('/verify/AdditionalFields/custom-values?chrome=0')
+
+  await expect(page.getByText('Additional fields', { exact: true })).toBeVisible()
+  await page.getByText('喫飯', { exact: true }).click()
+  await page.getByRole('textbox', { name: 'Edit value' }).fill('吃飯')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.getByText('吃飯', { exact: true })).toBeVisible()
+  await expect(page.locator('[data-verify-unit="AdditionalFields"]'))
+    .toHaveAttribute('data-verify-lastkey', 'phon_the')
+
+  const relatedWords = page.getByText('Related words', { exact: true }).locator('..')
+  await relatedWords.getByTitle('Click to edit').click()
+  await page.getByRole('textbox', { name: 'Edit value' }).fill('用餐\n美食')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page.locator('[data-verify-unit="AdditionalFields"]'))
+    .toHaveAttribute('data-verify-related', '用餐|美食')
+})

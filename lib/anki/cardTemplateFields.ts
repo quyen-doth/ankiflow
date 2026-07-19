@@ -30,6 +30,11 @@ const BUILTIN_RENDERED_OUTPUT_KEYS = new Set([
   'audio_example_url',
 ])
 
+/** 固定 CardFieldSource ですでに扱う AI output key かを判定する。 */
+export function isBuiltinRenderedOutputKey(key: string): boolean {
+  return BUILTIN_RENDERED_OUTPUT_KEYS.has(key)
+}
+
 export interface CardTemplateCustomField {
   key: string
   source: `custom:${string}`
@@ -61,7 +66,7 @@ export function resolveCardTemplateCustomFields(
     const seen = new Set<string>()
 
     return profile.fields.flatMap(field => {
-      if (BUILTIN_RENDERED_OUTPUT_KEYS.has(field.key) || seen.has(field.key)) return []
+      if (isBuiltinRenderedOutputKey(field.key) || seen.has(field.key)) return []
       seen.add(field.key)
       const source = `custom:${field.key}` as const
       const label = getFieldLabel(source, fieldLabels)
