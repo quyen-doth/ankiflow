@@ -142,6 +142,50 @@ registerUnit({
         await ctx.wait(20)
       },
     },
+    {
+      id: 'suggest-instruction-success',
+      description: '自然言語の要件から instruction 候補を生成し draft に反映する。',
+      props: {},
+      mocks: {
+        fetch: [{
+          match: '/api/content-types/suggest-instruction',
+          response: {
+            json: {
+              instruction: 'Return a concise definition in {output_language}. Return an empty string if the meaning is unknown.',
+            },
+          },
+        }],
+      },
+      act: async ctx => {
+        await ctx.click('button[aria-label="Suggest instruction for word"]')
+        await ctx.type(
+          'textarea[aria-label="Instruction suggestion description 0"]',
+          'A concise definition in the selected output language',
+        )
+        clickButtonByText(ctx.root, 'Generate suggestion')
+        await ctx.wait(20)
+      },
+    },
+    {
+      id: 'suggest-instruction-error',
+      description: 'Instruction suggestion API の error を field 内に表示する。',
+      props: {},
+      mocks: {
+        fetch: [{
+          match: '/api/content-types/suggest-instruction',
+          response: { status: 500, json: { error: 'Instruction service unavailable' } },
+        }],
+      },
+      act: async ctx => {
+        await ctx.click('button[aria-label="Suggest instruction for word"]')
+        await ctx.type(
+          'textarea[aria-label="Instruction suggestion description 0"]',
+          'A concise definition',
+        )
+        clickButtonByText(ctx.root, 'Generate suggestion')
+        await ctx.wait(20)
+      },
+    },
   ],
   invariants: [
     {
@@ -189,6 +233,24 @@ registerUnit({
       onlyFixtures: ['test-generate-error'],
       check: ({ root }) => root.querySelector('[role="alert"]')?.textContent === 'Inline profile is invalid'
         || 'API error が表示されていない',
+    },
+    {
+      id: 'suggestion-fills-draft-instruction',
+      description: '生成した instruction は保存せず現在の draft field に反映する',
+      onlyFixtures: ['suggest-instruction-success'],
+      check: ({ root }) => {
+        const instruction = root.querySelector<HTMLTextAreaElement>('textarea[aria-label="AI output instruction 0"]')
+        return instruction?.value
+          === 'Return a concise definition in {output_language}. Return an empty string if the meaning is unknown.'
+          || `instruction="${instruction?.value}"`
+      },
+    },
+    {
+      id: 'suggestion-error-visible',
+      description: 'Suggestion error を alert として表示する',
+      onlyFixtures: ['suggest-instruction-error'],
+      check: ({ root }) => root.querySelector('[role="alert"]')?.textContent === 'Instruction service unavailable'
+        || 'Suggestion API error が表示されていない',
     },
   ],
 })
