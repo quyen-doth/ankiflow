@@ -34,6 +34,68 @@ const SEED = {
   ],
 }
 
+const CUSTOM_CONTENT_TYPES = [
+  {
+    id: 'language-test-user',
+    user_id: 'test-user',
+    code: 'language',
+    name: 'Language',
+    description: '',
+    icon: 'Languages',
+    fields: [
+      { field_key: 'language', label: 'Language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 0, data_source: null },
+      { field_key: 'word', label: 'Word', type: 'text', is_required: true, is_session_persistent: false, sort_order: 0 },
+    ],
+    ai_output_profiles: [
+      {
+        profile: 'default',
+        fields: [
+          { key: 'word', type: 'string', instruction: 'Word' },
+          { key: 'default_note', type: 'string', instruction: 'Default note' },
+        ],
+      },
+      {
+        profile: 'zh',
+        fields: [
+          { key: 'word', type: 'string', instruction: 'Word' },
+          { key: 'pinyin', type: 'string', instruction: 'Pinyin' },
+          { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
+          { key: 'related_words', type: 'string_array', instruction: 'Related words' },
+        ],
+      },
+      {
+        profile: 'ja',
+        fields: [
+          { key: 'word', type: 'string', instruction: 'Word' },
+          { key: 'furigana_extra', type: 'string', instruction: 'Furigana' },
+        ],
+      },
+    ],
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: 'it-test-user',
+    user_id: 'test-user',
+    code: 'it',
+    name: 'IT Vocabulary',
+    description: '',
+    icon: 'Code',
+    fields: [
+      { field_key: 'term', label: 'Term', type: 'text', is_required: true, is_session_persistent: false, sort_order: 0 },
+    ],
+    ai_output_profiles: [{
+      profile: 'default',
+      fields: [
+        { key: 'term', type: 'string', instruction: 'Term' },
+        { key: 'analogy_vi', type: 'string', instruction: 'Analogy' },
+      ],
+    }],
+    is_active: true,
+    sort_order: 2,
+  },
+]
+
 registerUnit<Record<string, never>>({
   id: 'CardTypeManager',
   title: 'CardTypeManager',
@@ -94,6 +156,53 @@ registerUnit<Record<string, never>>({
         await ctx.wait(50)
         clickButtonByText(ctx.root, 'Active')
         await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-reject-invalid-template',
+      description: 'Act: malformed custom source を持つ既存 card type は Save できない。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-invalid',
+            name: 'Invalid template',
+            template: { front: ['word'], back: ['custom:UPPER'] },
+          }],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Invalid template"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-custom-options-zh',
+      description: 'Act: Language/zh card type は zh profile の custom field だけを表示する。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-zh',
+            name: 'Chinese custom',
+            language: LanguageType.CHINESE,
+          }],
+          user_content_types: CUSTOM_CONTENT_TYPES,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Chinese custom"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
       },
     },
     {
@@ -183,6 +292,41 @@ registerUnit<Record<string, never>>({
         const doc = collectionDocs('card_types').find(d => d.id === 'ct-wm')
         if (!doc) return 'mất doc ct-wm'
         return doc.is_active === false || `is_active=${doc.is_active}`
+      },
+    },
+    {
+      id: 'invalid-template-save-blocked',
+      description: '不正 custom source は editor save validation で拒否される',
+      onlyFixtures: ['act-reject-invalid-template'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        if (!text.includes('Card fields must be supported built-in fields or valid custom fields.')) {
+          return 'template validation error が表示されない'
+        }
+        return modalOpen(root) || '不正 template の Save 後に modal が閉じた'
+      },
+    },
+    {
+      id: 'custom-options-match-content-type-and-language',
+      description: 'route と zh profile が一致する custom options だけを表示する',
+      onlyFixtures: ['act-custom-options-zh'],
+      check: ({ root }) => {
+        const select = root.querySelector<HTMLSelectElement>('select[aria-label="Add field to back"]')
+        const options = Array.from(select?.options ?? [])
+        const values = options.map(option => option.value)
+        const expected = ['custom:phon_the', 'custom:related_words']
+        const missing = expected.filter(value => !values.includes(value))
+        if (missing.length > 0) return `missing=${missing.join(',')}`
+        const forbidden = [
+          'custom:word',
+          'custom:pinyin',
+          'custom:default_note',
+          'custom:furigana_extra',
+          'custom:analogy_vi',
+        ].filter(value => values.includes(value))
+        if (forbidden.length > 0) return `unexpected=${forbidden.join(',')}`
+        const label = options.find(option => option.value === 'custom:phon_the')?.textContent
+        return label === 'Phon the' || `label=${label}`
       },
     },
     {

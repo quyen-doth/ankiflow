@@ -646,6 +646,12 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
             profiles={aiOutputProfiles}
             primaryFieldKey={aiProfileContext.primaryFieldKey}
             disabledReason={aiProfileContext.disabledReason}
+            contentType={{
+              code: draft.code,
+              name: draft.name,
+              description: draft.description,
+              fields,
+            }}
             onInitialize={initializeAiOutputProfiles}
             onChange={setAiOutputProfiles}
           />

@@ -1,7 +1,7 @@
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { USER_CONTENT_TYPES_COLLECTION } from '@/lib/constants'
-import type { UserContentType } from '@/types'
+import { GLOBAL_CONTENT_TYPES_COLLECTION, USER_CONTENT_TYPES_COLLECTION } from '@/lib/constants'
+import type { ContentType, UserContentType } from '@/types'
 
 export type UserContentTypeLoader = (uid: string) => Promise<UserContentType[]>
 
@@ -16,4 +16,13 @@ export const loadUserContentTypes: UserContentTypeLoader = async uid => {
     id: document.id,
     ...document.data(),
   }) as UserContentType)
+}
+
+/** 新規 user 用 card template editor が参照する global Content Type source を読む。 */
+export async function loadGlobalContentTypes(): Promise<ContentType[]> {
+  const snapshot = await getDocs(collection(db, GLOBAL_CONTENT_TYPES_COLLECTION))
+  return snapshot.docs.map(document => ({
+    id: document.id,
+    ...document.data(),
+  }) as ContentType)
 }

@@ -2,12 +2,17 @@ import Anthropic from '@anthropic-ai/sdk'
 import { normalizeGeneratedCard, resolveCardSpec } from './card-schemas'
 import type { CardSpec } from './card-spec'
 import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
+import {
+  buildInstructionSuggestionSpec,
+  instructionSuggestionResultSchema,
+} from './instructionSuggestion'
 import { canonicalizeLanguageCode, inferLanguageDisplayName } from '@/lib/studyLanguages'
 import type {
   DetectLanguagesInput,
   GenerateCardInput,
   IAIAgentProvider,
   LanguageDetection,
+  SuggestInstructionInput,
 } from './types'
 
 // Lazy singleton client — import 時の初期化を回避 (key がない場合の test/build でも安全)。
@@ -102,6 +107,20 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
     }
   }
 
+  async suggestInstruction(input: SuggestInstructionInput, retries = 2): Promise<string> {
+    const spec = buildInstructionSuggestionSpec(input)
+    try {
+      const raw = await this.runForced(spec)
+      return instructionSuggestionResultSchema.parse(raw).instruction
+    } catch (error) {
+      if (retries > 0) {
+        console.warn(`Instruction suggestion failed, retrying... (${retries} left)`)
+        return this.suggestInstruction(input, retries - 1)
+      }
+      throw error
+    }
+  }
+
   /** デフォルトの経路: 1 回の call、tool `submit_card` の呼び出しを強制。Deterministic、低コスト。 */
   private async runForced(spec: CardSpec): Promise<unknown> {
     const cardTool: Anthropic.Tool = {
@@ -178,7 +197,7 @@ function extractToolInput(res: Anthropic.Message, toolName: string): unknown {
     (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === toolName,
   )
   if (!block) {
-    throw new Error('Model did not return the submit_card tool call')
+    throw new Error(`Model did not return the ${toolName} tool call`)
   }
   return block.input
 }

@@ -274,6 +274,26 @@ describe('buildAdminDefaultSnapshot', () => {
     )
   })
 
+  it('card type template は正しい custom source を保持し、不正 source を拒否する', () => {
+    const validSource = validSnapshot()
+    validSource.card_types[0].data.template = {
+      front: ['word'],
+      back: ['meaning', 'custom:phon_the'],
+    }
+    expect(buildAdminDefaultSnapshot(validSource, ADMIN_UID).card_types[0].data.template).toEqual({
+      front: ['word'],
+      back: ['meaning', 'custom:phon_the'],
+    })
+
+    for (const invalidSource of ['custom:', 'custom:UPPER', 'unknown']) {
+      const source = validSnapshot()
+      source.card_types[0].data.template = { front: ['word'], back: [invalidSource] }
+      expect(() => buildAdminDefaultSnapshot(source, ADMIN_UID)).toThrow(
+        `card_types/ct_primary__${ADMIN_UID} is invalid`,
+      )
+    }
+  })
+
   it('workspace 全体が空の場合は empty template 作成を拒否する', () => {
     expect(() => buildAdminDefaultSnapshot(emptySnapshot(), ADMIN_UID)).toThrow('Admin workspace is empty')
   })

@@ -11,6 +11,7 @@ import { CardPreview } from '@/components/preview/CardPreview'
 import { CardList } from '@/components/preview/CardList'
 import { DeckCreatableField } from '@/components/create/DeckCreatableField'
 import type { Entry, LanguageCode, CardTemplate } from '@/types'
+import type { EntryCustomField } from '@/lib/entryCustomFields'
 import { primaryLanguageSubtag } from '@/lib/studyLanguages'
 
 interface CardTypeItem {
@@ -29,6 +30,8 @@ interface FlashcardReviewLayoutProps {
   banner?: React.ReactNode
   entry: Partial<Entry>
   updateField: (field: keyof Entry, value: unknown) => void
+  customFields?: EntryCustomField[]
+  onCustomFieldChange?: (key: string, value: string | string[]) => void
   // Media
   images: ImageItem[]
   imageLoading: boolean
@@ -49,6 +52,47 @@ interface FlashcardReviewLayoutProps {
   onCardTypesChange: (ids: string[]) => void
 }
 
+interface AdditionalFieldsSectionProps {
+  fields: EntryCustomField[]
+  onChange: (key: string, value: string | string[]) => void
+}
+
+/** AI profile または既存 Entry から解決した追加 field を編集する。 */
+export function AdditionalFieldsSection({ fields, onChange }: AdditionalFieldsSectionProps) {
+  if (fields.length === 0) return null
+
+  return (
+    <div data-testid="additional-fields">
+      <p className="text-[11px] font-bold tracking-[0.05em] uppercase font-mono text-slate-400 mb-3">
+        Additional fields
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {fields.map(field => {
+          const isArray = Array.isArray(field.value)
+          const displayValue = Array.isArray(field.value) ? field.value.join('\n') : field.value
+          return (
+            <div key={field.key}>
+              <p className="text-[11px] font-semibold text-slate-500 mb-1.5">{field.label}</p>
+              <EditableField
+                value={displayValue}
+                onSave={value => onChange(
+                  field.key,
+                  isArray
+                    ? value.split('\n').map(item => item.trim()).filter(Boolean)
+                    : value,
+                )}
+                multiline={isArray}
+                placeholder={isArray ? 'Add one item per line…' : 'Click to add…'}
+                className="block text-[14px] text-ink leading-relaxed whitespace-pre-line"
+              />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Review ページ (新規作成の Preview) と History の flashcard 編集ページで共用する
  * layout — 2 ページの見た目を完全に一致させる。
@@ -60,6 +104,8 @@ export function FlashcardReviewLayout({
   banner,
   entry,
   updateField,
+  customFields = [],
+  onCustomFieldChange,
   images,
   imageLoading,
   onImageSelect,
@@ -203,6 +249,16 @@ export function FlashcardReviewLayout({
                 <CollocationEditor
                   items={entry.collocations}
                   onChange={(v) => updateField('collocations', v)}
+                />
+              </>
+            )}
+
+            {customFields.length > 0 && (
+              <>
+                <div className="border-t border-[#f0f0ec] my-5" />
+                <AdditionalFieldsSection
+                  fields={customFields}
+                  onChange={(key, value) => onCustomFieldChange?.(key, value)}
                 />
               </>
             )}

@@ -116,4 +116,23 @@ describe('preview Topic mapping', () => {
       tags: ['javascript'],
     })
   })
+
+  it('batch preview は各 item の custom string/string[] を保持する', () => {
+    const entries = mapPendingBatchToPreview(makeBatch({
+      formType: FormType.LANGUAGE,
+      language: 'zh',
+      items: [
+        { word: '吃饭', phon_the: '喫飯', related_words: ['用餐', '吃東西'] },
+        { word: '学习', phon_the: '學習', related_words: ['讀書'] },
+      ],
+    }), 'Chinese') as Array<Record<string, unknown>>
+
+    expect(entries.map(entry => ({
+      phon_the: entry.phon_the,
+      related_words: entry.related_words,
+    }))).toEqual([
+      { phon_the: '喫飯', related_words: ['用餐', '吃東西'] },
+      { phon_the: '學習', related_words: ['讀書'] },
+    ])
+  })
 })

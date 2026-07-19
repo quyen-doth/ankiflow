@@ -1,4 +1,15 @@
-import type { CardFieldSource, CardTemplate, Entry } from '@/types'
+import {
+  BUILTIN_CARD_FIELD_SOURCES,
+  parseCustomFieldSource,
+} from '@/lib/anki/cardFieldSource'
+import type {
+  BuiltinCardFieldSource,
+  CardFieldSource,
+  CardTemplate,
+  Entry,
+} from '@/types'
+
+export { parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 
 interface RenderOpts {
   audioFilename?: string
@@ -14,7 +25,7 @@ type FieldRenderer = {
   render: (value: string) => string
 }
 
-export const FIELD_LABELS: Record<CardFieldSource, string> = {
+export const FIELD_LABELS: Record<BuiltinCardFieldSource, string> = {
   word: 'Word / Term',
   reading: 'Reading',
   han_viet: 'Sino-Vietnamese reading',
@@ -28,12 +39,9 @@ export const FIELD_LABELS: Record<CardFieldSource, string> = {
   audio: 'Audio',
 }
 
-export const ALL_FIELD_SOURCES: CardFieldSource[] = [
-  'word', 'reading', 'han_viet', 'meaning', 'word_type', 'example', 'example_blank',
-  'translation', 'collocations', 'image', 'audio',
-]
+export const ALL_FIELD_SOURCES: BuiltinCardFieldSource[] = [...BUILTIN_CARD_FIELD_SOURCES]
 
-const FIELD_RENDERERS: Record<CardFieldSource, FieldRenderer> = {
+const FIELD_RENDERERS: Record<BuiltinCardFieldSource, FieldRenderer> = {
   word: {
     label: 'Word / Term',
     getValue: (e) => e.word || e.term || e.title || '',
@@ -106,6 +114,20 @@ const FIELD_RENDERERS: Record<CardFieldSource, FieldRenderer> = {
   },
 }
 
+function prettifyFieldKey(key: string): string {
+  const words = key.replace(/_/g, ' ').trim()
+  return words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}` : key
+}
+
+export function getFieldLabel(
+  source: CardFieldSource,
+  customLabels: Readonly<Record<string, string>> = {},
+): string {
+  const customKey = parseCustomFieldSource(source)
+  if (customKey) return customLabels[customKey]?.trim() || prettifyFieldKey(customKey)
+  return FIELD_LABELS[source as BuiltinCardFieldSource] ?? source
+}
+
 export function renderSide(
   blocks: CardFieldSource[],
   entry: Partial<Entry>,
@@ -114,7 +136,18 @@ export function renderSide(
   const side = opts.side || 'front'
   const parts = blocks
     .map(block => {
-      const renderer = FIELD_RENDERERS[block]
+      const customKey = parseCustomFieldSource(block)
+      if (customKey) {
+        const rawValue = (entry as unknown as Record<string, unknown>)[customKey]
+        const value = typeof rawValue === 'string'
+          ? rawValue
+          : Array.isArray(rawValue) && rawValue.every(item => typeof item === 'string')
+            ? rawValue.join('\n')
+            : ''
+        return value ? `<div class="custom-field custom-${customKey}">${value}</div>` : ''
+      }
+
+      const renderer = FIELD_RENDERERS[block as BuiltinCardFieldSource]
       if (!renderer) return ''
       const value = renderer.getValue(entry, opts)
       if (!value) return ''

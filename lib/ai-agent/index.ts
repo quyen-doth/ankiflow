@@ -7,6 +7,7 @@ export type {
   IAIAgentProvider,
   LanguageDetection,
   LanguageDetectionCandidate,
+  SuggestInstructionInput,
 } from './types'
 
 /** カードコンテンツ生成用のデフォルト Claude モデル。 */
