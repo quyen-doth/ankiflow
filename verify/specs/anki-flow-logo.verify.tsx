@@ -8,7 +8,7 @@ type AnkiFlowLogoProps = ComponentProps<typeof AnkiFlowLogo>
 registerUnit<AnkiFlowLogoProps>({
   id: 'AnkiFlowLogo',
   title: 'AnkiFlowLogo',
-  description: 'Brand mark: icon Sparkles + tên app; bọc Link khi có href.',
+  description: 'Brand mark: icon thẻ + tên app + slogan; bọc Link khi có href.',
   kind: 'component',
   render: props => <AnkiFlowLogo {...props} />,
   propsSchema: z.object({
@@ -45,6 +45,12 @@ registerUnit<AnkiFlowLogoProps>({
       description: 'Hiển thị tên "AnkiFlow"',
       check: ({ root }) =>
         (root.textContent ?? '').includes('AnkiFlow') || 'không thấy text AnkiFlow',
+    },
+    {
+      id: 'tagline-rendered',
+      description: 'Hiển thị slogan "Knowledge in Flow"',
+      check: ({ root }) =>
+        (root.textContent ?? '').includes('Knowledge in Flow') || 'không thấy slogan Knowledge in Flow',
     },
     {
       id: 'icon-present',
