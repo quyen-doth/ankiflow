@@ -12,8 +12,8 @@ const ANKI_QUEUE_MAP: Record<number, SRSQueue> = {
 }
 
 /**
- * GET — trả danh sách anki_note_ids của các entry đã synced để CLIENT truy vấn Anki
- * (`findCards`/`cardsInfo`). Server KHÔNG đụng Anki (chạy được trên Vercel).
+ * GET — synced 済み entry の anki_note_ids 一覧を返し、CLIENT が Anki を照会する
+ * (`findCards`/`cardsInfo`)。Server は Anki に触れない (Vercel で動作可能)。
  */
 export const GET = withAuth(async (_request, _ctx, uid) => {
   const db = getAdminDb()
@@ -32,8 +32,8 @@ export const GET = withAuth(async (_request, _ctx, uid) => {
   return NextResponse.json({ noteIds })
 })
 
-// AnkiCardInfo do client gửi lên — chỉ validate các field dùng cho mapping.
-// mod/reps optional: AnkiConnect cũ không trả (client POST raw cardsInfo, không cần đổi).
+// client から送られる AnkiCardInfo — mapping に使う field のみ validate する。
+// mod/reps は optional: 旧 AnkiConnect は返さない (client は raw cardsInfo を POST、変更不要)。
 const cardsSchema = z.object({
   cards: z.array(
     z.object({
@@ -50,11 +50,11 @@ const cardsSchema = z.object({
 })
 
 /**
- * Precedence guard (SRS Phase 0): KHÔNG ghi đè tiến độ nội bộ mới hơn.
- * - `source === 'builtin'` = entry đã được rate qua LINE (SM-2 nội bộ).
- * - Có `mod` (unix giây, lần hoạt động cuối bên Anki): skip nếu rating nội bộ MỚI HƠN mod.
- * - Không có `mod` (AnkiConnect cũ): skip nếu đã rate SAU lần sync trước (`synced_at`) —
- *   thiên về KHÔNG mất tiến độ LINE (synced_at rỗng = chưa từng sync → cũng skip).
+ * Precedence guard (SRS Phase 0): より新しい内部進捗を上書きしない。
+ * - `source === 'builtin'` = LINE 経由で rate 済みの entry (内部 SM-2)。
+ * - `mod` あり (unix 秒、Anki 側の最終活動時刻): 内部 rating が mod より新しければ skip。
+ * - `mod` なし (旧 AnkiConnect): 前回 sync (`synced_at`) より後に rate 済みなら skip —
+ *   LINE の進捗を失わない方向に倒す (synced_at 空 = 未 sync → こちらも skip)。
  */
 function shouldSkipOverwrite(current: ReviewState | undefined, ankiModSeconds: number | undefined): boolean {
   if (!current || current.source !== 'builtin') return false
@@ -67,7 +67,7 @@ function shouldSkipOverwrite(current: ReviewState | undefined, ankiModSeconds: n
   return Number.isNaN(syncedAt) || ratedAt > syncedAt
 }
 
-/** Event `anki_sync` chỉ ghi khi state thực sự đổi — tránh noise mỗi lần bấm sync. */
+/** `anki_sync` event は state が実際に変わった時だけ記録 — sync 連打による noise を防ぐ。 */
 function stateChanged(current: ReviewState | undefined, next: ReviewState): boolean {
   if (!current) return true
   return (
@@ -90,7 +90,7 @@ function toSnapshot(s: ReviewState): ReviewStateSnapshot {
 
 /**
  * POST — CLIENT gửi cardsInfo lấy từ Anki; server map sang ReviewState + batch update entries.
- * Logic map (ANKI_QUEUE_MAP, ease/interval/due) giữ nguyên như bản server-side cũ.
+ * map ロジック (ANKI_QUEUE_MAP、ease/interval/due) は旧 server-side 版のまま維持。
  */
 export const POST = withAuth(async (request, _ctx, uid) => {
   try {
@@ -120,9 +120,9 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       }))
       .filter((e) => e.anki_note_ids && e.anki_note_ids.length > 0)
 
-    // Map noteId → ReviewState (giữ interval lớn nhất khi 1 note có nhiều card).
-    // noteToMod giữ mod LỚN NHẤT của mọi card thuộc note (lần hoạt động cuối bên Anki)
-    // — dùng cho precedence guard, không phụ thuộc card nào được chọn làm state.
+    // noteId → ReviewState を map (1 note 複数 card の場合は最大 interval を採用)。
+    // noteToMod は note に属する全 card の最大 mod (Anki 側の最終活動時刻) を保持
+    // — precedence guard 用で、どの card が state に選ばれたかに依存しない。
     const noteToSRS = new Map<number, ReviewState>()
     const noteToMod = new Map<number, number>()
     for (const card of cards) {
@@ -153,7 +153,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     }
 
     // Gom ops rồi commit theo chunk — update + event = 2 ops/entry, batch Firestore
-    // giới hạn 500 ops nên 1 batch duy nhất sẽ vỡ khi nhiều entries.
+    // 500 ops 制限があるため、単一 batch では entries が多いと破綻する。
     interface PendingOp {
       ref: FirebaseFirestore.DocumentReference
       data: FirebaseFirestore.DocumentData
@@ -171,7 +171,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       const srsData = noteToSRS.get(matchedNoteId)!
       const ankiMod = noteToMod.get(matchedNoteId)
 
-      // Precedence guard: tiến độ rate nội bộ (LINE) mới hơn hoạt động Anki → giữ nguyên.
+      // Precedence guard: 内部 (LINE) の rate 進捗が Anki の活動より新しい → 維持する。
       if (shouldSkipOverwrite(entry.review_state, ankiMod)) {
         skipped++
         continue
@@ -184,7 +184,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       })
       synced++
 
-      // Revlog: chỉ ghi event khi state thực sự đổi.
+      // Revlog: state が実際に変わった時だけ event を記録。
       if (stateChanged(entry.review_state, srsData)) {
         const event: ReviewEvent = {
           user_id: uid,

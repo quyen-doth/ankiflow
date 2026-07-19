@@ -7,10 +7,10 @@ import type { CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
 
 /**
- * GET — trả các entry `reviewed` kèm card_types (có template) để CLIENT tự buildNotes
- * và tạo trong Anki. Server KHÔNG gọi AnkiConnect (chạy được trên Vercel).
- * Lưu ý: entry giữ nguyên audio_url/image_url (data-URL) — client cần chúng để
- * storeMediaFile vào Anki media trước khi addNotes (createNotesForEntry).
+ * GET — `reviewed` の entry を card_types (template 込み) と共に返し、CLIENT が
+ * buildNotes して Anki に作成する。Server は AnkiConnect を呼ばない (Vercel で動作可能)。
+ * 注意: entry は audio_url/image_url (data-URL) を保持したまま返す — client が addNotes の
+ * 前に Anki media へ storeMediaFile するために必要 (createNotesForEntry)。
  */
 export const GET = withAuth(async (_request, _ctx, uid) => {
   const db = getAdminDb()
@@ -35,7 +35,7 @@ export const GET = withAuth(async (_request, _ctx, uid) => {
     let entryCardTypes = (entry.card_type_ids || [])
       .map((id) => ctById.get(id))
       .filter((ct): ct is CardTypeItem => !!ct)
-    // Fallback giống hành vi cũ: không có card type hợp lệ → dùng front_to_back.
+    // 旧挙動と同じ fallback: 有効な card type がない → front_to_back を使用。
     if (entryCardTypes.length === 0) {
       entryCardTypes = [{ id: 'front_to_back', name: 'Front → Back', code: 'front_to_back' }]
     }
@@ -55,8 +55,8 @@ const resultsSchema = z.object({
 })
 
 /**
- * POST — CLIENT báo kết quả tạo note trong Anki; server cập nhật entry sang `synced`.
- * Chỉ update entry THUỘC VỀ user hiện tại (ownership check — multi-user isolation).
+ * POST — CLIENT が Anki での note 作成結果を報告し、server が entry を `synced` に更新。
+ * 現在の user が所有する entry のみ update (ownership check — multi-user isolation)。
  */
 export const POST = withAuth(async (request, _ctx, uid) => {
   try {
@@ -69,7 +69,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       return NextResponse.json({ synced: 0, failed: 0 })
     }
 
-    // allSettled: 1 entry hỏng (vd bị xóa giữa GET và POST) không làm fail cả batch.
+    // allSettled: 1 entry の異常 (GET と POST の間に削除された等) が batch 全体を fail させない。
     const db = getAdminDb()
     const settled = await Promise.allSettled(
       results.map(async (r) => {
