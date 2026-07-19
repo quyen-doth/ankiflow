@@ -7,8 +7,8 @@ import { apiSuccess, apiError, catchError } from '@/lib/api-response'
 type RouteContext = { params: Promise<Record<string, string>> }
 
 /**
- * Ownership check: trả về docRef nếu entry tồn tại VÀ thuộc về user hiện tại.
- * Trả 404 (không phải 403) cho entry của user khác — không tiết lộ sự tồn tại.
+ * Ownership check: entry が存在し、かつ現在の user の所有であれば docRef を返す。
+ * 他 user の entry には 404 を返す (403 ではない) — 存在自体を漏らさない。
  */
 async function getOwnedEntryRef(id: string, uid: string) {
   const db = getAdminDb()
@@ -41,7 +41,7 @@ async function PUT_handler(request: NextRequest, context: RouteContext, uid: str
     if (!docRef) {
       return apiError('Entry not found', 404)
     }
-    // Không cho đổi chủ sở hữu qua body
+    // body 経由での所有者変更は許可しない
     delete body.user_id
     await docRef.update(withTimestamps(body, false))
     return apiSuccess({ success: true, id })

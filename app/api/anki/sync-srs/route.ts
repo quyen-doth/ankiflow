@@ -89,7 +89,7 @@ function toSnapshot(s: ReviewState): ReviewStateSnapshot {
 }
 
 /**
- * POST — CLIENT gửi cardsInfo lấy từ Anki; server map sang ReviewState + batch update entries.
+ * POST — CLIENT が Anki から取得した cardsInfo を送信; server は ReviewState に map + entries を batch 更新。
  * map ロジック (ANKI_QUEUE_MAP、ease/interval/due) は旧 server-side 版のまま維持。
  */
 export const POST = withAuth(async (request, _ctx, uid) => {
@@ -152,7 +152,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       })
     }
 
-    // Gom ops rồi commit theo chunk — update + event = 2 ops/entry, batch Firestore
+    // ops を集めて chunk 単位で commit — update + event = 2 ops/entry、Firestore batch は
     // 500 ops 制限があるため、単一 batch では entries が多いと破綻する。
     interface PendingOp {
       ref: FirebaseFirestore.DocumentReference
