@@ -193,7 +193,7 @@ export function TopicSelector({
   return (
     <>
       <FieldWrapper
-        label="Topics"
+        label={label}
         {...verifyAttrs({ unit: 'TopicSelector', count: activeTopics.length, selected: selectedIds.length, loading, error: loadError })}
       >
         {loading ? (
