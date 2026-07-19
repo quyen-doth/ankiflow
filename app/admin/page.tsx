@@ -23,10 +23,10 @@ const TABS = [
 
 const TAB_IDS = TABS.map(t => t.id)
 
-// 5 tab đều có workspace riêng + source cho account mới.
+// 5 tab すべてに個人 workspace + 新規アカウント用 source がある。
 const OWNER_SCOPED_TABS = new Set(['categories', 'card-types', 'topics', 'decks', 'content-types'])
 
-/** Switch "My workspace" / "New-user defaults" — chỉ admin thấy. */
+/** "My workspace" / "New-user defaults" の切替 — admin のみ表示。 */
 function OwnerScopeSwitch({ templateMode, onChange }: { templateMode: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="inline-flex gap-1 bg-[#ececea] rounded-[11px] p-1 self-start" role="radiogroup" aria-label="Editing scope">
@@ -62,7 +62,7 @@ function AdminContent() {
   const [activeTab, setActiveTab] = useState(TAB_IDS.includes(initialTab ?? '') ? initialTab! : 'categories')
   const [templateMode, setTemplateMode] = useState(false)
 
-  // ownerId=undefined → mỗi manager tự dùng uid của user hiện tại (hành vi mặc định).
+  // ownerId=undefined → 各 manager が現在 user の uid を使用 (既定の挙動)。
   const ownerId = isAdmin && templateMode ? DEFAULTS_OWNER_ID : undefined
 
   return (

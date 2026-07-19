@@ -24,9 +24,9 @@ interface CardTypeItem {
 interface FlashcardReviewLayoutProps {
   headerLabel: string
   headerActions: React.ReactNode
-  /** Nội dung tùy chọn hiển thị ngay dưới thanh header sticky (vd dải điều hướng batch). */
+  /** sticky header 直下に表示する任意コンテンツ (例: batch ナビゲーションバー)。 */
   subHeader?: React.ReactNode
-  /** Banner cảnh báo (vd lỗi validation) hiển thị trên cùng vùng nội dung. */
+  /** コンテンツ領域の最上部に表示する警告 banner (例: validation エラー)。 */
   banner?: React.ReactNode
   entry: Partial<Entry>
   updateField: (field: keyof Entry, value: unknown) => void
@@ -94,8 +94,8 @@ export function AdditionalFieldsSection({ fields, onChange }: AdditionalFieldsSe
 }
 
 /**
- * Bố cục dùng chung cho trang Review (Preview tạo mới) và trang chỉnh sửa flashcard
- * trong History — đảm bảo hai trang giống hệt nhau về giao diện.
+ * Review ページ (新規作成の Preview) と History の flashcard 編集ページで共用する
+ * layout — 2 ページの見た目を完全に一致させる。
  */
 export function FlashcardReviewLayout({
   headerLabel,

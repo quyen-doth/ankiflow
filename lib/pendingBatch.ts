@@ -35,7 +35,7 @@ export function savePendingBatch(data: PendingBatch): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (e) {
-    console.error('Lỗi khi lưu pending batch:', e)
+    console.error('Error saving pending batch:', e)
   }
 }
 
@@ -47,7 +47,7 @@ export function loadPendingBatch(): PendingBatch | null {
     if (!raw) return null
     return JSON.parse(raw) as PendingBatch
   } catch (e) {
-    console.error('Lỗi khi đọc pending batch:', e)
+    console.error('Error reading pending batch:', e)
     return null
   }
 }

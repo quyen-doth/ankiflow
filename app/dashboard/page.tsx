@@ -41,7 +41,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    // Chưa có user (authLoading hoặc null) → giữ spinner; middleware đảm bảo đã login
+    // user 未確定 (authLoading または null) → spinner を維持; ログイン済みは middleware が保証
     if (authLoading || !user) return
     async function fetchEntries(uid: string) {
       try {

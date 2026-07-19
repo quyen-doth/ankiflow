@@ -404,7 +404,7 @@ export function CardFormContent({
             resetValuesAfterSuccess();
             navigate("/preview");
         } catch (err) {
-            // Người dùng hủy giữa chừng → giữ nguyên dữ liệu để chỉnh sửa, không báo lỗi.
+            // user が途中キャンセル → 編集用にデータを保持し、エラーは出さない。
             if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
                 setError(null);
                 toast.info("Card generation cancelled");
@@ -445,7 +445,7 @@ export function CardFormContent({
                 baseValues: values,
             });
 
-            // Người dùng hủy giữa chừng → giữ nguyên danh sách item để chỉnh sửa.
+            // user が途中キャンセル → 編集用に item リストを保持。
             if (controller.signal.aborted) {
                 toast.info("Card generation cancelled");
                 onGenerateEnd?.();
@@ -614,7 +614,7 @@ export function CardFormContent({
             }
             onGenerateEnd?.();
         } catch (detectionError) {
-            // Người dùng hủy trong pha detect → không rơi xuống fallback ngôn ngữ đã chọn.
+            // detect 中に user がキャンセル → 選択済み言語への fallback には落とさない。
             if (controller.signal.aborted || (detectionError instanceof Error && detectionError.name === "AbortError")) {
                 toast.info("Card generation cancelled");
                 onGenerateEnd?.();

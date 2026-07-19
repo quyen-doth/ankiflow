@@ -1,8 +1,8 @@
 import { AnkiFlowLogo } from '@/components/ui/AnkiFlowLogo'
 
 /**
- * Layout cho các trang auth (login/signup): logo + form card căn giữa.
- * AppShell (root layout) tự ẩn NavigationSidebar và bỏ offset trên các route này.
+ * auth 画面 (login/signup) の layout: logo + 中央寄せの form card。
+ * AppShell (root layout) はこれらの route で NavigationSidebar を自動的に隠し offset も外す。
  */
 export default function AuthLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

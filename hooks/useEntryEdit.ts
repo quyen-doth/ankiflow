@@ -8,7 +8,7 @@ import type { Entry } from '@/types'
 
 export function useEntryEdit() {
   const saveEntry = useCallback(async (entry: Entry, updates: Partial<Entry>) => {
-    // 1. Lưu Firestore + lấy dữ liệu để sinh lại note (server không đụng Anki).
+    // 1. Firestore へ保存 + note 再生成用データを取得 (server は Anki に触れない)。
     const res = await fetch('/api/anki/update', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -27,7 +27,7 @@ export function useEntryEdit() {
       noteIds: number[]
     }
 
-    // 2. Sinh lại note trong Anki (browser). Best-effort: Anki offline KHÔNG chặn việc đã lưu.
+    // 2. Anki 側の note を再生成 (browser)。best-effort: Anki offline でも保存済みの事実は妨げない。
     if (data.entry && data.noteIds.length > 0) {
       try {
         const client = await getAnkiClientFromSettings()

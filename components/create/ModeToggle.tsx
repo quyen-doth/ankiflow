@@ -13,7 +13,7 @@ const OPTIONS: { key: 'single' | 'batch'; label: string; icon: React.ElementType
   { key: 'batch', label: 'Batch', icon: Layers },
 ]
 
-/** Segmented control: tạo 1 thẻ (Single) hay nhiều thẻ 1 lượt (Batch). */
+/** Segmented control: 1 枚作成 (Single) か一括複数作成 (Batch) か。 */
 export function ModeToggle({ batch, onChange }: ModeToggleProps) {
   return (
     <div

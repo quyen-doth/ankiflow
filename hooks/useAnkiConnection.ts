@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 
 /**
- * Trạng thái kết nối Anki — ping AnkiConnect trực tiếp từ browser
- * (máy của chính user), không đi qua API route server.
+ * Anki 接続状態 — browser から AnkiConnect を直接 ping する
+ * (user 自身のマシン)。server の API route は経由しない。
  */
 export function useAnkiConnection(pollInterval = 30_000) {
   const [connected, setConnected] = useState(false)

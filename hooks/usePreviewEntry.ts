@@ -136,7 +136,7 @@ export function usePreviewEntry(): PreviewEntryState {
         setSelectedCardTypeIds(preSelected)
 
       } catch (firestoreErr) {
-        console.error('Lỗi fetch card_types:', firestoreErr)
+        console.error('Error fetching card_types:', firestoreErr)
       }
 
       clearPendingEntry()

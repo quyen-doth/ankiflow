@@ -42,7 +42,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
     e.target.value = ''
   }
 
-  // Dán ảnh (file trong clipboard) hoặc URL ảnh.
+  // 画像の貼り付け (clipboard 内 file) または画像 URL。
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (items) {
@@ -77,7 +77,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
   }
 
   const creditItem = images.find(img => img.url === selectedUrl)
-  // Ảnh đang chọn không thuộc gợi ý Unsplash (upload/dán/kéo-thả/URL ngoài) → hiển thị preview riêng.
+  // 選択中の画像が Unsplash 候補以外 (upload/貼り付け/drag-drop/外部 URL) → 専用 preview を表示。
   const isCustom = !!selectedUrl && !images.some(img => img.url === selectedUrl)
 
   return (
@@ -118,7 +118,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
         onChange={handleFileChange}
       />
 
-      {/* Ảnh cục bộ đang chọn (upload/dán/kéo-thả/URL ngoài) — hiển thị preview riêng. */}
+      {/* 選択中のローカル画像 (upload/貼り付け/drag-drop/外部 URL) — 専用 preview を表示。 */}
       {isCustom && selectedUrl && (
         <div className="relative rounded-[10px] overflow-hidden border-2 border-primary">
           {/* eslint-disable-next-line @next/next/no-img-element */}

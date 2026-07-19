@@ -14,9 +14,9 @@ type UIFormType = 'Language' | 'IT' | 'General'
 
 interface DeckSelectorProps {
   value: string
-  /** onChangeFull: nhận cả deckId + formType (dùng trong page cần auto-detect form) */
+  /** onChangeFull: deckId + formType の両方を受け取る (form の auto-detect が必要な page 用) */
   onChange?: (deckId: string, formType: UIFormType) => void
-  /** onChangeId: chỉ nhận deckId (dùng trong form đã biết formType) */
+  /** onChangeId: deckId のみ受け取る (formType が既知の form 用) */
   onChangeId?: (deckId: string) => void
   onClear?: () => void
   label?: string

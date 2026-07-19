@@ -1,11 +1,16 @@
 # 📋 PRD — Anki フラッシュカード自動生成システム
 
-**プロジェクト名:** AnkiFlow — Personal Flashcard Automation  
+**プロジェクト名:** AnkiFlow — AI Flashcard Automation  
 **バージョン:** v1.1  
 **作成日:** 2026-04-15  
-**更新日:** 2026-04-18  
+**更新日:** 2026-07-19  
 **作者:** hong-quyen  
-**ステータス:** Draft — v1 フィードバック反映済み
+**ステータス:** 確定 — v1 要件（初期スコープ）
+
+> **注記:** 本書は開発開始時点の要件定義であり、プロダクトはその後
+> マルチユーザー対応（Firebase 認証 + Firestore セキュリティルール）、
+> ユーザー別 Content Type、LINE 通知のユーザー別配信などへ発展している。
+> 現行アーキテクチャは `docs/REFERENCE.md`・`README.md` を参照。
 
 ---
 

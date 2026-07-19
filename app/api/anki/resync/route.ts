@@ -17,18 +17,18 @@ type EntryDoc = Partial<Entry> & {
 }
 
 /**
- * POST — trả các entry đã synced (lọc theo filter) + card_types (có template) để CLIENT
- * tự sinh lại Front/Back và `updateNoteFields` trong Anki. Server KHÔNG đụng Anki
- * (chạy được trên Vercel). Resync chỉ đổi note trong Anki, không ghi lại Firestore.
+ * POST — synced 済み entry (filter 適用) + card_types (template 込み) を返し、CLIENT が
+ * Front/Back を再生成して Anki 側で `updateNoteFields` する。Server は Anki に触れない
+ * (Vercel で動作可能)。Resync は Anki の note のみ変更し、Firestore へは書き戻さない。
  */
 export const POST = withAuth(async (request, _ctx, uid) => {
   try {
     const { formType, deckName, cardTypeId }: ResyncBody = await request.json().catch(() => ({}))
     const db = getAdminDb()
 
-    // Lấy entry đã export CỦA USER, lọc trong bộ nhớ (tránh composite index).
-    // Strip audio_url/audio_example_url (base64 data-URL có thể ~1MB/entry): resync
-    // giữ media cũ từ notesInfo trong Anki, không cần audio → tránh response nhiều MB.
+    // 該当 USER の export 済み entry を取得し、メモリ内で filter (composite index 回避)。
+    // audio_url/audio_example_url は strip (base64 data-URL は ~1MB/entry になり得る):
+    // resync は Anki の notesInfo にある既存 media を使うため audio 不要 → 数 MB の response を回避。
     const snapshot = await db
       .collection('entries')
       .where('user_id', '==', uid)
@@ -50,7 +50,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       return NextResponse.json({ entries: [], cardTypes: [] })
     }
 
-    // Fetch 1 lượt mọi card type cần dùng (kèm template).
+    // 必要な card type を template 込みで一括 fetch。
     const cardTypes = await fetchCardTypesByIds(db, entries.flatMap((e) => e.card_type_ids || []))
 
     return NextResponse.json({ entries, cardTypes })

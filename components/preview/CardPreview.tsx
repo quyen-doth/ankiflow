@@ -28,11 +28,11 @@ const DEFAULT_TAB: CardTypeItem = {
 }
 
 /**
- * Preview thẻ Anki ĐÚNG theo template của card type đã chọn (dùng chung renderSide + CSS với export).
- * Mỗi tab = một card type; bấm thẻ để lật xem mặt sau. Nếu chưa chọn card type nào → hiện 1 tab mặc định.
+ * 選択した card type の template どおりの Anki カード preview (renderSide + CSS を export と共用)。
+ * 各 tab = 1 card type; カードをクリックで裏面へ反転。card type 未選択 → 既定 tab を 1 つ表示。
  */
 export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeIds = [] }: CardPreviewProps) {
-  // Tabs = các card type đã chọn (giữ thứ tự trong cardTypes). Rỗng → 1 tab mặc định.
+  // Tabs = 選択済み card type (cardTypes の順序を維持)。空 → 既定 tab 1 つ。
   const tabs = useMemo<CardTypeItem[]>(() => {
     const selected = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id))
     return selected.length > 0 ? selected : [DEFAULT_TAB]
@@ -77,7 +77,7 @@ export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeI
       className="bg-[#faf3e6] border border-[#efe0c6] rounded-[14px] p-[22px]"
       {...verifyAttrs({ unit: 'CardPreview', tab: activeId, flipped })}
     >
-      {/* Tabs — mỗi card type một tab */}
+      {/* Tabs — card type ごとに 1 tab */}
       {tabs.length > 1 && (
         <div className="flex flex-wrap gap-1 bg-[rgba(184,117,20,0.1)] rounded-[8px] p-1">
           {tabs.map(tab => (
@@ -96,7 +96,7 @@ export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeI
         </div>
       )}
 
-      {/* Thẻ render bằng iframe — bấm để lật mặt trước/sau */}
+      {/* iframe で render するカード — クリックで表裏を反転 */}
       <div
         className="relative select-none mt-4 rounded-[12px] overflow-hidden border border-[#efe0c6]"
       >
@@ -112,7 +112,7 @@ export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeI
         />
       </div>
 
-      {/* Nút phát audio (không thể tương tác trong iframe sandbox) */}
+      {/* audio 再生ボタン (iframe sandbox 内では操作できないため外に配置) */}
       {hasAudio && (
         <button
           type="button"

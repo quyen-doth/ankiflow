@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { ANKI_CARD_CSS } from '@/lib/anki/model'
 
-// CSS bọc quanh nội dung renderSide để iframe trông y hệt mặt thẻ Anki thật.
+// renderSide の内容を包む CSS — iframe を実際の Anki カード面と同じ見た目にする。
 const PREVIEW_STYLE = `
 body { margin: 0; padding: 16px; background: #f0f0ec; }
 ${ANKI_CARD_CSS}
@@ -18,9 +18,9 @@ ${ANKI_CARD_CSS}
 const EMPTY = '<div style="color:#aaa;text-align:center;padding:12px;font-size:13px">No fields</div>'
 
 /**
- * Dựng tài liệu HTML preview cho một thẻ.
- * - `back` = undefined → chỉ hiện mặt trước (dùng cho trạng thái chưa lật).
- * - `back` là chuỗi → hiện front + `<hr id="answer">` + back (giống mặt thẻ đã lật của Anki).
+ * 1 カード分の preview HTML ドキュメントを構築する。
+ * - `back` = undefined → 表面のみ表示 (未反転状態用)。
+ * - `back` が文字列 → front + `<hr id="answer">` + back を表示 (Anki の反転後と同じ)。
  */
 export function buildCardHtml(front: string, back?: string): string {
   const body =
@@ -45,8 +45,8 @@ interface CardIframeProps {
 }
 
 /**
- * iframe sandbox render một tài liệu HTML thẻ và tự đo chiều cao để hiển thị trọn nội dung
- * (đo lại khi ảnh Unsplash load xong). Dùng chung cho preview trang Review và Admin card editor.
+ * iframe sandbox がカード HTML ドキュメントを render し、内容全体が収まるよう高さを自動計測する
+ * (Unsplash 画像の load 完了時に再計測)。Review ページと Admin card editor の preview で共用。
  */
 export function CardIframe({ html, title = 'Card preview' }: CardIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)

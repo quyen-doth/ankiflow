@@ -5,7 +5,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 
-/** Realtime số entry `reviewed` (chưa sync) CỦA USER hiện tại. 0 khi chưa đăng nhập. */
+/** 現在の USER の `reviewed` (未 sync) entry 数を realtime 取得。未ログイン時は 0。 */
 export function useUnsyncedCount() {
   const { user, loading } = useAuth()
   const [count, setCount] = useState(0)
@@ -25,6 +25,6 @@ export function useUnsyncedCount() {
     return unsubscribe
   }, [user, loading])
 
-  // Derive thay vì setState sync trong effect: chưa đăng nhập → luôn 0
+  // effect 内の同期 setState ではなく derive: 未ログイン → 常に 0
   return loading || !user ? 0 : count
 }

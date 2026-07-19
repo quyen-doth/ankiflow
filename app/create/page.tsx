@@ -176,7 +176,7 @@ export function CreateContent({
     const handleSelectType = useCallback(
         (code: string) => {
             setActiveCode(code);
-            // Đặt chế độ tạo mặc định (single/batch) theo content type đang chọn.
+            // 選択中の content type に応じて既定の作成モード (single/batch) を設定。
             const next = contentTypes.find((ct) => ct.code === code);
             setBatchMode(next?.default_create_mode === 'batch');
             setBatchCount(0);

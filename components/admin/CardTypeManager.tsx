@@ -72,8 +72,8 @@ const EMPTY_DRAFT: CardTypeDraft = {
 }
 
 interface CardTypeManagerProps {
-  /** Chủ sở hữu docs đang sửa — mặc định uid của user hiện tại. Admin truyền `__defaults__`
-   *  (DEFAULTS_OWNER_ID) để sửa template mà user mới nhận qua seedUserDefaults. */
+  /** 編集対象 docs の所有者 — 既定は現在 user の uid。admin は `__defaults__`
+   *  (DEFAULTS_OWNER_ID) を渡し、新規 user が seedUserDefaults で受け取る template を編集する。 */
   ownerId?: string
 }
 
@@ -184,7 +184,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     return result
   }, [cardTypes, search, filterFormType, filterLanguage, filterStatus])
 
-  // Validation: name & code không rỗng, mỗi mặt Front/Back ≥ 1 field.
+  // Validation: name & code は非空、Front/Back 各面に ≥ 1 field。
   const errors = {
     name: !draft.name.trim(),
     code: !draft.code.trim(),
@@ -218,11 +218,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     })
     setShowAdvanced(false)
     setShowErrors(false)
-    setCodeEdited(true) // card có sẵn: không tự đổi code theo name
+    setCodeEdited(true) // 既存 card: name に応じた code の自動変更はしない
     setModalOpen(true)
   }
 
-  // Đổi name → tự sinh code (chỉ khi tạo mới & người dùng chưa sửa tay code).
+  // name 変更 → code を自動生成 (新規作成時、かつ user が code を手動編集していない場合のみ)。
   const handleNameChange = (name: string) => {
     setDraft(d => {
       if (editing || codeEdited) return { ...d, name }

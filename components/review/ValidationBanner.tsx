@@ -5,10 +5,10 @@ import type { InvalidCard } from '@/lib/cardValidation'
 
 interface ValidationBannerProps {
   invalid: InvalidCard[]
-  /** Nhảy tới thẻ lỗi khi click. */
+  /** click でエラーカードへジャンプ。 */
   onJump: (index: number) => void
   onDismiss?: () => void
-  /** Ẩn số thứ tự thẻ (dùng cho preview đơn — chỉ 1 thẻ). */
+  /** カード番号を隠す (単体 preview 用 — 1 枚のみ)。 */
   singleCard?: boolean
 }
 
