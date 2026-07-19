@@ -9,10 +9,42 @@ import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { AiOutputProfile } from '@/types'
 
+const TEST_CONTENT_TYPE = {
+  code: 'language',
+  name: 'Language draft',
+  description: 'Vocabulary learning',
+  fields: [
+    {
+      field_key: 'language',
+      label: 'Study language',
+      type: 'dropdown' as const,
+      is_required: true,
+      is_session_persistent: true,
+      sort_order: 0,
+    },
+    {
+      field_key: 'word',
+      label: 'Word',
+      type: 'text' as const,
+      is_required: true,
+      is_session_persistent: false,
+      sort_order: 1,
+    },
+  ],
+}
+
 function initialProfiles(): AiOutputProfile[] {
   const profiles = resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)
   if (!profiles) throw new Error('Language profiles are required')
   return profiles
+}
+
+function clickButtonByText(root: HTMLElement, text: string): void {
+  const button = Array.from(root.querySelectorAll('button')).find(candidate => (
+    candidate.textContent?.trim() === text
+  ))
+  if (!button) throw new Error(`button "${text}" was not found`)
+  button.click()
 }
 
 function EditorHarness() {
@@ -36,6 +68,7 @@ function EditorHarness() {
           <AiOutputProfilesEditor
             profiles={draft}
             primaryFieldKey="word"
+            contentType={TEST_CONTENT_TYPE}
             onInitialize={() => setDraft(initialProfiles())}
             onChange={setDraft}
           />
@@ -75,6 +108,40 @@ registerUnit({
       description: 'Probe: primary word key remains disabled and has no remove action.',
       props: {},
     },
+    {
+      id: 'test-generate-success',
+      description: '未保存 profile で sample generation を実行し custom result を表示する。',
+      props: {},
+      mocks: {
+        fetch: [{
+          match: '/api/generate',
+          response: {
+            json: { content: { word: 'book', meaning_vi: 'sách', level: 'B2' } },
+          },
+        }],
+      },
+      act: async ctx => {
+        await ctx.type('input[aria-label="AI test sample"]', 'book')
+        clickButtonByText(ctx.root, 'Run test')
+        await ctx.wait(20)
+      },
+    },
+    {
+      id: 'test-generate-error',
+      description: 'API error を editor 内に表示する。',
+      props: {},
+      mocks: {
+        fetch: [{
+          match: '/api/generate',
+          response: { status: 400, json: { error: 'Inline profile is invalid' } },
+        }],
+      },
+      act: async ctx => {
+        await ctx.type('input[aria-label="AI test sample"]', 'book')
+        clickButtonByText(ctx.root, 'Run test')
+        await ctx.wait(20)
+      },
+    },
   ],
   invariants: [
     {
@@ -103,6 +170,25 @@ registerUnit({
         return !root.querySelector('button[aria-label="Remove AI output word"]')
           || 'primary output has remove action'
       },
+    },
+    {
+      id: 'test-result-highlights-custom-field',
+      description: 'Test result は custom field を識別して表示する',
+      onlyFixtures: ['test-generate-success'],
+      check: ({ root }) => {
+        const result = root.querySelector('[aria-label="AI test result"]')
+        if (!result) return 'test result が表示されていない'
+        const text = result.textContent ?? ''
+        return text.includes('Level') && text.includes('B2') && text.includes('Custom')
+          || `result="${text}"`
+      },
+    },
+    {
+      id: 'test-error-visible',
+      description: 'Generate error を alert として表示する',
+      onlyFixtures: ['test-generate-error'],
+      check: ({ root }) => root.querySelector('[role="alert"]')?.textContent === 'Inline profile is invalid'
+        || 'API error が表示されていない',
     },
   ],
 })

@@ -30,3 +30,41 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
   await expect(page.getByRole('button', { name: 'Remove AI output memory_hook' })).toHaveCount(0)
 })
+
+test('AI output editor は未保存 profile で sample generation を表示する', async ({ page }) => {
+  let requestBody: unknown
+  await page.route('**/api/generate', async route => {
+    requestBody = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: { word: 'book', meaning_vi: 'sách', level: 'B2' } }),
+    })
+  })
+  await page.goto('/verify/AiOutputProfilesEditor/default-language-profiles?chrome=0')
+
+  await page.getByRole('textbox', { name: 'AI output instruction 0' }).fill('Unsaved test instruction')
+  await page.getByRole('textbox', { name: 'AI test sample' }).fill('book')
+  await page.getByRole('combobox', { name: 'AI test study language' }).selectOption('en')
+  await page.getByRole('button', { name: 'Run test' }).click()
+
+  const result = page.getByLabel('AI test result')
+  await expect(result).toContainText('B2')
+  await expect(result.getByText('Custom', { exact: true })).toBeVisible()
+  expect(requestBody).toMatchObject({
+    form_type: 'form_language',
+    word: 'book',
+    language: 'en',
+    content_type_inline: {
+      code: 'language',
+      ai_output_profiles: expect.arrayContaining([
+        expect.objectContaining({
+          profile: 'default',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'word', instruction: 'Unsaved test instruction' }),
+          ]),
+        }),
+      ]),
+    },
+  })
+})

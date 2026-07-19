@@ -90,6 +90,12 @@ function languageContentType(overrides: Record<string, unknown> = {}): Record<st
   }
 }
 
+function inlineLanguageContentType(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const { user_id: _userId, ...inline } = languageContentType(overrides)
+  void _userId
+  return inline
+}
+
 describe('POST /api/generate — customizable languages', () => {
   it('session がない → 401', async () => {
     const response = await POST(makeRequest({ form_type: 'form_language', word: 'bonjour', language: 'fr' }, false), ROUTE_CONTEXT)
@@ -121,6 +127,66 @@ describe('POST /api/generate — customizable languages', () => {
         },
       }),
     }))
+  })
+
+  it('content_type_inline を content_type_id より優先し、未保存 definition を渡す', async () => {
+    generateMock.mockResolvedValue({ word: 'book', memory_hook: 'Library shelf' })
+
+    const response = await POST(makeRequest({
+      form_type: 'form_language',
+      content_type_id: 'missing-document-must-not-be-read',
+      content_type_inline: inlineLanguageContentType({
+        name: 'Unsaved Language Draft',
+        ai_output_profiles: [{
+          profile: 'default',
+          fields: [
+            { key: 'word', type: 'string', instruction: 'Unsaved primary instruction' },
+            { key: 'memory_hook', type: 'string', instruction: 'Unsaved memory hook' },
+          ],
+        }],
+      }),
+      word: 'book',
+      language: 'en',
+    }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(200)
+    expect(generateMock).toHaveBeenCalledWith(expect.objectContaining({
+      contentTypeName: 'Unsaved Language Draft',
+      content_type: expect.objectContaining({
+        name: 'Unsaved Language Draft',
+        ai_output_profiles: [{
+          profile: 'default',
+          fields: [
+            { key: 'word', type: 'string', instruction: 'Unsaved primary instruction' },
+            { key: 'memory_hook', type: 'string', instruction: 'Unsaved memory hook' },
+          ],
+        }],
+      }),
+    }))
+  })
+
+  it('content_type_inline の bounds 超過は provider を呼ばず 400', async () => {
+    const response = await POST(makeRequest({
+      form_type: 'form_language',
+      content_type_inline: inlineLanguageContentType({ description: 'x'.repeat(501) }),
+      word: 'book',
+      language: 'en',
+    }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(400)
+    expect(generateMock).not.toHaveBeenCalled()
+  })
+
+  it('content_type_inline の route が form_type と不一致なら 400', async () => {
+    const response = await POST(makeRequest({
+      form_type: 'form_language',
+      content_type_inline: inlineLanguageContentType({ code: 'it' }),
+      word: 'book',
+      language: 'en',
+    }), ROUTE_CONTEXT)
+
+    expect(response.status).toBe(400)
+    expect(generateMock).not.toHaveBeenCalled()
   })
 
   it('他 user の content type は存在を隠して 404 にする', async () => {
