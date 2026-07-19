@@ -40,7 +40,7 @@ export function NavigationSidebar() {
         confirmNavigation(async () => {
             setSigningOut(true);
             await logout();
-            // Full reload: xóa sạch client state + để middleware nhận cookie đã bị xóa
+            // Full reload: client state を完全に破棄 + 削除済み cookie を middleware に認識させる
             window.location.href = '/login';
         });
     }, [confirmNavigation]);
@@ -54,7 +54,7 @@ export function NavigationSidebar() {
                 ? await drainPendingAnkiDeletions(client, userId)
                 : 0;
 
-            // 1. Lấy các entry reviewed + card_types từ server (server không đụng Anki).
+            // 1. reviewed の entry + card_types を server から取得 (server は Anki に触れない)。
             const res = await fetch('/api/entries/sync', { cache: 'no-store' });
             const { jobs } = await res.json();
             if (!jobs || jobs.length === 0) {
@@ -64,8 +64,8 @@ export function NavigationSidebar() {
                 return;
             }
 
-            // 2. Tạo note trong Anki của user (browser → localhost:8765).
-            //    createNotesForEntry dùng chung với export trực tiếp — kèm store audio/image.
+            // 2. user の Anki に note を作成 (browser → localhost:8765)。
+            //    createNotesForEntry は直接 export と共用 — audio/image の store も含む。
             await ensureModel(client);
 
             const results: { entryId: string; noteIds: number[] }[] = [];
@@ -84,9 +84,9 @@ export function NavigationSidebar() {
                 return;
             }
 
-            // 3. Báo kết quả về server để cập nhật status → synced.
-            //    PHẢI kiểm tra kết quả: notes đã nằm trong Anki — nếu status không được
-            //    ghi thì lần sync sau sẽ tạo notes trùng lặp.
+            // 3. 結果を server に報告して status → synced に更新。
+            //    結果確認は必須: notes は既に Anki 側に存在する — status が書き込まれないと
+            //    次回 sync で重複 notes が作成されてしまう。
             const postRes = await fetch('/api/entries/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@ export function NavigationSidebar() {
     const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
     const visibleNavItems = navItems.filter((item) => !('adminOnly' in item && item.adminOnly) || isAdmin);
 
-    // Longest-prefix wins: khi ở /settings/admin, chỉ mục /settings/admin sáng (không phải cả /settings).
+    // Longest-prefix wins: /settings/admin にいる時は /settings/admin だけが active (/settings 全体ではない)。
     const activeHref = visibleNavItems
         .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
         .reduce<string | null>((best, item) => (best && best.length >= item.href.length ? best : item.href), null);

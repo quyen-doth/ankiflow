@@ -57,7 +57,7 @@ export interface CardFormBlueprint {
   generate: GenerateStrategy
 }
 
-/** Bề rộng ưa thích của mỗi control trong lưới 2 cột của cột Configuration. */
+/** Configuration 列の 2 カラムグリッドにおける各 control の希望幅。 */
 const CONTROL_SPAN: Record<ConfigLeaf['kind'], 1 | 2> = {
   language: 1,
   deck: 1,
@@ -70,10 +70,10 @@ const CONTROL_SPAN: Record<ConfigLeaf['kind'], 1 | 2> = {
 }
 
 /**
- * Nhóm các leaf thành block để render, tôn trọng thứ tự sort_order:
- * - Các leaf span-1 liền kề được ghép thành từng CẶP → `row` (2 cột).
- * - Leaf span-1 lẻ/đơn độc → block full width (không để nửa dòng trơ trọi).
- * - Leaf span-2 → luôn là block full width riêng.
+ * leaf を render 用の block にグルーピングする。sort_order の順序を尊重:
+ * - 隣接する span-1 leaf はペアにして → `row` (2 カラム)。
+ * - 余った/単独の span-1 leaf → full width block (中途半端な半列を作らない)。
+ * - span-2 leaf → 常に単独の full width block。
  */
 export function groupConfigLeaves(leaves: ConfigLeaf[]): ConfigBlock[] {
   const blocks: ConfigBlock[] = []

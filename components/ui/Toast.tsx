@@ -25,7 +25,7 @@ interface ToastFns {
 const noop = () => undefined
 const ToastContext = createContext<ToastFns>({ success: noop, error: noop, warning: noop, info: noop })
 
-/** Dùng ở bất kỳ component nào: const toast = useToast(); toast.success('...') */
+/** どの component でも使用可: const toast = useToast(); toast.success('...') */
 export function useToast(): ToastFns {
   return useContext(ToastContext)
 }
@@ -37,7 +37,7 @@ const VARIANT_STYLE: Record<ToastVariant, { box: string; icon: string; Icon: typ
   info: { box: 'bg-white border-border', icon: 'text-slate-600', Icon: Info },
 }
 
-/** Một toast đơn (trình bày thuần). */
+/** 単一 toast (純粋な表示のみ)。 */
 export function Toast({ variant, message, onClose }: { variant: ToastVariant; message: string; onClose: () => void }) {
   const s = VARIANT_STYLE[variant]
   const Icon = s.Icon

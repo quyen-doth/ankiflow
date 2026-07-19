@@ -30,12 +30,12 @@ import { cn } from '@/lib/utils';
 import type { GlobalSettings } from '@/types';
 
 /**
- * Trang Settings TOÀN CỤC (admin-only) — cấu hình ảnh hưởng MỌI account:
- * - `settings/global` (feature flags + AI + LINE schedule): CHỈ ghi được qua
+ * グローバル設定ページ (admin 専用) — 全アカウントに影響する設定:
+ * - `settings/global` (feature flags + AI + LINE schedule): 書き込みは必ず
  *   POST /api/admin/global-config (verify admin server-side).
  * - LINE channel credentials は server environment variables で管理する。
  *
- * Preferences cá nhân (settings/{uid}) nằm ở `/settings`. Trang này KHÔNG đụng settings/{uid}.
+ * 個人 preferences (settings/{uid}) は `/settings` にある。このページは settings/{uid} に触れない。
  */
 
 const CLAUDE_MODEL_OPTIONS = [
@@ -65,7 +65,7 @@ export default function AdminSettingsPage() {
     const [savedAt, setSavedAt] = useState<number | null>(null);
     const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
 
-    // UI-gate: non-admin không được xem trang này (bảo mật ghi vẫn do API/Firestore Rules lo).
+    // UI-gate: non-admin はこのページを閲覧不可 (書き込みの security は API/Firestore Rules が担保)。
     useEffect(() => {
         if (!authLoading && !isAdmin) {
             router.replace('/settings');
@@ -165,7 +165,7 @@ export default function AdminSettingsPage() {
         setSaving(true);
         try {
             // Feature flags + AI TOÀN CỤC → settings/global — BẮT BUỘC qua server API
-            // (verify admin server-side; client không thể tự setDoc doc này).
+            // (admin 検証は server-side; client はこの doc を直接 setDoc できない)。
             const res = await fetch('/api/admin/global-config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -227,7 +227,7 @@ export default function AdminSettingsPage() {
             />
 
             <div className="max-w-3xl mx-auto w-full pb-12 flex flex-col gap-8">
-                {/* Feature availability — ảnh hưởng MỌI user ngay lập tức */}
+                {/* Feature availability — 全 user に即時反映 */}
                 <Card>
                     <SectionHeader icon={Plug} label="Feature availability (all users)" tone="amber" />
                     <p className="text-sm text-slate-600 mb-3.5">
@@ -256,7 +256,7 @@ export default function AdminSettingsPage() {
                     </div>
                 </Card>
 
-                {/* AI generation — ai_model/web_search ảnh hưởng chi phí API của chủ app */}
+                {/* AI generation — ai_model/web_search はアプリ所有者の API コストに影響 */}
                 <Card>
                     <SectionHeader icon={Brain} label="AI generation" tone="amber" />
                     <FieldWrapper label="Claude Model">

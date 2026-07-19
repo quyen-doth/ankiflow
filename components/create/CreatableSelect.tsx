@@ -15,13 +15,13 @@ interface CreatableSelectProps {
   options: CreatableOption[]
   value: string
   onChange: (id: string) => void
-  /** Gọi khi người dùng yêu cầu tạo lựa chọn mới từ `query`. */
+  /** user が `query` から新規選択肢の作成を要求した時に呼ばれる。 */
   onCreate: (query: string) => void | Promise<void>
   onClear?: () => void
   placeholder?: string
-  /** Nhãn cho hàng "Tạo" (vd "deck", "category"). */
+  /** "作成" 行のラベル (例: "deck"、"category")。 */
   createNoun?: string
-  /** true = bắt buộc có từ khóa mới tạo được (vd category tạo ngay cần tên). */
+  /** true = キーワード入力必須で作成可能 (例: category は即作成に名前が必要)。 */
   createNeedsQuery?: boolean
   loading?: boolean
   disabled?: boolean
@@ -30,10 +30,10 @@ interface CreatableSelectProps {
 }
 
 /**
- * Pulldown có tìm kiếm + tạo mới ngay (combobox creatable).
- * - Hiển thị các lựa chọn hiện có; lọc theo từ khóa.
- * - Khi gõ từ không khớp lựa chọn nào → hiện hàng "+ Tạo '<từ>'".
- * - Bàn phím: ↑/↓ di chuyển, Enter chọn/tạo, Esc đóng.
+ * 検索 + その場で新規作成できる pulldown (creatable combobox)。
+ * - 既存の選択肢を表示し、キーワードで filter。
+ * - どの選択肢にも一致しない入力 → "+ Create '<word>'" 行を表示。
+ * - キーボード: ↑/↓ 移動、Enter 選択/作成、Esc 閉じる。
  */
 export function CreatableSelect({
   options,
@@ -69,7 +69,7 @@ export function CreatableSelect({
   )
   const canCreate = query.trim().length > 0 && !exactMatch
 
-  // Đóng khi click ra ngoài.
+  // 外側 click で閉じる。
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
@@ -79,7 +79,7 @@ export function CreatableSelect({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  // Focus ô tìm kiếm khi mở (chỉ side-effect DOM, không setState).
+  // 開いた時に検索欄へ focus (DOM side-effect のみ、setState なし)。
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus())
   }, [open])
@@ -101,8 +101,8 @@ export function CreatableSelect({
     setOpen(false)
   }
 
-  // Nút "New …" luôn hiển thị: có từ khóa mới → tạo theo từ khóa; ô trống → tạo blank
-  // (deck mở popup) hoặc focus ô tìm kiếm (khi bắt buộc nhập tên, vd category).
+  // "New …" ボタンは常時表示: キーワードあり → その語で作成; 空欄 → blank 作成
+  // (deck は popup を開く) または検索欄へ focus (名前必須の場合、例: category)。
   const handleNewClick = async () => {
     const q = query.trim()
     if (q && !exactMatch) {
@@ -189,7 +189,7 @@ export function CreatableSelect({
             />
           </div>
 
-          {/* Nút tạo LUÔN hiển thị (kể cả khi ô tìm kiếm trống). */}
+          {/* 作成ボタンは常時表示 (検索欄が空でも)。 */}
           <button
             type="button"
             onClick={handleNewClick}

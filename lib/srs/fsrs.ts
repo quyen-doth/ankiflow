@@ -1,12 +1,13 @@
 import { fsrs, createEmptyCard, dateDiffInDays, Rating, State, type Card, type Grade } from 'ts-fsrs'
 import type { ReviewState, SRSRating, SRSQueue } from '@/types'
 
-// FSRS (Free Spaced Repetition Scheduler) — 旧 SM-2 実装を置き換えたもの (Git 履歴参照)。
-// Giữ nguyên public API (`createDefaultReviewState`, `applyRating`, `calculateNextIntervals`,
-// `isDue`, `masteryLevel`) để mọi caller hiện có (webhook-handler.ts, flex-message.ts) không
-// cần sửa. Field "mirror" cũ (ease_factor/interval_days/due_date/lapses/total_reviews/queue)
-// luôn được cập nhật song song từ kết quả FSRS — precedence guard (`sync-srs/route.ts`,
-// đọc `source`/`last_reviewed_at`/`synced_at`) và revlog (`review_events`) không cần đổi gì.
+// FSRS (Free Spaced Repetition Scheduler) — 旧 SM-2 実装の置き換え (Git 履歴参照)。
+// public API (`createDefaultReviewState`, `applyRating`, `calculateNextIntervals`,
+// `isDue`, `masteryLevel`) は維持し、既存 caller (webhook-handler.ts, flex-message.ts) の
+// 変更を不要にする。旧 "mirror" field (ease_factor/interval_days/due_date/lapses/
+// total_reviews/queue) は常に FSRS の結果から並行更新される — precedence guard
+// (`sync-srs/route.ts`、`source`/`last_reviewed_at`/`synced_at` を参照) と
+// revlog (`review_events`) は変更不要。
 
 const f = fsrs()
 
@@ -24,8 +25,8 @@ const FSRS_STATE_TO_QUEUE: Record<State, SRSQueue> = {
   [State.Relearning]: 'relearning',
 }
 
-/** Nghịch đảo công thức migrate (difficultyFromEase) — chỉ để field `ease_factor` mirror có ý
- * nghĩa gần đúng cho reader cũ (không có ý nghĩa thuật toán trong FSRS). */
+/** migrate 式 (difficultyFromEase) の逆関数 — mirror field `ease_factor` が旧 reader に
+ * とって近似的な意味を持つためだけのもの (FSRS のアルゴリズム上の意味はない)。 */
 function easeFromDifficulty(difficulty: number): number {
   return Math.round(((11 - difficulty) / 2.4) * 100) / 100
 }
@@ -34,9 +35,9 @@ function difficultyFromEase(ease: number): number {
   return Math.min(10, Math.max(1, 11 - ease * 2.4))
 }
 
-/** Chuyển ReviewState → FSRS Card. Nếu đã có `state.fsrs` (đã từng rate qua FSRS) → dùng
- * trực tiếp. Nếu chưa (data SM-2 cũ, hoặc state đến từ Anki sync — không có block `fsrs`)
- * → lazy migrate từ field mirror, KHÔNG ghi lại (chỉ ghi khi thực sự applyRating). */
+/** ReviewState → FSRS Card 変換。`state.fsrs` があれば (FSRS で rate 済み) そのまま使用。
+ * なければ (旧 SM-2 データ、または Anki sync 由来で `fsrs` block なし)
+ * → mirror field から lazy migrate。書き戻しはしない (実際に applyRating した時のみ書く)。 */
 function toFsrsCard(state: ReviewState, now: Date): Card {
   const lastReview = state.fsrs?.last_review || state.last_reviewed_at || undefined
   const lastReviewDate = lastReview ? new Date(lastReview) : undefined
@@ -57,7 +58,7 @@ function toFsrsCard(state: ReviewState, now: Date): Card {
     }
   }
 
-  // Lazy migrate: entry SM-2 cũ hoặc vừa sync từ Anki (chưa có block fsrs).
+  // Lazy migrate: 旧 SM-2 entry、または Anki から sync 直後 (fsrs block なし)。
   const stability = Math.max(state.interval_days, 0.5)
   const difficulty = difficultyFromEase(state.ease_factor)
   const fsrsState = state.interval_days > 0 ? State.Review : State.New
@@ -86,8 +87,8 @@ function mergeFsrsResult(prev: ReviewState, updated: Card, rating: SRSRating, no
     last_rating: rating,
     queue: FSRS_STATE_TO_QUEUE[updated.state],
     learning_step: 0,
-    // Rating nội bộ luôn đánh dấu builtin — precedence guard trong sync-srs dựa vào field
-    // này để nhận biết state đã được rate qua LINE/FSRS nội bộ (KHÔNG đổi logic guard).
+    // 内部 rating は常に builtin をマーク — sync-srs の precedence guard はこの field で
+    // LINE/内部 FSRS 経由の rate 済み state を識別する (guard のロジックは変更しない)。
     source: 'builtin',
     synced_at: prev.synced_at,
     fsrs: {

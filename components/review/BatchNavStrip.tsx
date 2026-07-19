@@ -15,8 +15,8 @@ interface BatchNavStripProps {
 }
 
 /**
- * Thanh chip điều hướng các thẻ trong batch. Mỗi chip hiển thị số thứ tự + trạng thái
- * hợp lệ (xanh = đủ field / đỏ = thiếu) theo validateCardEntry. Chip hiện tại nổi bật.
+ * batch 内カードのナビゲーション chip バー。各 chip は番号 + validateCardEntry による
+ * 有効状態 (緑 = field 充足 / 赤 = 不足) を表示。現在の chip は強調される。
  */
 export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSelect }: BatchNavStripProps) {
   return (

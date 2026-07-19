@@ -7,9 +7,9 @@ import { db } from '@/lib/firebase'
 import { useToast } from '@/components/ui/Toast'
 
 /**
- * Hook tái dùng cho danh sách Admin có `sort_order`: nhận thứ tự mới sau khi kéo-thả,
- * cập nhật optimistic vào state rồi ghi lại `sort_order` (1-based) cho cả list bằng writeBatch.
- * Lỗi → toast + refresh() để hoàn tác về dữ liệu DB.
+ * `sort_order` を持つ Admin リスト用の再利用 hook: drag-drop 後の新しい順序を受け取り、
+ * state へ optimistic 更新してから writeBatch でリスト全体の `sort_order` (1-based) を書き戻す。
+ * エラー → toast + refresh() で DB のデータへ巻き戻す。
  */
 export function useSortableList<T extends { id: string }>(
   collectionName: string,
@@ -20,7 +20,7 @@ export function useSortableList<T extends { id: string }>(
 
   return useCallback(
     async (reordered: T[]) => {
-      // Optimistic: cập nhật UI ngay + đồng bộ sort_order trong state.
+      // Optimistic: UI を即更新 + state 内の sort_order を同期。
       setItems(reordered.map((item, i) => ({ ...item, sort_order: i + 1 })))
 
       try {

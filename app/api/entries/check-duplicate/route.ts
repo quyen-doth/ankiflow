@@ -16,7 +16,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     const body = await request.json()
     const { word, words } = body as { word?: string; words?: string[] }
 
-    // Danh sách từ cần kiểm tra: ưu tiên `words` (batch), fallback `word` (single).
+    // チェック対象の単語一覧: `words` (batch) を優先し、`word` (single) に fallback。
     const targets: string[] = Array.isArray(words) ? words : word ? [word] : []
     if (targets.length === 0) {
       return NextResponse.json({ error: 'Missing word' }, { status: 400 })
@@ -24,7 +24,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
 
     const db = getAdminDb()
 
-    // Kiểm tra TOÀN CỤC: quét toàn bộ entries của user, KHÔNG lọc theo deck/ngôn ngữ.
+    // グローバルチェック: user の全 entries を走査し、deck/言語では絞らない。
     const snapshot = await db.collection('entries')
       .where('user_id', '==', uid)
       .get()
@@ -48,13 +48,13 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       return allEntries.filter(e => e.normalized === wl).map(e => e.entry)
     }
 
-    // Batch: trả mảng kết quả theo từng từ.
+    // Batch: 単語ごとの結果配列を返す。
     if (Array.isArray(words)) {
       const results = words.map(w => ({ word: w, duplicates: matchFor(w) }))
       return NextResponse.json({ results })
     }
 
-    // Single: tương thích ngược.
+    // Single: 後方互換。
     const duplicates = matchFor(targets[0])
     return NextResponse.json({
       isDuplicate: duplicates.length > 0,

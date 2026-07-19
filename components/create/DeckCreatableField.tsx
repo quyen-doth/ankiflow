@@ -21,14 +21,14 @@ interface DeckCreatableFieldProps {
   placeholder?: string
   filterFormType?: FormType | string
   filterLanguage?: LanguageCode
-  /** form_type/ngôn ngữ gán cho deck MỚI khi tạo trong trang create. */
+  /** create ページで新規作成する deck に付与する form_type/言語。 */
   createFormType: FormType | string
   createLanguage?: LanguageCode | null
-  /** Tên Anki deck đang gắn vào entry — dùng để hiển thị deck đang chọn khi chưa có deckId. */
+  /** entry に紐付く Anki deck 名 — deckId 未確定時に選択中 deck の表示に使う。 */
   fallbackDeckName?: string
 }
 
-/** Pulldown deck có tìm kiếm + tạo deck mới ngay (qua popup). Dùng trong trang Create. */
+/** 検索 + その場で deck 新規作成できる pulldown (popup 経由)。Create ページで使用。 */
 export function DeckCreatableField({
   value,
   onChangeId,
@@ -76,7 +76,7 @@ export function DeckCreatableField({
 
   const options = filteredDecks.map(d => ({ id: d.id, label: d.display_name }))
 
-  // Hiển thị deck đang chọn: ưu tiên value (deckId); nếu chưa có id thì resolve theo tên Anki deck.
+  // 選択中 deck の表示: value (deckId) を優先; id が無ければ Anki deck 名から resolve。
   const effectiveValue = useMemo(() => {
     if (value) return value
     if (fallbackDeckName) return decks.find(d => d.anki_deck_name === fallbackDeckName)?.id ?? ''

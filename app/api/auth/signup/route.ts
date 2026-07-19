@@ -4,11 +4,11 @@ import { signupSchema } from '@/lib/auth-validation'
 import { isPublicSignupEnabled } from '@/lib/signup-policy'
 
 /**
- * Đăng ký tài khoản qua Admin SDK (server-side) — validation tập trung bằng zod,
- * không dựa vào client. Rate limiting: dựa vào bảo vệ built-in của Firebase Auth
- * (in-memory counter vô dụng trên Vercel serverless — đã ghi trong plan).
- * Sau khi tạo user → seed bộ master data default (decks/categories/card_types/
- * topics + settings prefs) cho workspace riêng của user.
+ * Admin SDK 経由のアカウント登録 (server-side) — validation は zod で一元化し、
+ * client には依存しない。rate limiting は Firebase Auth の built-in 保護に任せる
+ * (Vercel serverless では in-memory counter が機能しない — plan に記載済み)。
+ * user 作成後 → default master data 一式 (decks/categories/card_types/
+ * topics + settings prefs) を user 専用 workspace に seed する。
  */
 export async function POST(request: Request) {
   if (!isPublicSignupEnabled()) {

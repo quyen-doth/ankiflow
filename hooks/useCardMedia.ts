@@ -7,9 +7,9 @@ import { FormType, type Entry } from '@/types'
 import type { ImageItem } from '@/components/preview/ImageSelector'
 
 /**
- * Quản lý ảnh minh họa (Unsplash) + audio TTS cho trang review/sửa flashcard.
- * Dùng chung cho Preview (tạo mới) và History (sửa).
- * `ready` = true khi entry đã load xong → tự fetch ảnh gợi ý & init/gen audio.
+ * flashcard の review/編集画面用の挿絵 (Unsplash) + TTS audio 管理。
+ * Preview (新規作成) と History (編集) で共用。
+ * `ready` = entry の読込完了 → 候補画像の自動 fetch と audio の init/生成を行う。
  */
 export function useCardMedia(
   entry: Partial<Entry>,
@@ -21,7 +21,7 @@ export function useCardMedia(
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [audioLoading, setAudioLoading] = useState(false)
   const toast = useToast()
-  // "Mức trần" — admin tắt (chi phí API) AND user tự tắt trong Preferences.
+  // "上限モデル" — admin の無効化 (API コスト) AND user 自身の Preferences 設定。
   const { effectiveTts, effectiveUnsplash } = useEffectiveMediaFlags()
 
   const keywordOf = useCallback(
@@ -103,7 +103,7 @@ export function useCardMedia(
     [setEntry],
   )
 
-  // Khi entry sẵn sàng: tự lấy ảnh gợi ý & sinh audio nếu chưa có sẵn.
+  // entry 準備完了時: 候補画像を自動取得し、audio が無ければ生成。
   useEffect(() => {
     if (!ready) return
     const timer = setTimeout(() => {
@@ -117,14 +117,14 @@ export function useCardMedia(
   return {
     images,
     imageLoading,
-    // Ưu tiên audio vừa sinh, fallback về audio có sẵn của entry (trang History).
+    // 生成直後の audio を優先し、entry 既存の audio に fallback (History 画面)。
     audioUrl: audioUrl ?? entry.audio_url ?? null,
     audioLoading,
     fetchImages,
     generateAudio,
     handleImageSelect,
     handleImageUpload,
-    // "Mức trần" hiện tại — UI có thể dùng để ẩn/disable nút (chưa thread qua mọi leaf component).
+    // 現在の "上限" — ボタンの非表示/disable に使える (全 leaf component へは未伝播)。
     effectiveTts,
     effectiveUnsplash,
   }
