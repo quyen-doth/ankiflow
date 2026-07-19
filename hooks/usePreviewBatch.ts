@@ -5,15 +5,18 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingBatch, clearPendingBatch } from '@/lib/pendingBatch'
+import { findEntryContentType } from '@/lib/entryCustomFields'
+import { loadUserContentTypes } from '@/lib/userContentTypes'
 import type { PendingBatch } from '@/lib/pendingBatch'
 import { FormType } from '@/types'
-import type { Entry, CardTypeConfig } from '@/types'
+import type { Entry, CardTypeConfig, UserContentType } from '@/types'
 
 type CardTypeItem = Pick<CardTypeConfig, 'id' | 'name' | 'description' | 'code' | 'template'>
 
 interface PreviewBatchState {
   entries: Partial<Entry>[]
   setEntries: React.Dispatch<React.SetStateAction<Partial<Entry>[]>>
+  contentType: UserContentType | null
   cardTypes: CardTypeItem[]
   selectedCardTypeIds: string[]
   setSelectedCardTypeIds: React.Dispatch<React.SetStateAction<string[]>>
@@ -61,6 +64,7 @@ export function mapPendingBatchToPreview(
 export function usePreviewBatch(): PreviewBatchState {
   const { user, loading: authLoading } = useAuth()
   const [entries, setEntries] = useState<Partial<Entry>[]>([])
+  const [contentType, setContentType] = useState<UserContentType | null>(null)
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
   const [selectedCardTypeIds, setSelectedCardTypeIds] = useState<string[]>([])
   const [selectedDeckId, setSelectedDeckId] = useState('')
@@ -73,6 +77,7 @@ export function usePreviewBatch(): PreviewBatchState {
     async function init() {
       setIsLoading(true)
       setError(null)
+      setContentType(null)
 
       const pending = loadPendingBatch()
 
@@ -104,7 +109,11 @@ export function usePreviewBatch(): PreviewBatchState {
           where('user_id', '==', uid),
           where('form_type', '==', pending.formType),
         )
-        const snapshot = await getDocs(q)
+        const [snapshot, contentTypes] = await Promise.all([
+          getDocs(q),
+          loadUserContentTypes(uid),
+        ])
+        setContentType(findEntryContentType(contentTypes, pending.formType) ?? null)
 
         type FetchedCardType = {
           id: string
@@ -151,6 +160,7 @@ export function usePreviewBatch(): PreviewBatchState {
   return {
     entries,
     setEntries,
+    contentType,
     cardTypes,
     selectedCardTypeIds,
     setSelectedCardTypeIds,

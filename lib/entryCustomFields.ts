@@ -45,6 +45,20 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string')
 }
 
+/** Profile の type 変更後も保存済み custom value を失わない形へ明示的に変換する。 */
+function coerceStoredCustomValue(
+  value: unknown,
+  targetType: 'string' | 'string_array',
+): string | string[] {
+  if (targetType === 'string_array') {
+    if (isStringArray(value)) return value.slice()
+    return typeof value === 'string' && value ? [value] : []
+  }
+
+  if (typeof value === 'string') return value
+  return isStringArray(value) ? value.join('\n') : ''
+}
+
 /**
  * Active AI profile と Entry に残る未知 key の和集合から編集可能な追加 field を作る。
  * Profile から削除済みの既存データも Entry 側の走査で保持する。
@@ -68,13 +82,10 @@ export function resolveCustomFields(
         for (const profileField of profile.fields) {
           if (!isAdditionalFieldKey(profileField.key) || seen.has(profileField.key)) continue
           const storedValue = entryData[profileField.key]
-          const value = profileField.type === 'string_array'
-            ? (isStringArray(storedValue) ? storedValue.slice() : [])
-            : (typeof storedValue === 'string' ? storedValue : '')
           fields.push({
             key: profileField.key,
             label: fieldLabel(contentType, profileField.key),
-            value,
+            value: coerceStoredCustomValue(storedValue, profileField.type),
           })
           seen.add(profileField.key)
         }

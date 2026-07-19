@@ -84,6 +84,22 @@ registerUnit<CardPreviewProps>({
       },
     },
     {
+      id: 'custom-array-field',
+      description: 'custom string_array source は改行を保持して card back に render する。',
+      props: {
+        entry: { ...JA_ENTRY, usage_notes: ['formal', 'written'] } as CardPreviewProps['entry'],
+        cardTypes: [{
+          id: 'ct_custom_array',
+          name: 'Custom array field',
+          template: { front: ['word'], back: ['custom:usage_notes'] },
+        }],
+        selectedCardTypeIds: ['ct_custom_array'],
+      },
+      act: async ctx => {
+        await ctx.click('[title="Click to flip"]')
+      },
+    },
+    {
       id: 'probe-minimal-entry',
       probe: true,
       description: 'Probe (gotcha optional fields): entry rỗng — iframe hiện "No fields", không leak "undefined".',
@@ -170,6 +186,16 @@ registerUnit<CardPreviewProps>({
         const html = srcdoc(root)
         if (!html.includes('class="custom-field custom-phon_the"')) return 'custom field class がない'
         return html.includes('喫飯') || 'custom field value がない'
+      },
+    },
+    {
+      id: 'custom-array-preserves-line-breaks',
+      description: 'custom string_array の newline と shared card CSS の pre-line を保持する',
+      onlyFixtures: ['custom-array-field'],
+      check: ({ root }) => {
+        const html = srcdoc(root)
+        if (!html.includes('formal\nwritten')) return 'array item の newline がない'
+        return html.includes('white-space: pre-line') || 'custom field の pre-line CSS がない'
       },
     },
   ],

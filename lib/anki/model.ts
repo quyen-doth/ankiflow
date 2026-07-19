@@ -92,6 +92,10 @@ export const ANKI_CARD_CSS = `
   font-style: italic;
 }
 
+.custom-field {
+  white-space: pre-line;
+}
+
 .collocations {
   text-align: left;
   font-size: 14px;

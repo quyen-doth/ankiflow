@@ -14,10 +14,11 @@ import { useBatchAnkiExport } from "@/hooks/useBatchAnkiExport";
 import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
+import { resolveCustomFields } from "@/lib/entryCustomFields";
 import { languageDisplayName } from "@/lib/studyLanguages";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Entry, CardTypeConfig } from "@/types";
+import type { Entry, CardTypeConfig, UserContentType } from "@/types";
 
 type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">;
 
@@ -28,6 +29,7 @@ type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">
 interface BatchCardReviewerProps {
     entry: Partial<Entry>;
     setEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>>;
+    contentType: UserContentType | null;
     updateField: (field: keyof Entry, value: unknown) => void;
     cardTypes: CardTypeItem[];
     selectedCardTypeIds: string[];
@@ -44,6 +46,7 @@ interface BatchCardReviewerProps {
 function BatchCardReviewer({
     entry,
     setEntry,
+    contentType,
     updateField,
     cardTypes,
     selectedCardTypeIds,
@@ -58,6 +61,7 @@ function BatchCardReviewer({
 }: BatchCardReviewerProps) {
     const media = useCardMedia(entry, setEntry, !!entry);
     const { languages } = useStudyLanguages();
+    const customFields = resolveCustomFields(entry, contentType ?? undefined);
 
     return (
         <FlashcardReviewLayout
@@ -67,6 +71,10 @@ function BatchCardReviewer({
             banner={banner}
             entry={entry}
             updateField={updateField}
+            customFields={customFields}
+            onCustomFieldChange={(key, value) => {
+                setEntry((prev) => ({ ...prev, [key]: value }));
+            }}
             images={media.images}
             imageLoading={media.imageLoading}
             onImageSelect={media.handleImageSelect}
@@ -93,6 +101,7 @@ export default function BatchPreviewPage() {
     const {
         entries,
         setEntries,
+        contentType,
         cardTypes,
         selectedCardTypeIds,
         setSelectedCardTypeIds,
@@ -278,6 +287,7 @@ export default function BatchPreviewPage() {
                 key={activeIndex}
                 entry={activeEntry}
                 setEntry={setActiveEntry}
+                contentType={contentType}
                 updateField={updateActiveField}
                 cardTypes={cardTypes}
                 selectedCardTypeIds={selectedCardTypeIds}

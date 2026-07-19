@@ -107,6 +107,12 @@ export function AiOutputProfilesEditor({
     setSuggestionError(null)
   }
 
+  const invalidatePendingInstructionSuggestion = () => {
+    suggestionRequestIdRef.current += 1
+    setSuggestionLoading(false)
+    setSuggestionError(null)
+  }
+
   const requestInstructionSuggestion = async (fieldIndex: number, field: AiOutputField) => {
     const description = suggestionDescription.trim()
     if (!description) {
@@ -420,7 +426,10 @@ export function AiOutputProfilesEditor({
                   aria-label={`AI output instruction ${fieldIndex}`}
                   rows={2}
                   value={field.instruction}
-                  onChange={(event) => updateField(fieldIndex, { ...field, instruction: event.target.value })}
+                  onChange={(event) => {
+                    if (suggestingFieldIndex === fieldIndex) invalidatePendingInstructionSuggestion()
+                    updateField(fieldIndex, { ...field, instruction: event.target.value })
+                  }}
                 />
                 {suggestingFieldIndex === fieldIndex && (
                   <div className="rounded-[9px] border border-primary/20 bg-primary-bg/40 p-3 flex flex-col gap-2">

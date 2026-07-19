@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { findEntryContentType, resolveCustomFields } from '@/lib/entryCustomFields'
+import { buildHistoryEntryUpdates } from '@/lib/historyEntryUpdates'
 import { FormType } from '@/types'
-import type { ContentType, FormFieldConfig } from '@/types'
+import type { ContentType, Entry, FormFieldConfig } from '@/types'
 
 const field = (fieldKey: string, label: string): FormFieldConfig => ({
   field_key: fieldKey,
@@ -80,6 +81,42 @@ describe('resolveCustomFields', () => {
       { key: 'legacy_note', label: 'Legacy note', value: 'Keep me' },
       { key: 'legacy_items', label: 'Legacy items', value: ['one', 'two'] },
     ])
+  })
+
+  it('profile の field type 変更時に保存済み値を変換し、History save でも失わない', () => {
+    const typeChangedContentType: ContentType = {
+      ...contentType,
+      ai_output_profiles: contentType.ai_output_profiles?.map(profile => ({
+        ...profile,
+        fields: profile.fields.map(outputField => {
+          if (outputField.key === 'phon_the') {
+            return { ...outputField, type: 'string_array' as const }
+          }
+          if (outputField.key === 'related_words') {
+            return { ...outputField, type: 'string' as const, max_items: undefined }
+          }
+          return outputField
+        }),
+      })),
+    }
+    const entry = {
+      form_type: FormType.LANGUAGE,
+      language: 'zh',
+      phon_the: '喫飯',
+      related_words: ['用餐', '吃東西'],
+    } as Partial<Entry> & Record<string, unknown>
+
+    const fields = resolveCustomFields(entry, typeChangedContentType)
+    const updates = buildHistoryEntryUpdates(entry, fields, [], null)
+
+    expect(fields).toEqual([
+      { key: 'phon_the', label: 'Traditional form', value: ['喫飯'] },
+      { key: 'related_words', label: 'Related words', value: '用餐\n吃東西' },
+    ])
+    expect(updates).toMatchObject({
+      phon_the: ['喫飯'],
+      related_words: '用餐\n吃東西',
+    })
   })
 
   it('profile にある未生成 field も編集用の空値として返す', () => {

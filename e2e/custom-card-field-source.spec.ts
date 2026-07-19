@@ -10,6 +10,14 @@ test('Card preview は custom field source の値を裏面に表示する', asyn
   await expect(iframe).toHaveAttribute('srcdoc', /喫飯/)
 })
 
+test('Card preview は custom string array の改行を保持する', async ({ page }) => {
+  await page.goto('/verify/CardPreview/custom-array-field?chrome=0')
+
+  const field = page.frameLocator('iframe[title="Card preview"]').locator('.custom-field')
+  await expect(field).toHaveText('formal\nwritten')
+  await expect(field).toHaveCSS('white-space', 'pre-line')
+})
+
 test('Card Template editor は custom field option を追加して preview する', async ({ page }) => {
   await page.goto('/verify/CardTemplateEditor/custom-options?chrome=0')
 

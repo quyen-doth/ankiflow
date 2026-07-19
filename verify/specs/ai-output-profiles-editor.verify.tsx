@@ -186,6 +186,34 @@ registerUnit({
         await ctx.wait(20)
       },
     },
+    {
+      id: 'suggest-instruction-manual-edit-wins',
+      probe: true,
+      description: 'Suggestion 待機中の手動 instruction 編集を古い response で上書きしない。',
+      props: {},
+      mocks: {
+        fetch: [{
+          match: '/api/content-types/suggest-instruction',
+          response: {
+            delayMs: 50,
+            json: {
+              instruction: 'Stale generated instruction that must be ignored.',
+            },
+          },
+        }],
+      },
+      act: async ctx => {
+        await ctx.click('button[aria-label="Suggest instruction for word"]')
+        await ctx.type(
+          'textarea[aria-label="Instruction suggestion description 0"]',
+          'A concise definition',
+        )
+        clickButtonByText(ctx.root, 'Generate suggestion')
+        await ctx.wait(5)
+        await ctx.type('textarea[aria-label="AI output instruction 0"]', 'Keep my manual edit.')
+        await ctx.wait(70)
+      },
+    },
   ],
   invariants: [
     {
@@ -251,6 +279,16 @@ registerUnit({
       onlyFixtures: ['suggest-instruction-error'],
       check: ({ root }) => root.querySelector('[role="alert"]')?.textContent === 'Instruction service unavailable'
         || 'Suggestion API error が表示されていない',
+    },
+    {
+      id: 'manual-instruction-beats-stale-suggestion',
+      description: '待機中に手動編集した instruction を stale response 後も保持する',
+      onlyFixtures: ['suggest-instruction-manual-edit-wins'],
+      check: ({ root }) => {
+        const instruction = root.querySelector<HTMLTextAreaElement>('textarea[aria-label="AI output instruction 0"]')
+        return instruction?.value === 'Keep my manual edit.'
+          || `instruction="${instruction?.value}"`
+      },
     },
   ],
 })

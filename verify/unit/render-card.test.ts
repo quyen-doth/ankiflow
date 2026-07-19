@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TEMPLATES, getFieldLabel, renderSide } from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
+import { ANKI_CARD_CSS } from '@/lib/anki/model'
 import type { Entry } from '@/types'
 
 const ENTRY: Partial<Entry> = {
@@ -82,7 +83,7 @@ describe('renderSide — custom fields', () => {
     expect(html).toBe('<div class="back"><div class="custom-field custom-phon_the">您好</div></div>')
   })
 
-  it('string[] を改行で連結してレンダリングする', () => {
+  it('string[] を shared CSS で見える改行としてレンダリングする', () => {
     const html = renderSide(
       ['custom:usage_notes'],
       { ...ENTRY, usage_notes: ['formal', 'written'] } as Partial<Entry>,
@@ -90,6 +91,7 @@ describe('renderSide — custom fields', () => {
     )
 
     expect(html).toContain('formal\nwritten')
+    expect(ANKI_CARD_CSS).toMatch(/\.custom-field\s*\{[^}]*white-space:\s*pre-line;/)
   })
 
   it('値がない、または string/string[] 以外なら block を表示しない', () => {
