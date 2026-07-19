@@ -1,6 +1,6 @@
 'use client'
 
-// Side-effect imports — đăng ký toàn bộ verifiers và specs vào registry
+// Side-effect imports — 全 verifiers と specs を registry に登録
 import '@/verify/verifiers'
 import '@/verify/specs'
 
@@ -14,11 +14,11 @@ export default function VerifyUnitPage() {
     installVerifyHandle()
   }, [])
 
-  // Harness chỉ phục vụ dev — production trả 404
+  // Harness は dev 専用 — production では 404 を返す
   if (process.env.NODE_ENV === 'production') notFound()
 
   return (
-    // useSearchParams trong UnitPage yêu cầu Suspense boundary khi prerender
+    // UnitPage の useSearchParams は prerender 時に Suspense boundary を要求する
     <Suspense fallback={null}>
       <UnitPage />
     </Suspense>

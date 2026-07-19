@@ -69,7 +69,7 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
         } catch {
-            /* clipboard unavailable — bỏ qua */
+            /* clipboard 使用不可 — 無視 */
         }
     };
 

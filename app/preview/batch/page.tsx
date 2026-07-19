@@ -21,10 +21,10 @@ import type { Entry, CardTypeConfig } from "@/types";
 
 type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">;
 
-// ── Reviewer cho thẻ đang xem ──────────────────────────────────────────────
-// Tách thành component để bọc key={activeIndex} ở parent → remount khi đổi thẻ,
-// useCardMedia chạy lại cho thẻ mới (lazy). Audio đã sinh được lưu vào entry trong
-// mảng nên quay lại không sinh lại (cached).
+// ── 表示中カードの Reviewer ──────────────────────────────────────────────
+// component に分離して parent 側で key={activeIndex} を付ける → カード切替で remount し、
+// useCardMedia が新カードに対して再実行される (lazy)。生成済み audio は配列内の entry に
+// 保存されるため、戻ってきても再生成しない (cached)。
 interface BatchCardReviewerProps {
     entry: Partial<Entry>;
     setEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>>;
@@ -114,7 +114,7 @@ export default function BatchPreviewPage() {
         [activeIndex, setEntries],
     );
 
-    // setEntry cho useCardMedia: ghi vào phần tử đang active của mảng.
+    // useCardMedia 用の setEntry: 配列の active 要素へ書き込む。
     const setActiveEntry: React.Dispatch<React.SetStateAction<Partial<Entry>>> = useCallback(
         (update) => {
             setEntries((prev) =>
@@ -129,7 +129,7 @@ export default function BatchPreviewPage() {
         [activeIndex, setEntries],
     );
 
-    // Deck & card types DÙNG CHUNG cho cả batch.
+    // Deck & card types は batch 全体で共有。
     const handleDeckChange = useCallback(
         async (deckId: string) => {
             setSelectedDeckId(deckId);
@@ -165,8 +165,8 @@ export default function BatchPreviewPage() {
     const goPrev = useCallback(() => setActiveIndex((i) => Math.max(0, i - 1)), []);
     const goNext = useCallback(() => setActiveIndex((i) => Math.min(total - 1, i + 1)), [total]);
 
-    // Bàn phím: Tab = thẻ sau, Shift+Tab = thẻ trước (khi không gõ trong field);
-    // ⌘↵ mở export; Enter khi modal mở.
+    // キーボード: Tab = 次のカード、Shift+Tab = 前のカード (field 入力中でない時);
+    // ⌘↵ で export を開く; modal 表示中は Enter。
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -177,7 +177,7 @@ export default function BatchPreviewPage() {
             if (e.key !== "Tab") return;
             const el = document.activeElement;
             const typing = el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
-            if (typing) return; // đang chỉnh sửa → Tab chuyển focus field như thường
+            if (typing) return; // 編集中 → Tab は通常どおり field の focus 移動
             e.preventDefault();
             if (e.shiftKey) goPrev();
             else goNext();

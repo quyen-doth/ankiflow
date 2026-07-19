@@ -92,7 +92,7 @@ export default function PreviewPage() {
         }
     }, [entry, selectedCardTypeIds, cardTypes, toast, router]);
 
-    // Validate trước khi mở modal xác nhận — chặn nếu thiếu field cốt lõi / ảnh quá lớn.
+    // 確認 modal を開く前に validate — 必須 field 不足 / 画像サイズ超過なら阻止。
     const requestConfirm = useCallback(() => {
         const errors = validateCardEntry(entry, selectedCardTypeIds);
         if (errors.length > 0) {

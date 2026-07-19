@@ -48,7 +48,7 @@ export default function HistoryDetailPage() {
       if (!id) return
       try {
         const snap = await getDoc(doc(db, 'entries', id))
-        // Ownership check: entry của user khác → hiển thị như không tồn tại
+        // Ownership check: 他 user の entry → 存在しないものとして表示
         if (!snap.exists() || snap.data()?.user_id !== user?.uid) {
           setNotFound(true)
           return
@@ -56,7 +56,7 @@ export default function HistoryDetailPage() {
         const data = { id: snap.id, ...snap.data() } as Entry
         setEntry(data)
 
-        // Card types theo form_type + language của entry (per-user)
+        // entry の form_type + language に応じた card types (per-user)
         try {
           const q = query(
             collection(db, 'card_types'),
