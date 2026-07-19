@@ -110,12 +110,13 @@ describe('validateCardEntry — GENERAL', () => {
 })
 
 describe('formatValidationMessage', () => {
-  it('joins labels into a single Vietnamese sentence', () => {
+  it('labels を一つの英語メッセージにまとめる', () => {
     const msg = formatValidationMessage([
-      { field: 'meaning', label: 'Nghĩa' },
+      { field: 'meaning', label: 'Meaning' },
       { field: 'anki_deck', label: 'Anki Deck' },
     ])
-    expect(msg).toContain('Nghĩa')
+    expect(msg).toContain('Missing: Meaning')
     expect(msg).toContain('Anki Deck')
+    expect(msg).toContain('Complete all required fields before creating.')
   })
 })

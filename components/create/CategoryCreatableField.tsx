@@ -82,10 +82,10 @@ export function CategoryCreatableField({
       const created = await createCategory({ name, formType: resolveDatabaseFormType(formType) })
       setCategories(prev => [...prev, { id: created.id, name: created.name, sort_order: 999 }])
       onChange(created.id)
-      toast.success(`Đã tạo category “${created.name}”`)
+      toast.success(`Created category “${created.name}”`)
     } catch (e) {
       console.error('Create category error:', e)
-      toast.error('Không tạo được category. Vui lòng thử lại.')
+      toast.error('Failed to create the category. Please try again.')
     } finally {
       setCreating(false)
     }

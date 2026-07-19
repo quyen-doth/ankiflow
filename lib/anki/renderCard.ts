@@ -17,7 +17,7 @@ type FieldRenderer = {
 export const FIELD_LABELS: Record<CardFieldSource, string> = {
   word: 'Word / Term',
   reading: 'Reading',
-  han_viet: 'Hán Việt',
+  han_viet: 'Sino-Vietnamese reading',
   meaning: 'Meaning',
   word_type: 'Word type',
   example: 'Example',
@@ -45,7 +45,7 @@ const FIELD_RENDERERS: Record<CardFieldSource, FieldRenderer> = {
     render: (v) => `<div class="reading">${v}</div>`,
   },
   han_viet: {
-    label: 'Hán Việt',
+    label: 'Sino-Vietnamese reading',
     getValue: (e) => e.han_viet || '',
     render: (v) => `<div class="han-viet">${v}</div>`,
   },

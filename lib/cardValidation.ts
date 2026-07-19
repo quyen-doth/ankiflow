@@ -41,12 +41,12 @@ const get = {
 type FieldKey = keyof typeof get
 
 const FIELD_LABELS: Record<FieldKey, string> = {
-  word: 'Từ / Thuật ngữ / Tiêu đề',
-  meaning: 'Nghĩa',
-  reading: 'Phiên âm',
-  word_type: 'Loại từ',
-  example: 'Câu ví dụ',
-  translation: 'Bản dịch câu ví dụ',
+  word: 'Word / Term / Title',
+  meaning: 'Meaning',
+  reading: 'Reading',
+  word_type: 'Word type',
+  example: 'Example sentence',
+  translation: 'Example translation',
 }
 
 /** content の種類ごとの必須コアコンテンツフィールドの集合。 */
@@ -83,14 +83,14 @@ export function validateCardEntry(
     errors.push({ field: 'anki_deck', label: 'Anki Deck' })
   }
   if (!selectedCardTypeIds || selectedCardTypeIds.length === 0) {
-    errors.push({ field: 'card_types', label: 'Card type (chọn ít nhất 1)' })
+    errors.push({ field: 'card_types', label: 'Card type (select at least one)' })
   }
 
   // ローカル画像 (data URL) が大きすぎる → export をブロック。http URL の画像はメディア保存しないのでスキップ。
   const imgBytes = dataUrlBytes(entry.image_url)
   if (imgBytes > MAX_IMAGE_BYTES) {
     const mb = (imgBytes / (1024 * 1024)).toFixed(1)
-    errors.push({ field: 'image', label: `Ảnh minh hoạ quá lớn (${mb}MB, tối đa 0.8MB)` })
+    errors.push({ field: 'image', label: `Illustration is too large (${mb}MB; maximum 0.8MB)` })
   }
 
   return errors
@@ -98,7 +98,7 @@ export function validateCardEntry(
 
 /** エラーラベルを 1 行にまとめて toast に表示する。 */
 export function formatValidationMessage(errors: CardValidationError[]): string {
-  return `Thiếu: ${errors.map(e => e.label).join(', ')}. Vui lòng điền đủ trước khi tạo.`
+  return `Missing: ${errors.map(e => e.label).join(', ')}. Complete all required fields before creating.`
 }
 
 export interface InvalidCard {

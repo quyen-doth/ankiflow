@@ -119,6 +119,59 @@ describe('default global Content Types', () => {
       .toEqual(['default'])
     expect(DEFAULT_CONTENT_TYPES[2].ai_output_profiles).toBeUndefined()
   })
+
+  it('built-in metadata と form field text を英語で固定する', () => {
+    expect(DEFAULT_CONTENT_TYPES.map(contentType => ({
+      code: contentType.code,
+      name: contentType.name,
+      description: contentType.description,
+      fields: contentType.fields.map(field => ({
+        key: field.field_key,
+        label: field.label,
+        placeholder: field.placeholder ?? null,
+      })),
+    }))).toEqual([
+      {
+        code: 'language',
+        name: 'Language',
+        description: 'English, Chinese, and Japanese vocabulary',
+        fields: [
+          { key: 'language', label: 'Language', placeholder: null },
+          { key: 'anki_deck', label: 'Anki Deck', placeholder: null },
+          { key: 'category_id', label: 'Category', placeholder: null },
+          { key: 'tags', label: 'Tags', placeholder: 'Add a tag...' },
+          { key: 'word', label: 'Vocabulary item', placeholder: 'Enter a word...' },
+          { key: 'note', label: 'Note', placeholder: 'Personal note (optional)' },
+          { key: 'card_type_ids', label: 'Card types', placeholder: null },
+        ],
+      },
+      {
+        code: 'it',
+        name: 'IT Vocabulary',
+        description: 'Programming and technology terms',
+        fields: [
+          { key: 'anki_deck', label: 'Anki Deck', placeholder: null },
+          { key: 'topic_ids', label: 'Topics', placeholder: null },
+          { key: 'difficulty', label: 'Difficulty', placeholder: null },
+          { key: 'term', label: 'Term', placeholder: 'e.g. REST API, Docker...' },
+          { key: 'definition', label: 'Short definition', placeholder: 'A brief description...' },
+          { key: 'keywords', label: 'Keywords', placeholder: 'Add a related keyword...' },
+          { key: 'card_type_ids', label: 'Card types', placeholder: null },
+        ],
+      },
+      {
+        code: 'general',
+        name: 'General Knowledge',
+        description: 'Any other content',
+        fields: [
+          { key: 'anki_deck', label: 'Anki Deck', placeholder: null },
+          { key: 'title', label: 'Title / Concept', placeholder: 'Enter a title...' },
+          { key: 'content', label: 'Content', placeholder: 'Detailed content...' },
+          { key: 'tags', label: 'Tags', placeholder: 'Add a tag...' },
+        ],
+      },
+    ])
+  })
 })
 
 describe('Content Type materialization', () => {
