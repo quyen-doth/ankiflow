@@ -55,8 +55,8 @@ export function mapPendingBatchToPreview(
 }
 
 /**
- * Load batch pending (mảng generatedContent + metadata dùng chung) → mảng entries có thể
- * chỉnh sửa, kèm card_types và deck dùng chung. Soi gương usePreviewEntry nhưng cho nhiều thẻ.
+ * pending batch (generatedContent 配列 + 共有 metadata) を読み込み → 編集可能な entries 配列、
+ * 共有の card_types と deck 付き。usePreviewEntry の複数カード版ミラー。
  */
 export function usePreviewBatch(): PreviewBatchState {
   const { user, loading: authLoading } = useAuth()
@@ -82,7 +82,7 @@ export function usePreviewBatch(): PreviewBatchState {
         return
       }
 
-      // Resolve tên Anki deck dùng chung 1 lần.
+      // 共有の Anki deck 名を 1 回だけ resolve。
       let ankiDeckName = pending.deckId || ''
       if (pending.deckId) {
         try {
@@ -138,7 +138,7 @@ export function usePreviewBatch(): PreviewBatchState {
           : fetched.map(ct => ct.id)
         setSelectedCardTypeIds(preSelected)
       } catch (firestoreErr) {
-        console.error('Lỗi fetch card_types:', firestoreErr)
+        console.error('Error fetching card_types:', firestoreErr)
       }
 
       clearPendingBatch()

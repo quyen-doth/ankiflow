@@ -20,13 +20,13 @@ interface DuplicateCheckResult {
   duplicates: DuplicateEntry[]
   showWarning: boolean
   setShowWarning: (v: boolean) => void
-  /** Kiểm tra trùng TOÀN CỤC (không kể deck/ngôn ngữ) cho 1 từ. */
+  /** 1 単語のグローバル重複チェック (deck/言語を問わない)。 */
   checkDuplicate: (word: string) => Promise<boolean>
   /** 重複データの取得のみ (state 副作用なし) — 並列実行用。失敗時は空配列。 */
   fetchDuplicates: (word: string, signal?: AbortSignal) => Promise<DuplicateEntry[]>
   /** 事前取得した結果で DuplicateModal を表示する。 */
   presentDuplicates: (found: DuplicateEntry[]) => void
-  /** Kiểm tra trùng toàn cục cho nhiều từ (batch), trả về danh sách từng từ + bản trùng. */
+  /** 複数単語 (batch) のグローバル重複チェック。単語ごとの重複一覧を返す。 */
   checkDuplicatesBatch: (words: string[], signal?: AbortSignal) => Promise<BatchDuplicateResult[]>
 }
 

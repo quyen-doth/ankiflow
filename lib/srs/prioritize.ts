@@ -33,11 +33,11 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Lọc entries đã due (`review_state.due_date <= now`, entry chưa có review_state coi như
- * due), ưu tiên relearning > lapses cao > ease thấp, rồi lấy ngẫu nhiên `count` phần tử
- * trong top 10 ưu tiên nhất. Dùng chung bởi `/api/notifications/send` và
- * `/api/cron/srs-push` — tránh copy-paste logic prioritize thêm 1 lần nữa (script cũ
- * `scripts/send-notifications.ts` đã copy-paste và bị lệch nhẹ so với bản gốc).
+ * due な entries を抽出し (`review_state.due_date <= now`、review_state 未設定は due 扱い)、
+ * relearning > lapses 多 > ease 低 の順で優先度付けし、上位 10 件から `count` 件を
+ * ランダムに選ぶ。`/api/notifications/send` と `/api/cron/srs-push` で共用 —
+ * prioritize ロジックの copy-paste 再発を防ぐ (旧 `scripts/send-notifications.ts` は
+ * copy-paste して本家と微妙にズレていた)。
  */
 export function pickDueForReview(entries: Entry[], count: number, now: Date = new Date()): Entry[] {
   const due = filterDue(entries, now)
