@@ -6,13 +6,13 @@ import { NavigationSidebar } from '@/components/layout/NavigationSidebar'
 import { UnsavedChangesProvider } from '@/components/providers/UnsavedChangesProvider'
 import { verifyAttrs } from '@/verify/core/contract'
 
-/** Các route auth: không sidebar, không offset — (auth)/layout tự căn giữa nội dung. */
+/** auth 系 route: sidebar なし・offset なし — (auth)/layout が内容を中央寄せする。 */
 const AUTH_ROUTES = ['/login', '/signup']
 
 /**
- * Shell của app: NavigationSidebar + main (offset cho sidebar ở md+).
- * Trên các trang auth, cả sidebar lẫn offset đều bỏ — nội dung chiếm toàn màn hình.
- * (Route group (auth)/layout.tsx nest BÊN TRONG root layout nên không tự thay được shell.)
+ * アプリの Shell: NavigationSidebar + main (md+ では sidebar 分の offset)。
+ * auth 画面では sidebar と offset の両方を外し、内容が全画面を使う。
+ * (Route group (auth)/layout.tsx は root layout の内側に nest されるため、shell 自体は差し替えられない。)
  */
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname()

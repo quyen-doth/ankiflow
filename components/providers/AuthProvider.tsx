@@ -11,18 +11,18 @@ export interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null
-  /** true cho đến khi Firebase khôi phục xong auth state — đợi false rồi mới query theo uid. */
+  /** Firebase の auth state 復元完了まで true — false を待ってから uid で query すること。 */
   loading: boolean
 }
 
-/** Export cho verify harness (runner wrap fixtures với test user) — production dùng AuthProvider. */
+/** verify harness 用 export (runner が fixtures を test user で wrap) — production は AuthProvider を使用。 */
 export const AuthContext = createContext<AuthContextValue>({ user: null, loading: true })
 
 /**
- * Theo dõi Firebase Auth state (client SDK) — chạy song song với session cookie:
- * cookie bảo vệ server/middleware, còn client SDK cần đăng nhập để Firestore
- * Security Rules (Phase D) nhận request.auth khi components query trực tiếp.
- * KHÔNG tự redirect ở đây — route protection là việc của middleware.
+ * Firebase Auth state の監視 (client SDK) — session cookie と並行して動く:
+ * cookie は server/middleware を守り、client SDK のログインは components が直接 query する際に
+ * Firestore Security Rules (Phase D) が request.auth を受け取るために必要。
+ * ここでは redirect しない — route protection は middleware の責務。
  */
 export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [user, setUser] = useState<AuthUser | null>(null)

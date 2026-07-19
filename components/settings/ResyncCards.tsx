@@ -143,7 +143,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
     setConfirmOpen(false)
     setRunning(true)
     try {
-      // 1. Lấy entry đã synced (theo filter) + card_types từ server (server không đụng Anki).
+      // 1. synced 済み entry (filter 適用) + card_types を server から取得 (server は Anki に触れない)。
       const res = await fetch('/api/anki/resync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,7 +170,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
         return
       }
 
-      // 2. Sinh lại note trong Anki (browser → AnkiConnect) cho từng entry.
+      // 2. entry ごとに Anki 側の note を再生成 (browser → AnkiConnect)。
       const client = await getAnkiClientFromSettings()
       let updated = 0
       let skipped = 0
