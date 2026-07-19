@@ -5,6 +5,7 @@ import { GripVertical, X, ChevronDown, Plus } from 'lucide-react'
 import { LanguageType } from '@/types'
 import type { CardFieldSource, CardTemplate, Entry, LanguageCode } from '@/types'
 import { renderSide, DEFAULT_TEMPLATES, getFieldLabel, ALL_FIELD_SOURCES } from '@/lib/anki/renderCard'
+import type { CardTemplateCustomField } from '@/lib/anki/cardTemplateFields'
 import { buildCardHtml, CardIframe } from '@/components/preview/CardHtmlPreview'
 
 const SAMPLE_ENTRIES: Record<string, Partial<Entry>> = {
@@ -55,12 +56,18 @@ const SAMPLE_ENTRIES: Record<string, Partial<Entry>> = {
 interface FieldListProps {
   side: 'front' | 'back'
   fields: CardFieldSource[]
+  customFields?: readonly CardTemplateCustomField[]
   onChange: (fields: CardFieldSource[]) => void
   error?: boolean
 }
 
-function FieldList({ side, fields, onChange, error }: FieldListProps) {
-  const available = ALL_FIELD_SOURCES.filter(f => !fields.includes(f))
+function FieldList({ side, fields, customFields = [], onChange, error }: FieldListProps) {
+  const customLabels = Object.fromEntries(customFields.map(field => [field.key, field.label]))
+  const sources: CardFieldSource[] = [
+    ...ALL_FIELD_SOURCES,
+    ...customFields.map(field => field.source),
+  ]
+  const available = sources.filter(f => !fields.includes(f))
 
   return (
     <div className="flex flex-col gap-2">
@@ -78,12 +85,12 @@ function FieldList({ side, fields, onChange, error }: FieldListProps) {
           <Reorder.Item key={f} value={f} className="list-none">
             <div className="group flex items-center gap-2 px-2.5 py-2 bg-white rounded-[7px] border border-[#e3e3de] hover:border-slate-300 cursor-grab active:cursor-grabbing select-none transition-colors">
               <GripVertical className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
-              <span className="text-[12.5px] font-medium text-ink flex-1 leading-none">{getFieldLabel(f)}</span>
+              <span className="text-[12.5px] font-medium text-ink flex-1 leading-none">{getFieldLabel(f, customLabels)}</span>
               <button
                 type="button"
                 onClick={() => onChange(fields.filter(x => x !== f))}
                 className="w-5 h-5 flex items-center justify-center rounded-full text-slate-300 hover:text-white hover:bg-danger transition-colors flex-shrink-0"
-                aria-label={`Remove ${getFieldLabel(f)}`}
+                aria-label={`Remove ${getFieldLabel(f, customLabels)}`}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -111,7 +118,7 @@ function FieldList({ side, fields, onChange, error }: FieldListProps) {
           >
             <option value="">Add field</option>
             {available.map(f => (
-              <option key={f} value={f}>{getFieldLabel(f)}</option>
+              <option key={f} value={f}>{getFieldLabel(f, customLabels)}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary pointer-events-none" />
@@ -124,11 +131,18 @@ function FieldList({ side, fields, onChange, error }: FieldListProps) {
 interface CardStructureEditorProps {
   code: string
   template: CardTemplate
+  customFields?: readonly CardTemplateCustomField[]
   onChange: (t: CardTemplate) => void
   showErrors?: boolean
 }
 
-export function CardStructureEditor({ code, template, onChange, showErrors }: CardStructureEditorProps) {
+export function CardStructureEditor({
+  code,
+  template,
+  customFields = [],
+  onChange,
+  showErrors,
+}: CardStructureEditorProps) {
   const defaultTemplate = DEFAULT_TEMPLATES[code] ?? { front: ['word'], back: ['meaning'] }
 
   return (
@@ -150,12 +164,14 @@ export function CardStructureEditor({ code, template, onChange, showErrors }: Ca
         <FieldList
           side="front"
           fields={template.front}
+          customFields={customFields}
           onChange={front => onChange({ ...template, front })}
           error={showErrors && template.front.length === 0}
         />
         <FieldList
           side="back"
           fields={template.back}
+          customFields={customFields}
           onChange={back => onChange({ ...template, back })}
           error={showErrors && template.back.length === 0}
         />
@@ -167,10 +183,15 @@ export function CardStructureEditor({ code, template, onChange, showErrors }: Ca
 interface CardPreviewProps {
   template: CardTemplate
   language?: LanguageCode | null
+  customFields?: readonly CardTemplateCustomField[]
 }
 
-export function CardPreview({ template, language }: CardPreviewProps) {
-  const sample = (language && SAMPLE_ENTRIES[language]) || SAMPLE_ENTRIES.default
+export function CardPreview({ template, language, customFields = [] }: CardPreviewProps) {
+  const baseSample = (language && SAMPLE_ENTRIES[language]) || SAMPLE_ENTRIES.default
+  const sample = {
+    ...baseSample,
+    ...Object.fromEntries(customFields.map(field => [field.key, field.sampleValue])),
+  } as Partial<Entry>
 
   const previewFront = renderSide(template.front, sample, { side: 'front', audioFilename: 'preview', audioIcon: true })
   const previewBack = renderSide(template.back, sample, { side: 'back', audioFilename: 'preview', audioIcon: true })
