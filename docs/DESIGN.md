@@ -1,6 +1,6 @@
 # AnkiFlow — Design System v2.0
 
-> **Cognitive Sanctuary** — 1 つの単語を Anki カード一式に変える、静かで速いツールのためのビジュアル言語。
+> **Knowledge in Flow** — 1 つの単語を Anki カード一式に変える、静かで速いツールのためのビジュアル言語。
 > リデザインの方向性: *ニュートラル & ミニマルな基盤、自信に満ちたブランドグリーン 1 色、温かみのあるアンバーのスパーク。*
 > 対象: 単一のテクニカルパワーユーザー。Desktop-first。Local-first。
 
@@ -76,7 +76,7 @@
 
 ## 4. Logo
 
-マークは **折り目のある積み重なったカード** (`gallery-vertical-end`) — フラッシュカードがめくれる瞬間を表現。ワードマーク "AnkiFlow" (Hanken 800) + overline "COGNITIVE SANCTUARY" (JetBrains Mono)。
+マークは **折り目のある積み重なったカード** (`gallery-vertical-end`) — フラッシュカードがめくれる瞬間を表現。ワードマーク "AnkiFlow" (Hanken 800) + overline "KNOWLEDGE IN FLOW" (JetBrains Mono)。
 
 - Default: **Green 700** の角丸タイル (`border-radius:10–13px`) 上に白いアイコン。
 - 許可されるバリエーション: green-on-tint、white-on-ink。それ以外の再配色や引き伸ばしは不可。
@@ -142,4 +142,4 @@ AnkiFlow Settings.dc.html
 
 ---
 
-*AnkiFlow Design System v2.0 · Cognitive Sanctuary · 2026*
+*AnkiFlow Design System v2.0 · Knowledge in Flow · 2026*
