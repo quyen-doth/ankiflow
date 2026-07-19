@@ -24,6 +24,7 @@ import { FormType } from '@/types'
 import type { CardTypeConfig, CardTemplate, LanguageCode } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
+import { cardTemplateSchema } from '@/lib/anki/cardFieldSource'
 import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
 
 /** Slugify name → code (vd "Word → Meaning" → "word_to_meaning"). */
@@ -155,8 +156,9 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     code: !draft.code.trim(),
     front: draft.template.front.length === 0,
     back: draft.template.back.length === 0,
+    template: !cardTemplateSchema.safeParse(draft.template).success,
   }
-  const hasErrors = errors.name || errors.code || errors.front || errors.back
+  const hasErrors = errors.name || errors.code || errors.front || errors.back || errors.template
 
   const openCreate = () => {
     setEditing(null)
@@ -421,6 +423,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
               {showErrors && (errors.front || errors.back) && (
                 <p className="text-overline text-danger mt-2">
                   Each side must have at least one field.
+                </p>
+              )}
+              {showErrors && errors.template && !errors.front && !errors.back && (
+                <p className="text-overline text-danger mt-2">
+                  Card fields must be supported built-in fields or valid custom fields.
                 </p>
               )}
             </div>

@@ -68,6 +68,22 @@ registerUnit<CardPreviewProps>({
       },
     },
     {
+      id: 'custom-field',
+      description: 'custom source は entry の string 値を card back に render する。',
+      props: {
+        entry: { ...JA_ENTRY, phon_the: '喫飯' } as CardPreviewProps['entry'],
+        cardTypes: [{
+          id: 'ct_custom',
+          name: 'Custom field',
+          template: { front: ['word'], back: ['custom:phon_the'] },
+        }],
+        selectedCardTypeIds: ['ct_custom'],
+      },
+      act: async ctx => {
+        await ctx.click('[title="Click to flip"]')
+      },
+    },
+    {
       id: 'probe-minimal-entry',
       probe: true,
       description: 'Probe (gotcha optional fields): entry rỗng — iframe hiện "No fields", không leak "undefined".',
@@ -90,8 +106,12 @@ registerUnit<CardPreviewProps>({
     {
       id: 'tabs-per-card-type',
       description: 'Mỗi card type đã chọn có một tab',
-      check: ({ root }) => {
-        const labels = ['Word → Meaning', 'Meaning → Word']
+      check: ({ root, fixture }) => {
+        const selectedIds = new Set(fixture.props.selectedCardTypeIds ?? [])
+        const labels = (fixture.props.cardTypes ?? [])
+          .filter(cardType => selectedIds.has(cardType.id))
+          .map(cardType => cardType.name)
+        if (labels.length <= 1) return true
         const buttons = Array.from(root.querySelectorAll('button')).map(b => b.textContent)
         const missing = labels.filter(l => !buttons.includes(l))
         return missing.length === 0 || `thiếu tab: ${missing.join(', ')}`
@@ -140,6 +160,16 @@ registerUnit<CardPreviewProps>({
         const html = srcdoc(root)
         if (!html.includes('No fields')) return 'không thấy placeholder "No fields"'
         return !html.includes('undefined') || 'leak chữ "undefined" ra srcdoc'
+      },
+    },
+    {
+      id: 'custom-field-renders',
+      description: 'custom field の class/value が preview HTML に含まれる',
+      onlyFixtures: ['custom-field'],
+      check: ({ root }) => {
+        const html = srcdoc(root)
+        if (!html.includes('class="custom-field custom-phon_the"')) return 'custom field class がない'
+        return html.includes('喫飯') || 'custom field value がない'
       },
     },
   ],

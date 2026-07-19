@@ -97,6 +97,30 @@ registerUnit<Record<string, never>>({
       },
     },
     {
+      id: 'act-reject-invalid-template',
+      description: 'Act: malformed custom source を持つ既存 card type は Save できない。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-invalid',
+            name: 'Invalid template',
+            template: { front: ['word'], back: ['custom:UPPER'] },
+          }],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Invalid template"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(0)
+      },
+    },
+    {
       id: 'probe-missing-optional',
       probe: true,
       description: 'Probe: card type thiếu description + language — render row, không crash.',
@@ -183,6 +207,18 @@ registerUnit<Record<string, never>>({
         const doc = collectionDocs('card_types').find(d => d.id === 'ct-wm')
         if (!doc) return 'mất doc ct-wm'
         return doc.is_active === false || `is_active=${doc.is_active}`
+      },
+    },
+    {
+      id: 'invalid-template-save-blocked',
+      description: '不正 custom source は editor save validation で拒否される',
+      onlyFixtures: ['act-reject-invalid-template'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        if (!text.includes('Card fields must be supported built-in fields or valid custom fields.')) {
+          return 'template validation error が表示されない'
+        }
+        return modalOpen(root) || '不正 template の Save 後に modal が閉じた'
       },
     },
     {

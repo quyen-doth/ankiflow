@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { renderSide } from '@/lib/anki/renderCard'
+import { DEFAULT_TEMPLATES, getFieldLabel, renderSide } from '@/lib/anki/renderCard'
+import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import type { Entry } from '@/types'
 
 const ENTRY: Partial<Entry> = {
@@ -67,5 +68,146 @@ describe('renderSide — core', () => {
   it('有効な field がない → 空文字列を返す', () => {
     const html = renderSide(['collocations', 'image'], ENTRY, { side: 'back' })
     expect(html).toBe('')
+  })
+})
+
+describe('renderSide — custom fields', () => {
+  it('string 値を custom field block としてレンダリングする', () => {
+    const html = renderSide(
+      ['custom:phon_the'],
+      { ...ENTRY, phon_the: '您好' } as Partial<Entry>,
+      { side: 'back' },
+    )
+
+    expect(html).toBe('<div class="back"><div class="custom-field custom-phon_the">您好</div></div>')
+  })
+
+  it('string[] を改行で連結してレンダリングする', () => {
+    const html = renderSide(
+      ['custom:usage_notes'],
+      { ...ENTRY, usage_notes: ['formal', 'written'] } as Partial<Entry>,
+      { side: 'back' },
+    )
+
+    expect(html).toContain('formal\nwritten')
+  })
+
+  it('値がない、または string/string[] 以外なら block を表示しない', () => {
+    expect(renderSide(['custom:phon_the'], ENTRY, { side: 'back' })).toBe('')
+    expect(renderSide(
+      ['custom:phon_the'],
+      { ...ENTRY, phon_the: 42 } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+    expect(renderSide(
+      ['custom:phon_the'],
+      { ...ENTRY, phon_the: ['valid', 42] } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+  })
+})
+
+describe('card field source helpers', () => {
+  it('custom source key を検証して parse する', () => {
+    expect(parseCustomFieldSource('custom:phon_the')).toBe('phon_the')
+    expect(parseCustomFieldSource('word')).toBeNull()
+    expect(parseCustomFieldSource('custom:')).toBeNull()
+    expect(parseCustomFieldSource('custom:UPPER')).toBeNull()
+  })
+
+  it('builtin/custom label を解決する', () => {
+    expect(getFieldLabel('meaning')).toBe('Meaning')
+    expect(getFieldLabel('custom:phon_the')).toBe('Phon the')
+    expect(getFieldLabel('custom:phon_the', { phon_the: 'Traditional form' })).toBe('Traditional form')
+  })
+
+  it.each(['custom:', 'custom:UPPER', 'unknown'])('不正 source %s を template schema が拒否する', source => {
+    expect(cardTemplateSchema.safeParse({ front: ['word'], back: [source] }).success).toBe(false)
+  })
+
+  it('正しい builtin/custom source を template schema が受け入れる', () => {
+    expect(cardTemplateSchema.safeParse({
+      front: ['word'],
+      back: ['meaning', 'custom:phon_the'],
+    }).success).toBe(true)
+  })
+})
+
+describe('DEFAULT_TEMPLATES — backward-compatible golden output', () => {
+  const goldenEntry: Partial<Entry> = {
+    ...ENTRY,
+    han_viet: 'hô lô',
+    collocations: ['say hello', 'hello world'],
+  }
+  const options = { audioFilename: 'voice.mp3', imageFilename: 'image.jpg' }
+  const block = {
+    word: '<div class="word">hello</div>',
+    reading: '<div class="reading">həˈloʊ</div>',
+    han_viet: '<div class="han-viet">hô lô</div>',
+    meaning: '<div class="meaning">xin chào</div>',
+    word_type: '<span class="pos">interjection</span>',
+    example: '<div class="example">Hello, how are you?</div>',
+    example_blank: '<div class="example"><b class="cloze">______</b>, how are you?</div>',
+    translation: '<div class="translation">Xin chào, bạn khỏe không?</div>',
+    collocations: '<ul class="collocations"><li>say hello</li><li>hello world</li></ul>',
+    image: '<div class="media"><img src="image.jpg" alt=""></div>',
+    audio: '[sound:voice.mp3]',
+  }
+  const side = (name: 'front' | 'back', parts: string[]) => (
+    `<div class="${name}">${parts.join('\n')}</div>`
+  )
+  const expected: Record<string, { front: string; back: string }> = {
+    word_to_meaning: {
+      front: side('front', [block.word, block.reading, block.han_viet]),
+      back: side('back', [block.meaning, block.word_type, block.image, block.audio]),
+    },
+    meaning_to_word: {
+      front: side('front', [block.meaning]),
+      back: side('back', [block.word, block.reading, block.han_viet, block.audio]),
+    },
+    audio_to_word: {
+      front: side('front', [block.audio]),
+      back: side('back', [block.word, block.reading, block.han_viet, block.meaning]),
+    },
+    image_to_word: {
+      front: side('front', [block.image]),
+      back: side('back', [block.word, block.reading, block.han_viet, block.meaning, block.audio]),
+    },
+    fill_in_blank: {
+      front: side('front', [block.example_blank]),
+      back: side('back', [block.example, block.translation, block.word, block.audio]),
+    },
+    reading_to_word: {
+      front: side('front', [block.reading]),
+      back: side('back', [block.word, block.han_viet, block.meaning, block.audio]),
+    },
+    word_to_reading: {
+      front: side('front', [block.word, block.han_viet]),
+      back: side('back', [block.reading, block.meaning, block.audio]),
+    },
+    concept_to_def: {
+      front: side('front', [block.word]),
+      back: side('back', [block.meaning, block.example, block.translation, block.audio]),
+    },
+    def_to_concept: {
+      front: side('front', [block.meaning]),
+      back: side('back', [block.word, block.example, block.audio]),
+    },
+    front_to_back: {
+      front: side('front', [block.word]),
+      back: side('back', [block.meaning, block.example, block.translation, block.audio]),
+    },
+  }
+
+  it('全 default template の builtin HTML を変更しない', () => {
+    const rendered = Object.fromEntries(Object.entries(DEFAULT_TEMPLATES).map(([code, template]) => [
+      code,
+      {
+        front: renderSide(template.front, goldenEntry, { ...options, side: 'front' }),
+        back: renderSide(template.back, goldenEntry, { ...options, side: 'back' }),
+      },
+    ]))
+
+    expect(rendered).toEqual(expected)
   })
 })

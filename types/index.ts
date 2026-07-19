@@ -139,7 +139,7 @@ export interface Category {
 
 // ─── Card Template (Anki) ─────────────────────────────
 
-export type CardFieldSource =
+export type BuiltinCardFieldSource =
   | 'word'
   | 'reading'
   | 'han_viet'
@@ -151,6 +151,8 @@ export type CardFieldSource =
   | 'collocations'
   | 'image'
   | 'audio'
+
+export type CardFieldSource = BuiltinCardFieldSource | `custom:${string}`
 
 export interface CardTemplate {
   front: CardFieldSource[]
