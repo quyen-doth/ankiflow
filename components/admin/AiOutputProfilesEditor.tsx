@@ -349,6 +349,14 @@ export function AiOutputProfilesEditor({
           <p className="text-[11px] font-bold uppercase tracking-[0.05em] font-mono text-slate-400">
             Inherited from Default
           </p>
+          {inheritedFields.every(field => excludedKeys.has(field.key)) && (
+            // 既存 profile は移行時に「今まで通りの出力」を保つため全 Default field が
+            // excluded になる。説明がないとデータ破損に見えるので明示する。
+            <p className="text-[11.5px] leading-relaxed text-slate-500">
+              This profile was set up before inheritance existed, so it keeps its previous output
+              exactly. Restore a field to start inheriting it here.
+            </p>
+          )}
           {inheritedFields.map(field => {
             const excluded = excludedKeys.has(field.key)
             // Primary field は必ず生成対象。exclude すると保存時に validation で

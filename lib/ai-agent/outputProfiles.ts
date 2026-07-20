@@ -170,13 +170,17 @@ export function normalizeAiOutputProfiles(
     }
 
     const ownKeys = new Set(profile.fields.map(field => field.key))
+    // Default に存在しない key の exclude は意味を持たない。放置すると
+    // 「Default から削除 → 同じ key を再追加」で古い exclude が生き残り、
+    // 追加したばかりの field が黙って継承されなくなる。
+    const excluded = profile.inherit === true
+      ? (profile.exclude ?? []).filter(key => defaultKeys.includes(key))
+      : defaultKeys.filter(key => !ownKeys.has(key))
     return {
       profile: profile.profile,
       fields,
       inherit: true,
-      exclude: profile.inherit === true
-        ? [...(profile.exclude ?? [])]
-        : defaultKeys.filter(key => !ownKeys.has(key)),
+      exclude: excluded,
     }
   })
 }
@@ -215,14 +219,18 @@ export function resolveEffectiveProfileFields(
 export function parseAiOutputProfiles(input: unknown, primaryFieldKey?: string): AiOutputProfile[] {
   const profiles = normalizeAiOutputProfiles(aiOutputProfilesSchema.parse(input))
   if (primaryFieldKey) {
+    // Primary は own field か継承のどちらかにあればよい。merge 結果を profile ごとに
+    // 組み直す必要はないので、own / default の該当 field だけを直接引く。
+    const defaultPrimary = profiles
+      .find(profile => profile.profile === 'default')
+      ?.fields.find(field => field.key === primaryFieldKey)
+
     for (const profile of profiles) {
       if (profile.exclude?.includes(primaryFieldKey)) {
         throw new Error(`AI output profile "${profile.profile}" cannot exclude primary field "${primaryFieldKey}"`)
       }
-      const primaryField = effectiveProfileFields(
-        profiles,
-        profile.profile === 'default' ? null : profile.profile,
-      ).find(field => field.key === primaryFieldKey)
+      const ownPrimary = profile.fields.find(field => field.key === primaryFieldKey)
+      const primaryField = ownPrimary ?? (profile.profile === 'default' ? undefined : defaultPrimary)
       if (!primaryField) {
         throw new Error(`AI output profile "${profile.profile}" must include primary field "${primaryFieldKey}"`)
       }

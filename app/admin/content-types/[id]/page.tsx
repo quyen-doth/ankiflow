@@ -19,7 +19,8 @@ export default function EditContentTypePage({ params }: { params: Promise<{ id: 
   const { id } = use(params)
   return (
     <Suspense>
-      <EditContentTypeRoute id={decodeURIComponent(id)} />
+      {/* Next.js は動的 segment を decode 済みで渡す — 二重 decode は '%' を含む ID で URIError になる。 */}
+      <EditContentTypeRoute id={id} />
     </Suspense>
   )
 }

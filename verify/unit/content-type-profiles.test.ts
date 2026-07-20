@@ -90,6 +90,39 @@ describe('materializeContentTypeAiProfiles', () => {
     ])
   })
 
+  it('Default から削除した key を再追加すると継承が復活する (stale exclude を残さない)', () => {
+    const field = (key: string) => ({ key, type: 'string' as const, instruction: key })
+    // legacy → normalize で zh は ipa を exclude する。
+    let profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word'), field('ipa')] },
+      { profile: 'zh', fields: [field('word'), field('pinyin')] },
+    ])
+    expect(profiles[1].exclude).toEqual(['ipa'])
+
+    // Default から ipa を削除 → 意味を失った exclude は消える。
+    profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word')] },
+      profiles[1],
+    ])
+    expect(profiles[1].exclude).toEqual([])
+
+    // 同じ key を再追加 → 今度は継承される。
+    profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word'), field('ipa')] },
+      profiles[1],
+    ])
+    expect(resolveEffectiveProfileFields(profiles, 'zh').map(output => output.key))
+      .toEqual(['word', 'pinyin', 'ipa'])
+  })
+
+  it('snake_case でない primary field key は materialize が throw する (呼び出し側が捕捉する契約)', () => {
+    expect(() => materializeContentTypeAiProfiles({
+      code: 'medical_terms',
+      name: 'Medical',
+      fields: [field('Question', 0)],
+    })).toThrow()
+  })
+
   it('own field は Default を上書きし、exclude field は継承しない', () => {
     const profiles = [
       {

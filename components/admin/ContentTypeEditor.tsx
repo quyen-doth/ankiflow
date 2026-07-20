@@ -20,7 +20,10 @@ import {
   cloneStoredContentTypeAiProfiles,
   materializeContentTypeAiProfiles,
 } from '@/lib/ai-agent/contentTypeProfiles'
-import { parseAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
+import {
+  AI_OUTPUT_FIELD_KEY_PATTERN,
+  parseAiOutputProfiles,
+} from '@/lib/ai-agent/outputProfiles'
 import {
   GLOBAL_CONTENT_TYPES_COLLECTION,
   USER_CONTENT_TYPES_COLLECTION,
@@ -215,18 +218,27 @@ export function ContentTypeEditor({
     }
 
     const primaryFieldKey = getContentTypePrimaryFieldKey(validation.data)
-    let profilesToPersist = aiOutputProfiles
     const usesAiGeneration = resolveContentTypeFormType(validation.data.code) !== FormType.GENERAL
-    if (usesAiGeneration && profilesToPersist.length === 0) {
-      profilesToPersist = materializeContentTypeAiProfiles(validation.data).profiles
+
+    // `field_key` の form validation は snake_case を強制しないが、AI output key は強制する。
+    // ここで弾かないと materialize が Zod error を投げ、Save が無反応になる。
+    if (usesAiGeneration && !AI_OUTPUT_FIELD_KEY_PATTERN.test(primaryFieldKey)) {
+      toast.error(`Primary field key "${primaryFieldKey}" must be lowercase snake_case to be used as an AI output field.`)
+      return
     }
-    if (profilesToPersist.length > 0) {
-      try {
-        profilesToPersist = parseAiOutputProfiles(profilesToPersist, primaryFieldKey)
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Invalid AI output profiles.')
-        return
+
+    let profilesToPersist = aiOutputProfiles
+    // materialize も parse も throw しうる — 片方だけ守ると Save が黙って死ぬ。
+    try {
+      if (usesAiGeneration && profilesToPersist.length === 0) {
+        profilesToPersist = materializeContentTypeAiProfiles(validation.data).profiles
       }
+      if (profilesToPersist.length > 0) {
+        profilesToPersist = parseAiOutputProfiles(profilesToPersist, primaryFieldKey)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Invalid AI output profiles.')
+      return
     }
     const completeData = {
       ...validation.data,
