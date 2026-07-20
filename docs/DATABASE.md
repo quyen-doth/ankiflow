@@ -269,16 +269,40 @@ study language と一致する profile を優先し、存在しない場合は `
 | Field | Type | 説明 |
 |---|---|---|
 | `profile` | string | `default` または lowercase language subtag。document 内で unique、`default` は必須 |
-| `fields` | object[] | 1〜30 件の output field 宣言 |
+| `inherit` | `true`? | 言語 profile は常に `true`。`false` は不正値として schema が拒否する。`default` には付与しない |
+| `exclude` | string[]? | この言語では継承しない Default field key。`default` には付与しない |
+| `fields` | object[] | output field 宣言。`default` は 1 件以上、言語 profile は 0 件でも可 (全継承) |
 | `fields[].key` | string | lowercase snake_case、profile 内で unique。application metadata の reserved key は不可 |
 | `fields[].type` | string | `string` / `string_array` |
 | `fields[].instruction` | string | 1〜300 文字。`{output_language}` / `{study_language}` placeholder を使用可能 |
 | `fields[].include_when` | string? | `always` (default) / `output_vi` |
 | `fields[].max_items` | number? | `string_array` のみ、1〜20。未指定時は engine default 10 |
 
-すべての profile は Content Type の primary field (`word` / `term` / custom primary) を unconditional field として
-含める必要があります。Engine は tool schema を `additionalProperties:false` で生成し、primary value は model output
-ではなく request input から復元します。Built-in Language は `default` / `en` / `zh` / `ja`、IT は `default` を seed。
+#### 継承モデル (2026-07-20 以降)
+
+言語 profile は `default` を **置き換えず継承** します。実効 field は:
+
+```
+effective(lang) = [...lang.fields, ...default.fields.filter(f ∉ lang.keys && f ∉ lang.exclude)]
+```
+
+- 同じ key が両方にある場合は言語 profile 側が **上書き** し、言語 profile の順序を保つ。
+- Default に field を追加すると、`exclude` していない全言語へ自動的に波及する。
+- `inherit` / `exclude` を持たない **legacy document** は読み取り時に `normalizeAiOutputProfiles` が
+  `exclude = defaultKeys \ ownKeys` を導出する。既存データではこれが Default 専用 field を丸ごと覆うため、
+  **AI 出力は移行前と完全に同一**になる (built-in `zh` が `ipa` を、`en` が `level` / `related_words` を
+  意図的に持たない挙動を保つ)。この設計により **Firestore migration は不要** で、`inherit` / `exclude` は
+  次回 editor 保存時にはじめて書き込まれる。
+- 正規化は **順序に依存する**。Default を編集する前に normalize しなければ、追加したばかりの field が
+  `exclude` に取り込まれてしまう。したがって `materializeContentTypeAiProfiles` と
+  `cloneStoredContentTypeAiProfiles` の両方が読み取り境界で normalize する。
+- `cloneAiOutputProfiles` は `inherit` / `exclude` を保持する。user snapshot 生成 (`materializeUserContentType`)
+  や inline test 生成もこの helper を経由すること — 手書きの `{ profile, fields }` map は metadata を落とす。
+
+すべての profile は Content Type の primary field (`word` / `term` / custom primary) を **実効 field** として
+含める必要があります (継承でも可)。primary を `exclude` することはできません。Engine は tool schema を
+`additionalProperties:false` で生成し、primary value は model output ではなく request input から復元します。
+Built-in Language は `default` / `en` / `zh` / `ja`、IT は `default` を seed。
 General は AI API を使用しないため profile を持ちません。
 
 Profile がない document は editor と runtime の両方で built-in または generic fallback を materialize し、
