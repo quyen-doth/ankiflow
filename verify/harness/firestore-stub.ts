@@ -51,7 +51,7 @@ interface ArrayRemoveSentinel {
 let store = new Map<string, DocSeed[]>()
 let autoId = 0
 
-function maybeThrow(operation: 'addDoc' | 'updateDoc', collectionName: string): void {
+function maybeThrow(operation: 'getDocs' | 'addDoc' | 'updateDoc', collectionName: string): void {
   const failure = (store.get('__verify_failures__') ?? []).find(doc => (
     doc.operation === operation && doc.collection === collectionName
   ))
@@ -161,6 +161,7 @@ export async function getDocs(source: CollectionRef | QueryRef): Promise<{
   size: number
 }> {
   const name = source.__kind === 'query' ? source.collection : source.name
+  maybeThrow('getDocs', name)
   const constraints = source.__kind === 'query' ? source.constraints : []
   const docs = applyConstraints(store.get(name) ?? [], constraints).map(toSnapshotDoc)
   return { docs, empty: docs.length === 0, size: docs.length }

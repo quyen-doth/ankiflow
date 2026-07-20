@@ -16,15 +16,15 @@ import { Modal } from '@/components/ui/Modal'
 import { Toggle } from '@/components/ui/Toggle'
 import { Input, FieldWrapper, Select, Textarea } from '@/components/ui/FormField'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
-import { Plus, Pencil, Trash2, Search, ChevronDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, ChevronDown, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useSortableList } from '@/hooks/useSortableList'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { CardTypeConfig, CardTemplate, ContentType, LanguageCode } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
-import { DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
-import { cardTemplateSchema } from '@/lib/anki/cardFieldSource'
+import { DEFAULT_TEMPLATES, getFieldLabel } from '@/lib/anki/renderCard'
+import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import { resolveCardTemplateCustomFields } from '@/lib/anki/cardTemplateFields'
 import { loadGlobalContentTypes, loadUserContentTypes } from '@/lib/userContentTypes'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
@@ -83,6 +83,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
   const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
+  const [contentTypesLoaded, setContentTypesLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CardTypeConfig | null>(null)
@@ -122,6 +123,18 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     draft.language === NO_LANGUAGE ? null : draft.language,
   ), [contentTypes, draft.form_type, draft.language])
 
+  const unavailableTemplateFields = useMemo(() => {
+    const availableSources = new Set<string>(customFields.map(field => field.source))
+    const seen = new Set<string>()
+
+    return [...draft.template.front, ...draft.template.back].flatMap(source => {
+      const customKey = parseCustomFieldSource(source)
+      if (!customKey || availableSources.has(source) || seen.has(source)) return []
+      seen.add(source)
+      return [getFieldLabel(source)]
+    })
+  }, [customFields, draft.template.back, draft.template.front])
+
   useEffect(() => {
     if (authLoading || !ownerId) return
     async function fetchCardTypes() {
@@ -150,11 +163,15 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     const contentTypeOwnerId = ownerId
 
     async function fetchContentTypes() {
+      setContentTypesLoaded(false)
       try {
         const loaded = contentTypeOwnerId === DEFAULTS_OWNER_ID
           ? await loadGlobalContentTypes()
           : await loadUserContentTypes(contentTypeOwnerId)
-        if (!cancelled) setContentTypes(loaded)
+        if (!cancelled) {
+          setContentTypes(loaded)
+          setContentTypesLoaded(true)
+        }
       } catch (error) {
         if (cancelled) return
         console.error('Error fetching content types for card templates:', error)
@@ -444,6 +461,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
                     <option key={language.value} value={language.value}>{language.label}</option>
                   ))}
                 </Select>
+                {draft.form_type === FormType.LANGUAGE && (
+                  <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-400">
+                    Language-specific output fields are only available when a language is selected. &apos;All&apos; shows Default fields only.
+                  </p>
+                )}
               </FieldWrapper>
             </div>
 
@@ -455,6 +477,15 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
                 showErrors={showErrors}
                 onChange={template => setDraft(d => ({ ...d, template }))}
               />
+              {contentTypesLoaded && unavailableTemplateFields.length > 0 && (
+                <div role="alert" className="mt-3 flex items-start gap-2 rounded-[7px] border border-[#efe0c6] bg-[#faf3e6] px-3 py-2.5 text-[#8a5a12]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <p className="text-[12px] leading-relaxed">
+                    <span className="font-semibold">Unavailable for the current selection: {unavailableTemplateFields.join(', ')}.</span>{' '}
+                    These fields remain in the card structure, but their AI output may be empty.
+                  </p>
+                </div>
+              )}
               {showErrors && (errors.front || errors.back) && (
                 <p className="text-overline text-danger mt-2">
                   Each side must have at least one field.

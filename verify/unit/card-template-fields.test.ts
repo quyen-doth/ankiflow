@@ -80,6 +80,66 @@ describe('resolveCardTemplateCustomFields', () => {
     ).map(field => field.key)).toEqual(['default_note'])
   })
 
+  it('language 固有 field は選択した language だけに表示する', () => {
+    const contentType = {
+      ...languageContentType,
+      ai_output_profiles: [
+        profile('default', [
+          { key: 'word', type: 'string', instruction: 'Word' },
+        ]),
+        {
+          ...profile('zh', [
+            { key: 'word', type: 'string', instruction: 'Word' },
+            { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
+          ]),
+          inherit: true as const,
+          exclude: [],
+        },
+      ],
+    }
+
+    expect(resolveCardTemplateCustomFields(
+      [contentType],
+      FormType.LANGUAGE,
+      'zh',
+    ).map(field => field.key)).toEqual(['phon_the'])
+    expect(resolveCardTemplateCustomFields(
+      [contentType],
+      FormType.LANGUAGE,
+      null,
+    )).toEqual([])
+  })
+
+  it('Default custom field は All と選択した language の両方に表示する', () => {
+    const contentType = {
+      ...languageContentType,
+      ai_output_profiles: [
+        profile('default', [
+          { key: 'word', type: 'string', instruction: 'Word' },
+          { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
+        ]),
+        {
+          ...profile('zh', [
+            { key: 'word', type: 'string', instruction: 'Word' },
+          ]),
+          inherit: true as const,
+          exclude: [],
+        },
+      ],
+    }
+
+    expect(resolveCardTemplateCustomFields(
+      [contentType],
+      FormType.LANGUAGE,
+      'zh',
+    ).map(field => field.key)).toEqual(['phon_the'])
+    expect(resolveCardTemplateCustomFields(
+      [contentType],
+      FormType.LANGUAGE,
+      null,
+    ).map(field => field.key)).toEqual(['phon_the'])
+  })
+
   it('明示的な language inheritance は Default custom field と own field を両方返す', () => {
     const inheritedContentType = {
       ...languageContentType,
