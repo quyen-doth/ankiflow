@@ -125,6 +125,23 @@ describe('resolveCustomFields', () => {
       { key: 'related_words', label: 'Related words', value: [] },
     ])
   })
+
+  it('明示的に継承した Default custom field を language entry の編集対象に含める', () => {
+    const inheritedContentType: ContentType = {
+      ...contentType,
+      ai_output_profiles: contentType.ai_output_profiles?.map(profile => (
+        profile.profile === 'zh'
+          ? { ...profile, inherit: true as const, exclude: [] }
+          : profile
+      )),
+    }
+
+    expect(resolveCustomFields({ language: 'zh' }, inheritedContentType)).toEqual([
+      { key: 'phon_the', label: 'Traditional form', value: '' },
+      { key: 'related_words', label: 'Related words', value: [] },
+      { key: 'default_note', label: 'Default note', value: '' },
+    ])
+  })
 })
 
 describe('findEntryContentType', () => {

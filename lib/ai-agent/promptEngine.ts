@@ -4,7 +4,7 @@ import { getLanguageProfile } from '@/lib/ai-agent/languageProfiles'
 import {
   DEFAULT_AI_ARRAY_MAX_ITEMS,
   parseAiOutputProfiles,
-  selectAiOutputProfile,
+  resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
 import { TOOL_NAME, toToolInputSchema } from '@/lib/ai-agent/card-spec'
 import type { AiOutputProfile } from '@/types'
@@ -52,9 +52,8 @@ function activeFields(
   primaryStudyLanguage: string | null,
   outputLanguageCode: string,
 ) {
-  const profile = selectAiOutputProfile(profiles, primaryStudyLanguage)
   const outputPrimary = primaryLanguageSubtag(outputLanguageCode)
-  return profile.fields.filter(outputField => (
+  return resolveEffectiveProfileFields(profiles, primaryStudyLanguage).filter(outputField => (
     outputField.include_when !== 'output_vi' || outputPrimary === 'vi'
   ))
 }

@@ -1,4 +1,5 @@
 import { resolveContentTypeFormType, resolveRuntimeContentTypeCode } from '@/lib/contentTypes'
+import { cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import { inferLanguageDisplayName } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
 import type { AiOutputProfile, FormFieldConfig, StudyLanguage } from '@/types'
@@ -51,10 +52,7 @@ export function buildTestGenerationRequest({
         ...field,
         ...(field.options ? { options: field.options.slice() } : {}),
       })),
-      ai_output_profiles: profiles.map(profile => ({
-        profile: profile.profile,
-        fields: profile.fields.map(field => ({ ...field })),
-      })),
+      ai_output_profiles: cloneAiOutputProfiles(profiles),
     },
   }
 }

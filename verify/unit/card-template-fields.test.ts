@@ -80,6 +80,28 @@ describe('resolveCardTemplateCustomFields', () => {
     ).map(field => field.key)).toEqual(['default_note'])
   })
 
+  it('明示的な language inheritance は Default custom field と own field を両方返す', () => {
+    const inheritedContentType = {
+      ...languageContentType,
+      ai_output_profiles: languageContentType.ai_output_profiles?.map(candidate => (
+        candidate.profile === 'zh'
+          ? { ...candidate, inherit: true as const, exclude: [] }
+          : candidate
+      )),
+    }
+
+    expect(resolveCardTemplateCustomFields(
+      [inheritedContentType],
+      FormType.LANGUAGE,
+      'zh',
+    ).map(field => field.key)).toEqual(['phon_the', 'related_words', 'default_note'])
+    expect(resolveCardTemplateCustomFields(
+      [inheritedContentType],
+      FormType.LANGUAGE,
+      null,
+    ).map(field => field.key)).toEqual(['default_note'])
+  })
+
   it('route が不一致、inactive、または profile が不正なら候補を返さない', () => {
     expect(resolveCardTemplateCustomFields([languageContentType], FormType.IT, 'zh')).toEqual([])
     expect(resolveCardTemplateCustomFields([

@@ -2,7 +2,7 @@ import { materializeContentTypeAiProfiles } from '@/lib/ai-agent/contentTypeProf
 import {
   AI_OUTPUT_FIELD_KEY_PATTERN,
   RESERVED_AI_OUTPUT_KEYS,
-  selectAiOutputProfile,
+  resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
 import { isBuiltinRenderedOutputKey } from '@/lib/anki/cardTemplateFields'
 import { getFieldLabel } from '@/lib/anki/renderCard'
@@ -75,11 +75,11 @@ export function resolveCustomFields(
     try {
       const materialized = materializeContentTypeAiProfiles(contentType)
       if (materialized.profiles.length > 0) {
-        const profile = selectAiOutputProfile(
+        const profileFields = resolveEffectiveProfileFields(
           materialized.profiles,
           entry.language ? primaryLanguageSubtag(entry.language) : null,
         )
-        for (const profileField of profile.fields) {
+        for (const profileField of profileFields) {
           if (!isAdditionalFieldKey(profileField.key) || seen.has(profileField.key)) continue
           const storedValue = entryData[profileField.key]
           fields.push({
