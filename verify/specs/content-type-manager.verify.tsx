@@ -71,7 +71,7 @@ const SEED = {
 
 function clickEditFirst(root: HTMLElement): void {
   const btn = root.querySelector<HTMLButtonElement>('button[aria-label^="Edit fields"]')
-  if (!btn) throw new Error('không tìm thấy nút Edit fields')
+  if (!btn) throw new Error('要素が見つかりません')
   btn.click()
 }
 
@@ -89,7 +89,7 @@ registerUnit<VerifyProps>({
   fixtures: [
     {
       id: 'loaded',
-      description: '2 content type, cột Fields hiển thị số field.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -124,7 +124,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'act-toggle-active',
-      description: 'Act: click badge Active row đầu → updateDoc lật is_active sang false.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -135,13 +135,13 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'act-delete',
-      description: 'Act: click Delete row đầu → confirm modal → Delete → deleteDoc xóa ct-lang.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
         await ctx.wait(50)
         const del = ctx.root.querySelector<HTMLButtonElement>('button[aria-label^="Delete content type"]')
-        if (!del) throw new Error('không tìm thấy nút Delete content type')
+        if (!del) throw new Error('要素が見つかりません')
         del.click()
         await ctx.wait(0)
         clickButtonByText(ctx.root, 'Delete')
@@ -270,7 +270,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh ContentTypeManager',
+      description: '検証ケース。',
       check: ({ contract }) =>
         contract.unit === 'ContentTypeManager' || `contract.unit="${contract.unit}"`,
     },
@@ -308,28 +308,28 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'fields-count-shown',
-      description: 'Cột Fields hiển thị đúng số field của mỗi content type',
+      description: '検証ケース。',
       onlyFixtures: ['loaded'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
         // ct-lang は language invariant を含む 3 fields、ct-it は 1 field。
-        return (text.includes('3') && text.includes('1')) || 'không thấy số field'
+        return (text.includes('3') && text.includes('1')) || '表示が見つかりません'
       },
     },
     {
       id: 'empty-message',
-      description: 'Không có doc: empty message',
+      description: '検証ケース。',
       onlyFixtures: ['empty'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('No content types yet.') || 'không thấy empty message',
+        (root.textContent ?? '').includes('No content types yet.') || '表示が見つかりません',
     },
     {
       id: 'toggle-flips-active',
-      description: 'Toggle: doc ct-lang đảo is_active sang false',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-active'],
       check: () => {
         const doc = collectionDocs('user_content_types').find(d => d.id === 'ct-lang')
-        if (!doc) return 'mất doc ct-lang'
+        if (!doc) return 'doc が消えています ct-lang'
         return doc.is_active === false || `is_active=${doc.is_active}`
       },
     },
@@ -341,7 +341,7 @@ registerUnit<VerifyProps>({
         const docs = collectionDocs('user_content_types')
         const ownDocs = docs.filter(doc => doc.user_id === 'test-user')
         if (ownDocs.length !== 1) return `ownDocs=${ownDocs.length}, expected=1`
-        if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang vẫn còn trong store'
+        if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang まだ残っています trong store'
         if (!docs.find(d => d.id === 'other-user-type')) return '他 user doc まで削除された'
         return !root.querySelector('[data-verify-unit="Modal"][data-verify-open="true"]')
           || 'delete modal vẫn mở sau Delete'

@@ -2,11 +2,11 @@ import { z } from 'zod'
 
 /**
  * Schema cho callback props (onChange, onRemove...).
- * zod 4 đã đổi API z.function() — không còn dùng được như ZodType trong
- * object schema, nên chuẩn hóa toàn bộ specs qua helper này.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export const fn = <T extends (...args: never[]) => unknown>() =>
   z.custom<T>(v => typeof v === 'function')
 
-/** Schema cho props kiểu React.ReactNode — schema verifier không validate vDOM */
+/** React.ReactNode 型 props 用 schema — schema verifier は vDOM を validate しない */
 export const reactNode = () => z.any()

@@ -10,7 +10,7 @@ import { FormType, LanguageType } from '@/types'
 
 function makeEntry(overrides: Partial<PendingEntry> = {}): PendingEntry {
   return {
-    generatedContent: { word: 'serendipity', meaning_vi: 'sự tình cờ may mắn' },
+    generatedContent: { word: 'serendipity', meaning_vi: '幸運な偶然' },
     formType: FormType.LANGUAGE,
     language: LanguageType.ENGLISH,
     deckId: 'd1',

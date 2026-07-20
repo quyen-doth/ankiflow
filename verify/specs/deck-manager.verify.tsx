@@ -35,14 +35,14 @@ const SEED = {
 registerUnit<Record<string, never>>({
   id: 'DeckManager',
   title: 'DeckManager',
-  description: 'Admin CRUD decks: create cần cả anki_deck_name + display_name, lưu form_type enum (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: () => <DeckManager />,
   propsSchema: z.object({}),
   fixtures: [
     {
       id: 'loaded',
-      description: '2 deck load từ stub, deck không có language hiển thị "—".',
+      description: 'stub から 2 deck を load し、language なし deck は "—" を表示する。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -71,7 +71,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-create',
-      description: 'Act: mở modal → điền Anki Deck Name + Display Name → Save → addDoc (form_type enum, default_card_type_ids=[]).',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -86,7 +86,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-toggle-active',
-      description: 'Act: click badge Active row đầu → updateDoc lật is_active.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -98,7 +98,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'probe-missing-language',
       probe: true,
-      description: 'Probe: deck thiếu language — cột Language hiển thị "—", không crash.',
+      description: 'Probe: language 不足 deck は Language column に "—" を表示し、crash しない。',
       props: {},
       mocks: {
         firestore: {
@@ -122,12 +122,12 @@ registerUnit<Record<string, never>>({
   invariants: [
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh DeckManager',
+      description: '検証ケース。',
       check: ({ contract }) => contract.unit === 'DeckManager' || `contract.unit="${contract.unit}"`,
     },
     {
       id: 'rows-match-store',
-      description: 'Số row bảng = số doc trong store',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'empty'],
       check: ({ root }) => {
         const rows = tableRows(root)
@@ -137,10 +137,10 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'empty-message',
-      description: 'Không có doc: empty message',
+      description: '検証ケース。',
       onlyFixtures: ['empty'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('No decks yet.') || 'không thấy empty message',
+        (root.textContent ?? '').includes('No decks yet.') || '表示が見つかりません',
     },
     {
       id: 'create-modal-opens',
@@ -148,42 +148,42 @@ registerUnit<Record<string, never>>({
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
-        return modalOpen(root) || 'modal không mở'
+        return modalOpen(root) || 'modal が開いていません'
       },
     },
     {
       id: 'create-persists-doc',
-      description: 'Save: doc mới đủ trường, form_type enum hợp lệ, default_card_type_ids=[], modal đóng',
+      description: '検証ケース。',
       onlyFixtures: ['act-create'],
       check: ({ root }) => {
         const docs = collectionDocs('decks')
         if (docs.length !== 3) return `store=${docs.length}, expected=3`
         const created = docs.find(d => d.display_name === 'Japanese Vocab')
-        if (!created) return 'không tìm thấy doc vừa tạo'
+        if (!created) return '要素が見つかりません'
         if (created.anki_deck_name !== 'AnkiFlow::Japanese') return `anki_deck_name=${created.anki_deck_name}`
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
-        if (!Array.isArray(created.default_card_type_ids)) return 'thiếu default_card_type_ids'
+        if (!Array.isArray(created.default_card_type_ids)) return '不足しています'
         return !modalOpen(root) || 'modal vẫn mở sau Save'
       },
     },
     {
       id: 'toggle-flips-active',
-      description: 'Toggle: doc English đảo is_active sang false',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-active'],
       check: () => {
         const doc = collectionDocs('decks').find(d => d.id === 'd-en')
-        if (!doc) return 'mất doc d-en'
+        if (!doc) return 'doc が消えています d-en'
         return doc.is_active === false || `is_active=${doc.is_active}`
       },
     },
     {
       id: 'missing-language-graceful',
-      description: 'Thiếu language: row render, không "undefined"',
+      description: 'language 不足: row が render され、"undefined" を出さない',
       onlyFixtures: ['probe-missing-language'],
       check: ({ root }) => {
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
-        if (!text.includes('General')) return 'không thấy display_name'
+        if (!text.includes('General')) return '表示が見つかりません'
         return !text.includes('undefined') || 'leak "undefined" ra UI'
       },
     },

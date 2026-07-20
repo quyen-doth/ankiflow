@@ -1,8 +1,8 @@
 export const VERIFY_PREFIX = 'data-verify-'
 
 /**
- * Sinh các thuộc tính `data-verify-*` để spread vào element gốc của component.
- * Trả về {} ở production để HTML build thật không chứa contract attrs.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export function verifyAttrs(
   attrs: Record<string, string | number | boolean | null | undefined>
@@ -11,7 +11,7 @@ export function verifyAttrs(
   const out: Record<string, string> = {}
   for (const [key, value] of Object.entries(attrs)) {
     if (value === null || value === undefined) continue
-    // Lowercase: HTML attribute vốn case-insensitive; key camelCase gây warning
+    // 検証用コメント。
     // "React does not recognize the prop" trong dev
     out[`${VERIFY_PREFIX}${key.toLowerCase()}`] = String(value)
   }
@@ -19,8 +19,8 @@ export function verifyAttrs(
 }
 
 /**
- * Đọc contract từ element đầu tiên mang `data-verify-unit` bên trong root.
- * Trả về map không prefix, ví dụ { unit: 'Badge', variant: 'active' }.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export function readContract(root: HTMLElement): Record<string, string> {
   const el = root.hasAttribute(`${VERIFY_PREFIX}unit`)

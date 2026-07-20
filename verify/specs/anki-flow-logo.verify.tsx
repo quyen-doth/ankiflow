@@ -8,7 +8,7 @@ type AnkiFlowLogoProps = ComponentProps<typeof AnkiFlowLogo>
 registerUnit<AnkiFlowLogoProps>({
   id: 'AnkiFlowLogo',
   title: 'AnkiFlowLogo',
-  description: 'Brand mark: icon thẻ + tên app + slogan; bọc Link khi có href.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <AnkiFlowLogo {...props} />,
   propsSchema: z.object({
@@ -19,7 +19,7 @@ registerUnit<AnkiFlowLogoProps>({
   fixtures: [
     {
       id: 'default',
-      description: 'Mặc định: size md, link về /dashboard.',
+      description: '検証ケース。',
       props: {},
     },
     {
@@ -29,40 +29,40 @@ registerUnit<AnkiFlowLogoProps>({
     },
     {
       id: 'custom-href',
-      description: 'Link tùy chỉnh.',
+      description: '検証ケース。',
       props: { href: '/create' },
     },
     {
       id: 'probe-empty-href',
       probe: true,
-      description: 'Probe: href rỗng → không bọc Link, vẫn render đủ nội dung.',
+      description: '検証ケース。',
       props: { href: '' },
     },
   ],
   invariants: [
     {
       id: 'brand-text-rendered',
-      description: 'Hiển thị tên "AnkiFlow"',
+      description: 'name "AnkiFlow" を表示',
       check: ({ root }) =>
-        (root.textContent ?? '').includes('AnkiFlow') || 'không thấy text AnkiFlow',
+        (root.textContent ?? '').includes('AnkiFlow') || '表示が見つかりません',
     },
     {
       id: 'tagline-rendered',
-      description: 'Hiển thị slogan "Knowledge in Flow"',
+      description: 'slogan "Knowledge in Flow" を表示',
       check: ({ root }) =>
-        (root.textContent ?? '').includes('Knowledge in Flow') || 'không thấy slogan Knowledge in Flow',
+        (root.textContent ?? '').includes('Knowledge in Flow') || '表示が見つかりません',
     },
     {
       id: 'icon-present',
-      description: 'Có icon svg',
-      check: ({ root }) => !!root.querySelector('svg') || 'không có svg',
+      description: '検証ケース。',
+      check: ({ root }) => !!root.querySelector('svg') || '対象がありません',
     },
     {
       id: 'link-iff-href',
-      description: 'Bọc <a> khi và chỉ khi href truthy',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const link = root.querySelector('a')
-        // href mặc định '/dashboard' khi không truyền; '' → không link
+        // 検証用コメント。
         const expectedHref = props.href === undefined ? '/dashboard' : props.href
         const expected = Boolean(expectedHref)
         if (!!link !== expected) return `link=${!!link}, expected=${expected}`

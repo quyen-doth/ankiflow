@@ -18,14 +18,14 @@ function clickButtonByText(root: HTMLElement, text: string): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b =>
     b.textContent?.includes(text)
   )
-  if (!btn) throw new Error(`không tìm thấy button "${text}"`)
+  if (!btn) throw new Error(`button が見つかりません "${text}"`)
   btn.click()
 }
 
 registerUnit<EditableFieldProps>({
   id: 'EditableField',
   title: 'EditableField',
-  description: 'Field click-to-edit: span hiển thị ↔ input/textarea + Save/Cancel.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <EditableField {...props} />,
   propsSchema: z.object({
@@ -38,12 +38,12 @@ registerUnit<EditableFieldProps>({
   fixtures: [
     {
       id: 'display',
-      description: 'Chế độ hiển thị — span chứa value.',
+      description: '検証ケース。',
       props: { value: 'serendipity', onSave: noop },
     },
     {
       id: 'act-enter-edit',
-      description: 'Act: click span → vào chế độ edit, input chứa draft = value.',
+      description: '検証ケース。',
       props: { value: 'serendipity', onSave: noop },
       act: async ctx => {
         await ctx.click('[data-verify-unit="EditableField"]')
@@ -51,7 +51,7 @@ registerUnit<EditableFieldProps>({
     },
     {
       id: 'act-edit-save',
-      description: 'Act: edit → gõ giá trị mới → Save → onSave nhận giá trị mới, thoát edit.',
+      description: '検証ケース。',
       props: { value: 'old value', onSave: recordSave },
       act: async ctx => {
         saveSpy.count = 0
@@ -64,7 +64,7 @@ registerUnit<EditableFieldProps>({
     },
     {
       id: 'act-edit-cancel',
-      description: 'Act: edit → gõ → Cancel → onSave KHÔNG gọi, hiển thị lại value gốc.',
+      description: '検証ケース。',
       props: { value: 'original', onSave: recordSave },
       act: async ctx => {
         saveSpy.count = 0
@@ -77,7 +77,7 @@ registerUnit<EditableFieldProps>({
     },
     {
       id: 'multiline-edit',
-      description: 'multiline=true → edit mode dùng textarea.',
+      description: '検証ケース。',
       props: { value: 'A long example sentence.', onSave: noop, multiline: true },
       act: async ctx => {
         await ctx.click('[data-verify-unit="EditableField"]')
@@ -86,32 +86,32 @@ registerUnit<EditableFieldProps>({
     {
       id: 'probe-empty-value',
       probe: true,
-      description: 'Probe: value rỗng — hiển thị placeholder in nghiêng, không crash.',
+      description: '検証ケース。',
       props: { value: '', onSave: noop, placeholder: 'Add meaning...' },
     },
   ],
   invariants: [
     {
       id: 'display-shows-value',
-      description: 'Chế độ hiển thị: span chứa value',
+      description: '検証ケース。',
       onlyFixtures: ['display'],
       check: ({ root, props }) =>
-        (root.textContent ?? '').includes(props.value) || `không thấy "${props.value}"`,
+        (root.textContent ?? '').includes(props.value) || `見つかりません "${props.value}"`,
     },
     {
       id: 'edit-mode-has-draft',
-      description: 'Vào edit: contract editing=true, input chứa draft = value',
+      description: '検証ケース。',
       onlyFixtures: ['act-enter-edit'],
       check: ({ root, contract, props }) => {
         if (contract.editing !== 'true') return `contract.editing="${contract.editing}"`
         const input = root.querySelector<HTMLInputElement>('input')
-        if (!input) return 'không có input trong edit mode'
+        if (!input) return '対象がありません'
         return input.value === props.value || `input.value="${input.value}"`
       },
     },
     {
       id: 'save-fires-new-value',
-      description: 'Save gọi onSave(giá trị mới) đúng 1 lần và thoát edit',
+      description: '検証ケース。',
       onlyFixtures: ['act-edit-save'],
       check: ({ contract }) => {
         if (saveSpy.count !== 1 || saveSpy.lastValue !== 'new value') {
@@ -122,29 +122,29 @@ registerUnit<EditableFieldProps>({
     },
     {
       id: 'cancel-discards-draft',
-      description: 'Cancel không gọi onSave, hiển thị lại value gốc',
+      description: '検証ケース。',
       onlyFixtures: ['act-edit-cancel'],
       check: ({ root, contract }) => {
-        if (saveSpy.count !== 0) return `onSave bị gọi ${saveSpy.count} lần`
+        if (saveSpy.count !== 0) return `onSave が呼ばれています ${saveSpy.count} lần`
         if (contract.editing !== 'false') return 'vẫn ở edit mode sau Cancel'
-        return (root.textContent ?? '').includes('original') || 'value gốc không hiển thị lại'
+        return (root.textContent ?? '').includes('original') || 'original value が再表示されません'
       },
     },
     {
       id: 'multiline-uses-textarea',
-      description: 'multiline=true → edit mode render textarea, không phải input',
+      description: '検証ケース。',
       onlyFixtures: ['multiline-edit'],
       check: ({ root }) =>
         (!!root.querySelector('textarea') && !root.querySelector('input')) ||
-        'không có textarea / có input nhầm',
+        '対象がありません',
     },
     {
       id: 'empty-shows-placeholder',
-      description: 'Value rỗng: hiển thị placeholder, contract empty=true',
+      description: '検証ケース。',
       onlyFixtures: ['probe-empty-value'],
       check: ({ root, contract }) => {
         if (contract.empty !== 'true') return `contract.empty="${contract.empty}"`
-        return (root.textContent ?? '').includes('Add meaning...') || 'placeholder không hiển thị'
+        return (root.textContent ?? '').includes('Add meaning...') || 'placeholder が表示されていません'
       },
     },
   ],

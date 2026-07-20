@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock firebase-admin auth — kiểm soát verifySessionCookie
+// 検証用コメント。
 const { verifyMock } = vi.hoisted(() => ({ verifyMock: vi.fn() }))
 vi.mock('@/lib/firebase-admin', () => ({
   getAdminAuthInstance: () => ({ verifySessionCookie: verifyMock }),

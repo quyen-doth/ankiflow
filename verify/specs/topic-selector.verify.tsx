@@ -11,7 +11,7 @@ import type { ActContext } from '@/verify/core/types'
 
 type TopicSelectorProps = ComponentProps<typeof TopicSelector>
 
-// Seed: 2 topic IT active (sort đảo), 1 IT inactive, 1 topic Language phải bị filter
+// 検証用コメント。
 const TOPIC_SEED = {
   topics: [
     { id: 't-fe', name: 'Frontend', form_type: FormType.IT, is_active: true, sort_order: 2 },
@@ -38,7 +38,7 @@ function clickTopic(root: HTMLElement, name: string): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b =>
     b.textContent?.trim() === name
   )
-  if (!btn) throw new Error(`không tìm thấy topic "${name}"`)
+  if (!btn) throw new Error(`topic が見つかりません "${name}"`)
   btn.click()
 }
 
@@ -53,7 +53,7 @@ async function submitNewTopic(ctx: ActContext, name: string): Promise<void> {
 registerUnit<TopicSelectorProps>({
   id: 'TopicSelector',
   title: 'TopicSelector',
-  description: 'Chip chọn nhiều topic IT và hành động tạo topic ngay trong Create (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => (
     <ToastProvider>
@@ -69,7 +69,7 @@ registerUnit<TopicSelectorProps>({
   fixtures: [
     {
       id: 'loaded',
-      description: '2 topic IT active, topic inactive/Language bị filter, 1 đang chọn.',
+      description: '検証ケース。',
       props: { selectedIds: ['t-be'], selectedNames: ['Backend'], onChange: noop },
       mocks: { firestore: TOPIC_SEED },
       act: async ctx => {
@@ -78,7 +78,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — không chip nào, không crash.',
+      description: '検証ケース。',
       props: { selectedIds: [], selectedNames: [], onChange: noop },
       mocks: { firestore: { topics: [] } },
       act: async ctx => {
@@ -87,7 +87,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'act-toggle-on',
-      description: 'Act: click topic chưa chọn → onChange thêm id.',
+      description: '検証ケース。',
       props: { selectedIds: ['t-be'], selectedNames: ['Backend'], onChange: recordChange },
       mocks: { firestore: TOPIC_SEED },
       act: async ctx => {
@@ -100,7 +100,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'act-toggle-off',
-      description: 'Act: click topic đang chọn → onChange bỏ id.',
+      description: '検証ケース。',
       props: { selectedIds: ['t-be'], selectedNames: ['Backend'], onChange: recordChange },
       mocks: { firestore: TOPIC_SEED },
       act: async ctx => {
@@ -114,7 +114,7 @@ registerUnit<TopicSelectorProps>({
     {
       id: 'probe-only-foreign-formtype',
       probe: true,
-      description: 'Probe: seed chỉ có topic form_language — tất cả bị filter, 0 chip.',
+      description: '検証ケース。',
       props: { selectedIds: [], selectedNames: [], onChange: noop },
       mocks: {
         firestore: {
@@ -236,7 +236,7 @@ registerUnit<TopicSelectorProps>({
   invariants: [
     {
       id: 'only-active-it-topics',
-      description: 'Chỉ topic IT active hiển thị, sort theo sort_order',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'act-toggle-on', 'act-toggle-off'],
       check: ({ root }) => {
         const names = Array.from(root.querySelectorAll('button[data-topic-id]')).map(b => b.textContent?.trim())
@@ -248,7 +248,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'selected-chip-active-variant',
-      description: 'Chip đang chọn dùng Badge variant=active, còn lại neutral',
+      description: '検証ケース。',
       onlyFixtures: ['loaded'],
       check: ({ root }) => {
         const active = root.querySelectorAll('[data-verify-unit="Badge"][data-verify-variant="active"]').length
@@ -258,7 +258,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'empty-no-chips',
-      description: 'Không topic: contract count=0, không có topic chip',
+      description: '検証ケース。',
       onlyFixtures: ['empty', 'probe-only-foreign-formtype'],
       check: ({ root, contract }) => {
         if (contract.count !== '0') return `contract.count="${contract.count}"`
@@ -268,14 +268,14 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'create-action-visible',
-      description: 'Sau khi tải xong luôn có hành động tạo topic mới',
+      description: '検証ケース。',
       check: ({ root }) =>
         Array.from(root.querySelectorAll('button')).some(button => button.textContent?.trim() === 'New topic') ||
-        'thiếu nút New topic',
+        '不足しています',
     },
     {
       id: 'toggle-on-adds',
-      description: 'Click topic chưa chọn: onChange([...selected, id])',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-on'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -287,7 +287,7 @@ registerUnit<TopicSelectorProps>({
     },
     {
       id: 'toggle-off-removes',
-      description: 'Click topic đang chọn: onChange bỏ id',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-off'],
       check: () =>
         (changeSpy.count === 1 && JSON.stringify(changeSpy.lastValue) === JSON.stringify({ ids: [], names: [] })) ||

@@ -6,7 +6,7 @@ import type { Entry } from '@/types'
 
 const ENTRY: Partial<Entry> & { anki_note_ids: number[]; card_type_ids: string[] } = {
   word: 'hello',
-  meaning_vi: 'xin chào',
+  meaning_vi: 'こんにちは',
   ipa: 'həˈloʊ',
   anki_deck: 'Test',
   anki_note_ids: [101, 102],

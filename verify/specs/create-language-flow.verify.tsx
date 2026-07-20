@@ -8,14 +8,14 @@ import { FormType, LanguageType } from '@/types'
 const LANGUAGE_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.LANGUAGE]!
 
 /**
- * Feature spec: luồng end-to-end Create (ngôn ngữ) → handoff sang Preview.
- * Khác với LanguageForm.verify (component-level): tại đây nhìn từ góc độ tính năng —
- * "người dùng nhập từ, hệ thống enrich rồi chuyển sang preview với đúng payload".
+ * 検証用コメント。
+ * 検証用コメント。
+ * 検証用コメント。
  */
 
 const GENERATED = {
   word: '猫',
-  meaning_vi: 'con mèo',
+  meaning_vi: '猫',
   hiragana: 'ねこ',
   word_type: 'noun',
   example_sentence: '猫が好きです。',
@@ -49,7 +49,7 @@ function loadPending(): PendingEntry | null {
 
 function submitForm(root: HTMLElement): void {
   const form = root.querySelector<HTMLFormElement>('form')
-  if (!form) throw new Error('không tìm thấy form')
+  if (!form) throw new Error('要素が見つかりません')
   if (typeof form.requestSubmit === 'function') form.requestSubmit()
   else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
 }
@@ -57,14 +57,14 @@ function submitForm(root: HTMLElement): void {
 registerUnit<Record<string, never>>({
   id: 'create-language-flow',
   title: 'Feature: Create → Preview (Language)',
-  description: 'Luồng tạo thẻ ngôn ngữ: nhập từ → /api/generate → lưu pending entry → điều hướng /preview.',
+  description: '検証ケース。',
   kind: 'feature',
   render: () => <CardForm blueprint={LANGUAGE_BLUEPRINT} />,
   propsSchema: z.object({}),
   fixtures: [
     {
       id: 'happy-path',
-      description: 'Nhập từ → submit (API 200) → pending entry khớp payload mock + push /preview.',
+      description: '単語入力 → submit (API 200) → pending entry が mock payload と一致し /preview へ push。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
@@ -85,7 +85,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'probe-api-error-no-handoff',
       probe: true,
-      description: 'Probe: API 500 → không lưu pending, không điều hướng (handoff bị chặn an toàn).',
+      description: '検証ケース。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
@@ -107,11 +107,11 @@ registerUnit<Record<string, never>>({
   invariants: [
     {
       id: 'handoff-payload-complete',
-      description: 'Pending entry chứa content từ API + đầy đủ config session (language, deck, category, cardTypes, tags)',
+      description: '検証ケース。',
       onlyFixtures: ['happy-path'],
       check: () => {
         const pending = loadPending()
-        if (!pending) return 'không có pending entry'
+        if (!pending) return '対象がありません'
         if (JSON.stringify(pending.generatedContent) !== JSON.stringify(GENERATED)) {
           return `generatedContent sai: ${JSON.stringify(pending.generatedContent)}`
         }
@@ -130,7 +130,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'navigates-to-preview',
-      description: 'Điều hướng sang /preview đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['happy-path'],
       check: () => {
         const pushes = navPushes()
@@ -142,14 +142,14 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'error-blocks-handoff',
-      description: 'API lỗi: không pending entry, không điều hướng',
+      description: '検証ケース。',
       onlyFixtures: ['probe-api-error-no-handoff'],
       check: ({ root, contract }) => {
-        if (loadPending() !== null) return 'pending entry bị lưu dù API lỗi'
+        if (loadPending() !== null) return 'API error でも pending entry が保存されています'
         const pushes = navPushes()
-        if (pushes !== null && pushes.length > 0) return `điều hướng dù lỗi: ${JSON.stringify(pushes)}`
+        if (pushes !== null && pushes.length > 0) return `error でも navigation されています: ${JSON.stringify(pushes)}`
         if (contract.error !== 'true') return `contract.error="${contract.error}"`
-        return (root.textContent ?? '').includes('Gemini down') || 'thông báo lỗi không hiển thị'
+        return (root.textContent ?? '').includes('Gemini down') || 'error message が表示されていません'
       },
     },
   ],

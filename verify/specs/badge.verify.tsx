@@ -6,13 +6,13 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type BadgeProps = ComponentProps<typeof Badge>
 
-// Spy đếm số lần onRemove được gọi — act reset trước khi click
+// 検証用コメント。
 const removeSpy = { count: 0 }
 
 registerUnit<BadgeProps>({
   id: 'Badge',
   title: 'Badge',
-  description: 'Chip/badge với variant và nút remove tùy chọn.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Badge {...props} />,
   propsSchema: z.object({
@@ -26,7 +26,7 @@ registerUnit<BadgeProps>({
   fixtures: [
     {
       id: 'neutral-default',
-      description: 'Badge mặc định (variant neutral).',
+      description: '検証ケース。',
       props: { children: 'Draft' },
     },
     {
@@ -41,7 +41,7 @@ registerUnit<BadgeProps>({
     },
     {
       id: 'with-remove',
-      description: 'Có nút remove; act: click → onRemove gọi đúng 1 lần.',
+      description: '検証ケース。',
       props: {
         children: 'Tag',
         onRemove: () => {
@@ -56,30 +56,30 @@ registerUnit<BadgeProps>({
     {
       id: 'probe-empty-label',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): children rỗng — badge không có nhãn nhìn thấy.',
+      description: '検証ケース。',
       props: { children: '' },
     },
     {
       id: 'probe-long-label',
       probe: true,
-      description: 'Probe: nhãn 200 ký tự vẫn render bình thường.',
+      description: '検証ケース。',
       props: { children: 'x'.repeat(200) },
     },
   ],
   invariants: [
     {
       id: 'has-visible-label',
-      description: 'Badge phải có nhãn nhìn thấy (text không rỗng, không tính nút ×)',
+      description: '検証ケース。',
       check: ({ root }) => {
         const el = root.querySelector('[data-verify-unit="Badge"]')
-        if (!el) return 'không tìm thấy root Badge'
+        if (!el) return '要素が見つかりません'
         const label = (el.textContent ?? '').replace(/×/g, '').trim()
-        return label.length > 0 || 'badge không có nhãn nhìn thấy'
+        return label.length > 0 || '対象がありません'
       },
     },
     {
       id: 'remove-button-iff-onRemove',
-      description: 'Nút remove hiện diện khi và chỉ khi có onRemove',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const btn = root.querySelector('button[aria-label="Remove"]')
         const expected = typeof props.onRemove === 'function'
@@ -88,16 +88,16 @@ registerUnit<BadgeProps>({
     },
     {
       id: 'variant-matches-contract',
-      description: 'data-verify-variant khớp props.variant (mặc định neutral)',
+      description: '検証ケース。',
       check: ({ contract, props }) =>
         contract.variant === (props.variant ?? 'neutral') ||
         `contract.variant="${contract.variant}", props.variant="${props.variant ?? 'neutral'}"`,
     },
     {
       id: 'remove-fires-once',
-      description: 'Click remove gọi onRemove đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['with-remove'],
-      check: () => removeSpy.count === 1 || `onRemove được gọi ${removeSpy.count} lần`,
+      check: () => removeSpy.count === 1 || `呼び出し回数が不正です`,
     },
   ],
 })

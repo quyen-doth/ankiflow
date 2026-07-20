@@ -7,13 +7,13 @@ const AUDIO_FILENAME = 'ankiflow_hello.mp3'
 function makeEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
   return {
     word: 'hello',
-    meaning_vi: 'xin chào',
+    meaning_vi: 'こんにちは',
     hiragana: '',
     pinyin: '',
     ipa: 'həˈloʊ',
     word_type: 'interjection',
     example_sentence: 'Hello, how are you?',
-    example_translation: 'Xin chào, bạn khỏe không?',
+    example_translation: 'こんにちは、お元気ですか？',
     anki_deck: 'Language::English::B1',
     tags: ['greeting'],
     language: 'en' as Entry['language'],
@@ -141,8 +141,8 @@ describe('buildNotes — audio in all card types', () => {
   })
 
   it('渡された template (admin 設定) を使用し、DEFAULT_TEMPLATES にフォールバックしない', () => {
-    // fill_in_blank DEFAULT back = example/translation/word/audio (không có reading/image).
-    // Truyền template tùy biến có reading + image → phải xuất hiện trong output.
+    // 検証用コメント。
+    // 検証用コメント。
     const customType = {
       id: 'ct_custom',
       code: 'fill_in_blank',
@@ -155,7 +155,7 @@ describe('buildNotes — audio in all card types', () => {
     const notes = buildNotes(makeEntry(), [customType], undefined, 'ankiflow_img_hello.png')
     expect(notes[0].fields.Back).toContain('class="reading"')
     expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
-    // Không có example/translation (vốn thuộc DEFAULT) trong back tùy biến này.
+    // 検証用コメント。
     expect(notes[0].fields.Back).not.toContain('class="example"')
     expect(notes[0].fields.Back).not.toContain('class="translation"')
   })

@@ -1,9 +1,9 @@
 import type { DocSeed, VerifyHandle } from './types'
 
 /**
- * Truy cập typed các global hooks giữa runner và môi trường:
- * - firestore stub (chỉ tồn tại trong vitest qua module alias)
- * - navigation mock (chỉ tồn tại trong vitest qua vi.mock trong test-setup)
+ * 検証用コメント。
+ * 検証用コメント。
+ * 検証用コメント。
  * - window.__verify handle (browser)
  */
 interface VerifyGlobals {

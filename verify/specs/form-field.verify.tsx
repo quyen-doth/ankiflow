@@ -7,7 +7,7 @@ type InputProps = ComponentProps<typeof Input>
 type TextareaProps = ComponentProps<typeof Textarea>
 type SelectProps = ComponentProps<typeof Select>
 
-// Spy chung cho act-type/act-change — act reset trước
+// 検証用コメント。
 const valueSpy = { lastValue: null as string | null }
 const recordInput = (e: ChangeEvent<HTMLInputElement>) => {
   valueSpy.lastValue = e.target.value
@@ -27,7 +27,7 @@ const looseFieldSchema = z.looseObject({
 registerUnit<InputProps>({
   id: 'Input',
   title: 'Input (FormField)',
-  description: 'Text input chuẩn của form, hỗ trợ trạng thái error.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Input {...props} />,
   propsSchema: looseFieldSchema,
@@ -39,12 +39,12 @@ registerUnit<InputProps>({
     },
     {
       id: 'with-error',
-      description: 'Trạng thái error.',
+      description: '検証ケース。',
       props: { placeholder: 'Enter word', error: true },
     },
     {
       id: 'act-type',
-      description: 'Act: gõ text → onChange nhận giá trị.',
+      description: '検証ケース。',
       props: { placeholder: 'Enter word', onChange: recordInput },
       act: async ctx => {
         valueSpy.lastValue = null
@@ -54,21 +54,21 @@ registerUnit<InputProps>({
     {
       id: 'probe-unlabeled',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): không placeholder/aria-label — input mất label.',
+      description: '検証ケース。',
       props: {},
     },
   ],
   invariants: [
     {
       id: 'error-contract-matches',
-      description: 'data-verify-error khớp props.error',
+      description: 'data-verify-error が props.error と一致',
       check: ({ contract, props }) =>
         contract.error === String(Boolean(props.error)) ||
         `contract.error="${contract.error}"`,
     },
     {
       id: 'typed-value-received',
-      description: 'onChange nhận đúng giá trị đã gõ',
+      description: '検証ケース。',
       onlyFixtures: ['act-type'],
       check: () => valueSpy.lastValue === 'serendipity' || `lastValue="${valueSpy.lastValue}"`,
     },
@@ -78,7 +78,7 @@ registerUnit<InputProps>({
 registerUnit<TextareaProps>({
   id: 'Textarea',
   title: 'Textarea (FormField)',
-  description: 'Textarea chuẩn của form, hỗ trợ trạng thái error.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Textarea {...props} />,
   propsSchema: looseFieldSchema,
@@ -90,12 +90,12 @@ registerUnit<TextareaProps>({
     },
     {
       id: 'with-error',
-      description: 'Trạng thái error.',
+      description: '検証ケース。',
       props: { placeholder: 'Notes', error: true },
     },
     {
       id: 'act-type',
-      description: 'Act: gõ text → onChange nhận giá trị.',
+      description: '検証ケース。',
       props: { placeholder: 'Notes', onChange: recordTextarea },
       act: async ctx => {
         valueSpy.lastValue = null
@@ -105,21 +105,21 @@ registerUnit<TextareaProps>({
     {
       id: 'probe-unlabeled',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): không placeholder/aria-label — textarea mất label.',
+      description: '検証ケース。',
       props: {},
     },
   ],
   invariants: [
     {
       id: 'error-contract-matches',
-      description: 'data-verify-error khớp props.error',
+      description: 'data-verify-error が props.error と一致',
       check: ({ contract, props }) =>
         contract.error === String(Boolean(props.error)) ||
         `contract.error="${contract.error}"`,
     },
     {
       id: 'typed-value-received',
-      description: 'onChange nhận đúng giá trị đã gõ',
+      description: '検証ケース。',
       onlyFixtures: ['act-type'],
       check: () =>
         valueSpy.lastValue === 'multi line note' || `lastValue="${valueSpy.lastValue}"`,
@@ -142,29 +142,29 @@ const deckOptions = [
 registerUnit<SelectProps>({
   id: 'Select',
   title: 'Select (FormField)',
-  description: 'Select chuẩn của form với icon chevron, hỗ trợ error.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Select {...props} />,
   propsSchema: looseFieldSchema,
   fixtures: [
     {
       id: 'with-options',
-      description: '3 option, có aria-label.',
+      description: '検証ケース。',
       props: { 'aria-label': 'Deck', children: deckOptions },
     },
     {
       id: 'with-error',
-      description: 'Trạng thái error.',
+      description: '検証ケース。',
       props: { 'aria-label': 'Deck', error: true, children: deckOptions },
     },
     {
       id: 'act-change',
-      description: 'Act: chọn option → onChange nhận value.',
+      description: '検証ケース。',
       props: { 'aria-label': 'Deck', children: deckOptions, onChange: recordSelect },
       act: async ctx => {
         valueSpy.lastValue = null
         const select = ctx.root.querySelector<HTMLSelectElement>('select')
-        if (!select) throw new Error('không tìm thấy select')
+        if (!select) throw new Error('要素が見つかりません')
         const setter = Object.getOwnPropertyDescriptor(
           HTMLSelectElement.prototype,
           'value'
@@ -177,14 +177,14 @@ registerUnit<SelectProps>({
     {
       id: 'probe-no-options',
       probe: true,
-      description: 'Probe: không có option nào — select rỗng vẫn render, không crash.',
+      description: '検証ケース。',
       props: { 'aria-label': 'Deck', children: [] },
     },
   ],
   invariants: [
     {
       id: 'option-count-matches',
-      description: 'Render đủ option',
+      description: '検証ケース。',
       onlyFixtures: ['with-options', 'with-error', 'act-change'],
       check: ({ root }) => {
         const options = root.querySelectorAll('option').length
@@ -193,14 +193,14 @@ registerUnit<SelectProps>({
     },
     {
       id: 'error-contract-matches',
-      description: 'data-verify-error khớp props.error',
+      description: 'data-verify-error が props.error と一致',
       check: ({ contract, props }) =>
         contract.error === String(Boolean(props.error)) ||
         `contract.error="${contract.error}"`,
     },
     {
       id: 'change-value-received',
-      description: 'onChange nhận đúng value đã chọn',
+      description: '検証ケース。',
       onlyFixtures: ['act-change'],
       check: () => valueSpy.lastValue === 'deck-zh' || `lastValue="${valueSpy.lastValue}"`,
     },

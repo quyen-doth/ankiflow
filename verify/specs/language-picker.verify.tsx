@@ -22,7 +22,7 @@ function resetSpy(): void {
 registerUnit<LanguagePickerProps>({
   id: 'LanguagePicker',
   title: 'LanguagePicker',
-  description: 'Combobox tìm kiếm catalog ngôn ngữ và nhận mã BCP 47 tùy ý.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <LanguagePicker {...props} />,
   propsSchema: z.object({
@@ -34,12 +34,12 @@ registerUnit<LanguagePickerProps>({
   fixtures: [
     {
       id: 'selected',
-      description: 'Hiển thị ngôn ngữ đã chọn cùng mã canonical.',
+      description: '検証ケース。',
       props: { value: 'fr', onChange: noop },
     },
     {
       id: 'act-search-french',
-      description: 'Act: tìm "fre" và chọn French.',
+      description: 'Act: "fre" を検索して French を選択する。',
       props: { value: null, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -50,7 +50,7 @@ registerUnit<LanguagePickerProps>({
     },
     {
       id: 'act-custom-code',
-      description: 'Act: mã pt-br được canonicalize qua lựa chọn Use code.',
+      description: '検証ケース。',
       props: { value: null, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -62,7 +62,7 @@ registerUnit<LanguagePickerProps>({
     {
       id: 'probe-invalid-code',
       probe: true,
-      description: 'Act: chuỗi không hợp lệ không tạo option và không crash.',
+      description: '検証ケース。',
       props: { value: null, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -74,28 +74,28 @@ registerUnit<LanguagePickerProps>({
   invariants: [
     {
       id: 'selected-label',
-      description: 'Giá trị đã chọn hiển thị tên và code.',
+      description: '検証ケース。',
       onlyFixtures: ['selected'],
       check: ({ root }) => root.querySelector<HTMLInputElement>('input')?.value === 'French (fr)'
         || `value=${root.querySelector<HTMLInputElement>('input')?.value}`,
     },
     {
       id: 'search-selects-french',
-      description: 'Tìm theo tên và chọn trả đúng code fr.',
+      description: '検証ケース。',
       onlyFixtures: ['act-search-french'],
       check: () => (changeSpy.count === 1 && changeSpy.lastValue?.code === 'fr')
         || `count=${changeSpy.count}, value=${JSON.stringify(changeSpy.lastValue)}`,
     },
     {
       id: 'custom-code-canonicalized',
-      description: 'Fallback code trả pt-BR canonical.',
+      description: '検証ケース。',
       onlyFixtures: ['act-custom-code'],
       check: () => (changeSpy.count === 1 && changeSpy.lastValue?.code === 'pt-BR')
         || `count=${changeSpy.count}, value=${JSON.stringify(changeSpy.lastValue)}`,
     },
     {
       id: 'invalid-code-safe',
-      description: 'Chuỗi không hợp lệ không có option và không gọi callback.',
+      description: '検証ケース。',
       onlyFixtures: ['probe-invalid-code'],
       check: ({ root }) => (
         root.querySelectorAll('[role="option"]').length === 0

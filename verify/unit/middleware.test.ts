@@ -58,7 +58,7 @@ describe('middleware — session cookie がある場合', () => {
 })
 
 describe('middleware — matcher exclusions (regex trong config)', () => {
-  // Matcher là path-to-regexp string — kiểm tra regex loại đúng các path ngoại lệ
+  // 検証用コメント。
   const pattern = new RegExp(
     '^/(?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|verify|.*\\..*).*$',
   )

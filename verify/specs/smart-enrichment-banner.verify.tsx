@@ -9,7 +9,7 @@ type SmartEnrichmentBannerProps = ComponentProps<typeof SmartEnrichmentBanner>
 registerUnit<SmartEnrichmentBannerProps>({
   id: 'SmartEnrichmentBanner',
   title: 'SmartEnrichmentBanner',
-  description: 'Banner thông báo AI enrichment trên các form create.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <SmartEnrichmentBanner {...props} />,
   propsSchema: z.object({
@@ -18,12 +18,12 @@ registerUnit<SmartEnrichmentBannerProps>({
   fixtures: [
     {
       id: 'plain-text',
-      description: 'Children là text thuần.',
+      description: '検証ケース。',
       props: { children: 'Our AI will fetch native audio samples.' },
     },
     {
       id: 'rich-children',
-      description: 'Children có markup strong bên trong.',
+      description: '検証ケース。',
       props: {
         children: (
           <>
@@ -35,24 +35,24 @@ registerUnit<SmartEnrichmentBannerProps>({
     {
       id: 'probe-empty-children',
       probe: true,
-      description: 'Probe: children rỗng — banner vẫn render tiêu đề, không crash.',
+      description: '検証ケース。',
       props: { children: '' },
     },
   ],
   invariants: [
     {
       id: 'static-title-present',
-      description: 'Tiêu đề "Smart Enrichment Active" luôn hiển thị',
+      description: 'title "Smart Enrichment Active" は常に表示される',
       check: ({ root }) =>
         (root.textContent ?? '').includes('Smart Enrichment Active') ||
-        'không thấy tiêu đề banner',
+        '表示が見つかりません',
     },
     {
       id: 'children-text-rendered',
-      description: 'Nội dung children render bên trong banner',
+      description: '検証ケース。',
       onlyFixtures: ['plain-text'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('native audio samples') || 'children không render',
+        (root.textContent ?? '').includes('native audio samples') || 'children が render されていません',
     },
   ],
 })

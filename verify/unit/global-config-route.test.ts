@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock firebase-admin — verifySessionCookie (dùng bởi verifySessionUser) + Firestore doc get/set
+// 検証用コメント。
 const { verifyMock, docStore } = vi.hoisted(() => ({
   verifyMock: vi.fn(),
   docStore: new Map<string, Record<string, unknown>>(),
@@ -125,7 +125,7 @@ describe('POST /api/admin/global-config — 有効な admin', () => {
 
     const saved = docStore.get('settings/global')
     expect(saved?.tts_available).toBe(false)
-    expect(saved?.ai_model).toBe('claude-haiku-4-5') // không bị xóa
+    expect(saved?.ai_model).toBe('claude-haiku-4-5') // 検証用コメント。
     expect(saved?.unsplash_available).toBe(true)
   })
 

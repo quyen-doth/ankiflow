@@ -6,7 +6,7 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type TabsProps = ComponentProps<typeof Tabs>
 
-// Spy ghi lại lời gọi onChange — act reset trước khi click
+// 検証用コメント。
 const changeSpy = { count: 0, lastId: '' }
 const recordChange = (id: string) => {
   changeSpy.count++
@@ -17,7 +17,7 @@ const noop = () => undefined
 registerUnit<TabsProps>({
   id: 'Tabs',
   title: 'Tabs',
-  description: 'Tab navigation với role=tablist/tab và aria-selected.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Tabs {...props} />,
   propsSchema: z.object({
@@ -29,7 +29,7 @@ registerUnit<TabsProps>({
   fixtures: [
     {
       id: 'two-first-active',
-      description: '2 tab, tab đầu active.',
+      description: '検証ケース。',
       props: {
         tabs: [
           { id: 'word-meaning', label: 'Word → Meaning' },
@@ -54,7 +54,7 @@ registerUnit<TabsProps>({
     },
     {
       id: 'act-click-second',
-      description: 'Act: click tab thứ 2 → onChange nhận đúng id, gọi 1 lần.',
+      description: '検証ケース。',
       props: {
         tabs: [
           { id: 'a', label: 'Word' },
@@ -72,7 +72,7 @@ registerUnit<TabsProps>({
     {
       id: 'probe-active-not-in-list',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): activeTab không tồn tại — không tab nào selected.',
+      description: '検証ケース。',
       props: {
         tabs: [
           { id: 'a', label: 'Word' },
@@ -86,30 +86,30 @@ registerUnit<TabsProps>({
   invariants: [
     {
       id: 'tablist-structure',
-      description: 'Có [role=tablist] chứa đúng tabs.length [role=tab]',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const tablist = root.querySelector('[role="tablist"]')
-        if (!tablist) return 'không có role=tablist'
+        if (!tablist) return '対象がありません'
         const tabs = tablist.querySelectorAll('[role="tab"]').length
         return tabs === props.tabs.length || `tab=${tabs}, expected=${props.tabs.length}`
       },
     },
     {
       id: 'exactly-one-selected',
-      description: 'Đúng 1 tab có aria-selected=true',
+      description: '検証ケース。',
       check: ({ root }) => {
         const selected = root.querySelectorAll('[role="tab"][aria-selected="true"]').length
-        return selected === 1 || `${selected} tab được selected`
+        return selected === 1 || `${selected} tab が selected です`
       },
     },
     {
       id: 'selected-matches-activeTab',
-      description: 'Tab được selected là tab có id = activeTab',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const selected = root.querySelector('[role="tab"][aria-selected="true"]')
         const expected = props.tabs.find(t => t.id === props.activeTab)
-        if (!expected) return `activeTab "${props.activeTab}" không có trong danh sách tabs`
-        if (!selected) return 'không có tab nào selected'
+        if (!expected) return `activeTab "${props.activeTab}" tabs list に存在しません`
+        if (!selected) return '対象がありません'
         return (
           selected.textContent?.trim() === expected.label ||
           `selected="${selected.textContent?.trim()}", expected="${expected.label}"`
@@ -118,7 +118,7 @@ registerUnit<TabsProps>({
     },
     {
       id: 'change-fires-once-with-id',
-      description: 'Click tab gọi onChange đúng 1 lần với đúng id',
+      description: '検証ケース。',
       onlyFixtures: ['act-click-second'],
       check: () =>
         (changeSpy.count === 1 && changeSpy.lastId === 'b') ||

@@ -11,10 +11,10 @@ function languageEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
     form_type: FormType.LANGUAGE,
     word: 'hello',
     ipa: 'həˈloʊ',
-    meaning_vi: 'xin chào',
+    meaning_vi: 'こんにちは',
     word_type: 'interjection',
     example_sentence: 'Hello, how are you?',
-    example_translation: 'Xin chào, bạn khỏe không?',
+    example_translation: 'こんにちは、お元気ですか？',
     anki_deck: DECK,
     ...overrides,
   }

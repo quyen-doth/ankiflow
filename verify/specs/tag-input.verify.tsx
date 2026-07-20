@@ -6,7 +6,7 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type TagInputProps = ComponentProps<typeof TagInput>
 
-// Spy ghi lại mảng tags mà onChange nhận được — act reset trước
+// 検証用コメント。
 const changeSpy = { count: 0, lastTags: null as string[] | null }
 const recordChange = (tags: string[]) => {
   changeSpy.count++
@@ -24,7 +24,7 @@ function pressEnter(root: HTMLElement): void {
 registerUnit<TagInputProps>({
   id: 'TagInput',
   title: 'TagInput',
-  description: 'Nhập tag: thêm bằng Enter/dấu phẩy, xóa từng tag, giới hạn maxTags.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <TagInput {...props} />,
   propsSchema: z.object({
@@ -36,17 +36,17 @@ registerUnit<TagInputProps>({
   fixtures: [
     {
       id: 'empty',
-      description: 'Chưa có tag nào.',
+      description: '検証ケース。',
       props: { tags: [], onChange: noop },
     },
     {
       id: 'with-tags',
-      description: 'Có sẵn 2 tag.',
+      description: '検証ケース。',
       props: { tags: ['vocab', 'hsk1'], onChange: noop },
     },
     {
       id: 'act-add-tag',
-      description: 'Act: gõ tag mới + Enter → onChange nhận mảng đã thêm.',
+      description: '検証ケース。',
       props: { tags: ['existing'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -58,7 +58,7 @@ registerUnit<TagInputProps>({
     },
     {
       id: 'act-remove-tag',
-      description: 'Act: click nút remove của tag đầu → onChange nhận mảng đã bớt.',
+      description: '検証ケース。',
       props: { tags: ['first', 'second'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -69,13 +69,13 @@ registerUnit<TagInputProps>({
     {
       id: 'probe-at-max',
       probe: true,
-      description: 'Probe: đã đạt maxTags — input biến mất, không thêm được nữa.',
+      description: '検証ケース。',
       props: { tags: ['a', 'b'], onChange: recordChange, maxTags: 2 },
     },
     {
       id: 'probe-duplicate-add',
       probe: true,
-      description: 'Probe: gõ tag trùng + Enter — onChange KHÔNG được gọi.',
+      description: '検証ケース。',
       props: { tags: ['dup'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -96,7 +96,7 @@ registerUnit<TagInputProps>({
     },
     {
       id: 'input-iff-below-max',
-      description: 'Input hiện khi và chỉ khi tags.length < maxTags',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const input = root.querySelector('input')
         const expected = props.tags.length < (props.maxTags ?? 10)
@@ -105,7 +105,7 @@ registerUnit<TagInputProps>({
     },
     {
       id: 'add-fires-with-appended-array',
-      description: 'Thêm tag gọi onChange với mảng cũ + tag mới',
+      description: '検証ケース。',
       onlyFixtures: ['act-add-tag'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -114,7 +114,7 @@ registerUnit<TagInputProps>({
     },
     {
       id: 'remove-fires-with-filtered-array',
-      description: 'Xóa tag gọi onChange với mảng đã loại tag đó',
+      description: '検証ケース。',
       onlyFixtures: ['act-remove-tag'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -123,9 +123,9 @@ registerUnit<TagInputProps>({
     },
     {
       id: 'duplicate-add-inert',
-      description: 'Tag trùng không gọi onChange',
+      description: '検証ケース。',
       onlyFixtures: ['probe-duplicate-add'],
-      check: () => changeSpy.count === 0 || `onChange được gọi ${changeSpy.count} lần`,
+      check: () => changeSpy.count === 0 || `呼び出し回数が不正です`,
     },
   ],
 })

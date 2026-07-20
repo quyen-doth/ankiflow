@@ -21,7 +21,7 @@ function inputHasLabel(input: HTMLElement, root: HTMLElement): boolean {
 
 export const a11yVerifier = registerVerifier({
   id: 'a11y',
-  description: 'Kiểm tra a11y cơ bản: button có tên, input có label, img có alt.',
+  description: '検証ケース。',
   run({ root }): Check[] {
     const checks: Check[] = []
 
@@ -29,11 +29,11 @@ export const a11yVerifier = registerVerifier({
     const unnamedButtons = buttons.filter(b => !hasAccessibleName(b))
     checks.push(
       unnamedButtons.length === 0
-        ? { verifier: 'a11y', status: 'ok', label: `Mọi button có tên truy cập được (${buttons.length})` }
+        ? { verifier: 'a11y', status: 'ok', label: `すべての button に accessible name があります (${buttons.length})` }
         : {
             verifier: 'a11y',
             status: 'fail',
-            label: `${unnamedButtons.length}/${buttons.length} button thiếu accessible name`,
+            label: `不足しています`,
             detail: unnamedButtons.map(b => b.outerHTML.slice(0, 120)).join('\n'),
           }
     )
@@ -44,11 +44,11 @@ export const a11yVerifier = registerVerifier({
     const unlabeled = inputs.filter(i => !inputHasLabel(i, root))
     checks.push(
       unlabeled.length === 0
-        ? { verifier: 'a11y', status: 'ok', label: `Mọi input có label (${inputs.length})` }
+        ? { verifier: 'a11y', status: 'ok', label: `すべての input に label があります (${inputs.length})` }
         : {
             verifier: 'a11y',
             status: 'fail',
-            label: `${unlabeled.length}/${inputs.length} input thiếu label`,
+            label: `不足しています`,
             detail: unlabeled.map(i => i.outerHTML.slice(0, 120)).join('\n'),
           }
     )
@@ -57,11 +57,11 @@ export const a11yVerifier = registerVerifier({
     const noAlt = images.filter(img => !img.hasAttribute('alt'))
     checks.push(
       noAlt.length === 0
-        ? { verifier: 'a11y', status: 'ok', label: `Mọi img có alt (${images.length})` }
+        ? { verifier: 'a11y', status: 'ok', label: `すべての img に alt があります (${images.length})` }
         : {
             verifier: 'a11y',
             status: 'fail',
-            label: `${noAlt.length}/${images.length} img thiếu alt`,
+            label: `不足しています`,
             detail: noAlt.map(i => i.outerHTML.slice(0, 120)).join('\n'),
           }
     )

@@ -101,14 +101,14 @@ const CUSTOM_CONTENT_TYPES = [
 registerUnit<Record<string, never>>({
   id: 'CardTypeManager',
   title: 'CardTypeManager',
-  description: 'Admin CRUD card types: create cần code + name, lưu form_type enum (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: () => <CardTypeManager />,
   propsSchema: z.object({}),
   fixtures: [
     {
       id: 'loaded',
-      description: '2 card type load từ stub, hiển thị badge Default.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -137,7 +137,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-create',
-      description: 'Act: mở modal → điền Name → code tự sinh (slugify) → Save → addDoc (form_type enum), bảng +1 row.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -151,7 +151,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-toggle-active',
-      description: 'Act: click badge Active row đầu → updateDoc lật is_active.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -276,7 +276,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'probe-missing-optional',
       probe: true,
-      description: 'Probe: card type thiếu description + language — render row, không crash.',
+      description: '検証ケース。',
       props: {},
       mocks: {
         firestore: {
@@ -301,13 +301,13 @@ registerUnit<Record<string, never>>({
   invariants: [
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh CardTypeManager',
+      description: '検証ケース。',
       check: ({ contract }) =>
         contract.unit === 'CardTypeManager' || `contract.unit="${contract.unit}"`,
     },
     {
       id: 'rows-match-store',
-      description: 'Số row bảng = số doc trong store',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'empty'],
       check: ({ root }) => {
         const rows = tableRows(root)
@@ -317,17 +317,17 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'default-badge-shown',
-      description: 'Card type is_default hiển thị badge Default',
+      description: '検証ケース。',
       onlyFixtures: ['loaded'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('Default') || 'không thấy badge Default',
+        (root.textContent ?? '').includes('Default') || '表示が見つかりません',
     },
     {
       id: 'empty-message',
-      description: 'Không có doc: empty message',
+      description: '検証ケース。',
       onlyFixtures: ['empty'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('No card types yet.') || 'không thấy empty message',
+        (root.textContent ?? '').includes('No card types yet.') || '表示が見つかりません',
     },
     {
       id: 'create-modal-opens',
@@ -335,18 +335,18 @@ registerUnit<Record<string, never>>({
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
-        return modalOpen(root) || 'modal không mở'
+        return modalOpen(root) || 'modal が開いていません'
       },
     },
     {
       id: 'create-persists-doc',
-      description: 'Save: doc mới có code + name đúng, form_type enum hợp lệ, modal đóng',
+      description: '検証ケース。',
       onlyFixtures: ['act-create'],
       check: ({ root }) => {
         const docs = collectionDocs('card_types')
         if (docs.length !== 3) return `store=${docs.length}, expected=3`
         const created = docs.find(d => d.code === 'cloze')
-        if (!created) return 'không tìm thấy doc vừa tạo'
+        if (!created) return '要素が見つかりません'
         if (created.name !== 'Cloze') return `name=${created.name}`
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
         return !modalOpen(root) || 'modal vẫn mở sau Save'
@@ -354,11 +354,11 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'toggle-flips-active',
-      description: 'Toggle: doc Word → Meaning đảo is_active sang false',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-active'],
       check: () => {
         const doc = collectionDocs('card_types').find(d => d.id === 'ct-wm')
-        if (!doc) return 'mất doc ct-wm'
+        if (!doc) return 'doc が消えています ct-wm'
         return doc.is_active === false || `is_active=${doc.is_active}`
       },
     },
@@ -434,12 +434,12 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'missing-optional-graceful',
-      description: 'Thiếu description/language: row render, không "undefined"',
+      description: 'description/language 不足: row が render され、"undefined" を出さない',
       onlyFixtures: ['probe-missing-optional'],
       check: ({ root }) => {
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
-        if (!text.includes('Basic')) return 'không thấy name'
+        if (!text.includes('Basic')) return '表示が見つかりません'
         return !text.includes('undefined') || 'leak "undefined" ra UI'
       },
     },

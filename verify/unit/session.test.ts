@@ -26,7 +26,7 @@ describe('lib/session', () => {
       topicNames: ['Backend'],
       difficulty: 'medium',
     })
-    // Sessions của các form_type độc lập với nhau
+    // 検証用コメント。
     expect(loadSession(FormType.GENERAL)).toBeNull()
   })
 

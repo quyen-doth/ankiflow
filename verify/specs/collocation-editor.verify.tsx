@@ -16,21 +16,21 @@ const noop = () => undefined
 
 function pressEnter(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>('input')
-  if (!input) throw new Error('không tìm thấy input')
+  if (!input) throw new Error('要素が見つかりません')
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 }
 
-// Nút "+ Add" — hiển thị input nhập (input ẩn cho tới khi bấm)
+// 検証用コメント。
 function clickAdd(root: HTMLElement): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Add')
-  if (!btn) throw new Error('không tìm thấy nút Add')
+  if (!btn) throw new Error('要素が見つかりません')
   btn.click()
 }
 
 registerUnit<CollocationEditorProps>({
   id: 'CollocationEditor',
   title: 'CollocationEditor',
-  description: 'Editor collocations: chip badge kéo thả (dnd-kit) + input thêm bằng Enter.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <CollocationEditor {...props} />,
   propsSchema: z.object({
@@ -45,12 +45,12 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'empty',
-      description: 'Không có item — chỉ còn nút "+ Add".',
+      description: 'item がない — "+ Add" ボタンだけが残る。',
       props: { items: [], onChange: noop },
     },
     {
       id: 'act-add',
-      description: 'Act: bấm Add → gõ + Enter → onChange nhận mảng có item mới.',
+      description: '検証ケース。',
       props: { items: ['take a break'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -64,7 +64,7 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'act-remove',
-      description: 'Act: click nút remove của chip đầu → onChange nhận mảng không còn item đó.',
+      description: '検証ケース。',
       props: { items: ['take a break', 'make sense'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -75,7 +75,7 @@ registerUnit<CollocationEditorProps>({
     {
       id: 'probe-duplicate-add',
       probe: true,
-      description: 'Probe: thêm item trùng — onChange KHÔNG gọi, input đóng lại.',
+      description: '検証ケース。',
       props: { items: ['take a break'], onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -90,7 +90,7 @@ registerUnit<CollocationEditorProps>({
   invariants: [
     {
       id: 'chip-count-matches-items',
-      description: 'Số chip = items.length, contract count khớp',
+      description: 'chip 数 = items.length、contract count と一致',
       check: ({ root, props, contract }) => {
         const chips = root.querySelectorAll('button[aria-label^="Remove "]').length
         if (chips !== props.items.length) {
@@ -101,7 +101,7 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'add-fires-with-new-item',
-      description: 'Enter thêm item: onChange([...items, mới]) gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-add'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -110,7 +110,7 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'remove-fires-without-item',
-      description: 'Remove chip: onChange(mảng không còn item) gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-remove'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -119,10 +119,10 @@ registerUnit<CollocationEditorProps>({
     },
     {
       id: 'duplicate-add-inert',
-      description: 'Item trùng không gọi onChange và input đóng lại (reset)',
+      description: '検証ケース。',
       onlyFixtures: ['probe-duplicate-add'],
       check: ({ root }) => {
-        if (changeSpy.count !== 0) return `onChange bị gọi ${changeSpy.count} lần`
+        if (changeSpy.count !== 0) return `onChange が呼ばれています ${changeSpy.count} lần`
         const input = root.querySelector<HTMLInputElement>('input')
         return !input || input.value === '' || `input.value="${input?.value}"`
       },

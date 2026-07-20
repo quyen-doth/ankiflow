@@ -9,7 +9,7 @@ type StatCardProps = ComponentProps<typeof StatCard>
 registerUnit<StatCardProps>({
   id: 'StatCard',
   title: 'StatCard',
-  description: 'Thẻ thống kê dashboard: label, value, delta, icon.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <StatCard {...props} />,
   propsSchema: z.object({
@@ -27,7 +27,7 @@ registerUnit<StatCardProps>({
     },
     {
       id: 'with-delta-icon',
-      description: 'Đầy đủ delta + icon.',
+      description: '検証ケース。',
       props: {
         label: 'This Week',
         value: '23',
@@ -38,30 +38,30 @@ registerUnit<StatCardProps>({
     {
       id: 'probe-zero-value',
       probe: true,
-      description: 'Probe: value = 0 vẫn hiển thị "0" (không bị coi là falsy).',
+      description: 'Probe: value = 0 でも "0" を表示する (falsy として扱わない)。',
       props: { label: 'Exported', value: 0 },
     },
   ],
   invariants: [
     {
       id: 'label-visible',
-      description: 'Label hiển thị',
+      description: '検証ケース。',
       check: ({ root, props }) =>
-        (root.textContent ?? '').includes(props.label) || `không thấy label "${props.label}"`,
+        (root.textContent ?? '').includes(props.label) || `label が見つかりません "${props.label}"`,
     },
     {
       id: 'value-visible',
-      description: 'Value hiển thị (kể cả 0)',
+      description: '検証ケース。',
       check: ({ root, props }) =>
         (root.textContent ?? '').includes(String(props.value)) ||
-        `không thấy value "${props.value}"`,
+        `value が見つかりません "${props.value}"`,
     },
     {
       id: 'delta-iff-provided',
-      description: 'Delta hiển thị khi và chỉ khi có props.delta',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.delta) return true
-        return (root.textContent ?? '').includes(props.delta) || 'không thấy delta'
+        return (root.textContent ?? '').includes(props.delta) || '表示が見つかりません'
       },
     },
   ],

@@ -6,13 +6,13 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type ButtonProps = ComponentProps<typeof Button>
 
-// Spy đếm onClick — fixture probe xác nhận click bị chặn khi loading
+// 検証用コメント。
 const clickSpy = { count: 0 }
 
 registerUnit<ButtonProps>({
   id: 'Button',
   title: 'Button',
-  description: 'Button với variant/size, trạng thái loading/disabled và icon.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Button {...props} />,
   propsSchema: z.looseObject({
@@ -28,7 +28,7 @@ registerUnit<ButtonProps>({
   fixtures: [
     {
       id: 'primary-md',
-      description: 'Mặc định: primary, size md.',
+      description: '検証ケース。',
       props: { children: 'Save' },
     },
     {
@@ -38,17 +38,17 @@ registerUnit<ButtonProps>({
     },
     {
       id: 'loading-state',
-      description: 'Đang loading: hiện spinner, disabled.',
+      description: '検証ケース。',
       props: { loading: true, children: 'Saving' },
     },
     {
       id: 'disabled-state',
-      description: 'Bị disabled qua props.',
+      description: '検証ケース。',
       props: { disabled: true, children: 'Disabled' },
     },
     {
       id: 'with-icons',
-      description: 'Có leftIcon và rightIcon.',
+      description: '検証ケース。',
       props: {
         leftIcon: <span data-icon="left">L</span>,
         rightIcon: <span data-icon="right">R</span>,
@@ -58,7 +58,7 @@ registerUnit<ButtonProps>({
     {
       id: 'probe-click-while-loading',
       probe: true,
-      description: 'Probe: click khi loading — onClick KHÔNG được gọi.',
+      description: '検証ケース。',
       props: {
         loading: true,
         children: 'Submit',
@@ -75,26 +75,26 @@ registerUnit<ButtonProps>({
   invariants: [
     {
       id: 'is-button-with-name',
-      description: 'Root là <button> có accessible name',
+      description: '検証ケース。',
       check: ({ root }) => {
         const btn = root.querySelector('button')
-        if (!btn) return 'không có element <button>'
-        return (btn.textContent ?? '').trim().length > 0 || 'button không có tên'
+        if (!btn) return '対象がありません'
+        return (btn.textContent ?? '').trim().length > 0 || '対象がありません'
       },
     },
     {
       id: 'disabled-iff-disabled-or-loading',
-      description: 'Thuộc tính disabled bật khi và chỉ khi disabled hoặc loading',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const btn = root.querySelector<HTMLButtonElement>('button')
-        if (!btn) return 'không có button'
+        if (!btn) return '対象がありません'
         const expected = Boolean(props.disabled) || Boolean(props.loading)
         return btn.disabled === expected || `button.disabled=${btn.disabled}, expected=${expected}`
       },
     },
     {
       id: 'spinner-iff-loading',
-      description: 'Spinner (svg.animate-spin) hiện khi và chỉ khi loading',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const spinner = root.querySelector('svg.animate-spin')
         const expected = Boolean(props.loading)
@@ -103,7 +103,7 @@ registerUnit<ButtonProps>({
     },
     {
       id: 'icons-rendered',
-      description: 'leftIcon và rightIcon được render khi không loading',
+      description: '検証ケース。',
       onlyFixtures: ['with-icons'],
       check: ({ root }) => {
         const left = root.querySelector('[data-icon="left"]')
@@ -113,9 +113,9 @@ registerUnit<ButtonProps>({
     },
     {
       id: 'click-inert-while-loading',
-      description: 'Click khi loading không gọi onClick',
+      description: '検証ケース。',
       onlyFixtures: ['probe-click-while-loading'],
-      check: () => clickSpy.count === 0 || `onClick được gọi ${clickSpy.count} lần`,
+      check: () => clickSpy.count === 0 || `呼び出し回数が不正です`,
     },
   ],
 })

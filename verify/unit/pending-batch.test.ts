@@ -11,8 +11,8 @@ import { FormType, LanguageType } from '@/types'
 function makeBatch(overrides: Partial<PendingBatch> = {}): PendingBatch {
   return {
     items: [
-      { word: 'serendipity', meaning_vi: 'sự tình cờ may mắn' },
-      { word: 'ephemeral', meaning_vi: 'phù du' },
+      { word: 'serendipity', meaning_vi: '幸運な偶然' },
+      { word: 'ephemeral', meaning_vi: 'はかない' },
     ],
     formType: FormType.LANGUAGE,
     language: LanguageType.ENGLISH,

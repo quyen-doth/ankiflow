@@ -34,7 +34,7 @@ function navCalls(): Array<{ method: string; args: unknown[] }> | null {
 
 function submitForm(root: HTMLElement): void {
   const form = root.querySelector<HTMLFormElement>('form')
-  if (!form) throw new Error('không tìm thấy form')
+  if (!form) throw new Error('要素が見つかりません')
   if (typeof form.requestSubmit === 'function') {
     form.requestSubmit()
   } else {
@@ -52,7 +52,7 @@ const TITLE_INPUT = 'input[aria-label="Card title"]'
 registerUnit<GeneralFormProps>({
   id: 'GeneralForm',
   title: 'GeneralForm',
-  description: 'Form kiến thức chung: không gọi API — build content cục bộ rồi lưu pending (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <CardForm blueprint={GENERAL_BLUEPRINT} {...props} />,
   propsSchema: z.object({
@@ -78,7 +78,7 @@ registerUnit<GeneralFormProps>({
     },
     {
       id: 'act-submit-success',
-      description: 'Act: điền title + content rồi submit → pending entry build cục bộ + push /preview.',
+      description: '検証ケース。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
@@ -88,9 +88,9 @@ registerUnit<GeneralFormProps>({
       act: async ctx => {
         await ctx.wait(50)
         await ctx.type(TITLE_INPUT, 'Mitochondria')
-        await ctx.type('textarea', 'Nhà máy năng lượng của tế bào.')
+        await ctx.type('textarea', '細胞のエネルギー工場。')
         submitForm(ctx.root)
-        // 300 + 200 + 200ms các bước giả lập tiến độ
+        // 検証用コメント。
         await ctx.wait(900)
       },
     },
@@ -117,25 +117,25 @@ registerUnit<GeneralFormProps>({
   invariants: [
     {
       id: 'form-renders-core-fields',
-      description: 'Form có title input, content textarea, DeckSelector, TagInput',
+      description: '検証ケース。',
       check: ({ root }) => {
-        if (!root.querySelector(TITLE_INPUT)) return 'thiếu title input'
-        if (!root.querySelector('textarea')) return 'thiếu content textarea'
-        if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return 'thiếu DeckCreatableField'
-        return !!root.querySelector('[data-verify-unit="TagInput"]') || 'thiếu TagInput'
+        if (!root.querySelector(TITLE_INPUT)) return '不足しています'
+        if (!root.querySelector('textarea')) return '不足しています'
+        if (!root.querySelector('[data-verify-unit="DeckCreatableField"]')) return '不足しています'
+        return !!root.querySelector('[data-verify-unit="TagInput"]') || '不足しています'
       },
     },
     {
       id: 'submit-saves-local-content',
-      description: 'Submit: generatedContent build cục bộ (title→word, content→meaning_vi), formType GENERAL',
+      description: '検証ケース。',
       onlyFixtures: ['act-submit-success'],
       check: () => {
         const pending = loadPending()
-        if (!pending) return 'không có ankiflow_pending_result trong localStorage'
+        if (!pending) return '対象がありません'
         const c = pending.generatedContent as Record<string, string>
         if (c.title !== 'Mitochondria') return `title=${c.title}`
         if (c.word !== 'Mitochondria') return `word=${c.word}`
-        if (c.meaning_vi !== 'Nhà máy năng lượng của tế bào.') return `meaning_vi=${c.meaning_vi}`
+        if (c.meaning_vi !== '細胞のエネルギー工場。') return `meaning_vi=${c.meaning_vi}`
         if (pending.formType !== FormType.GENERAL) return `formType=${pending.formType}`
         if (pending.language !== null) return `language=${pending.language}`
         return pending.deckId === 'd-gen' || `deckId=${pending.deckId}`
@@ -157,7 +157,7 @@ registerUnit<GeneralFormProps>({
     },
     {
       id: 'empty-title-reports-invalid',
-      description: 'Title rỗng: onValidityChange cuối là false',
+      description: '検証ケース。',
       onlyFixtures: ['probe-empty-title-invalid'],
       check: () =>
         (validitySpy.last === false && validitySpy.sawTrue) ||

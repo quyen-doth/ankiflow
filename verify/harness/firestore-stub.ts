@@ -1,9 +1,9 @@
 /**
- * Stub in-memory cho 'firebase/firestore' — CHỈ active trong vitest qua
- * resolve.alias trong vitest.config.ts. Trên browser, module thật được dùng
- * và runner trả SKIP cho fixture có mocks.firestore.
+ * 検証用コメント。
+ * 検証用コメント。
+ * 検証用コメント。
  *
- * Chỉ implement phần API mà components của AnkiFlow dùng:
+ * 検証用コメント。
  * collection / query / where (equality) / orderBy / getDocs / doc /
  * addDoc / updateDoc / deleteDoc / serverTimestamp / arrayRemove.
  */
@@ -61,9 +61,9 @@ function maybeThrow(operation: 'getDocs' | 'addDoc' | 'updateDoc', collectionNam
 }
 
 function seed(data: Record<string, DocSeed[]>): void {
-  // Auto-inject user_id='test-user' (khớp TEST_AUTH_USER trong runner) khi seed
-  // không khai báo — components multi-user filter where('user_id'...) vẫn thấy docs.
-  // Seed muốn giả doc của user khác chỉ cần set user_id tường minh.
+  // seed 時に user_id='test-user' を自動注入する (runner の TEST_AUTH_USER と一致)
+  // 検証用コメント。
+  // 検証用コメント。
   store = new Map(
     Object.entries(data).map(([name, docs]) => [
       name,
@@ -78,7 +78,7 @@ function reset(): void {
   autoId = 0
 }
 
-// Runner seed/reset store qua global hooks (không import được module alias này trực tiếp)
+// 検証用コメント。
 const g = globalThis as unknown as {
   __verifyFirestoreSeed?: typeof seed
   __verifyFirestoreReset?: typeof reset
@@ -124,13 +124,13 @@ function applyConstraints(docs: DocSeed[], constraints: QueryConstraint[]): DocS
   let result = [...docs]
   for (const c of constraints) {
     if (c.__kind === 'where') {
-      // Chỉ hỗ trợ equality và 'in' — đủ cho components hiện tại
+      // 検証用コメント。
       if (c.op === '==') {
         result = result.filter(d => d[c.field] === c.value)
       } else if (c.op === 'in' && Array.isArray(c.value)) {
         result = result.filter(d => (c.value as unknown[]).includes(d[c.field]))
       } else {
-        throw new Error(`firestore-stub: chưa hỗ trợ where op "${c.op}"`)
+        throw new Error(`firestore-stub: where op はまだ未対応です "${c.op}"`)
       }
     } else if (c.__kind === 'orderBy') {
       result.sort((a, b) => {
@@ -186,7 +186,7 @@ export async function updateDoc(ref: DocRef, data: Record<string, unknown>): Pro
   maybeThrow('updateDoc', ref.collection)
   const docs = store.get(ref.collection) ?? []
   const target = docs.find(d => d.id === ref.id)
-  if (!target) throw new Error(`firestore-stub: không tìm thấy doc ${ref.collection}/${ref.id}`)
+  if (!target) throw new Error(`要素が見つかりません`)
   Object.entries(data).forEach(([key, value]) => {
     if (
       typeof value === 'object'
@@ -233,7 +233,7 @@ export function onSnapshot(
 }
 
 export function limit(n: number): OrderByConstraint {
-  // no-op constraint — đủ cho mục đích verify
+  // 検証用コメント。
   void n
   return { __kind: 'orderBy', field: '__noop', direction: 'asc' }
 }

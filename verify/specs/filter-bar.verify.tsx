@@ -21,7 +21,7 @@ const noop = () => undefined
 registerUnit<FilterBarProps>({
   id: 'FilterBar',
   title: 'FilterBar',
-  description: 'Thanh tìm kiếm + chip filter đang áp dụng + clear all.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <FilterBar {...props} />,
   propsSchema: z.object({
@@ -37,12 +37,12 @@ registerUnit<FilterBarProps>({
   fixtures: [
     {
       id: 'search-only',
-      description: 'Chỉ ô tìm kiếm, không filter.',
+      description: '検証ケース。',
       props: { searchValue: '', onSearchChange: noop },
     },
     {
       id: 'with-active-filters',
-      description: '2 filter đang áp dụng + nút Clear all.',
+      description: '検証ケース。',
       props: {
         searchValue: '',
         onSearchChange: noop,
@@ -56,7 +56,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'act-search',
-      description: 'Act: gõ từ khóa → onSearchChange nhận giá trị.',
+      description: '検証ケース。',
       props: {
         searchValue: '',
         onSearchChange: (value: string) => spy.searchCalls.push(value),
@@ -68,7 +68,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'act-remove-filter',
-      description: 'Act: click remove chip đầu → onRemoveFilter nhận key.',
+      description: '検証ケース。',
       props: {
         searchValue: '',
         onSearchChange: noop,
@@ -83,7 +83,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'act-clear-all',
-      description: 'Act: click Clear all → onClearAll gọi 1 lần.',
+      description: '検証ケース。',
       props: {
         searchValue: '',
         onSearchChange: noop,
@@ -97,7 +97,7 @@ registerUnit<FilterBarProps>({
         reset()
         const buttons = Array.from(ctx.root.querySelectorAll<HTMLElement>('button'))
         const clearBtn = buttons.find(b => b.textContent?.trim() === 'Clear all')
-        if (!clearBtn) throw new Error('không tìm thấy nút Clear all')
+        if (!clearBtn) throw new Error('要素が見つかりません')
         clearBtn.click()
         await ctx.wait(16)
       },
@@ -105,7 +105,7 @@ registerUnit<FilterBarProps>({
     {
       id: 'probe-empty-filter-label',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): chip filter có label rỗng — chip mất nhãn.',
+      description: '検証ケース。',
       props: {
         searchValue: '',
         onSearchChange: noop,
@@ -118,16 +118,16 @@ registerUnit<FilterBarProps>({
   invariants: [
     {
       id: 'search-input-present',
-      description: 'Có ô input type=search với placeholder',
+      description: '検証ケース。',
       check: ({ root }) => {
         const input = root.querySelector<HTMLInputElement>('input[type="search"]')
-        if (!input) return 'không có input[type=search]'
-        return (input.placeholder ?? '').length > 0 || 'input không có placeholder'
+        if (!input) return '対象がありません'
+        return (input.placeholder ?? '').length > 0 || '対象がありません'
       },
     },
     {
       id: 'chips-match-active-filters',
-      description: 'Số chip = activeFilters.length; mỗi chip có nhãn',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const chips = Array.from(root.querySelectorAll('[data-verify-unit="Badge"]'))
         const expected = props.activeFilters?.length ?? 0
@@ -135,12 +135,12 @@ registerUnit<FilterBarProps>({
         const unlabeled = chips.filter(
           c => !(c.textContent ?? '').replace(/×/g, '').trim()
         )
-        return unlabeled.length === 0 || `${unlabeled.length} chip không có nhãn`
+        return unlabeled.length === 0 || `対象がありません`
       },
     },
     {
       id: 'clear-all-iff-has-filters',
-      description: 'Nút Clear all hiện khi và chỉ khi có activeFilters',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const buttons = Array.from(root.querySelectorAll('button'))
         const clearBtn = buttons.find(b => b.textContent?.trim() === 'Clear all')
@@ -150,7 +150,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'search-change-receives-value',
-      description: 'Gõ từ khóa → onSearchChange nhận đúng giá trị',
+      description: '検証ケース。',
       onlyFixtures: ['act-search'],
       check: () =>
         spy.searchCalls.includes('serendipity') ||
@@ -158,7 +158,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'remove-filter-receives-key',
-      description: 'Remove chip → onRemoveFilter nhận đúng key',
+      description: '検証ケース。',
       onlyFixtures: ['act-remove-filter'],
       check: () =>
         JSON.stringify(spy.removedKeys) === JSON.stringify(['lang']) ||
@@ -166,7 +166,7 @@ registerUnit<FilterBarProps>({
     },
     {
       id: 'clear-all-fires-once',
-      description: 'Clear all gọi onClearAll đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-clear-all'],
       check: () => spy.clearAllCount === 1 || `clearAllCount=${spy.clearAllCount}`,
     },

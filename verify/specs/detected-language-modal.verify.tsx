@@ -14,7 +14,7 @@ const noop = () => undefined
 registerUnit<Props>({
   id: 'DetectedLanguageModal',
   title: 'DetectedLanguageModal',
-  description: 'Hỏi user thêm hoặc bật ngôn ngữ AI vừa nhận diện.',
+  description: '検証ケース。',
   kind: 'component',
   allowsEmptyRender: true,
   render: props => <DetectedLanguageModal {...props} />,
@@ -34,23 +34,23 @@ registerUnit<Props>({
   fixtures: [
     {
       id: 'add-new',
-      description: 'Ngôn ngữ chưa tồn tại → Add & use.',
+      description: '検証ケース。',
       props: { open: true, detection, existingDisabled: false, saving: false, onConfirm: noop, onClose: noop },
     },
     {
       id: 'enable-existing',
-      description: 'Ngôn ngữ có sẵn nhưng disabled → Enable & use.',
+      description: '検証ケース。',
       props: { open: true, detection, existingDisabled: true, saving: false, onConfirm: noop, onClose: noop },
     },
     {
       id: 'act-confirm',
-      description: 'Act: xác nhận Add & use gọi callback đúng một lần.',
+      description: '検証ケース。',
       props: { open: true, detection, existingDisabled: false, saving: false, onConfirm: confirm, onClose: noop },
       act: async ctx => {
         confirmSpy.count = 0
         const button = Array.from(ctx.root.querySelectorAll('button'))
           .find(item => item.textContent?.trim() === 'Add & use')
-        if (!button) throw new Error('không tìm thấy Add & use')
+        if (!button) throw new Error('要素が見つかりません')
         button.click()
         await ctx.wait(16)
       },
@@ -58,14 +58,14 @@ registerUnit<Props>({
     {
       id: 'probe-no-detection',
       probe: true,
-      description: 'Probe: detection=null → không render và không crash.',
+      description: '検証ケース。',
       props: { open: true, detection: null, existingDisabled: false, saving: false, onConfirm: noop, onClose: noop },
     },
   ],
   invariants: [
     {
       id: 'shows-detection',
-      description: 'Hiển thị tên, code và confidence.',
+      description: '検証ケース。',
       onlyFixtures: ['add-new', 'enable-existing', 'act-confirm'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
@@ -74,16 +74,16 @@ registerUnit<Props>({
     },
     {
       id: 'correct-action',
-      description: 'Action thay đổi theo trạng thái đã tồn tại/disabled.',
+      description: '検証ケース。',
       onlyFixtures: ['add-new', 'enable-existing'],
       check: ({ root, fixture }) => {
         const expected = fixture.id === 'enable-existing' ? 'Enable & use' : 'Add & use'
-        return (root.textContent ?? '').includes(expected) || `thiếu ${expected}`
+        return (root.textContent ?? '').includes(expected) || `不足しています`
       },
     },
     {
       id: 'confirm-once',
-      description: 'Confirm callback chạy đúng một lần.',
+      description: '検証ケース。',
       onlyFixtures: ['act-confirm'],
       check: () => confirmSpy.count === 1 || `count=${confirmSpy.count}`,
     },

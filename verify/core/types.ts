@@ -1,12 +1,12 @@
 import type { ReactElement } from 'react'
 import type { ZodType } from 'zod'
 
-/** Kết quả chấm cho một fixture: BLOCKED > FAIL > SKIP > PASS */
+/** fixture の判定結果: BLOCKED > FAIL > SKIP > PASS */
 export type Verdict = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIP'
 
 export type CheckStatus = 'ok' | 'fail' | 'warn' | 'skip'
 
-/** Một kết quả kiểm tra đơn lẻ do verifier trả về */
+/** verifier が返す単一の検証結果 */
 export interface Check {
   verifier: string
   status: CheckStatus
@@ -14,7 +14,7 @@ export interface Check {
   detail?: string
 }
 
-/** Context truyền cho fixture.act() — driver tương tác với DOM đã mount */
+/** fixture.act() に渡す context — driver は mounted DOM と対話する */
 export interface ActContext {
   root: HTMLElement
   click: (selector: string) => Promise<void>
@@ -29,7 +29,7 @@ export interface FetchRule {
     status?: number
     json?: unknown
     delayMs?: number
-    /** Giả lập lỗi mạng (fetch reject) thay vì trả response */
+    /** response を返さず network error (fetch reject) を模擬する */
     reject?: boolean
   }
 }
@@ -40,30 +40,30 @@ export interface DocSeed {
 }
 
 /**
- * Mocks extension (không có trong framework gốc): môi trường giả lập
- * được runner cài đặt trước khi mount và khôi phục sau khi verify.
- * `firestore` chỉ hoạt động trong vitest (module alias) — trên browser
- * dashboard, fixture có `firestore` sẽ trả verdict SKIP.
+ * 検証用コメント。
+ * 検証用コメント。
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export interface FixtureMocks {
   fetch?: FetchRule[]
   firestore?: Record<string, DocSeed[]>
   localStorage?: Record<string, string>
-  /** Auth context cho fixture; mặc định dùng TEST_AUTH_USER. */
+  /** fixture 用 auth context。default は TEST_AUTH_USER。 */
   auth?: {
     user: { uid: string; email: string | null } | null
     loading?: boolean
   }
-  /** Pathname cho mock next/navigation (chỉ có tác dụng trong vitest) */
+  /** mock next/navigation 用 pathname (vitest 内のみ有効) */
   pathname?: string
 }
 
-/** Một cấu hình render tái lập được của unit */
+/** unit の再現可能な render 設定 */
 export interface Fixture<P = unknown> {
   id: string
   description: string
   props: P
-  /** Fixture đối kháng / stress test — mỗi unit phải có ít nhất một probe */
+  /** 対抗 / stress test fixture — 各 unit は probe を 1 つ以上持つ必要がある */
   probe?: boolean
   act?: (ctx: ActContext) => void | Promise<void>
   mocks?: FixtureMocks
@@ -76,7 +76,7 @@ export interface InvariantContext<P = unknown> {
   contract: Record<string, string>
 }
 
-/** Predicate phải đúng trên DOM đã mount; trả true hoặc string mô tả vi phạm */
+/** mounted DOM 上で満たすべき predicate。true または違反内容の string を返す */
 export interface Invariant<P = unknown> {
   id: string
   description: string
@@ -93,11 +93,11 @@ export interface VerifiableUnit<P = unknown> {
   propsSchema?: ZodType
   fixtures: Fixture<P>[]
   invariants: Invariant<P>[]
-  /** Giới hạn verifier nào chạy cho unit này (mặc định: tất cả) */
+  /** この unit で実行する verifier を制限する (default: すべて) */
   verifiers?: string[]
   /**
-   * Unit có thể render null hợp lệ (Modal đóng, ErrorMessage null) —
-   * dom-contract verifier SKIP thay vì FAIL khi DOM rỗng.
+   * 検証用コメント。
+   * 検証用コメント。
    */
   allowsEmptyRender?: boolean
 }
@@ -135,7 +135,7 @@ export interface ManifestEntry {
   verifiers: string[]
 }
 
-/** API gắn vào window.__verify cho agent điều khiển từ browser console */
+/** agent が browser console から操作するために window.__verify へ公開する API */
 export interface VerifyHandle {
   version: string
   manifest: () => ManifestEntry[]

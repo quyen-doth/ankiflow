@@ -38,7 +38,7 @@ const noop = () => undefined
 registerUnit<ImageSelectorProps>({
   id: 'ImageSelector',
   title: 'ImageSelector',
-  description: 'Lưới 4 ảnh Unsplash chọn được + nút Find more + upload + skeleton khi loading.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <ImageSelector {...props} />,
   propsSchema: z.object({
@@ -52,22 +52,22 @@ registerUnit<ImageSelectorProps>({
   fixtures: [
     {
       id: 'with-images',
-      description: '4 ảnh, chưa chọn.',
+      description: '検証ケース。',
       props: { images: IMAGES, selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
     {
       id: 'with-selection',
-      description: 'Đã chọn 1 ảnh — hiện preview + credit.',
+      description: '検証ケース。',
       props: { images: IMAGES, selectedUrl: IMAGES[1].url, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
     {
       id: 'loading',
-      description: 'Đang loading — 4 skeleton, nút hiển thị Searching... và disabled.',
+      description: '検証ケース。',
       props: { images: [], selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop, loading: true },
     },
     {
       id: 'act-select',
-      description: 'Act: click ảnh đầu → onSelect nhận đúng image object.',
+      description: '検証ケース。',
       props: { images: IMAGES, selectedUrl: null, onSelect: recordSelect, onRefetch: noop, onUpload: noop },
       act: async ctx => {
         selectSpy.count = 0
@@ -77,14 +77,14 @@ registerUnit<ImageSelectorProps>({
     },
     {
       id: 'act-refetch',
-      description: 'Act: click Find more → onRefetch gọi 1 lần.',
+      description: '検証ケース。',
       props: { images: IMAGES, selectedUrl: null, onSelect: noop, onRefetch: recordRefetch, onUpload: noop },
       act: async ctx => {
         refetchSpy.count = 0
         const btn = Array.from(ctx.root.querySelectorAll('button')).find(b =>
           b.textContent?.includes('Find more')
         )
-        if (!btn) throw new Error('không tìm thấy nút Find more')
+        if (!btn) throw new Error('要素が見つかりません')
         btn.click()
         await ctx.wait(0)
       },
@@ -92,14 +92,14 @@ registerUnit<ImageSelectorProps>({
     {
       id: 'probe-empty-images',
       probe: true,
-      description: 'Probe: images rỗng — hiện message, không crash.',
+      description: '検証ケース。',
       props: { images: [], selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop },
     },
   ],
   invariants: [
     {
       id: 'image-button-count',
-      description: 'Số nút ảnh = min(images.length, 4) khi không loading',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (props.loading) return true
         const buttons = root.querySelectorAll('[aria-label^="Select image:"]').length
@@ -109,7 +109,7 @@ registerUnit<ImageSelectorProps>({
     },
     {
       id: 'credit-iff-selected',
-      description: 'Dòng credit hiện khi có selectedUrl trỏ tới ảnh Unsplash',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const hasCredit = (root.textContent ?? '').includes('Unsplash')
         const expected = props.selectedUrl !== null && props.images.some(img => img.url === props.selectedUrl)
@@ -118,19 +118,19 @@ registerUnit<ImageSelectorProps>({
     },
     {
       id: 'loading-state',
-      description: 'Loading: không có nút ảnh, text "Searching...", nút refetch disabled',
+      description: 'Loading: image ボタンはなく、text は "Searching..."、refetch ボタンは disabled',
       onlyFixtures: ['loading'],
       check: ({ root }) => {
         if (root.querySelectorAll('[aria-label^="Select image:"]').length > 0) {
-          return 'vẫn còn nút ảnh khi loading'
+          return 'loading 中でも image button がまだ残っています'
         }
-        if (!(root.textContent ?? '').includes('Searching...')) return 'không thấy "Searching..."'
+        if (!(root.textContent ?? '').includes('Searching...')) return '見つかりません "Searching..."'
         return true
       },
     },
     {
       id: 'select-fires-image',
-      description: 'Click ảnh: onSelect nhận đúng image, gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-select'],
       check: () =>
         (selectSpy.count === 1 && selectSpy.lastId === 'img-1') ||
@@ -138,7 +138,7 @@ registerUnit<ImageSelectorProps>({
     },
     {
       id: 'refetch-fires',
-      description: 'Click Find more: onRefetch gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-refetch'],
       check: () => refetchSpy.count === 1 || `count=${refetchSpy.count}`,
     },

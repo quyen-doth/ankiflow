@@ -8,7 +8,7 @@ type StepIndicatorProps = ComponentProps<typeof StepIndicator>
 registerUnit<StepIndicatorProps>({
   id: 'StepIndicator',
   title: 'StepIndicator',
-  description: 'Chỉ báo nhiều bước: completed (check) / active / pending (số).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <StepIndicator {...props} />,
   propsSchema: z.object({
@@ -24,7 +24,7 @@ registerUnit<StepIndicatorProps>({
   fixtures: [
     {
       id: 'all-pending',
-      description: '3 bước đều pending.',
+      description: '検証ケース。',
       props: {
         steps: [
           { label: 'Generate content', status: 'pending' },
@@ -35,18 +35,18 @@ registerUnit<StepIndicatorProps>({
     },
     {
       id: 'mixed',
-      description: 'completed + active (có description) + pending.',
+      description: '検証ケース。',
       props: {
         steps: [
           { label: 'Generate content', status: 'completed' },
-          { label: 'Create audio', description: 'Đang gọi Google TTS…', status: 'active' },
+          { label: 'Create audio', description: '検証ケース。', status: 'active' },
           { label: 'Export to Anki', status: 'pending' },
         ],
       },
     },
     {
       id: 'all-completed',
-      description: '2 bước đều completed.',
+      description: '検証ケース。',
       props: {
         steps: [
           { label: 'Generate content', status: 'completed' },
@@ -57,13 +57,13 @@ registerUnit<StepIndicatorProps>({
     {
       id: 'probe-empty-steps',
       probe: true,
-      description: 'Probe: mảng steps rỗng — render 0 hàng, không crash.',
+      description: '検証ケース。',
       props: { steps: [] },
     },
     {
       id: 'probe-long-labels',
       probe: true,
-      description: 'Probe: label 150 ký tự không phá render.',
+      description: '検証ケース。',
       props: {
         steps: [
           { label: 'a'.repeat(150), status: 'active' },
@@ -75,17 +75,17 @@ registerUnit<StepIndicatorProps>({
   invariants: [
     {
       id: 'row-count-matches',
-      description: 'Số hàng render = steps.length',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const el = root.querySelector('[data-verify-unit="StepIndicator"]')
-        if (!el) return 'không tìm thấy root StepIndicator'
+        if (!el) return '要素が見つかりません'
         const rows = el.children.length
         return rows === props.steps.length || `rows=${rows}, steps=${props.steps.length}`
       },
     },
     {
       id: 'check-icon-iff-completed',
-      description: 'Số icon check (svg) = số bước completed',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const svgs = root.querySelectorAll('svg').length
         const completed = props.steps.filter(s => s.status === 'completed').length
@@ -94,16 +94,16 @@ registerUnit<StepIndicatorProps>({
     },
     {
       id: 'labels-rendered',
-      description: 'Mọi label của step đều hiển thị',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const text = root.textContent ?? ''
         const missing = props.steps.filter(s => !text.includes(s.label))
-        return missing.length === 0 || `thiếu label: ${missing.map(s => s.label.slice(0, 20)).join(', ')}`
+        return missing.length === 0 || `label 不足: ${missing.map(s => s.label.slice(0, 20)).join(', ')}`
       },
     },
     {
       id: 'descriptions-iff-provided',
-      description: 'Số đoạn text = số step + số description',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const paragraphs = root.querySelectorAll('p').length
         const expected =
@@ -113,7 +113,7 @@ registerUnit<StepIndicatorProps>({
     },
     {
       id: 'contract-count-matches',
-      description: 'data-verify-count khớp steps.length',
+      description: 'data-verify-count が steps.length と一致',
       check: ({ contract, props }) =>
         Number(contract.count) === props.steps.length ||
         `contract.count=${contract.count}, steps=${props.steps.length}`,

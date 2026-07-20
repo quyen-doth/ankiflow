@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock firebase/auth — capture callback của onAuthStateChanged để chủ động bắn auth state
+// 検証用コメント。
 const { authState } = vi.hoisted(() => ({
   authState: {
     callback: null as ((user: unknown) => void) | null,
@@ -17,7 +17,7 @@ vi.mock('firebase/auth', () => ({
   },
 }))
 
-// File .test.ts (vitest include không nhận .tsx) → dùng createElement thay JSX
+// 検証用コメント。
 import { createElement, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { AuthProvider, useAuth } from '@/components/providers/AuthProvider'
