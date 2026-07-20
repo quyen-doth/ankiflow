@@ -109,6 +109,24 @@ registerUnit({
       props: {},
     },
     {
+      id: 'probe-output-key-focus',
+      probe: true,
+      description: 'Output Key を連続入力しても input の focus を保持する。',
+      props: {},
+      act: async ctx => {
+        const selector = 'input[aria-label="AI output key 1"]'
+        const input = ctx.root.querySelector<HTMLInputElement>(selector)
+        if (!input) throw new Error('editable Output Key input was not found')
+        input.focus()
+
+        let value = ''
+        for (const character of 'phon_the') {
+          value += character
+          await ctx.type(selector, value)
+        }
+      },
+    },
+    {
       id: 'test-generate-success',
       description: '未保存 profile で sample generation を実行し custom result を表示する。',
       props: {},
@@ -241,6 +259,16 @@ registerUnit({
         if (!input?.disabled) return 'primary key input is editable'
         return !root.querySelector('button[aria-label="Remove AI output word"]')
           || 'primary output has remove action'
+      },
+    },
+    {
+      id: 'output-key-keeps-focus',
+      description: 'Output Key の各文字入力後も同じ input が active のままになる。',
+      onlyFixtures: ['probe-output-key-focus'],
+      check: ({ root }) => {
+        const input = root.querySelector<HTMLInputElement>('input[aria-label="AI output key 1"]')
+        if (input?.value !== 'phon_the') return `output key="${input?.value}"`
+        return document.activeElement === input || 'Output Key input lost focus'
       },
     },
     {

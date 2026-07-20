@@ -293,7 +293,7 @@ export function AiOutputProfilesEditor({
             }}
           >
             {profiles.map((profile, index) => (
-              <option key={`${profile.profile}-${index}`} value={index}>
+              <option key={index} value={index}>
                 {profileLabel(profile.profile)}
               </option>
             ))}
@@ -324,7 +324,7 @@ export function AiOutputProfilesEditor({
         {activeProfile.fields.map((field, fieldIndex) => {
           const isPrimary = fieldIndex === primaryFieldIndex
           return (
-            <div key={`${field.key}-${fieldIndex}`} className="rounded-[9px] border border-border/60 bg-surface/40 p-3 flex flex-col gap-3">
+            <div key={fieldIndex} className="rounded-[9px] border border-border/60 bg-surface/40 p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[12px] font-semibold text-slate-600">
