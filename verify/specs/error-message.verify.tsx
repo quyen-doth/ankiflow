@@ -8,7 +8,7 @@ type ErrorMessageProps = ComponentProps<typeof ErrorMessage>
 registerUnit<ErrorMessageProps>({
   id: 'ErrorMessage',
   title: 'ErrorMessage',
-  description: 'Hộp cảnh báo lỗi; render null khi message null/rỗng.',
+  description: '検証ケース。',
   kind: 'component',
   allowsEmptyRender: true,
   render: props => <ErrorMessage {...props} />,
@@ -18,25 +18,25 @@ registerUnit<ErrorMessageProps>({
   fixtures: [
     {
       id: 'with-message',
-      description: 'Có message lỗi.',
+      description: '検証ケース。',
       props: { message: 'Failed to connect to Anki. Is Anki Desktop running?' },
     },
     {
       id: 'null-message',
-      description: 'message null → không render gì.',
+      description: '検証ケース。',
       props: { message: null },
     },
     {
       id: 'probe-long-message',
       probe: true,
-      description: 'Probe: message 300 ký tự vẫn render bình thường.',
+      description: '検証ケース。',
       props: { message: 'e'.repeat(300) },
     },
   ],
   invariants: [
     {
       id: 'renders-iff-message',
-      description: 'Render khi và chỉ khi message truthy',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const el = root.querySelector('[data-verify-unit="ErrorMessage"]')
         const expected = Boolean(props.message)
@@ -45,12 +45,12 @@ registerUnit<ErrorMessageProps>({
     },
     {
       id: 'message-visible',
-      description: 'Nội dung message hiển thị đầy đủ',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.message) return true
         return (
           (root.textContent ?? '').includes(props.message) ||
-          'không thấy nội dung message'
+          '表示が見つかりません'
         )
       },
     },

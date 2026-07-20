@@ -3,24 +3,24 @@ import type { Check } from '@/verify/core/types'
 
 export const schemaVerifier = registerVerifier({
   id: 'schema',
-  description: 'Validate props của fixture theo propsSchema (zod) của unit.',
+  description: '検証ケース。',
   run({ unit, fixture }): Check[] {
     if (!unit.propsSchema) {
       return [{
         verifier: 'schema',
         status: 'warn',
-        label: 'Unit không khai báo propsSchema',
+        label: 'unit が propsSchema を宣言していません',
       }]
     }
     const result = unit.propsSchema.safeParse(fixture.props)
     if (result.success) {
-      return [{ verifier: 'schema', status: 'ok', label: 'Props khớp schema' }]
+      return [{ verifier: 'schema', status: 'ok', label: 'Props 一致 schema' }]
     }
-    // zod 4: đọc lỗi qua error.issues
+    // 検証用コメント。
     return result.error.issues.map(issue => ({
       verifier: 'schema',
       status: 'fail' as const,
-      label: `Props sai schema tại "${issue.path.join('.') || '(root)'}"`,
+      label: `props schema が "${issue.path.join('.') || '(root)'}" で不一致です`,
       detail: issue.message,
     }))
   },

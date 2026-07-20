@@ -3,23 +3,23 @@ import type { Check } from '@/verify/core/types'
 
 export const domContractVerifier = registerVerifier({
   id: 'dom-contract',
-  description: 'Kiểm tra unit phát contract data-verify-* và tự định danh đúng.',
+  description: '検証ケース。',
   run({ unit, root, contract }): Check[] {
     if (Object.keys(contract).length === 0) {
-      // Unit được phép render null (Modal đóng...) và DOM thực sự rỗng → hợp lệ.
-      // Không dùng 'skip' ở đây: skip lan lên verdict SKIP, trong khi đây là
-      // kết quả đúng kỳ vọng — SKIP dành cho fixture không chạy được ở môi trường hiện tại.
+      // 検証用コメント。
+      // 検証用コメント。
+      // 検証用コメント。
       if (unit.allowsEmptyRender && root.children.length === 0) {
         return [{
           verifier: 'dom-contract',
           status: 'ok',
-          label: 'DOM rỗng hợp lệ — unit khai báo allowsEmptyRender',
+          label: '空 DOM は有効 — unit が allowsEmptyRender を宣言しています',
         }]
       }
       return [{
         verifier: 'dom-contract',
         status: 'fail',
-        label: 'Không phát contract data-verify-* nào',
+        label: 'contract data-verify-* が見つかりません',
       }]
     }
 
@@ -28,19 +28,19 @@ export const domContractVerifier = registerVerifier({
       checks.push({
         verifier: 'dom-contract',
         status: 'ok',
-        label: `Contract tự định danh là "${contract.unit}"`,
+        label: `contract は自身を "${contract.unit}" と識別しています`,
       })
     } else if (contract.unit) {
       checks.push({
         verifier: 'dom-contract',
         status: 'warn',
-        label: `Contract định danh "${contract.unit}" khác unit id "${unit.id}"`,
+        label: `contract id "${contract.unit}" が unit id "${unit.id}" と異なります`,
       })
     } else {
       checks.push({
         verifier: 'dom-contract',
         status: 'warn',
-        label: 'Contract thiếu data-verify-unit',
+        label: '不足しています',
       })
     }
     return checks

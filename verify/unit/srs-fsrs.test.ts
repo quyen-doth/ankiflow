@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDefaultReviewState, applyRating, calculateNextIntervals, isDue, masteryLevel } from '@/lib/srs/fsrs'
 
-// Snapshot giá trị thật đo bằng ts-fsrs 5.4.1 (default params) — không đoán số, chạy thật rồi ghi lại.
+// 検証用コメント。
 const NOW = new Date('2026-06-27T10:00:00Z')
 
 describe('lib/srs/fsrs', () => {
@@ -29,22 +29,22 @@ describe('lib/srs/fsrs', () => {
     })
   })
 
-  describe('applyRating — source marking (SRS Phase 0 precedence, KHÔNG đổi)', () => {
-    it('rating luôn đánh dấu source builtin', () => {
+  describe('検証対象', () => {
+    it('検証ケース', () => {
       const state = createDefaultReviewState(NOW.toISOString())
       const result = applyRating(state, 'good', NOW)
       expect(result.source).toBe('builtin')
     })
 
-    it('không đụng synced_at (sync-srs sở hữu field này)', () => {
+    it('検証ケース', () => {
       const state = { ...createDefaultReviewState(NOW.toISOString()), synced_at: '2026-06-01T00:00:00.000Z' }
       const result = applyRating(state, 'good', NOW)
       expect(result.synced_at).toBe('2026-06-01T00:00:00.000Z')
     })
   })
 
-  describe('applyRating — single rating (đối chiếu output thật của ts-fsrs)', () => {
-    it('undefined state + good → tạo default rồi rate, learning phase', () => {
+  describe('検証対象', () => {
+    it('検証ケース', () => {
       const result = applyRating(undefined, 'good', NOW)
       expect(result.total_reviews).toBe(1)
       expect(result.last_rating).toBe('good')
@@ -54,7 +54,7 @@ describe('lib/srs/fsrs', () => {
       expect(result.fsrs?.state).toBe(1) // State.Learning
     })
 
-    it('default state + easy → graduate thẳng lên review, 8 ngày', () => {
+    it('検証ケース', () => {
       const state = createDefaultReviewState(NOW.toISOString())
       const result = applyRating(state, 'easy', NOW)
       expect(result.queue).toBe('review')
@@ -76,8 +76,8 @@ describe('lib/srs/fsrs', () => {
     })
   })
 
-  describe('applyRating — chuỗi rating (Again → Good → Good → Easy, snapshot đo thật)', () => {
-    it('stability/difficulty/due_date tiến triển đúng hướng và graduate sau Easy', () => {
+  describe('検証対象', () => {
+    it('検証ケース', () => {
       let state = applyRating(undefined, 'again', NOW)
       expect(state.fsrs?.stability).toBeCloseTo(0.212, 3)
       expect(state.queue).toBe('learning')
@@ -90,7 +90,7 @@ describe('lib/srs/fsrs', () => {
       t = new Date(state.due_date)
       state = applyRating(state, 'good', t)
       expect(state.fsrs?.stability).toBeCloseTo(0.2842, 3)
-      // difficulty giảm dần qua các lần rate tốt liên tiếp
+      // 検証用コメント。
       expect(state.fsrs!.difficulty).toBeLessThan(6.4133)
 
       t = new Date(state.due_date)
@@ -102,13 +102,13 @@ describe('lib/srs/fsrs', () => {
   })
 
   describe('calculateNextIntervals', () => {
-    it('trả 4 nhãn thời lượng cho state mới (đo thật)', () => {
+    it('検証ケース', () => {
       const state = createDefaultReviewState(NOW.toISOString())
       const intervals = calculateNextIntervals(state)
       expect(intervals).toEqual({ again: '1m', hard: '6m', good: '10m', easy: '8d' })
     })
 
-    it('mọi giá trị đều là chuỗi non-empty cho state đã trưởng thành', () => {
+    it('検証ケース', () => {
       const state = applyRating(undefined, 'easy', NOW)
       const intervals = calculateNextIntervals(state)
       for (const v of Object.values(intervals)) {
@@ -118,14 +118,14 @@ describe('lib/srs/fsrs', () => {
     })
   })
 
-  describe('isDue / masteryLevel — giữ nguyên logic (không phụ thuộc FSRS)', () => {
+  describe('検証対象', () => {
     it('isDue so due_date với now', () => {
       const state = createDefaultReviewState('2026-01-01T00:00:00Z')
       expect(isDue(state, new Date('2026-01-02T00:00:00Z'))).toBe(true)
       expect(isDue(state, new Date('2025-12-31T00:00:00Z'))).toBe(false)
     })
 
-    it('masteryLevel phân loại theo queue/interval_days', () => {
+    it('検証ケース', () => {
       expect(masteryLevel(createDefaultReviewState(NOW.toISOString()))).toBe('new')
       const learning = { ...createDefaultReviewState(NOW.toISOString()), queue: 'learning' as const }
       expect(masteryLevel(learning)).toBe('learning')

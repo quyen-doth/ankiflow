@@ -11,12 +11,12 @@ import { FormType, LanguageType } from '@/types'
 const validEnglish = {
   word: 'resilient',
   ipa: '/rɪˈzɪljənt/',
-  meaning_vi: 'kiên cường',
-  word_type_vi: 'tính từ',
+  meaning_vi: '粘り強い',
+  word_type_vi: '形容詞',
   example_sentence: 'She stayed resilient under pressure.',
-  example_translation: 'Cô ấy vẫn kiên cường dưới áp lực.',
+  example_translation: '彼女はプレッシャーの中でも粘り強かった。',
   example_blank: 'She stayed ___ under pressure.',
-  collocations: ['highly resilient (rất kiên cường)'],
+  collocations: ['highly resilient (rất 粘り強い)'],
   unsplash_search_keyword: 'resilience',
 }
 

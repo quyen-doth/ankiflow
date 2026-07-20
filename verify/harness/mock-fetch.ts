@@ -2,8 +2,8 @@ import type { FetchRule } from '@/verify/core/types'
 
 /**
  * Thay globalThis.fetch bằng matcher theo FetchRule[].
- * URL không khớp rule nào → 501 (không bao giờ chạm network thật).
- * Trả về hàm restore.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export function installMockFetch(rules: FetchRule[]): () => void {
   const original = globalThis.fetch

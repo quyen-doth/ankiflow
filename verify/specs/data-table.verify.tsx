@@ -23,13 +23,13 @@ const sampleColumns = [
   { key: 'status', header: 'Status' },
 ]
 
-// Spy ghi lại row được click — act reset trước
+// 検証用コメント。
 const clickSpy = { rows: [] as SampleRow[] }
 
 registerUnit<SampleTableProps>({
   id: 'DataTable',
   title: 'DataTable',
-  description: 'Bảng generic: columns + data + empty state + row click.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <DataTable<SampleRow> {...props} />,
   propsSchema: z.object({
@@ -51,12 +51,12 @@ registerUnit<SampleTableProps>({
   fixtures: [
     {
       id: 'populated',
-      description: '3 hàng × 2 cột.',
+      description: '検証ケース。',
       props: { data: sampleRows, columns: sampleColumns, keyField: 'id' },
     },
     {
       id: 'empty',
-      description: 'Không có dữ liệu → hiện emptyMessage tùy chỉnh.',
+      description: '検証ケース。',
       props: {
         data: [],
         columns: sampleColumns,
@@ -65,7 +65,7 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'custom-render',
-      description: 'Cột dùng render function tùy chỉnh.',
+      description: '検証ケース。',
       props: {
         data: sampleRows,
         columns: [
@@ -81,7 +81,7 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'act-row-click',
-      description: 'Act: click hàng đầu → onRowClick nhận đúng row.',
+      description: '検証ケース。',
       props: {
         data: sampleRows,
         columns: sampleColumns,
@@ -96,17 +96,17 @@ registerUnit<SampleTableProps>({
     {
       id: 'probe-empty-columns',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): columns rỗng — bảng không có cột nào.',
+      description: '検証ケース。',
       props: { data: sampleRows, columns: [], keyField: 'id' },
     },
   ],
   invariants: [
     {
       id: 'has-at-least-one-column',
-      description: 'Bảng phải có ít nhất 1 cột',
+      description: '検証ケース。',
       check: ({ root }) => {
         const headers = root.querySelectorAll('thead th').length
-        return headers > 0 || 'bảng không có cột nào'
+        return headers > 0 || '対象がありません'
       },
     },
     {
@@ -122,7 +122,7 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'row-count-matches',
-      description: 'Số hàng dữ liệu = data.length (hoặc 1 hàng emptyMessage khi rỗng)',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const rows = root.querySelectorAll('tbody tr').length
         const expected = props.data.length === 0 ? 1 : props.data.length
@@ -131,16 +131,16 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'empty-message-iff-no-data',
-      description: 'emptyMessage hiện khi và chỉ khi data rỗng',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (props.data.length > 0) return true
         const msg = props.emptyMessage ?? 'No data'
-        return (root.textContent ?? '').includes(msg) || `không thấy emptyMessage "${msg}"`
+        return (root.textContent ?? '').includes(msg) || `emptyMessage が見つかりません "${msg}"`
       },
     },
     {
       id: 'custom-render-applied',
-      description: 'Cột render tùy chỉnh được áp dụng',
+      description: '検証ケース。',
       onlyFixtures: ['custom-render'],
       check: ({ root }) => {
         const custom = root.querySelectorAll('[data-custom="status"]').length
@@ -149,7 +149,7 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'row-click-receives-row',
-      description: 'Click hàng → onRowClick nhận đúng row object',
+      description: '検証ケース。',
       onlyFixtures: ['act-row-click'],
       check: () =>
         (clickSpy.rows.length === 1 && clickSpy.rows[0]?.id === 'r1') ||

@@ -8,13 +8,13 @@ import {
 } from '@/lib/flashcard-service/client'
 import { auth } from '@/lib/firebase'
 
-// Seed/reset store của firestore-stub qua global hooks (xem verify/harness/firestore-stub.ts)
+// 検証用コメント。
 const g = globalThis as unknown as {
   __verifyFirestoreSeed?: (data: Record<string, Record<string, unknown>[]>) => void
   __verifyFirestoreReset?: () => void
 }
 
-// resolveAnkiConnectUrl đọc settings/{uid} theo auth.currentUser — giả lập user đăng nhập.
+// 検証用コメント。
 const mutableAuth = auth as unknown as { currentUser: { uid: string } | null }
 const TEST_UID = 'test-user'
 
@@ -34,7 +34,7 @@ beforeEach(() => {
   resetAnkiClientCache()
   g.__verifyFirestoreReset?.()
   mutableAuth.currentUser = { uid: TEST_UID }
-  // invoke() log console.error khi fail — im lặng để output test sạch
+  // 検証用コメント。
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -99,7 +99,7 @@ describe('resolveAnkiConnectUrl — settings/{uid} を読み込み、cache、fal
   })
 
   it('settings/default はもう読まない (ユーザーごとのみ) → settings/default に url があってもデフォルト', async () => {
-    // settings/default là secrets của chủ app — client không đọc; rules cũng chặn non-admin.
+    // 検証用コメント。
     g.__verifyFirestoreSeed?.({
       settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
     })
@@ -122,11 +122,11 @@ describe('resolveAnkiConnectUrl — settings/{uid} を読み込み、cache、fal
     })
     await resolveAnkiConnectUrl()
 
-    // Store đổi nhưng cache còn → vẫn URL cũ
+    // 検証用コメント。
     g.__verifyFirestoreReset?.()
     await expect(resolveAnkiConnectUrl()).resolves.toBe('http://127.0.0.1:9999')
 
-    // Reset cache → đọc lại từ settings (giờ trống) → default
+    // 検証用コメント。
     resetAnkiClientCache()
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })

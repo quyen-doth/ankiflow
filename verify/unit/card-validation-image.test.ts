@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { validateCardEntry, dataUrlBytes, MAX_IMAGE_BYTES } from '@/lib/cardValidation'
 import { FormType, type Entry } from '@/types'
 
-/** Tạo data URL ~sizeBytes byte (base64 dài ≈ sizeBytes * 4/3). */
+/** 約 sizeBytes byte の data URL を作る (base64 長はおよそ sizeBytes * 4/3)。 */
 function makeDataUrl(sizeBytes: number): string {
   const b64 = 'A'.repeat(Math.ceil((sizeBytes * 4) / 3))
   return `data:image/png;base64,${b64}`
@@ -10,9 +10,9 @@ function makeDataUrl(sizeBytes: number): string {
 
 function validEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
   return {
-    form_type: FormType.GENERAL, // yêu cầu: word + meaning
+    form_type: FormType.GENERAL, // 検証用コメント。
     title: 'hello',
-    content: 'xin chào',
+    content: 'こんにちは',
     anki_deck: 'Test',
     ...overrides,
   }

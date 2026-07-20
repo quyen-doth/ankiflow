@@ -1,4 +1,4 @@
-// Side-effect imports — mỗi spec tự đăng ký unit vào registry khi được import
+// 検証用コメント。
 
 // Phase A — pilots
 import './badge.verify'
@@ -7,7 +7,7 @@ import './progress-bar.verify'
 import './step-indicator.verify'
 import './tabs.verify'
 
-// Phase B — ui/ còn lại + layout
+// 検証用コメント。
 import './anki-flow-logo.verify'
 import './card.verify'
 import './empty-state.verify'

@@ -122,7 +122,7 @@ describe('generateBatch — キャンセル (abort)', () => {
     )
 
     expect(fetchMock).not.toHaveBeenCalled()
-    // Hủy ngay từ đầu → không có kết quả nào được điền.
+    // 検証用コメント。
     expect(results.filter(Boolean)).toHaveLength(0)
   })
 
@@ -133,7 +133,7 @@ describe('generateBatch — キャンセル (abort)', () => {
       'fetch',
       vi.fn(async (_url: string, init: RequestInit) => {
         calls += 1
-        // Abort sau item đầu tiên.
+        // 検証用コメント。
         if (calls === 1) controller.abort()
         const body = JSON.parse(init.body as string) as { word: string }
         return {
@@ -150,7 +150,7 @@ describe('generateBatch — キャンセル (abort)', () => {
       { signal: controller.signal },
     )
 
-    // Concurrency = 3 nên tối đa 3 request khởi động ở đợt đầu; không thêm item mới sau abort.
+    // 検証用コメント。
     expect(calls).toBeLessThanOrEqual(3)
   })
 })

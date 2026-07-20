@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-// Side-effect imports — đăng ký toàn bộ verifiers và specs
+// 検証用コメント。
 import '@/verify/verifiers'
 import '@/verify/specs'
 
@@ -8,8 +8,8 @@ import { allUnits } from '@/verify/core/registry'
 import { runFixture } from '@/verify/core/runner'
 
 /**
- * Các cặp unit::fixture cố tình FAIL — probe vi phạm invariant để chứng minh
- * framework bắt được lỗi thật, không chỉ xác nhận điều đúng.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 const EXPECTED_FAIL = new Set([
   // Phase A
@@ -37,7 +37,7 @@ describe('verification matrix', () => {
       it('少なくとも 1 つの probe fixture がある', () => {
         expect(
           unit.fixtures.some(f => f.probe),
-          `unit "${unit.id}" phải có ≥1 fixture probe:true`
+          `unit "${unit.id}" には probe:true fixture が 1 つ以上必要です`
         ).toBe(true)
       })
 

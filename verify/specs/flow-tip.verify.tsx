@@ -9,7 +9,7 @@ type FlowTipProps = ComponentProps<typeof FlowTip>
 registerUnit<FlowTipProps>({
   id: 'FlowTip',
   title: 'FlowTip',
-  description: 'Callout gợi ý AI: icon bóng đèn + nhãn + nội dung.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <FlowTip {...props} />,
   propsSchema: z.object({
@@ -20,25 +20,25 @@ registerUnit<FlowTipProps>({
   fixtures: [
     {
       id: 'default-label',
-      description: 'Nhãn mặc định "Flow Tip".',
+      description: 'default label は "Flow Tip"。',
       props: { children: 'Review cards within 24 hours for best retention.' },
     },
     {
       id: 'custom-label',
-      description: 'Nhãn tùy chỉnh.',
+      description: '検証ケース。',
       props: { label: 'Pro Tip', children: 'Use collocations to learn faster.' },
     },
     {
       id: 'probe-empty-children',
       probe: true,
-      description: 'Probe: children rỗng — vẫn render khung + nhãn, không crash.',
+      description: '検証ケース。',
       props: { children: '' },
     },
   ],
   invariants: [
     {
       id: 'label-matches-contract',
-      description: 'data-verify-label khớp props.label (mặc định "Flow Tip")',
+      description: 'data-verify-label が props.label と一致 (default は "Flow Tip")',
       check: ({ contract, props }) => {
         const expected = props.label ?? 'Flow Tip'
         return contract.label === expected || `contract.label="${contract.label}", expected="${expected}"`
@@ -46,16 +46,16 @@ registerUnit<FlowTipProps>({
     },
     {
       id: 'label-visible',
-      description: 'Nhãn hiển thị trong DOM',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const expected = props.label ?? 'Flow Tip'
-        return (root.textContent ?? '').includes(expected) || `không thấy nhãn "${expected}"`
+        return (root.textContent ?? '').includes(expected) || `label が見つかりません "${expected}"`
       },
     },
     {
       id: 'icon-present',
-      description: 'Có icon svg',
-      check: ({ root }) => !!root.querySelector('svg') || 'không có svg',
+      description: '検証ケース。',
+      check: ({ root }) => !!root.querySelector('svg') || '対象がありません',
     },
   ],
 })

@@ -36,7 +36,7 @@ const ENTRIES: Entry[] = [
   makeEntry({
     id: 'e1',
     word: 'serendipity',
-    meaning_vi: 'tình cờ may mắn',
+    meaning_vi: '幸運な偶然',
     language: LanguageType.ENGLISH,
     status: 'synced',
   }),
@@ -44,7 +44,7 @@ const ENTRIES: Entry[] = [
     id: 'e2',
     form_type: FormType.IT,
     term: 'Event Loop',
-    definition: 'Cơ chế xử lý bất đồng bộ của JS',
+    definition: 'JS の非同期処理メカニズム',
     anki_deck: 'IT Terms',
     status: 'draft',
   }),
@@ -121,7 +121,7 @@ function HistoryTableHarness(props: HistoryTableProps) {
 registerUnit<HistoryTableProps>({
   id: 'HistoryTable',
   title: 'HistoryTable',
-  description: 'Bảng lịch sử entries: chọn dòng, word/meaning/deck/status, edit/delete và điều hướng chi tiết.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <HistoryTableHarness {...props} />,
   propsSchema: z.object({
@@ -135,17 +135,17 @@ registerUnit<HistoryTableProps>({
   fixtures: [
     {
       id: 'populated',
-      description: '2 entries (1 synced, 1 pending) — đủ word, status badge.',
+      description: '検証ケース。',
       props: { data: ENTRIES, ...DEFAULT_SELECTION_PROPS },
     },
     {
       id: 'empty',
-      description: 'Không có entry — hiển thị empty message.',
+      description: '検証ケース。',
       props: { data: [], ...DEFAULT_SELECTION_PROPS },
     },
     {
       id: 'act-delete',
-      description: 'Act: click nút Delete dòng đầu → onDelete nhận đúng id (stopPropagation, không điều hướng).',
+      description: '検証ケース。',
       props: { data: ENTRIES, ...DEFAULT_SELECTION_PROPS, onDelete: recordDelete },
       act: async ctx => {
         deleteSpy.count = 0
@@ -155,7 +155,7 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'partial-selection',
-      description: 'Một trong hai dòng được chọn → checkbox header ở trạng thái indeterminate.',
+      description: '検証ケース。',
       props: {
         data: ENTRIES,
         ...DEFAULT_SELECTION_PROPS,
@@ -164,7 +164,7 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'act-toggle-row',
-      description: 'Act: chọn checkbox dòng đầu → callback nhận đúng id và không điều hướng.',
+      description: '検証ケース。',
       props: {
         data: ENTRIES,
         ...DEFAULT_SELECTION_PROPS,
@@ -178,7 +178,7 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'act-toggle-all',
-      description: 'Act: chọn checkbox header → callback toggle-all chạy đúng một lần.',
+      description: '検証ケース。',
       props: {
         data: ENTRIES,
         ...DEFAULT_SELECTION_PROPS,
@@ -191,7 +191,7 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'act-row-navigation',
-      description: 'Act: click ô Word gọi callback mở chi tiết với đúng entry.',
+      description: '検証ケース。',
       props: { data: ENTRIES, ...DEFAULT_SELECTION_PROPS, onOpen: recordOpen },
       act: async ctx => {
         openSpy.count = 0
@@ -201,12 +201,12 @@ registerUnit<HistoryTableProps>({
     },
     {
       id: 'custom-language',
-      description: 'BCP 47 language ngoài defaults hiển thị badge tổng quát và tên fallback.',
+      description: '検証ケース。',
       props: {
         data: [makeEntry({
           id: 'e-fr',
           word: 'bonjour',
-          meaning_vi: 'xin chào',
+          meaning_vi: 'こんにちは',
           language: 'fr-FR',
         })],
         ...DEFAULT_SELECTION_PROPS,
@@ -215,7 +215,7 @@ registerUnit<HistoryTableProps>({
     {
       id: 'probe-missing-fields',
       probe: true,
-      description: 'Probe: entry thiếu word/term/title và created_at — hiển thị "—", không crash.',
+      description: 'Probe: word/term/title と created_at が不足する entry は "—" を表示し、crash しない。',
       props: {
         data: [
           makeEntry({ id: 'e3', created_at: undefined as unknown as FirestoreTimestamp }),
@@ -227,56 +227,56 @@ registerUnit<HistoryTableProps>({
   invariants: [
     {
       id: 'row-count-matches-data',
-      description: 'Contract rows của DataTable bên trong = data.length',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const table = root.querySelector('[data-verify-unit="DataTable"]')
-        if (!table) return 'không thấy DataTable bên trong'
+        if (!table) return '表示が見つかりません'
         const rows = table.getAttribute('data-verify-rows')
         return rows === String(props.data.length) || `rows="${rows}", expected=${props.data.length}`
       },
     },
     {
       id: 'status-badges-correct',
-      description: 'Status synced → "Synced", khác → "Pending"',
+      description: 'status synced → "Synced"、それ以外 → "Pending"',
       onlyFixtures: ['populated'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
-        if (!text.includes('Synced')) return 'không thấy badge Synced'
-        return text.includes('Pending') || 'không thấy badge Pending'
+        if (!text.includes('Synced')) return '表示が見つかりません'
+        return text.includes('Pending') || '表示が見つかりません'
       },
     },
     {
       id: 'words-rendered',
-      description: 'Word/term của entries hiển thị trong bảng',
+      description: '検証ケース。',
       onlyFixtures: ['populated'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
-        if (!text.includes('serendipity')) return 'không thấy word entry 1'
-        return text.includes('Event Loop') || 'không thấy term entry 2'
+        if (!text.includes('serendipity')) return '表示が見つかりません'
+        return text.includes('Event Loop') || '表示が見つかりません'
       },
     },
     {
       id: 'empty-message-shown',
-      description: 'Data rỗng: hiển thị empty message',
+      description: '検証ケース。',
       onlyFixtures: ['empty'],
       check: ({ root }) =>
         (root.textContent ?? '').includes('No vocabulary cards created yet.') ||
-        'không thấy empty message',
+        '表示が見つかりません',
     },
     {
       id: 'custom-language-fallback',
-      description: 'Ngôn ngữ tùy chỉnh dùng primary subtag cho badge và display name cho tooltip.',
+      description: '検証ケース。',
       onlyFixtures: ['custom-language'],
       check: ({ root }) => {
         const badge = Array.from(root.querySelectorAll('[title]'))
           .find(element => element.getAttribute('title') === 'French (France)')
-        if (!badge) return 'không thấy display name fallback cho fr-FR'
+        if (!badge) return '表示が見つかりません'
         return badge.textContent?.trim() === 'FR' || `badge=${badge.textContent}`
       },
     },
     {
       id: 'delete-fires-id-without-nav',
-      description: 'Delete gọi onDelete(id) 1 lần, không router.push (vitest)',
+      description: '検証ケース。',
       onlyFixtures: ['act-delete'],
       check: () => {
         if (deleteSpy.count !== 1 || deleteSpy.lastId !== 'e1') {
@@ -287,24 +287,24 @@ registerUnit<HistoryTableProps>({
         }
         if (!g.__verifyNav) return true
         const pushes = g.__verifyNav.calls.filter(c => c.method === 'push').length
-        return pushes === 0 || `router.push bị gọi ${pushes} lần`
+        return pushes === 0 || `router.push が呼ばれています ${pushes} lần`
       },
     },
     {
       id: 'selection-checkboxes-reflect-state',
-      description: 'Checkbox dòng phản ánh selectedIds và header indeterminate khi chọn một phần.',
+      description: '検証ケース。',
       onlyFixtures: ['partial-selection'],
       check: ({ root }) => {
         const first = root.querySelector<HTMLInputElement>('input[aria-label="Select serendipity"]')
         const second = root.querySelector<HTMLInputElement>('input[aria-label="Select Event Loop"]')
         const header = root.querySelector<HTMLInputElement>('input[aria-label="Select all visible cards"]')
-        if (!first?.checked || second?.checked) return 'trạng thái checkbox dòng không khớp selectedIds'
-        return header?.indeterminate === true || 'checkbox header không indeterminate'
+        if (!first?.checked || second?.checked) return 'row checkbox state が selectedIds と一致しません'
+        return header?.indeterminate === true || 'header checkbox が indeterminate ではありません'
       },
     },
     {
       id: 'toggle-row-fires-id-without-nav',
-      description: 'Checkbox dòng gọi onToggleSelect(id) đúng một lần và không điều hướng.',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-row'],
       check: () => {
         if (toggleSpy.count !== 1 || toggleSpy.lastId !== 'e1') {
@@ -314,40 +314,40 @@ registerUnit<HistoryTableProps>({
           __verifyNav?: { calls: Array<{ method: string }> }
         }
         const pushes = g.__verifyNav?.calls.filter(call => call.method === 'push').length ?? 0
-        if (pushes !== 0) return `router.push bị gọi ${pushes} lần`
+        if (pushes !== 0) return `router.push が呼ばれています ${pushes} lần`
         const checkbox = document.querySelector<HTMLInputElement>('input[aria-label="Select serendipity"]')
-        return checkbox?.checked === true || 'checkbox dòng không chuyển sang checked'
+        return checkbox?.checked === true || 'row checkbox が checked に変わりません'
       },
     },
     {
       id: 'toggle-all-fires-once',
-      description: 'Checkbox header gọi onToggleSelectAll đúng một lần.',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-all'],
       check: ({ root }) => {
         if (toggleAllSpy.count !== 1) return `count=${toggleAllSpy.count}`
         const checkboxes = Array.from(root.querySelectorAll<HTMLInputElement>('tbody input[type="checkbox"]'))
-        return checkboxes.every(checkbox => checkbox.checked) || 'không chọn đủ mọi dòng'
+        return checkboxes.every(checkbox => checkbox.checked) || 'すべての row が選択されていません'
       },
     },
     {
       id: 'row-click-still-navigates',
-      description: 'Click ô dữ liệu ngoài checkbox gọi onOpen với entry đúng.',
+      description: '検証ケース。',
       onlyFixtures: ['act-row-navigation'],
       check: () => openSpy.count === 1 && openSpy.lastId === 'e1'
         || `count=${openSpy.count}, lastId=${openSpy.lastId}`,
     },
     {
       id: 'eye-action-removed',
-      description: 'Không còn action View/Eye vì click row đã mở chi tiết.',
-      check: ({ root }) => !root.querySelector('button[title="View"]') || 'vẫn còn nút View',
+      description: '検証ケース。',
+      check: ({ root }) => !root.querySelector('button[title="View"]') || 'button がまだ残っています View',
     },
     {
       id: 'missing-fields-placeholder',
-      description: 'Entry thiếu field: hiển thị "—", không leak "undefined"',
+      description: 'field 不足 entry は "—" を表示し、"undefined" を漏らさない',
       onlyFixtures: ['probe-missing-fields'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
-        if (!text.includes('—')) return 'không thấy placeholder "—"'
+        if (!text.includes('—')) return 'placeholder が見つかりません "—"'
         return !text.includes('undefined') || 'leak chữ "undefined" ra UI'
       },
     },

@@ -3,17 +3,17 @@ import { beforeEach, vi } from 'vitest'
 import { MotionGlobalConfig } from 'framer-motion'
 import { TEST_AUTH_USER } from '@/verify/core/test-auth-user'
 
-// --- framer-motion chạy tức thì trong test (AnimatePresence gỡ DOM ngay khi exit) ---
-// để các verify spec kiểm sự hiện diện/biến mất của DOM không bị animation làm trễ.
+// 検証用コメント。
+// 検証用コメント。
 MotionGlobalConfig.skipAnimations = true
 
-// --- TEST_AUTH_USER (runner.ts) coi như admin trong mọi spec — components admin-gated
-// (ContentTypeManager...) test được CRUD UI thật, không bị chặn
-// bởi gate. Muốn test riêng nhánh non-admin thì cần cơ chế mock user khác (chưa có).
+// 検証用コメント。
+// 検証用コメント。
+// 検証用コメント。
 process.env.NEXT_PUBLIC_ADMIN_EMAIL = TEST_AUTH_USER.email
 
-// --- Mock next/navigation cho toàn bộ test ---
-// Specs đọc/ghi trạng thái qua globalThis.__verifyNav (xem verify/core/globals.ts)
+// 検証用コメント。
+// 検証用コメント。
 const nav = {
   pathname: '/',
   calls: [] as Array<{ method: string; args: unknown[] }>,
@@ -37,7 +37,7 @@ vi.mock('next/navigation', () => ({
   },
 }))
 
-// --- Mock next/image → <img> thuần (jsdom không cần Next image optimizer) ---
+// 検証用コメント。
 vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => {
     const { src, alt, className } = props
@@ -49,7 +49,7 @@ vi.mock('next/image', () => ({
   },
 }))
 
-// --- Stub HTMLMediaElement cho AudioPlayer (jsdom không implement play()) ---
+// 検証用コメント。
 class AudioStub {
   src: string
   constructor(src = '') {

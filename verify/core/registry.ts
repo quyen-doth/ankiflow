@@ -1,6 +1,6 @@
 import type { ManifestEntry, VerifiableUnit, Verifier } from './types'
 
-// Map giữ thứ tự đăng ký; ghi đè theo id vì Next dev HMR re-execute spec modules
+// 検証用コメント。
 const units = new Map<string, VerifiableUnit>()
 const verifiers = new Map<string, Verifier>()
 

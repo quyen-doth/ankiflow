@@ -7,10 +7,10 @@ import type { Entry } from '@/types'
 const ENTRY: Partial<Entry> = {
   word: 'hello',
   ipa: 'həˈloʊ',
-  meaning_vi: 'xin chào',
+  meaning_vi: 'こんにちは',
   word_type: 'interjection',
   example_sentence: 'Hello, how are you?',
-  example_translation: 'Xin chào, bạn khỏe không?',
+  example_translation: 'こんにちは、お元気ですか？',
 }
 
 describe('renderSide — audio rendering', () => {
@@ -146,11 +146,11 @@ describe('DEFAULT_TEMPLATES — backward-compatible golden output', () => {
     word: '<div class="word">hello</div>',
     reading: '<div class="reading">həˈloʊ</div>',
     han_viet: '<div class="han-viet">hô lô</div>',
-    meaning: '<div class="meaning">xin chào</div>',
+    meaning: '<div class="meaning">こんにちは</div>',
     word_type: '<span class="pos">interjection</span>',
     example: '<div class="example">Hello, how are you?</div>',
     example_blank: '<div class="example"><b class="cloze">______</b>, how are you?</div>',
-    translation: '<div class="translation">Xin chào, bạn khỏe không?</div>',
+    translation: '<div class="translation">こんにちは、お元気ですか？</div>',
     collocations: '<ul class="collocations"><li>say hello</li><li>hello world</li></ul>',
     image: '<div class="media"><img src="image.jpg" alt=""></div>',
     audio: '[sound:voice.mp3]',

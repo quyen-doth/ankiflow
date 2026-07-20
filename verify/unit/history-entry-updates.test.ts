@@ -6,7 +6,7 @@ describe('buildHistoryEntryUpdates', () => {
     const updates = buildHistoryEntryUpdates(
       {
         word: '吃饭',
-        meaning_vi: 'ăn cơm',
+        meaning_vi: 'ご飯を食べる',
         audio_url: 'old.mp3',
         anki_deck: 'Chinese',
         category_id: null,
@@ -21,7 +21,7 @@ describe('buildHistoryEntryUpdates', () => {
 
     expect(updates).toMatchObject({
       word: '吃饭',
-      meaning_vi: 'ăn cơm',
+      meaning_vi: 'ご飯を食べる',
       audio_url: 'new.mp3',
       card_type_ids: ['card-type-1'],
       phon_the: '喫飯',

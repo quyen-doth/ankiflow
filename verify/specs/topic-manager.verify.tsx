@@ -10,7 +10,7 @@ import {
   tableRows,
 } from './manager-helpers'
 
-// Query lọc where form_type == IT — seed toàn topic IT
+// 検証用コメント。
 const SEED = {
   topics: [
     { id: 't-be', name: 'Backend', form_type: FormType.IT, sort_order: 1, is_active: true },
@@ -21,14 +21,14 @@ const SEED = {
 registerUnit<Record<string, never>>({
   id: 'TopicManager',
   title: 'TopicManager',
-  description: 'Admin CRUD topics IT: create luôn gán form_type=FormType.IT (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: () => <TopicManager />,
   propsSchema: z.object({}),
   fixtures: [
     {
       id: 'loaded',
-      description: '2 topic IT load từ stub.',
+      description: 'stub から 2 つの IT topic を load。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -57,7 +57,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-create',
-      description: 'Act: mở modal → điền Name → Save → addDoc với form_type=IT, bảng +1 row.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -71,7 +71,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-toggle-active',
-      description: 'Act: click badge Active row đầu → updateDoc lật is_active.',
+      description: '検証ケース。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -83,7 +83,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'probe-missing-sort-order',
       probe: true,
-      description: 'Probe: topic thiếu sort_order — vẫn render row, không crash.',
+      description: '検証ケース。',
       props: {},
       mocks: {
         firestore: {
@@ -98,12 +98,12 @@ registerUnit<Record<string, never>>({
   invariants: [
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh TopicManager',
+      description: '検証ケース。',
       check: ({ contract }) => contract.unit === 'TopicManager' || `contract.unit="${contract.unit}"`,
     },
     {
       id: 'rows-match-store',
-      description: 'Số row bảng = số doc IT trong store',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'empty'],
       check: ({ root }) => {
         const rows = tableRows(root)
@@ -113,10 +113,10 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'empty-message',
-      description: 'Không có doc: empty message',
+      description: '検証ケース。',
       onlyFixtures: ['empty'],
       check: ({ root }) =>
-        (root.textContent ?? '').includes('No topics yet.') || 'không thấy empty message',
+        (root.textContent ?? '').includes('No topics yet.') || '表示が見つかりません',
     },
     {
       id: 'create-modal-opens',
@@ -124,40 +124,40 @@ registerUnit<Record<string, never>>({
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
-        return modalOpen(root) || 'modal không mở'
+        return modalOpen(root) || 'modal が開いていません'
       },
     },
     {
       id: 'create-persists-with-it-formtype',
-      description: 'Save: doc mới có name đúng + form_type=FormType.IT, modal đóng',
+      description: '検証ケース。',
       onlyFixtures: ['act-create'],
       check: ({ root }) => {
         const docs = collectionDocs('topics')
         if (docs.length !== 3) return `store=${docs.length}, expected=3`
         const created = docs.find(d => d.name === 'Database')
-        if (!created) return 'không tìm thấy doc vừa tạo'
+        if (!created) return '要素が見つかりません'
         if (created.form_type !== FormType.IT) return `form_type=${created.form_type}`
         return !modalOpen(root) || 'modal vẫn mở sau Save'
       },
     },
     {
       id: 'toggle-flips-active',
-      description: 'Toggle: doc Backend đảo is_active sang false',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle-active'],
       check: () => {
         const doc = collectionDocs('topics').find(d => d.id === 't-be')
-        if (!doc) return 'mất doc t-be'
+        if (!doc) return 'doc が消えています t-be'
         return doc.is_active === false || `is_active=${doc.is_active}`
       },
     },
     {
       id: 'missing-field-graceful',
-      description: 'Thiếu sort_order: row vẫn render, không "undefined"',
+      description: 'sort_order 不足: row が render され、"undefined" を出さない',
       onlyFixtures: ['probe-missing-sort-order'],
       check: ({ root }) => {
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
-        if (!text.includes('Misc')) return 'không thấy name'
+        if (!text.includes('Misc')) return '表示が見つかりません'
         return !text.includes('undefined') || 'leak "undefined" ra UI'
       },
     },

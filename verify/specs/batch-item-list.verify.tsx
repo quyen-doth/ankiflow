@@ -42,7 +42,7 @@ function pressKey(
   init: Pick<KeyboardEventInit, 'key' | 'metaKey' | 'ctrlKey'>,
 ): void {
   const input = root.querySelectorAll<HTMLInputElement>('input')[index]
-  if (!input) throw new Error(`không tìm thấy input ${index}`)
+  if (!input) throw new Error(`要素が見つかりません`)
 
   const windowHandler = () => {
     shortcutSpy.caught = true
@@ -59,7 +59,7 @@ function pressKey(
 registerUnit<BatchItemListProps>({
   id: 'BatchItemList',
   title: 'BatchItemList',
-  description: 'Danh sách nhập batch với shortcut thêm/xóa dòng và Generate.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <StatefulBatchItemList {...props} />,
   propsSchema: z.object({
@@ -72,12 +72,12 @@ registerUnit<BatchItemListProps>({
   fixtures: [
     {
       id: 'configured',
-      description: 'Hiển thị một dòng đã nhập và bộ đếm card.',
+      description: '検証ケース。',
       props: { items: ['alpha'], onChange: noop, label: 'Vocabulary item' },
     },
     {
       id: 'act-plain-enter',
-      description: 'Act: Enter đơn thêm một dòng trống và focus dòng mới.',
+      description: '検証ケース。',
       props: { items: ['alpha'], onChange: recordChange, label: 'Vocabulary item' },
       act: async ctx => {
         resetSpies()
@@ -88,7 +88,7 @@ registerUnit<BatchItemListProps>({
     {
       id: 'probe-meta-enter',
       probe: true,
-      description: 'Probe: Meta+Enter không thêm dòng và event vẫn bubble cho Generate.',
+      description: '検証ケース。',
       props: { items: ['alpha'], onChange: recordChange, label: 'Vocabulary item' },
       act: async ctx => {
         resetSpies()
@@ -98,7 +98,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'act-ctrl-enter',
-      description: 'Act: Ctrl+Enter không thêm dòng và event vẫn bubble cho Generate.',
+      description: '検証ケース。',
       props: { items: ['alpha'], onChange: recordChange, label: 'Vocabulary item' },
       act: async ctx => {
         resetSpies()
@@ -108,7 +108,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'act-backspace-empty',
-      description: 'Act: Backspace ở dòng trống xóa dòng và focus dòng trước.',
+      description: '検証ケース。',
       props: { items: ['alpha', ''], onChange: recordChange, label: 'Vocabulary item' },
       act: async ctx => {
         resetSpies()
@@ -120,7 +120,7 @@ registerUnit<BatchItemListProps>({
   invariants: [
     {
       id: 'configured-count',
-      description: 'Số input và contract count khớp dữ liệu ban đầu.',
+      description: '検証ケース。',
       onlyFixtures: ['configured'],
       check: ({ root, contract }) => (
         root.querySelectorAll('input').length === 1 && contract.count === '1'
@@ -128,7 +128,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'plain-enter-adds-row',
-      description: 'Enter đơn thêm đúng một dòng và focus dòng mới.',
+      description: '検証ケース。',
       onlyFixtures: ['act-plain-enter'],
       check: ({ root, contract }) => {
         const inputs = root.querySelectorAll<HTMLInputElement>('input')
@@ -143,7 +143,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'meta-enter-does-not-add',
-      description: 'Meta+Enter không thay đổi items và không chặn event bubble.',
+      description: '検証ケース。',
       onlyFixtures: ['probe-meta-enter'],
       check: ({ root }) => (
         changeSpy.count === 0
@@ -154,7 +154,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'ctrl-enter-does-not-add',
-      description: 'Ctrl+Enter không thay đổi items và không chặn event bubble.',
+      description: '検証ケース。',
       onlyFixtures: ['act-ctrl-enter'],
       check: ({ root }) => (
         changeSpy.count === 0
@@ -165,7 +165,7 @@ registerUnit<BatchItemListProps>({
     },
     {
       id: 'backspace-removes-empty-row',
-      description: 'Backspace giữ nguyên hành vi xóa dòng trống và focus dòng trước.',
+      description: '検証ケース。',
       onlyFixtures: ['act-backspace-empty'],
       check: ({ root }) => {
         const inputs = root.querySelectorAll<HTMLInputElement>('input')

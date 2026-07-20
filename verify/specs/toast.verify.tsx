@@ -13,7 +13,7 @@ const noop = () => undefined
 registerUnit<ToastProps>({
   id: 'Toast',
   title: 'Toast',
-  description: 'Toast thông báo: 4 variant (success/error/warning/info) + icon + message + nút đóng.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <Toast {...props} />,
   propsSchema: z.object({
@@ -22,13 +22,13 @@ registerUnit<ToastProps>({
     onClose: fn<() => void>(),
   }),
   fixtures: [
-    { id: 'success', description: 'Variant success.', props: { variant: 'success', message: 'Đã lưu thay đổi', onClose: noop } },
-    { id: 'error', description: 'Variant error.', props: { variant: 'error', message: 'Có lỗi xảy ra', onClose: noop } },
-    { id: 'warning', description: 'Variant warning.', props: { variant: 'warning', message: 'Chưa đồng bộ Anki', onClose: noop } },
-    { id: 'info', description: 'Variant info.', props: { variant: 'info', message: 'Thông tin', onClose: noop } },
+    { id: 'success', description: 'success variant。', props: { variant: 'success', message: '変更を保存しました', onClose: noop } },
+    { id: 'error', description: 'error variant。', props: { variant: 'error', message: 'エラーが発生しました', onClose: noop } },
+    { id: 'warning', description: 'Variant warning.', props: { variant: 'warning', message: 'Anki 未同期', onClose: noop } },
+    { id: 'info', description: 'Variant info.', props: { variant: 'info', message: '情報', onClose: noop } },
     {
       id: 'act-close',
-      description: 'Act: click nút đóng → onClose gọi đúng 1 lần.',
+      description: '検証ケース。',
       props: { variant: 'success', message: 'x', onClose: recordClose },
       act: async ctx => {
         closeSpy.count = 0
@@ -38,10 +38,10 @@ registerUnit<ToastProps>({
     {
       id: 'probe-long-message',
       probe: true,
-      description: 'Probe: message dài + variant warning — render không crash, vẫn có nút đóng.',
+      description: '検証ケース。',
       props: {
         variant: 'warning',
-        message: 'Đã lưu deck, nhưng chưa đồng bộ được Anki (Anki có đang mở không?)',
+        message: 'デッキは保存されましたが、Anki と同期できませんでした (Anki は開いていますか?)',
         onClose: noop,
       },
     },
@@ -49,22 +49,22 @@ registerUnit<ToastProps>({
   invariants: [
     {
       id: 'shows-message',
-      description: 'Hiển thị nội dung message',
-      check: ({ root, props }) => (root.textContent ?? '').includes(props.message) || 'không thấy message',
+      description: '検証ケース。',
+      check: ({ root, props }) => (root.textContent ?? '').includes(props.message) || '表示が見つかりません',
     },
     {
       id: 'variant-contract',
-      description: 'contract.variant khớp prop',
+      description: 'contract.variant が prop と一致',
       check: ({ contract, props }) => contract.variant === props.variant || `contract.variant="${contract.variant}"`,
     },
     {
       id: 'has-close-button',
-      description: 'Có nút đóng (aria-label)',
+      description: '検証ケース。',
       check: ({ root }) => !!root.querySelector('button[aria-label="Close notification"]') || '閉じるボタンが見つからない',
     },
     {
       id: 'close-fires-once',
-      description: 'Click đóng: onClose gọi đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-close'],
       check: () => closeSpy.count === 1 || `count=${closeSpy.count}`,
     },

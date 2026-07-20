@@ -67,7 +67,7 @@ const EXPECTED_COUNTS: Record<string, number> = {
 registerUnit<DeckCreatableFieldProps>({
   id: 'DeckCreatableField',
   title: 'DeckCreatableField',
-  description: 'Deck dropdown có thể tạo mới và lọc theo form type/ngôn ngữ (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <DeckCreatableField {...props} />,
   propsSchema: z.object({
@@ -84,7 +84,7 @@ registerUnit<DeckCreatableFieldProps>({
   fixtures: [
     {
       id: 'no-filter',
-      description: 'Không truyền filter thì giữ toàn bộ deck active.',
+      description: '検証ケース。',
       props: {
         value: '',
         onChangeId: ignoreDeckChange,
@@ -97,7 +97,7 @@ registerUnit<DeckCreatableFieldProps>({
     },
     {
       id: 'filter-ja',
-      description: 'Language form tiếng Nhật chỉ giữ deck ja và deck không gán language.',
+      description: '検証ケース。',
       props: {
         value: '',
         onChangeId: ignoreDeckChange,
@@ -114,7 +114,7 @@ registerUnit<DeckCreatableFieldProps>({
     {
       id: 'filter-custom-formtype',
       probe: true,
-      description: 'Probe: custom form type string chỉ giữ deck cùng form type.',
+      description: '検証ケース。',
       props: {
         value: '',
         onChangeId: ignoreDeckChange,
@@ -130,7 +130,7 @@ registerUnit<DeckCreatableFieldProps>({
   invariants: [
     {
       id: 'filtered-count-matches',
-      description: 'Contract count khớp số deck sau khi áp dụng form type và language filter.',
+      description: '検証ケース。',
       check: ({ fixture, contract }) => {
         const expected = EXPECTED_COUNTS[fixture.id]
         return contract.count === String(expected)
@@ -139,7 +139,7 @@ registerUnit<DeckCreatableFieldProps>({
     },
     {
       id: 'load-completes',
-      description: 'Firestore load hoàn tất trước khi kiểm tra filter.',
+      description: '検証ケース。',
       check: ({ contract }) => contract.loading === 'false' || `loading=${contract.loading}`,
     },
   ],

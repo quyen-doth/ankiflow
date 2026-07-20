@@ -4,8 +4,8 @@ import type { ReviewState } from '@/types'
 /**
  * POST /api/anki/sync-srs — precedence guard + review_events (SRS Phase 0).
  *
- * Guard: KHÔNG ghi đè tiến độ rate nội bộ (source 'builtin') mới hơn hoạt động Anki.
- * Revlog: event `anki_sync` chỉ ghi khi state thực sự đổi.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 
 interface EntryDoc {
@@ -80,7 +80,7 @@ function makeReq(cards: unknown[]) {
 }
 
 async function callPost(cards: unknown[]) {
-  // ctx không dùng trong handler — gọi 1 tham số như pattern global-config-route.test.ts
+  // 検証用コメント。
   const res = await (POST as unknown as (req: Request) => Promise<Response>)(makeReq(cards))
   return { status: res.status, body: await res.json() }
 }
@@ -165,14 +165,14 @@ describe('POST /api/anki/sync-srs — precedence guard', () => {
 
 describe('POST /api/anki/sync-srs — revlog は state が変化したときのみ記録', () => {
   it('state が変化しない → update (synced_at を更新) するが event なし', async () => {
-    // Card map ra đúng state hiện tại (due/interval/lapses/queue trùng).
+    // 検証用コメント。
     const due = 1752000000
     entryDocs.push({
       id: 'e1',
       data: {
         anki_note_ids: [100],
         review_state: builtinState({
-          source: 'anki_sync', // không bị guard chặn
+          source: 'anki_sync', // 検証用コメント。
           interval_days: 10,
           lapses: 2,
           queue: 'review',

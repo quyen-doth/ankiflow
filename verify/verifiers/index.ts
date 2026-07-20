@@ -1,4 +1,4 @@
-// Side-effect imports — mỗi verifier tự đăng ký vào registry khi được import
+// 検証用コメント。
 import './schema'
 import './invariants'
 import './dom-contract'
