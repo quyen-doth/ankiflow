@@ -22,12 +22,12 @@ registerUnit<PageHeaderProps>({
   fixtures: [
     {
       id: 'title-only',
-      description: 'Chỉ có title.',
+      description: '検証ケース。',
       props: { title: 'Settings' },
     },
     {
       id: 'with-crumbs-desc-actions',
-      description: 'Breadcrumb 2 cấp (cấp giữa có link) + description + actions.',
+      description: '検証ケース。',
       props: {
         crumbs: [
           { label: 'Library', href: '/history' },
@@ -40,7 +40,7 @@ registerUnit<PageHeaderProps>({
     {
       id: 'probe-empty-crumbs',
       probe: true,
-      description: 'Probe: crumbs rỗng + không title — header rỗng nhưng không crash.',
+      description: '検証ケース。',
       props: { crumbs: [] },
     },
   ],
@@ -54,7 +54,7 @@ registerUnit<PageHeaderProps>({
     },
     {
       id: 'breadcrumb-iff-crumbs',
-      description: 'Nav breadcrumb hiện khi và chỉ khi có crumbs',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const nav = root.querySelector('nav[aria-label="Breadcrumb"]')
         const expected = (props.crumbs?.length ?? 0) > 0
@@ -63,18 +63,18 @@ registerUnit<PageHeaderProps>({
     },
     {
       id: 'title-falls-back-to-last-crumb',
-      description: 'H1 = title, hoặc label crumb cuối khi không có title',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const expected = props.title ?? props.crumbs?.[props.crumbs.length - 1]?.label
         const h1 = root.querySelector('h1')
-        if (!expected) return !h1 || 'h1 xuất hiện dù không có title/crumb'
-        if (!h1) return `không có h1, expected "${expected}"`
+        if (!expected) return !h1 || '対象がありません'
+        if (!h1) return `h1 がありません, expected "${expected}"`
         return h1.textContent?.trim() === expected || `h1="${h1.textContent}", expected="${expected}"`
       },
     },
     {
       id: 'crumb-link-count',
-      description: 'Số link trong breadcrumb = 1 (home) + crumb có href trừ crumb cuối',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const crumbs = props.crumbs ?? []
         if (crumbs.length === 0) return true

@@ -1,38 +1,38 @@
 /**
- * Tiện ích dùng chung cho các spec của admin managers (CategoryManager, ...).
- * Không phải file *.verify — không tự đăng ký unit, chỉ export helper.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 import type { DocSeed } from '@/verify/core/types'
 
-/** Truy cập store in-memory của firestore stub (chỉ tồn tại trong vitest) */
+/** firestore stub の in-memory store へアクセスする (vitest 内のみ存在) */
 export function firestoreStore(): Map<string, DocSeed[]> | null {
   const g = globalThis as unknown as { __verifyFirestoreStore?: () => Map<string, DocSeed[]> }
   return g.__verifyFirestoreStore?.() ?? null
 }
 
-/** Docs hiện có trong một collection của store (rỗng nếu không có / không ở vitest) */
+/** store の collection に存在する docs (存在しない場合 / vitest 以外では空) */
 export function collectionDocs(name: string): DocSeed[] {
   return firestoreStore()?.get(name) ?? []
 }
 
-/** Click button đầu tiên có text chứa `text` */
+/** `text` を含む最初の button を click する */
 export function clickButtonByText(root: HTMLElement, text: string): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.includes(text))
-  if (!btn) throw new Error(`không tìm thấy button "${text}"`)
+  if (!btn) throw new Error(`button が見つかりません "${text}"`)
   btn.click()
 }
 
-/** Tìm FieldWrapper (div bọc label) theo text của label */
+/** label text から FieldWrapper (label を包む div) を探す */
 function fieldByLabel(root: HTMLElement, label: string): HTMLElement | null {
   const match = Array.from(root.querySelectorAll('label')).find(l => l.textContent?.trim() === label)
   return match?.parentElement ?? null
 }
 
-/** Set giá trị input/textarea trong FieldWrapper có label cho trước (controlled input) */
+/** 指定 label を持つ FieldWrapper 内の input/textarea value を設定する (controlled input) */
 export function setFieldValue(root: HTMLElement, label: string, value: string): void {
   const field = fieldByLabel(root, label)
   const el = field?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
-  if (!el) throw new Error(`không tìm thấy input cho field "${label}"`)
+  if (!el) throw new Error(`field の input が見つかりません "${label}"`)
   const proto =
     el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
   const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set
@@ -40,12 +40,12 @@ export function setFieldValue(root: HTMLElement, label: string, value: string): 
   el.dispatchEvent(new Event('input', { bubbles: true }))
 }
 
-/** Modal đang mở trong DOM hay không (theo contract data-verify-unit="Modal") */
+/** DOM 内で modal が開いているか (contract data-verify-unit="Modal" 基準) */
 export function modalOpen(root: HTMLElement): boolean {
   return !!root.querySelector('[data-verify-unit="Modal"]')
 }
 
-/** Số dòng dữ liệu trong DataTable lồng bên trong manager (đọc contract rows) */
+/** manager 内の DataTable 行数 (contract rows から読む) */
 export function tableRows(root: HTMLElement): number | null {
   const table = root.querySelector('[data-verify-unit="DataTable"]')
   const rows = table?.getAttribute('data-verify-rows')

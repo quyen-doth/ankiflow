@@ -18,7 +18,7 @@ const noop = () => undefined
 
 function selectValue(root: HTMLElement, value: string): void {
   const select = root.querySelector<HTMLSelectElement>('select')
-  if (!select) throw new Error('không tìm thấy select')
+  if (!select) throw new Error('要素が見つかりません')
   const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
   setter?.call(select, value)
   select.dispatchEvent(new Event('change', { bubbles: true }))
@@ -27,7 +27,7 @@ function selectValue(root: HTMLElement, value: string): void {
 registerUnit<LanguageSelectorProps>({
   id: 'LanguageSelector',
   title: 'LanguageSelector',
-  description: 'Select ngôn ngữ — option sinh từ cấu hình BCP 47 theo user.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <LanguageSelector {...props} />,
   propsSchema: z.object({
@@ -43,17 +43,17 @@ registerUnit<LanguageSelectorProps>({
   fixtures: [
     {
       id: 'empty-value',
-      description: 'Chưa chọn ngôn ngữ — placeholder option đang chọn.',
+      description: '検証ケース。',
       props: { value: '', onChange: noop },
     },
     {
       id: 'english-selected',
-      description: 'Đang chọn English (LanguageType.ENGLISH).',
+      description: '検証ケース。',
       props: { value: 'en', onChange: noop },
     },
     {
       id: 'act-change',
-      description: 'Act: chọn Japanese → onChange nhận LanguageType.JAPANESE.',
+      description: '検証ケース。',
       props: { value: '', onChange: recordChange },
       act: async ctx => {
         changeSpy.count = 0
@@ -65,14 +65,14 @@ registerUnit<LanguageSelectorProps>({
     {
       id: 'probe-unknown-value',
       probe: true,
-      description: 'Probe: value không thuộc enum — không option nào khớp, không crash.',
+      description: '検証ケース。',
       props: { value: 'fr', onChange: noop },
     },
   ],
   invariants: [
     {
       id: 'options-match-enum',
-      description: 'Option values khớp đúng LANGUAGE_OPTIONS (không hardcode)',
+      description: '検証ケース。',
       check: ({ root }) => {
         const values = Array.from(root.querySelectorAll('option'))
           .map(o => o.getAttribute('value'))
@@ -82,23 +82,23 @@ registerUnit<LanguageSelectorProps>({
         const extra = values.filter(v => !expected.includes(v as string))
         return (
           (missing.length === 0 && extra.length === 0) ||
-          `thiếu: [${missing.join(',')}], thừa: [${extra.join(',')}]`
+          `不足: [${missing.join(',')}], 余分: [${extra.join(',')}]`
         )
       },
     },
     {
       id: 'selected-value-matches',
-      description: 'select.value khớp props.value khi value thuộc enum',
+      description: 'value が enum に含まれる場合、select.value は props.value と一致',
       onlyFixtures: ['empty-value', 'english-selected'],
       check: ({ root, props }) => {
         const select = root.querySelector<HTMLSelectElement>('select')
-        if (!select) return 'không có select'
+        if (!select) return '対象がありません'
         return select.value === props.value || `select.value="${select.value}"`
       },
     },
     {
       id: 'change-fires-enum-value',
-      description: 'onChange nhận đúng LanguageType đã chọn, gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-change'],
       check: () =>
         (changeSpy.count === 1 && changeSpy.lastValue === 'ja') ||
@@ -106,12 +106,12 @@ registerUnit<LanguageSelectorProps>({
     },
     {
       id: 'unknown-value-falls-back',
-      description: 'Value lạ → select không nhận value đó (browser fallback option enabled đầu tiên)',
+      description: '検証ケース。',
       onlyFixtures: ['probe-unknown-value'],
       check: ({ root, props }) => {
         const select = root.querySelector<HTMLSelectElement>('select')
-        if (!select) return 'không có select'
-        return select.value !== props.value || `select.value="${select.value}" nhận value lạ`
+        if (!select) return '対象がありません'
+        return select.value !== props.value || `select.value="${select.value}" が unknown value を受け取りました`
       },
     },
   ],

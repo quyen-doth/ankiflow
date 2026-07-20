@@ -5,18 +5,18 @@ import { registerUnit } from '@/verify/core/registry'
 
 type CardPreviewProps = ComponentProps<typeof CardPreview>
 
-// Entry tiếng Nhật đầy đủ — kiểm tra optional language field (hiragana, han_viet)
+// 検証用コメント。
 const JA_ENTRY: CardPreviewProps['entry'] = {
   word: '食べる',
   hiragana: 'たべる',
   han_viet: 'thực',
-  meaning_vi: 'ăn',
+  meaning_vi: '食べる',
   word_type: 'verb',
   example_sentence: '毎朝パンを食べる。',
-  example_translation: 'Mỗi sáng tôi ăn bánh mì.',
+  example_translation: '毎朝パンを食べます。',
 }
 
-// Hai card type với template thật → preview render theo đúng template đã chọn.
+// 検証用コメント。
 const CARD_TYPES: CardPreviewProps['cardTypes'] = [
   { id: 'ct_wm', name: 'Word → Meaning', template: { front: ['word', 'reading', 'han_viet'], back: ['meaning', 'audio'] } },
   { id: 'ct_mw', name: 'Meaning → Word', template: { front: ['meaning'], back: ['word', 'reading'] } },
@@ -29,14 +29,14 @@ function srcdoc(root: HTMLElement): string {
 
 function clickTab(root: HTMLElement, label: string): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b => b.textContent === label)
-  if (!btn) throw new Error(`không tìm thấy tab "${label}"`)
+  if (!btn) throw new Error(`tab が見つかりません "${label}"`)
   btn.click()
 }
 
 registerUnit<CardPreviewProps>({
   id: 'CardPreview',
   title: 'CardPreview',
-  description: 'Preview thẻ Anki điều khiển bởi template card type đã chọn; click để lật mặt trước/sau.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <CardPreview {...props} />,
   propsSchema: z.object({
@@ -47,12 +47,12 @@ registerUnit<CardPreviewProps>({
   fixtures: [
     {
       id: 'language-entry',
-      description: 'Entry tiếng Nhật — mặt trước render word + hiragana + han_viet theo template ct_wm.',
+      description: '検証ケース。',
       props: { entry: JA_ENTRY, cardTypes: CARD_TYPES, selectedCardTypeIds: SELECTED },
     },
     {
       id: 'act-flip',
-      description: 'Act: click thẻ → lật, iframe hiện thêm mặt sau (nghĩa).',
+      description: '検証ケース。',
       props: { entry: JA_ENTRY, cardTypes: CARD_TYPES, selectedCardTypeIds: SELECTED },
       act: async ctx => {
         await ctx.click('[title="Click to flip"]')
@@ -60,7 +60,7 @@ registerUnit<CardPreviewProps>({
     },
     {
       id: 'act-switch-tab',
-      description: 'Act: chọn tab Meaning → Word — mặt trước hiện nghĩa, flipped reset.',
+      description: '検証ケース。',
       props: { entry: JA_ENTRY, cardTypes: CARD_TYPES, selectedCardTypeIds: SELECTED },
       act: async ctx => {
         clickTab(ctx.root, 'Meaning → Word')
@@ -102,26 +102,26 @@ registerUnit<CardPreviewProps>({
     {
       id: 'probe-minimal-entry',
       probe: true,
-      description: 'Probe (gotcha optional fields): entry rỗng — iframe hiện "No fields", không leak "undefined".',
+      description: 'Probe (gotcha optional fields): 空 entry — iframe は "No fields" を表示し、"undefined" を漏らさない。',
       props: { entry: {}, cardTypes: CARD_TYPES, selectedCardTypeIds: SELECTED },
     },
   ],
   invariants: [
     {
       id: 'flip-control-covers-iframe',
-      description: 'Flip control là button phủ cùng container với iframe để bắt click thật.',
+      description: '検証ケース。',
       check: ({ root }) => {
         const control = root.querySelector('[title="Click to flip"]')
-        if (!(control instanceof HTMLButtonElement)) return 'flip control không phải button'
-        if (!control.parentElement?.querySelector('iframe')) return 'flip control không phủ CardIframe'
+        if (!(control instanceof HTMLButtonElement)) return 'flip control が button ではありません'
+        if (!control.parentElement?.querySelector('iframe')) return 'flip control が CardIframe を覆っていません'
         return (
           control.classList.contains('absolute') && control.classList.contains('inset-0')
-        ) || 'flip control không phủ toàn bộ iframe'
+        ) || 'flip control が iframe 全体を覆っていません'
       },
     },
     {
       id: 'tabs-per-card-type',
-      description: 'Mỗi card type đã chọn có một tab',
+      description: '検証ケース。',
       check: ({ root, fixture }) => {
         const selectedIds = new Set(fixture.props.selectedCardTypeIds ?? [])
         const labels = (fixture.props.cardTypes ?? [])
@@ -130,51 +130,51 @@ registerUnit<CardPreviewProps>({
         if (labels.length <= 1) return true
         const buttons = Array.from(root.querySelectorAll('button')).map(b => b.textContent)
         const missing = labels.filter(l => !buttons.includes(l))
-        return missing.length === 0 || `thiếu tab: ${missing.join(', ')}`
+        return missing.length === 0 || `tab 不足: ${missing.join(', ')}`
       },
     },
     {
       id: 'front-follows-template',
-      description: 'Tab mặc định (ct_wm): mặt trước render word + hiragana + han_viet',
+      description: '検証ケース。',
       onlyFixtures: ['language-entry'],
       check: ({ root, contract }) => {
         if (contract.tab !== 'ct_wm') return `contract.tab="${contract.tab}"`
         const html = srcdoc(root)
-        if (!html.includes('食べる')) return 'không thấy từ trong srcdoc'
-        if (!html.includes('class="han-viet"')) return 'không thấy block han-viet'
-        return html.includes('たべる') || 'không thấy hiragana'
+        if (!html.includes('食べる')) return '表示が見つかりません'
+        if (!html.includes('class="han-viet"')) return '表示が見つかりません'
+        return html.includes('たべる') || '表示が見つかりません'
       },
     },
     {
       id: 'flip-shows-back',
-      description: 'Sau khi lật: contract flipped=true, srcdoc chứa mặt sau (nghĩa)',
+      description: '検証ケース。',
       onlyFixtures: ['act-flip'],
       check: ({ root, contract }) => {
         if (contract.flipped !== 'true') return `contract.flipped="${contract.flipped}"`
         const control = root.querySelector('[title="Click to flip"]')
-        if (control?.getAttribute('aria-pressed') !== 'true') return 'flip control chưa phản ánh trạng thái back'
+        if (control?.getAttribute('aria-pressed') !== 'true') return 'flip control が back state を反映していません'
         const html = srcdoc(root)
-        if (!html.includes('id="answer"')) return 'không thấy hr mặt sau'
-        return html.includes('ăn') || 'không thấy nghĩa ở mặt sau'
+        if (!html.includes('id="answer"')) return '表示が見つかりません'
+        return html.includes('食べる') || '表示が見つかりません'
       },
     },
     {
       id: 'tab-switch-updates-front',
-      description: 'Đổi tab ct_mw: contract tab khớp, front hiện nghĩa, flipped=false',
+      description: '検証ケース。',
       onlyFixtures: ['act-switch-tab'],
       check: ({ root, contract }) => {
         if (contract.tab !== 'ct_mw') return `contract.tab="${contract.tab}"`
         if (contract.flipped !== 'false') return `contract.flipped="${contract.flipped}"`
-        return srcdoc(root).includes('ăn') || 'front không hiển thị nghĩa'
+        return srcdoc(root).includes('食べる') || 'front が meaning を表示していません'
       },
     },
     {
       id: 'minimal-entry-safe',
-      description: 'Entry rỗng: iframe hiện "No fields", không leak "undefined"',
+      description: '空 entry: iframe は "No fields" を表示し、"undefined" を漏らさない',
       onlyFixtures: ['probe-minimal-entry'],
       check: ({ root }) => {
         const html = srcdoc(root)
-        if (!html.includes('No fields')) return 'không thấy placeholder "No fields"'
+        if (!html.includes('No fields')) return 'placeholder が見つかりません "No fields"'
         return !html.includes('undefined') || 'leak chữ "undefined" ra srcdoc'
       },
     },

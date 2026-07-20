@@ -3,7 +3,7 @@ import type { Check } from '@/verify/core/types'
 
 export const invariantVerifier = registerVerifier({
   id: 'invariants',
-  description: 'Chạy các predicate do unit khai báo trên DOM đã mount.',
+  description: '検証ケース。',
   run({ unit, fixture, root, contract }): Check[] {
     const checks: Check[] = []
     for (const invariant of unit.invariants) {

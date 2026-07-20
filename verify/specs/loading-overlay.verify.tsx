@@ -14,7 +14,7 @@ const midSteps: LoadingOverlayProps['steps'] = [
 registerUnit<LoadingOverlayProps>({
   id: 'LoadingOverlay',
   title: 'LoadingOverlay',
-  description: 'Overlay loading toàn màn hình: steps + progress + flow tip.',
+  description: '検証ケース。',
   kind: 'component',
   allowsEmptyRender: true,
   render: props => <LoadingOverlay {...props} />,
@@ -36,23 +36,23 @@ registerUnit<LoadingOverlayProps>({
   fixtures: [
     {
       id: 'closed',
-      description: 'open=false → không render gì.',
+      description: '検証ケース。',
       props: { open: false, steps: midSteps, progress: 50 },
     },
     {
       id: 'mid-progress',
-      description: 'Đang chạy 45% với steps + flowTip + statusText.',
+      description: '検証ケース。',
       props: {
         open: true,
         steps: midSteps,
         progress: 45,
-        flowTip: 'Cards review trong 24h đầu nhớ lâu hơn.',
+        flowTip: '最初の 24 時間に review した card は記憶に残りやすい。',
         statusText: 'Generating audio…',
       },
     },
     {
       id: 'complete',
-      description: '100%, mọi step completed.',
+      description: '検証ケース。',
       props: {
         open: true,
         steps: midSteps.map(s => ({ ...s, status: 'completed' as const })),
@@ -62,14 +62,14 @@ registerUnit<LoadingOverlayProps>({
     {
       id: 'probe-progress-overflow',
       probe: true,
-      description: 'Probe: progress=160 — ProgressBar bên trong phải clamp về 100.',
+      description: '検証ケース。',
       props: { open: true, steps: midSteps, progress: 160 },
     },
   ],
   invariants: [
     {
       id: 'renders-iff-open',
-      description: 'Render khi và chỉ khi open',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const el = root.querySelector('[data-verify-unit="LoadingOverlay"]')
         return !!el === props.open || `rendered=${!!el}, open=${props.open}`
@@ -77,11 +77,11 @@ registerUnit<LoadingOverlayProps>({
     },
     {
       id: 'progressbar-clamped',
-      description: 'ProgressBar bên trong có aria-valuenow = clamp(progress)',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.open) return true
         const bar = root.querySelector('[role="progressbar"]')
-        if (!bar) return 'không có progressbar'
+        if (!bar) return '対象がありません'
         const expected = Math.min(100, Math.max(0, props.progress))
         const now = Number(bar.getAttribute('aria-valuenow'))
         return now === expected || `aria-valuenow=${now}, expected=${expected}`
@@ -89,11 +89,11 @@ registerUnit<LoadingOverlayProps>({
     },
     {
       id: 'steps-rendered',
-      description: 'StepIndicator render đủ số step',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.open) return true
         const indicator = root.querySelector('[data-verify-unit="StepIndicator"]')
-        if (!indicator) return 'không có StepIndicator'
+        if (!indicator) return '対象がありません'
         return (
           indicator.getAttribute('data-verify-count') === String(props.steps.length) ||
           `step count=${indicator.getAttribute('data-verify-count')}`
@@ -102,7 +102,7 @@ registerUnit<LoadingOverlayProps>({
     },
     {
       id: 'flowtip-iff-provided',
-      description: 'FlowTip hiện khi và chỉ khi có props.flowTip',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.open) return true
         const tip = root.querySelector('[data-verify-unit="FlowTip"]')

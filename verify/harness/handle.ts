@@ -5,12 +5,12 @@ import type { VerifyHandle, VerifyResult } from '@/verify/core/types'
 
 let currentResult: VerifyResult | null = null
 
-/** UnitPage gọi để publish kết quả của mount hiện tại cho agent đọc */
+/** UnitPage が現在 mount の結果を publish し、agent が読めるようにする */
 export function setCurrentResult(result: VerifyResult | null): void {
   currentResult = result
 }
 
-/** Cài window.__verify — API có cấu trúc cho agent điều khiển từ console */
+/** window.__verify を設定する — agent が console から操作する構造化 API */
 export function installVerifyHandle(): VerifyHandle {
   const handle: VerifyHandle = {
     version: '1.0',

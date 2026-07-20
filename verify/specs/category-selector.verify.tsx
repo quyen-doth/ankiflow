@@ -7,13 +7,13 @@ import { FormType } from '@/types'
 
 type CategorySelectorProps = ComponentProps<typeof CategorySelector>
 
-// Seed: 2 category Language active (sort đảo), 1 IT, 1 Language inactive
+// 検証用コメント。
 const CATEGORY_SEED = {
   categories: [
-    { id: 'c-life', name: 'Đời sống', form_type: FormType.LANGUAGE, is_active: true, sort_order: 2 },
+    { id: 'c-life', name: '生活', form_type: FormType.LANGUAGE, is_active: true, sort_order: 2 },
     { id: 'c-biz', name: 'Kinh doanh', form_type: FormType.LANGUAGE, is_active: true, sort_order: 1 },
     { id: 'c-dev', name: 'Dev Tools', form_type: FormType.IT, is_active: true, sort_order: 1 },
-    { id: 'c-old', name: 'Cũ', form_type: FormType.LANGUAGE, is_active: false, sort_order: 3 },
+    { id: 'c-old', name: '古い', form_type: FormType.LANGUAGE, is_active: false, sort_order: 3 },
   ],
 }
 
@@ -27,7 +27,7 @@ const noop = () => undefined
 
 function selectValue(root: HTMLElement, value: string): void {
   const select = root.querySelector<HTMLSelectElement>('select')
-  if (!select) throw new Error('không tìm thấy select')
+  if (!select) throw new Error('要素が見つかりません')
   const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
   setter?.call(select, value)
   select.dispatchEvent(new Event('change', { bubbles: true }))
@@ -36,7 +36,7 @@ function selectValue(root: HTMLElement, value: string): void {
 registerUnit<CategorySelectorProps>({
   id: 'CategorySelector',
   title: 'CategorySelector',
-  description: 'Select category lọc theo FormType (UI_FORM_TYPE_MAP) + is_active (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <CategorySelector {...props} />,
   propsSchema: z.object({
@@ -47,7 +47,7 @@ registerUnit<CategorySelectorProps>({
   fixtures: [
     {
       id: 'loaded-language',
-      description: 'formType=Language → chỉ category form_language active, sort đúng.',
+      description: '検証ケース。',
       props: { formType: 'Language', value: '', onChange: noop },
       mocks: { firestore: CATEGORY_SEED },
       act: async ctx => {
@@ -56,7 +56,7 @@ registerUnit<CategorySelectorProps>({
     },
     {
       id: 'no-formtype',
-      description: 'formType rỗng → select disabled, không fetch.',
+      description: '検証ケース。',
       props: { formType: '', value: '', onChange: noop },
       mocks: { firestore: { categories: [] } },
       act: async ctx => {
@@ -65,7 +65,7 @@ registerUnit<CategorySelectorProps>({
     },
     {
       id: 'act-select',
-      description: 'Act: chọn category → onChange(categoryId).',
+      description: '検証ケース。',
       props: { formType: 'Language', value: '', onChange: recordChange },
       mocks: { firestore: CATEGORY_SEED },
       act: async ctx => {
@@ -79,7 +79,7 @@ registerUnit<CategorySelectorProps>({
     {
       id: 'probe-mismatched-formtype',
       probe: true,
-      description: 'Probe: formType=General nhưng seed chỉ có Language/IT — options rỗng, không crash.',
+      description: '検証ケース。',
       props: { formType: 'General', value: '', onChange: noop },
       mocks: { firestore: CATEGORY_SEED },
       act: async ctx => {
@@ -90,33 +90,33 @@ registerUnit<CategorySelectorProps>({
   invariants: [
     {
       id: 'filtered-by-formtype-and-active',
-      description: 'Chỉ category đúng form_type và is_active, sort theo sort_order',
+      description: '検証ケース。',
       onlyFixtures: ['loaded-language', 'act-select'],
       check: ({ root }) => {
         const labels = Array.from(root.querySelectorAll('option'))
           .filter(o => o.getAttribute('value') !== '')
           .map(o => o.textContent)
         return (
-          JSON.stringify(labels) === JSON.stringify(['Kinh doanh', 'Đời sống']) ||
+          JSON.stringify(labels) === JSON.stringify(['Kinh doanh', '生活']) ||
           `options: ${labels.join(' | ')}`
         )
       },
     },
     {
       id: 'disabled-without-formtype',
-      description: 'formType rỗng: select disabled, không có option dữ liệu',
+      description: '検証ケース。',
       onlyFixtures: ['no-formtype'],
       check: ({ root }) => {
         const select = root.querySelector<HTMLSelectElement>('select')
-        if (!select) return 'không có select'
-        if (!select.disabled) return 'select không disabled khi formType rỗng'
+        if (!select) return '対象がありません'
+        if (!select.disabled) return 'formType が空でも select が disabled ではありません'
         const options = root.querySelectorAll('option').length
         return options === 1 || `options=${options}, expected=1`
       },
     },
     {
       id: 'change-fires-category-id',
-      description: 'onChange nhận đúng category id, gọi 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-select'],
       check: () =>
         (changeSpy.count === 1 && changeSpy.lastValue === 'c-biz') ||
@@ -124,7 +124,7 @@ registerUnit<CategorySelectorProps>({
     },
     {
       id: 'mismatched-formtype-empty',
-      description: 'formType không khớp seed: contract count=0, chỉ placeholder',
+      description: '検証ケース。',
       onlyFixtures: ['probe-mismatched-formtype'],
       check: ({ root, contract }) => {
         if (contract.count !== '0') return `contract.count="${contract.count}"`

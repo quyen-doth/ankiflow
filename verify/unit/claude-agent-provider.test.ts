@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock SDK Anthropic: default export là class có messages.create (createMock).
+// 検証用コメント。
 const { createMock } = vi.hoisted(() => ({ createMock: vi.fn() }))
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {
@@ -15,12 +15,12 @@ import { FormType, LanguageType } from '@/types'
 const validEnglish = {
   word: 'resilient',
   ipa: '/rɪˈzɪljənt/',
-  meaning_vi: 'kiên cường',
-  word_type_vi: 'tính từ',
+  meaning_vi: '粘り強い',
+  word_type_vi: '形容詞',
   example_sentence: 'She stayed resilient under pressure.',
-  example_translation: 'Cô ấy vẫn kiên cường dưới áp lực.',
+  example_translation: '彼女はプレッシャーの中でも粘り強かった。',
   example_blank: 'She stayed ___ under pressure.',
-  collocations: ['highly resilient (rất kiên cường)'],
+  collocations: ['highly resilient (rất 粘り強い)'],
   unsplash_search_keyword: 'resilience',
 }
 const normalizedEnglish = { ...validEnglish, word_type: validEnglish.word_type_vi }
@@ -38,14 +38,14 @@ function expectCachedSystem(system: unknown, text: string): void {
 const validFrench = {
   word: 'bonjour',
   ipa: '/bɔ̃.ʒuʁ/',
-  meaning_vi: 'xin chào',
-  word_type_vi: 'thán từ',
+  meaning_vi: 'こんにちは',
+  word_type_vi: '感嘆詞',
   level: 'A1',
   example_sentence: 'Bonjour, comment allez-vous ?',
-  example_translation: 'Xin chào, bạn khỏe không?',
+  example_translation: 'こんにちは、お元気ですか？',
   example_blank: '___, comment allez-vous ?',
-  collocations: ['dire bonjour (nói xin chào)'],
-  related_words: ['salut (chào)'],
+  collocations: ['dire bonjour (こんにちはと言う)'],
+  related_words: ['salut (こんにちは)'],
   unsplash_search_keyword: 'greeting',
 }
 const normalizedFrench = { ...validFrench, word_type: validFrench.word_type_vi }
@@ -91,7 +91,7 @@ describe('ClaudeAgentProvider — forced submit_card', () => {
     const { ipa, ...invalid } = validEnglish
     void ipa
     createMock
-      .mockResolvedValueOnce(toolUseResponse(invalid)) // thiếu field → zod throw
+      .mockResolvedValueOnce(toolUseResponse(invalid)) // field 不足 → zod throw
       .mockResolvedValueOnce(toolUseResponse(validEnglish))
     const provider = new ClaudeAgentProvider('claude-haiku-4-5')
 

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * POST /api/integrations/term-drafts — auth token tĩnh (không session cookie), duplicate
- * check theo user_id cố định, default anki_deck/card_type_ids từ deck form_it của target user.
+ * 検証用コメント。
+ * 検証用コメント。
  */
 
 interface EntryDoc {
@@ -79,7 +79,7 @@ afterEach(() => {
 })
 
 describe('POST /api/integrations/term-drafts — auth', () => {
-  it('token đúng + body hợp lệ → tạo draft thành công', async () => {
+  it('検証ケース', async () => {
     const res = await POST(makeReq({ token: 'secret-token-123', body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -95,13 +95,13 @@ describe('POST /api/integrations/term-drafts — auth', () => {
     })
   })
 
-  it('token sai → 401, không tạo gì', async () => {
+  it('検証ケース', async () => {
     const res = await POST(makeReq({ token: 'wrong-token', body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
     expect(res.status).toBe(401)
     expect(setDocs).toHaveLength(0)
   })
 
-  it('thiếu token → 401', async () => {
+  it('不足しています', async () => {
     const res = await POST(makeReq({ token: null, body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
     expect(res.status).toBe(401)
   })
@@ -125,7 +125,7 @@ describe('POST /api/integrations/term-drafts — validate body', () => {
     expect(res.status).toBe(400)
   })
 
-  it('thiếu field bắt buộc (source_url) → 400', async () => {
+  it('不足しています', async () => {
     const res = await POST(
       makeReq({
         token: 'secret-token-123',
@@ -146,7 +146,7 @@ describe('POST /api/integrations/term-drafts — validate body', () => {
     expect(res.status).toBe(400)
   })
 
-  it('context_quote > 200 ký tự → 400', async () => {
+  it('検証ケース', async () => {
     const res = await POST(
       makeReq({
         token: 'secret-token-123',
@@ -158,7 +158,7 @@ describe('POST /api/integrations/term-drafts — validate body', () => {
 })
 
 describe('POST /api/integrations/term-drafts — duplicate', () => {
-  it('term đã tồn tại (case-insensitive, trim) → skip với reason', async () => {
+  it('検証ケース', async () => {
     entryDocs.push({ id: 'e1', data: { term: 'kubernetes' } })
 
     const res = await POST(
@@ -166,12 +166,12 @@ describe('POST /api/integrations/term-drafts — duplicate', () => {
     )
     const body = await res.json()
     expect(body.created).toEqual([])
-    // zod .trim() chuẩn hóa term trước khi vào skip list.
+    // 検証用コメント。
     expect(body.skipped).toEqual([{ term: 'Kubernetes', reason: 'duplicate' }])
     expect(setDocs).toHaveLength(0)
   })
 
-  it('idempotent — gọi lại lần 2 với cùng term (đã tồn tại từ trước) → skip', async () => {
+  it('検証ケース', async () => {
     entryDocs.push({ id: 'e1', data: { term: 'Kubernetes' } })
     const res = await POST(makeReq({ token: 'secret-token-123', body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
     const body = await res.json()
@@ -179,7 +179,7 @@ describe('POST /api/integrations/term-drafts — duplicate', () => {
     expect(body.skipped[0].reason).toBe('duplicate')
   })
 
-  it('2 item trùng nhau trong CÙNG 1 request → item thứ 2 skip', async () => {
+  it('検証ケース', async () => {
     const res = await POST(
       makeReq({
         token: 'secret-token-123',
@@ -193,7 +193,7 @@ describe('POST /api/integrations/term-drafts — duplicate', () => {
 })
 
 describe('POST /api/integrations/term-drafts — default deck', () => {
-  it('target user có deck form_it → dùng anki_deck/card_type_ids của deck đó', async () => {
+  it('検証ケース', async () => {
     deckDocs.push({ id: 'd1', data: { anki_deck_name: 'Custom::IT', default_card_type_ids: ['ct_a', 'ct_b'] } })
 
     await POST(makeReq({ token: 'secret-token-123', body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
@@ -201,7 +201,7 @@ describe('POST /api/integrations/term-drafts — default deck', () => {
     expect(setDocs[0].data).toMatchObject({ anki_deck: 'Custom::IT', card_type_ids: ['ct_a', 'ct_b'] })
   })
 
-  it('target user KHÔNG có deck form_it → fallback mặc định', async () => {
+  it('検証ケース', async () => {
     await POST(makeReq({ token: 'secret-token-123', body: { source: 'knowledge-hub', items: [VALID_ITEM] } }))
 
     expect(setDocs[0].data).toMatchObject({ anki_deck: 'Vocabulary::IT', card_type_ids: [] })

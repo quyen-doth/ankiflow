@@ -5,18 +5,18 @@ import { verifyGlobals } from '@/verify/core/globals'
 import { registerUnit } from '@/verify/core/registry'
 
 const NAV_HREFS = ['/dashboard', '/create', '/history', '/admin', '/settings']
-// Harness coi TEST_AUTH_USER là admin (test-setup) → mục adminOnly "App Settings" hiển thị.
+// 検証用コメント。
 const ADMIN_NAV_HREF = '/settings/admin'
 
-// Mock fetch cho ConnectedBadge bên trong (ping AnkiConnect localhost:8765 trực tiếp khi mount)
+// 検証用コメント。
 const ankiConnectMock = {
   fetch: [
     { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
   ],
 }
 
-// Active styling theo pathname chỉ kiểm chứng được trong vitest (next/navigation
-// được mock); trên browser usePathname trả path thật (/verify/...) → bỏ qua.
+// 検証用コメント。
+// 検証用コメント。
 function checkActiveLink(root: HTMLElement, expectedHref: string | null): true | string {
   if (!verifyGlobals().__verifyNav) return true
   const links = Array.from(root.querySelectorAll<HTMLAnchorElement>('aside nav a'))
@@ -35,7 +35,7 @@ registerUnit<Record<string, never>>({
   id: 'NavigationSidebar',
   title: 'NavigationSidebar',
   description:
-    'Sidebar điều hướng chính: logo, nav link (5 chung + App Settings admin-only), ConnectedBadge; responsive drawer.',
+    'main navigation sidebar: logo、nav link (共通 5 件 + admin-only App Settings)、ConnectedBadge、responsive drawer。',
   kind: 'component',
   render: () => (
     <UnsavedChangesProvider>
@@ -46,7 +46,7 @@ registerUnit<Record<string, never>>({
   fixtures: [
     {
       id: 'dashboard-active',
-      description: 'pathname=/dashboard → mục Dashboard active (vitest-only).',
+      description: '検証ケース。',
       props: {},
       mocks: { pathname: '/dashboard', ...ankiConnectMock },
       act: async ctx => {
@@ -55,7 +55,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'create-active',
-      description: 'pathname=/create → mục Create Card active (vitest-only).',
+      description: '検証ケース。',
       props: {},
       mocks: { pathname: '/create', ...ankiConnectMock },
       act: async ctx => {
@@ -64,7 +64,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'settings-active',
-      description: 'pathname=/settings → mục Settings active (không kéo theo App Settings).',
+      description: '検証ケース。',
       props: {},
       mocks: { pathname: '/settings', ...ankiConnectMock },
       act: async ctx => {
@@ -74,7 +74,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'settings-admin-active',
       description:
-        'pathname=/settings/admin → CHỈ App Settings active (longest-prefix, /settings không sáng theo).',
+        'pathname=/settings/admin → App Settings だけ active (longest-prefix、/settings は同時に active にならない)。',
       props: {},
       mocks: { pathname: '/settings/admin', ...ankiConnectMock },
       act: async ctx => {
@@ -84,7 +84,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'probe-unknown-path',
       probe: true,
-      description: 'Probe: pathname lạ → không mục nào active, sidebar vẫn render đủ.',
+      description: '検証ケース。',
       props: {},
       mocks: { pathname: '/nonexistent', ...ankiConnectMock },
       act: async ctx => {
@@ -95,41 +95,41 @@ registerUnit<Record<string, never>>({
   invariants: [
     {
       id: 'all-nav-links-present',
-      description: 'Đủ 5 nav link với href đúng',
+      description: '検証ケース。',
       check: ({ root }) => {
         const hrefs = Array.from(root.querySelectorAll('aside nav a')).map(a =>
           a.getAttribute('href')
         )
         const missing = NAV_HREFS.filter(h => !hrefs.includes(h))
-        return missing.length === 0 || `thiếu link: ${missing.join(', ')}`
+        return missing.length === 0 || `link 不足: ${missing.join(', ')}`
       },
     },
     {
       id: 'admin-nav-link-present',
-      description: 'Mục adminOnly "App Settings" (/settings/admin) hiện với admin',
+      description: 'admin では adminOnly item "App Settings" (/settings/admin) を表示する',
       check: ({ root }) => {
         const hrefs = Array.from(root.querySelectorAll('aside nav a')).map(a =>
           a.getAttribute('href')
         )
-        return hrefs.includes(ADMIN_NAV_HREF) || `thiếu link admin: ${ADMIN_NAV_HREF}`
+        return hrefs.includes(ADMIN_NAV_HREF) || `不足しています`
       },
     },
     {
       id: 'logo-present',
       description: 'Logo AnkiFlow hiện diện',
       check: ({ root }) =>
-        !!root.querySelector('[data-verify-unit="AnkiFlowLogo"]') || 'không có logo',
+        !!root.querySelector('[data-verify-unit="AnkiFlowLogo"]') || '対象がありません',
     },
     {
       id: 'connected-badge-present',
-      description: 'ConnectedBadge hiện diện ở đáy sidebar',
+      description: '検証ケース。',
       check: ({ root }) =>
         !!root.querySelector('[data-verify-unit="ConnectedBadge"]') ||
-        'không có ConnectedBadge',
+        '対象がありません',
     },
     {
       id: 'active-matches-pathname',
-      description: 'Mục active khớp pathname (chỉ kiểm trong vitest)',
+      description: '検証ケース。',
       check: ({ root, fixture }) => {
         const expectedByFixture: Record<string, string | null> = {
           'dashboard-active': '/dashboard',

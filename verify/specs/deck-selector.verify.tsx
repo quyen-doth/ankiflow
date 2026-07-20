@@ -7,7 +7,7 @@ import { FormType } from '@/types'
 
 type DeckSelectorProps = ComponentProps<typeof DeckSelector>
 
-// Seed decks: 2 active (sort_order đảo thứ tự), 1 inactive phải bị filter
+// 検証用コメント。
 const DECK_SEED = {
   decks: [
     { id: 'd-en', display_name: 'English Vocab', form_type: FormType.LANGUAGE, is_active: true, sort_order: 2 },
@@ -25,7 +25,7 @@ const recordChange = (deckId: string, formType: 'Language' | 'IT' | 'General') =
 }
 function selectValue(root: HTMLElement, value: string): void {
   const select = root.querySelector<HTMLSelectElement>('select')
-  if (!select) throw new Error('không tìm thấy select')
+  if (!select) throw new Error('要素が見つかりません')
   const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
   setter?.call(select, value)
   select.dispatchEvent(new Event('change', { bubbles: true }))
@@ -34,7 +34,7 @@ function selectValue(root: HTMLElement, value: string): void {
 registerUnit<DeckSelectorProps>({
   id: 'DeckSelector',
   title: 'DeckSelector',
-  description: 'Select deck từ Firestore: chỉ is_active, sort theo sort_order (vitest-only).',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <DeckSelector {...props} />,
   propsSchema: z.object({
@@ -46,7 +46,7 @@ registerUnit<DeckSelectorProps>({
   fixtures: [
     {
       id: 'loaded',
-      description: '2 deck active load từ stub, deck inactive bị filter.',
+      description: '検証ケース。',
       props: { value: '' },
       mocks: { firestore: DECK_SEED },
       act: async ctx => {
@@ -55,7 +55,7 @@ registerUnit<DeckSelectorProps>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — chỉ còn placeholder option.',
+      description: '検証ケース。',
       props: { value: '' },
       mocks: { firestore: { decks: [] } },
       act: async ctx => {
@@ -64,7 +64,7 @@ registerUnit<DeckSelectorProps>({
     },
     {
       id: 'act-select',
-      description: 'Act: chọn deck → onChange nhận (deckId, UI form type từ DB_FORM_TYPE_TO_UI).',
+      description: '検証ケース。',
       props: { value: '', onChange: recordChange },
       mocks: { firestore: DECK_SEED },
       act: async ctx => {
@@ -79,7 +79,7 @@ registerUnit<DeckSelectorProps>({
     {
       id: 'probe-all-inactive',
       probe: true,
-      description: 'Probe: mọi deck đều inactive — bị filter hết, không crash.',
+      description: '検証ケース。',
       props: { value: '' },
       mocks: {
         firestore: {
@@ -97,19 +97,19 @@ registerUnit<DeckSelectorProps>({
   invariants: [
     {
       id: 'only-active-decks',
-      description: 'Chỉ deck is_active xuất hiện trong options',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'act-select'],
       check: ({ root }) => {
         const labels = Array.from(root.querySelectorAll('option'))
           .filter(o => o.getAttribute('value') !== '')
           .map(o => o.textContent)
         if (labels.length !== 2) return `options=${labels.length}, expected=2`
-        return !labels.includes('Archived Deck') || 'deck inactive lọt vào options'
+        return !labels.includes('Archived Deck') || 'inactive deck が options に混入しています'
       },
     },
     {
       id: 'sorted-by-sort-order',
-      description: 'Options sắp theo sort_order tăng dần',
+      description: '検証ケース。',
       onlyFixtures: ['loaded', 'act-select'],
       check: ({ root }) => {
         const labels = Array.from(root.querySelectorAll('option'))
@@ -123,7 +123,7 @@ registerUnit<DeckSelectorProps>({
     },
     {
       id: 'empty-renders-placeholder-only',
-      description: 'Không có deck: chỉ còn placeholder, select không crash',
+      description: '検証ケース。',
       onlyFixtures: ['empty', 'probe-all-inactive'],
       check: ({ root, contract }) => {
         const options = root.querySelectorAll('option').length
@@ -133,7 +133,7 @@ registerUnit<DeckSelectorProps>({
     },
     {
       id: 'change-maps-formtype',
-      description: 'onChange nhận deckId + UI form type đúng mapping',
+      description: '検証ケース。',
       onlyFixtures: ['act-select'],
       check: () =>
         (changeSpy.count === 1 &&
