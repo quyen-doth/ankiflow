@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { AiOutputProfilesEditor } from '@/components/admin/AiOutputProfilesEditor'
 import { Button } from '@/components/ui/Button'
 import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
-import { cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
+import { cloneAiOutputProfiles, normalizeAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
 import { registerUnit } from '@/verify/core/registry'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
@@ -36,7 +36,8 @@ const TEST_CONTENT_TYPE = {
 function initialProfiles(): AiOutputProfile[] {
   const profiles = resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)
   if (!profiles) throw new Error('Language profiles are required')
-  return profiles
+  // 実アプリは materialize 経由で normalize 済み profile を渡すため、harness も揃える。
+  return normalizeAiOutputProfiles(profiles)
 }
 
 function clickButtonByText(root: HTMLElement, text: string): void {
@@ -92,6 +93,33 @@ registerUnit({
   render: () => <EditorHarness />,
   propsSchema: z.object({}),
   fixtures: [
+    {
+      id: 'act-exclude-inherited-field',
+      description: '言語 profile で継承 field を exclude し、Restore で戻す。',
+      props: {},
+      act: async ctx => {
+        // Chinese profile へ切り替える (Default=0, English=1, Chinese=2)。
+        const select = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output profile"]')
+        if (!select) throw new Error('profile select が見つからない')
+        select.value = '2'
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+        // legacy zh は normalize 済みで ipa を exclude している → Restore で戻す。
+        const restore = ctx.root.querySelector<HTMLButtonElement>('button[aria-label="Restore inherited output ipa"]')
+        if (!restore) throw new Error('ipa の Restore ボタンが見つからない')
+        restore.click()
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-add-profile-inherits',
+      description: '新規 profile は Default field をコピーせず継承だけする。',
+      props: {},
+      act: async ctx => {
+        clickButtonByText(ctx.root, 'Add Profile')
+        await ctx.wait(0)
+      },
+    },
     {
       id: 'default-language-profiles',
       description: 'Language editor starts with Default/English/Chinese/Japanese profiles.',
@@ -235,6 +263,35 @@ registerUnit({
   ],
   invariants: [
     {
+      id: 'inherited-field-can-be-excluded',
+      description: '継承 field は Exclude/Restore でき、primary は操作できない',
+      onlyFixtures: ['act-exclude-inherited-field'],
+      check: ({ root }) => {
+        // Restore 後は同じ field が Exclude に切り替わる = 継承が復活している。
+        if (!root.querySelector('button[aria-label="Exclude inherited output ipa"]')) {
+          return 'Restore しても Exclude に切り替わらない'
+        }
+        // builtin zh の Default-only field は ipa だけ。復活後は除外ゼロになる。
+        return !root.querySelector('button[aria-label^="Restore inherited output"]')
+          || 'ipa 以外にも除外された継承 field が残っている'
+      },
+    },
+    {
+      id: 'new-profile-starts-empty',
+      description: '新規 profile は own field 0 件で作成される',
+      onlyFixtures: ['act-add-profile-inherits'],
+      check: ({ root }) => {
+        const keyInputs = root.querySelectorAll('input[aria-label^="AI output key"]')
+        if (keyInputs.length !== 0) return `own fields=${keyInputs.length}`
+        // 新規 profile では primary(word) が継承側に現れる → exclude 不可であること。
+        if (root.querySelector('button[aria-label="Exclude inherited output word"]')) {
+          return 'primary field を exclude できてしまう'
+        }
+        return !!root.querySelector('button[aria-label="Exclude inherited output ipa"]')
+          || '継承 field が表示されない'
+      },
+    },
+    {
       id: 'self-identifies',
       description: 'Editor exposes its verification contract.',
       check: ({ contract }) => contract.unit === 'AiOutputProfilesEditor'
@@ -243,6 +300,14 @@ registerUnit({
     {
       id: 'language-profiles-visible',
       description: 'All built-in Language profile options are available.',
+      // Add Profile fixture は意図的に 5 個目を足すため対象外。
+      onlyFixtures: [
+        'default-language-profiles',
+        'e2e-editor-flow',
+        'probe-primary-lock',
+        'probe-output-key-focus',
+        'act-exclude-inherited-field',
+      ],
       check: ({ root }) => {
         const options = Array.from(root.querySelectorAll('select[aria-label="AI output profile"] option'))
           .map(option => option.textContent)

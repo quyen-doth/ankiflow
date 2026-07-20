@@ -74,6 +74,27 @@ export function AiOutputProfilesEditor({
     ? testLanguage
     : enabledLanguages[0]?.code ?? 'en'
 
+  // 言語 profile は Default を継承する。ここでは own field で上書きされていない
+  // Default field を「継承 (読み取り専用)」として提示し、exclude/restore を切り替える。
+  const defaultProfile = defaultProfileIndex >= 0 ? profiles[defaultProfileIndex] : undefined
+  const ownKeys = new Set(activeProfile?.fields.map(field => field.key) ?? [])
+  const excludedKeys = new Set(activeProfile?.exclude ?? [])
+  const inheritedFields = isDefaultProfile
+    ? []
+    : (defaultProfile?.fields ?? []).filter(field => !ownKeys.has(field.key))
+
+  const setExcluded = (key: string, excluded: boolean) => {
+    if (!activeProfile || isDefaultProfile) return
+    const next = new Set(excludedKeys)
+    if (excluded) next.add(key)
+    else next.delete(key)
+    replaceProfile({
+      ...activeProfile,
+      inherit: true,
+      exclude: Array.from(next),
+    })
+  }
+
   const emitProfilesChange = (next: AiOutputProfile[]) => {
     profilesRef.current = next
     onChange(next)
@@ -186,13 +207,10 @@ export function AiOutputProfilesEditor({
   const addProfile = () => {
     if (!primaryFieldKey) return
     dismissInstructionSuggestion()
-    const defaultFields = profiles.find(profile => profile.profile === 'default')?.fields ?? []
+    // Default field は継承されるのでコピーしない — own field は language 固有だけを持つ。
     emitProfilesChange([
       ...profiles,
-      {
-        profile: '',
-        fields: defaultFields.map(field => ({ ...field })),
-      },
+      { profile: '', inherit: true, exclude: [], fields: [] },
     ])
     setActiveIndex(profiles.length)
   }
@@ -319,6 +337,51 @@ export function AiOutputProfilesEditor({
           Remove
         </Button>
       </div>
+
+      <p className="text-[12px] leading-relaxed text-slate-500 -mt-1">
+        {isDefaultProfile
+          ? 'Fields here apply to every language unless a language profile excludes them.'
+          : `${profileLabel(activeProfile.profile)} inherits every Default field. The fields below are specific to ${profileLabel(activeProfile.profile)} and override Default when the key matches.`}
+      </p>
+
+      {!isDefaultProfile && inheritedFields.length > 0 && (
+        <div className="rounded-[9px] border border-border/60 bg-surface/30 p-3 flex flex-col gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.05em] font-mono text-slate-400">
+            Inherited from Default
+          </p>
+          {inheritedFields.map(field => {
+            const excluded = excludedKeys.has(field.key)
+            // Primary field は必ず生成対象。exclude すると保存時に validation で
+            // 落ちるだけなので、UI 側で操作させない。
+            const isPrimary = field.key === primaryFieldKey
+            return (
+              <div key={field.key} className="flex items-center justify-between gap-3">
+                <span className={cn(
+                  'font-mono text-[12px]',
+                  excluded ? 'text-slate-400 line-through' : 'text-slate-600',
+                )}>
+                  {field.key}
+                </span>
+                {isPrimary ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary-bg px-2 py-0.5 text-[10px] font-bold text-primary">
+                    <LockKeyhole className="w-3 h-3" /> Primary
+                  </span>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1.5 h-auto text-[11.5px]"
+                    aria-label={`${excluded ? 'Restore' : 'Exclude'} inherited output ${field.key}`}
+                    onClick={() => setExcluded(field.key, !excluded)}
+                  >
+                    {excluded ? 'Restore' : 'Exclude'}
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {activeProfile.fields.map((field, fieldIndex) => {
