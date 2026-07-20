@@ -233,6 +233,8 @@ npm run dev
 
 > **AnkiConnect の CORS 設定**: ブラウザから `localhost:8765` を呼ぶため、Anki の AnkiConnect アドオン設定で `webCorsOriginList` にアプリのオリジン（`http://localhost:3000` やデプロイ先ドメイン）を追加する必要があります。設定画面に案内を用意しています（Safari は HTTPS ページから localhost への接続を許可しないため、デプロイ環境では Chrome / Edge / Firefox を使用）。
 >
+> **既知の制約 — ブラウザの Local Network Access (LNA)**: Chrome など最新ブラウザは、デプロイ版（`https://…` の公開オリジン）から `localhost` への通信を **Local Network Access / Private Network Access** ポリシーでブロックします（`webCorsOriginList` を正しく設定しても届きません）。これはブラウザ側のセキュリティ仕様であり、アプリ側のコードでは回避できません。**回避策**: プロンプトが出たら本サイトへローカルネットワークアクセスを許可する、または Anki 連携が必要なときは `http://localhost:3000`（loopback → loopback で制約対象外）からアプリを開いてください。接続失敗時はアプリがこの状況を判定し、適切な案内メッセージを表示します。
+>
 > AI 生成・プレビュー・保存は Anki なしでも動作します（遅延同期）。
 >
 > `LINE_USER_ID` を使う legacy 手動 script/workflow はユーザーごとのデータ分離に対応していないため、実行しないでください。現行の通知先は各 user の LINE 連携から解決されます。

@@ -61,6 +61,11 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
     const [copied, setCopied] = useState(false);
     const [rechecking, setRechecking] = useState(false);
 
+    // デプロイ版 (loopback 以外の origin) では browser の Local Network Access が
+    // public→localhost をブロックする → CORS を直しても届かないため別途案内する。
+    const isDeployedOrigin = typeof window !== 'undefined'
+        && !['localhost', '127.0.0.1'].includes(window.location.hostname);
+
     const snippet = `{\n  "webCorsOriginList": ["http://localhost", "${origin}"]\n}`;
 
     const handleCopy = async () => {
@@ -113,6 +118,18 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
                     {rechecking ? 'Checking…' : 'Recheck'}
                 </Button>
             </div>
+            {isDeployedOrigin && (
+                <div className="mt-3 p-2.5 rounded-[8px] bg-white border border-[#eceae4]">
+                    <p className="text-[11.5px] text-slate-600 leading-relaxed">
+                        <span className="font-bold text-[#b87514]">Still blocked after allowing CORS?</span>{' '}
+                        Modern browsers (Chrome &quot;Local Network Access&quot;) block a deployed site from reaching{' '}
+                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">localhost</code>. When
+                        prompted, allow local network access for this site — or run AnkiFlow at{' '}
+                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">http://localhost:3000</code>{' '}
+                        to sync with Anki.
+                    </p>
+                </div>
+            )}
             <p className="text-[11px] text-slate-400 mt-2.5">
                 Note: Safari blocks requests from HTTPS pages to localhost — use Chrome, Edge, or Firefox for the
                 deployed app.

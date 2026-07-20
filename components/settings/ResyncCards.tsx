@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { RefreshCw } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
-import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
+import { ankiConnectionErrorMessage, getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
 import { regenerateNotesForEntry } from '@/lib/flashcard-service/client-ops'
 import {
   prepareRuntimeContentTypes,
@@ -191,7 +191,7 @@ export function ResyncCards({ ankiConnected, loadOptions = loadResyncOptions }: 
       if (failed) parts.push(`failed ${failed}`)
       toast.success(parts.join(', '))
     } catch {
-      toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.')
+      toast.error(ankiConnectionErrorMessage())
     } finally {
       setRunning(false)
     }
