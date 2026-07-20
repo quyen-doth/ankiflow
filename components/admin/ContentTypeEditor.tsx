@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Button } from '@/components/ui/Button'
@@ -112,6 +112,8 @@ interface ContentTypeEditorProps {
   onCancel: () => void
   /** `page` は sticky action bar、`modal` は従来どおり末尾の button 行。 */
   layout?: 'modal' | 'page'
+  /** 未保存ガード用。保存直後は false を通知して離脱を妨げない。 */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export function ContentTypeEditor({
@@ -121,6 +123,7 @@ export function ContentTypeEditor({
   onSaved,
   onCancel,
   layout = 'modal',
+  onDirtyChange,
 }: ContentTypeEditorProps) {
   const { user } = useAuth()
   const uid = user?.uid
@@ -137,7 +140,20 @@ export function ContentTypeEditor({
     () => profilesFromContentType(contentType),
   )
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const toast = useToast()
+
+  const [initialSnapshot] = useState(() => JSON.stringify({
+    draft: draftFromContentType(contentType),
+    fields: fieldsFromContentType(contentType),
+    profiles: profilesFromContentType(contentType),
+  }))
+  const dirty = !saved
+    && JSON.stringify({ draft, fields, profiles: aiOutputProfiles }) !== initialSnapshot
+
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   const aiProfileContext = useMemo(() => {
     const code = draft.code.trim()
@@ -244,6 +260,7 @@ export function ContentTypeEditor({
           updated_at: serverTimestamp(),
         })
       }
+      setSaved(true)
       onSaved()
       toast.success(editing ? 'Content type updated' : 'Content type created')
     } catch (error) {

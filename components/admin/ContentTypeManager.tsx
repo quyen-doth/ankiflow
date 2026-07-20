@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   collection, query, where, getDocs,
   updateDoc, deleteDoc, doc, serverTimestamp,
@@ -12,7 +13,6 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/FormField'
-import { ContentTypeEditor } from '@/components/admin/ContentTypeEditor'
 import { Pencil, Plus, Trash2, Search } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -29,9 +29,15 @@ export type ContentTypeManagerScope = 'workspace' | 'global-defaults'
 
 interface ContentTypeManagerProps {
   scope?: ContentTypeManagerScope
+  /** 編集ページからの戻り先を決める (Settings タブからも同じ list を表示するため)。 */
+  origin?: 'admin' | 'settings'
 }
 
-export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerProps = {}) {
+export function ContentTypeManager({
+  scope = 'workspace',
+  origin = 'admin',
+}: ContentTypeManagerProps = {}) {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const uid = user?.uid
   const isAdmin = !!user?.email && user.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL
@@ -42,8 +48,6 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
 
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editing, setEditing] = useState<ContentType | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContentType | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -98,15 +102,14 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
     return result
   }, [contentTypes, search, filterStatus])
 
-  const openCreate = () => {
-    setEditing(null)
-    setModalOpen(true)
-  }
+  const editorQuery = [
+    isGlobalScope ? 'scope=global-defaults' : '',
+    origin === 'settings' ? 'from=settings' : '',
+  ].filter(Boolean).join('&')
+  const editorHref = (suffix: string) => `/admin/content-types/${suffix}${editorQuery ? `?${editorQuery}` : ''}`
 
-  const openEdit = (contentType: ContentType) => {
-    setEditing(contentType)
-    setModalOpen(true)
-  }
+  const openCreate = () => router.push(editorHref('new'))
+  const openEdit = (contentType: ContentType) => router.push(editorHref(encodeURIComponent(contentType.id)))
 
   const handleToggleActive = async (contentType: ContentType) => {
     try {
@@ -191,7 +194,6 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
     <Card {...verifyAttrs({
       unit: 'ContentTypeManager',
       rows: contentTypes.length,
-      modalOpen,
       loading,
       scope: isGlobalScope ? 'global-defaults' : 'workspace',
       collection: collectionName,
@@ -253,28 +255,6 @@ export function ContentTypeManager({ scope = 'workspace' }: ContentTypeManagerPr
               : 'No content types yet.'
         }
       />
-
-      <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? `Edit — ${editing.name}` : 'Add Content Type'}
-        size="lg"
-      >
-        <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-1">
-          <ContentTypeEditor
-            key={editing?.id ?? 'new'}
-            contentType={editing}
-            scope={isGlobalScope ? 'global-defaults' : 'workspace'}
-            existingCodes={contentTypes.map(ct => ct.code)}
-            onSaved={() => {
-              setModalOpen(false)
-              refresh()
-            }}
-            onCancel={() => setModalOpen(false)}
-          />
-        </div>
-      </Modal>
-
 
       <Modal
         open={!!deleteTarget}
