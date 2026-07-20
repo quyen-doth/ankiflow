@@ -443,7 +443,7 @@ interface SessionState {
 
 ### 8.1 デザインシステム
 
-**デザイン哲学:** "Calm Productivity" — ユーザーがコンテンツに集中できるよう cognitive load を減らす UI。Tactile Warmth を伴う Corporate Modern スタイル; 温かみのある紙のトーン、humanist typography。不変のタグライン: **COGNITIVE SANCTUARY**。
+**デザイン哲学:** "Calm Productivity" — ユーザーがコンテンツに集中できるよう cognitive load を減らす UI。Tactile Warmth を伴う Corporate Modern スタイル; 温かみのある紙のトーン、humanist typography。不変のタグライン: **KNOWLEDGE IN FLOW**。
 
 **「No-Line」ルール:** セクションを区切るためにハードな `border 1px` を使用しない → tonal shift のみ使用 (背景/surface の色を変更)。
 
@@ -537,7 +537,7 @@ interface SessionState {
 
 | Component           | 階層     | File path                                          | 簡単な説明                                                    |
 | ------------------- | -------- | --------------------------------------------------- | ----------------------------------------------------------------- |
-| `AnkiFlowLogo`      | Atom     | `components/ui/AnkiFlowLogo.tsx`                   | タグライン "COGNITIVE SANCTUARY" を持つ Brand mark                  |
+| `AnkiFlowLogo`      | Atom     | `components/ui/AnkiFlowLogo.tsx`                   | タグライン "KNOWLEDGE IN FLOW" を持つ Brand mark                     |
 | `Button`            | Atom     | `components/ui/Button.tsx`                         | 4 variants: primary/secondary/ghost/destructive               |
 | `Badge`             | Atom     | `components/ui/Badge.tsx`                          | 7 variants: neutral/active/inactive/pending/ai/language/level |
 | `Toggle`            | Atom     | `components/ui/Toggle.tsx`                         | label と description を伴う on/off Switch                        |

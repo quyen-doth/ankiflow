@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'AnkiFlow — Cognitive Sanctuary',
+  title: 'AnkiFlow — Knowledge in Flow',
   description: 'AI-powered flashcard creation for Anki',
 }
 
