@@ -7,7 +7,7 @@ import { FormType, LanguageType } from '@/types'
 
 type CardTypeSelectorProps = ComponentProps<typeof CardTypeSelector>
 
-// Seed: ct-en (en), ct-any (language null — mọi ngôn ngữ), ct-zh (zh), ct-it (form IT), ct-old (inactive)
+// 検証用コメント。
 const CARD_TYPE_SEED = {
   card_types: [
     { id: 'ct-en', name: 'EN Word → Meaning', form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, is_active: true, sort_order: 1 },
@@ -40,7 +40,7 @@ function clickLinkByText(root: HTMLElement, text: string): void {
   const btn = Array.from(root.querySelectorAll('button')).find(
     b => !b.querySelector('svg') && b.textContent?.trim() === text
   )
-  if (!btn) throw new Error(`không tìm thấy link "${text}"`)
+  if (!btn) throw new Error(`link が見つかりません "${text}"`)
   btn.click()
 }
 
@@ -52,7 +52,7 @@ registerUnit<CardTypeSelectorProps>({
   id: 'CardTypeSelector',
   title: 'CardTypeSelector',
   description:
-    'Chip card types: lọc form_type + is_active + language (null = mọi ngôn ngữ), All / Clear (vitest-only).',
+    'Chip card types: form_type + is_active + language で filter (null = 全 language)、All / Clear (vitest-only)。',
   kind: 'component',
   render: props => <CardTypeSelector {...props} />,
   propsSchema: z.object({
@@ -64,7 +64,7 @@ registerUnit<CardTypeSelectorProps>({
   fixtures: [
     {
       id: 'loaded-language-en',
-      description: 'formType=Language + language=en → ct-en + ct-any (zh/IT/inactive bị filter).',
+      description: '検証ケース。',
       props: { formType: 'Language', language: LanguageType.ENGLISH, selectedIds: ['ct-en'], onChange: noop },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
@@ -73,7 +73,7 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'act-toggle',
-      description: 'Act: click chip chưa chọn → onChange thêm id.',
+      description: '検証ケース。',
       props: { formType: 'Language', language: LanguageType.ENGLISH, selectedIds: ['ct-en'], onChange: recordChange },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
@@ -81,14 +81,14 @@ registerUnit<CardTypeSelectorProps>({
         changeSpy.count = 0
         changeSpy.lastValue = null
         const unchecked = chipButtons(ctx.root).find(b => !isChecked(b))
-        if (!unchecked) throw new Error('không có chip chưa chọn')
+        if (!unchecked) throw new Error('対象がありません')
         unchecked.click()
         await ctx.wait(0)
       },
     },
     {
       id: 'act-select-all',
-      description: 'Act: All → onChange nhận toàn bộ id đang hiển thị.',
+      description: '検証ケース。',
       props: { formType: 'Language', language: LanguageType.ENGLISH, selectedIds: [], onChange: recordChange },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
@@ -115,7 +115,7 @@ registerUnit<CardTypeSelectorProps>({
     {
       id: 'probe-language-mismatch',
       probe: true,
-      description: 'Probe: language=ja không khớp seed — chỉ còn card type language=null.',
+      description: '検証ケース。',
       props: { formType: 'Language', language: LanguageType.JAPANESE, selectedIds: [], onChange: noop },
       mocks: { firestore: CARD_TYPE_SEED },
       act: async ctx => {
@@ -126,19 +126,19 @@ registerUnit<CardTypeSelectorProps>({
   invariants: [
     {
       id: 'filtered-by-language',
-      description: 'Chỉ card type language khớp hoặc null hiển thị, sort theo sort_order',
+      description: '検証ケース。',
       onlyFixtures: ['loaded-language-en', 'act-toggle', 'act-select-all', 'act-clear'],
       check: ({ root }) => {
         const names = visibleNames(root)
         return (
           JSON.stringify(names) === JSON.stringify(['EN Word → Meaning', 'Listening']) ||
-          `hiển thị: ${names.join(' | ')}`
+          `表示: ${names.join(' | ')}`
         )
       },
     },
     {
       id: 'checked-matches-selection',
-      description: 'Chip checked khớp selectedIds, contract selected khớp',
+      description: 'Chip checked が selectedIds と一致し、contract selected も一致',
       onlyFixtures: ['loaded-language-en'],
       check: ({ root, contract }) => {
         const checked = chipButtons(root).filter(isChecked).length
@@ -148,7 +148,7 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'toggle-adds-id',
-      description: 'Tick checkbox: onChange thêm id đó',
+      description: '検証ケース。',
       onlyFixtures: ['act-toggle'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -157,7 +157,7 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'select-all-returns-visible-ids',
-      description: 'Select All trả về đúng các id đang hiển thị',
+      description: '検証ケース。',
       onlyFixtures: ['act-select-all'],
       check: () =>
         (changeSpy.count === 1 &&
@@ -166,7 +166,7 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'clear-returns-empty',
-      description: 'Clear trả về mảng rỗng',
+      description: '検証ケース。',
       onlyFixtures: ['act-clear'],
       check: () =>
         (changeSpy.count === 1 && JSON.stringify(changeSpy.lastValue) === JSON.stringify([])) ||
@@ -174,12 +174,12 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'language-mismatch-only-null',
-      description: 'language không khớp: chỉ card type language=null còn lại',
+      description: '検証ケース。',
       onlyFixtures: ['probe-language-mismatch'],
       check: ({ root, contract }) => {
         const names = visibleNames(root)
         if (JSON.stringify(names) !== JSON.stringify(['Listening'])) {
-          return `hiển thị: ${names.join(' | ')}`
+          return `表示: ${names.join(' | ')}`
         }
         return contract.count === '1' || `contract.count="${contract.count}"`
       },

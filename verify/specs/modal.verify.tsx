@@ -6,7 +6,7 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type ModalProps = ComponentProps<typeof Modal>
 
-// Spy đếm onClose — act reset trước mỗi đường đóng modal
+// 検証用コメント。
 const closeSpy = { count: 0 }
 const recordClose = () => {
   closeSpy.count++
@@ -16,7 +16,7 @@ const noop = () => undefined
 registerUnit<ModalProps>({
   id: 'Modal',
   title: 'Modal',
-  description: 'Dialog với backdrop, header tùy chọn, đóng bằng X/backdrop/Escape.',
+  description: '検証ケース。',
   kind: 'component',
   allowsEmptyRender: true,
   render: props => <Modal {...props} />,
@@ -32,17 +32,17 @@ registerUnit<ModalProps>({
   fixtures: [
     {
       id: 'closed',
-      description: 'open=false → không render gì.',
+      description: '検証ケース。',
       props: { open: false, onClose: noop, children: 'Hidden content' },
     },
     {
       id: 'open-basic',
-      description: 'Mở không title → không có header/nút đóng.',
+      description: '検証ケース。',
       props: { open: true, onClose: noop, children: 'Modal body content' },
     },
     {
       id: 'open-with-title',
-      description: 'Mở với title + description + nút đóng.',
+      description: '検証ケース。',
       props: {
         open: true,
         onClose: noop,
@@ -53,7 +53,7 @@ registerUnit<ModalProps>({
     },
     {
       id: 'act-close-button',
-      description: 'Act: click nút X → onClose gọi 1 lần.',
+      description: '検証ケース。',
       props: {
         open: true,
         onClose: recordClose,
@@ -67,12 +67,12 @@ registerUnit<ModalProps>({
     },
     {
       id: 'act-escape',
-      description: 'Act: nhấn Escape → onClose gọi 1 lần.',
+      description: '検証ケース。',
       props: { open: true, onClose: recordClose, title: 'Confirm', children: 'Body' },
       act: async ctx => {
         closeSpy.count = 0
-        // Chờ passive effect của Modal gắn listener keydown lên document trước khi
-        // nhấn Escape — nếu dispatch quá sớm, listener chưa attach → flaky.
+        // 検証用コメント。
+        // 検証用コメント。
         await ctx.wait(16)
         document.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
@@ -83,14 +83,14 @@ registerUnit<ModalProps>({
     {
       id: 'probe-no-title',
       probe: true,
-      description: 'Probe: không title — body vẫn render, không có heading/nút đóng.',
+      description: '検証ケース。',
       props: { open: true, onClose: noop, children: 'Body without header' },
     },
   ],
   invariants: [
     {
       id: 'renders-iff-open',
-      description: 'Render khi và chỉ khi open',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         const el = root.querySelector('[data-verify-unit="Modal"]')
         return !!el === props.open || `rendered=${!!el}, open=${props.open}`
@@ -98,7 +98,7 @@ registerUnit<ModalProps>({
     },
     {
       id: 'header-iff-title',
-      description: 'Heading + nút đóng hiện khi và chỉ khi có title',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.open) return true
         const heading = root.querySelector('h2')
@@ -120,21 +120,21 @@ registerUnit<ModalProps>({
         const text = root.textContent ?? ''
         return (
           (typeof props.children === 'string' ? text.includes(props.children) : true) ||
-          'không thấy children trong body'
+          '表示が見つかりません'
         )
       },
     },
     {
       id: 'close-button-fires-once',
-      description: 'Nút X gọi onClose đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-close-button'],
-      check: () => closeSpy.count === 1 || `onClose gọi ${closeSpy.count} lần`,
+      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} lần`,
     },
     {
       id: 'escape-fires-once',
-      description: 'Escape gọi onClose đúng 1 lần',
+      description: '検証ケース。',
       onlyFixtures: ['act-escape'],
-      check: () => closeSpy.count === 1 || `onClose gọi ${closeSpy.count} lần`,
+      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} lần`,
     },
   ],
 })

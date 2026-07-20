@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import { ensureAnkiModel, exportEntryToAnki, saveEntryToFirestore } from '@/hooks/useAnkiExport'
+import { ankiConnectionErrorMessage } from '@/lib/flashcard-service/client'
 import { collectInvalidCards, type InvalidCard } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
@@ -139,7 +140,7 @@ export function useBatchAnkiExport({
       router.push('/create')
     } catch (err) {
       console.error('Batch Anki connection error:', err)
-      toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.')
+      toast.error(ankiConnectionErrorMessage())
     } finally {
       setIsExporting(false)
     }

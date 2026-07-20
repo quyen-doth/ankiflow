@@ -8,7 +8,7 @@ type SectionDividerProps = ComponentProps<typeof SectionDivider>
 registerUnit<SectionDividerProps>({
   id: 'SectionDivider',
   title: 'SectionDivider',
-  description: 'Đường kẻ chia section với label uppercase ở giữa.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <SectionDivider {...props} />,
   propsSchema: z.object({
@@ -17,25 +17,25 @@ registerUnit<SectionDividerProps>({
   fixtures: [
     {
       id: 'default',
-      description: 'Label thường.',
+      description: '検証ケース。',
       props: { label: 'Core Content' },
     },
     {
       id: 'long-label',
-      description: 'Label dài — vẫn nằm giữa hai đường kẻ.',
+      description: '検証ケース。',
       props: { label: 'Configuration and advanced generation options' },
     },
     {
       id: 'probe-empty-label',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): label rỗng — divider không có chữ.',
+      description: '検証ケース。',
       props: { label: '' },
     },
   ],
   invariants: [
     {
       id: 'label-visible-nonempty',
-      description: 'Label hiển thị và không rỗng',
+      description: '検証ケース。',
       check: ({ root }) => {
         const text = root.querySelector('span')?.textContent?.trim() ?? ''
         return text.length > 0 || 'label rỗng'
@@ -43,9 +43,9 @@ registerUnit<SectionDividerProps>({
     },
     {
       id: 'label-matches-prop',
-      description: 'Text label khớp props.label',
+      description: 'text label が props.label と一致',
       check: ({ root, props }) =>
-        (root.textContent ?? '').includes(props.label) || `không thấy "${props.label}"`,
+        (root.textContent ?? '').includes(props.label) || `見つかりません "${props.label}"`,
     },
   ],
 })

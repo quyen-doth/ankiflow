@@ -9,8 +9,8 @@ import type { VerifyResult } from '@/verify/core/types'
 import { setCurrentResult } from './handle'
 
 /**
- * Mount cô lập một unit × fixture tại /verify/[unitId]/[fixtureId].
- * Query: ?chrome=0 ẩn khung kết quả (chỉ còn component — phục vụ screenshot).
+ * 検証用コメント。
+ * 検証用コメント。
  */
 export function UnitPage() {
   const params = useParams<{ unitId: string; fixtureId: string }>()
@@ -23,8 +23,8 @@ export function UnitPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [result, setResult] = useState<VerifyResult | null>(null)
 
-  // Unit/fixture derive trực tiếp từ params — registry đã được nạp qua
-  // side-effect imports ở page trước khi component này render
+  // 検証用コメント。
+  // 検証用コメント。
   const unit = getUnit(unitId)
   const fixture = unit?.fixtures.find(f => f.id === fixtureId)
   const found = Boolean(unit && fixture)
@@ -52,7 +52,7 @@ export function UnitPage() {
   if (!found) {
     return (
       <div className="p-8">
-        <p className="text-red-700">{`Không tìm thấy unit "${unitId}" / fixture "${fixtureId}"`}</p>
+        <p className="text-red-700">{`unit が見つかりません "${unitId}" / fixture "${fixtureId}"`}</p>
         <Link href="/verify" className="text-blue-700 hover:underline">← Dashboard</Link>
       </div>
     )
@@ -69,7 +69,7 @@ export function UnitPage() {
         </header>
       )}
 
-      {/* Mount target — runner render component vào đây */}
+      {/* Mount target — runner がここへ component を render する */}
       <div ref={containerRef} className={showChrome ? 'rounded-lg border border-dashed border-gray-300 p-6' : ''} />
 
       {showChrome && result && (

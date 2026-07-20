@@ -119,7 +119,7 @@ export function Dashboard() {
 
       <details className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4">
         <summary className="cursor-pointer text-sm font-bold text-gray-600">
-          Manifest (cho agent — cũng truy cập được qua window.__verify.manifest())
+          Manifest (agent 用 — window.__verify.manifest() からもアクセス可能)
         </summary>
         <pre className="mt-2 overflow-auto text-xs text-gray-600">
           {JSON.stringify(buildManifest(), null, 2)}

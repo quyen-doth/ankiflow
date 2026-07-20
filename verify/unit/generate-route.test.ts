@@ -105,7 +105,7 @@ describe('POST /api/generate — customizable languages', () => {
 
   it('content_type_id から owner/code を検証し、authoritative definition を渡す', async () => {
     contentTypeDocs.set('form_language__user-1', languageContentType())
-    generateMock.mockResolvedValue({ word: 'book', meaning_vi: 'sách' })
+    generateMock.mockResolvedValue({ word: 'book', meaning_vi: '本' })
 
     const response = await POST(makeRequest({
       form_type: 'form_language',
@@ -289,7 +289,7 @@ describe('POST /api/generate — customizable languages', () => {
   })
 
   it('任意の BCP 47 language を canonicalize して provider に渡す', async () => {
-    const content = { word: 'olá', ipa: '/oˈla/', meaning_vi: 'xin chào' }
+    const content = { word: 'olá', ipa: '/oˈla/', meaning_vi: 'こんにちは' }
     generateMock.mockResolvedValueOnce(content)
 
     const response = await POST(makeRequest({

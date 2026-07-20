@@ -146,7 +146,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'e2e-authoritative-payload',
-      description: 'E2E: selected workspace Content Type ID được gửi trong generate payload.',
+      description: '検証ケース。',
       props: { e2eState: 'authoritative' },
       act: async ctx => {
         await ctx.wait(50)
@@ -210,7 +210,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'e2e-authoritative-form-ready',
-      description: 'Authoritative payload fixture hiển thị đúng custom form để Playwright submit.',
+      description: '検証ケース。',
       onlyFixtures: ['e2e-authoritative-payload'],
       check: ({ root, contract }) => (
         (contract.state === 'ready'

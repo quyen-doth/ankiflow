@@ -17,9 +17,9 @@ import type {
 import { installMockFetch } from '@/verify/harness/mock-fetch'
 
 export interface RunOptions {
-  /** Mount vào container có sẵn (UnitPage) thay vì container off-screen */
+  /** off-screen container ではなく既存 container (UnitPage) へ mount する */
   container?: HTMLElement
-  /** Giữ component mounted sau khi verify (UnitPage hiển thị trực quan) */
+  /** verify 後も component を mounted のまま保持する (UnitPage で視覚確認する) */
   keepMounted?: boolean
 }
 
@@ -28,12 +28,12 @@ function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// User giả cho mọi fixture (định nghĩa ở ./test-auth-user — xem file đó để biết lý do
-// tách riêng). Re-export để code cũ import từ runner.ts không phải đổi đường dẫn.
+// 検証用コメント。
+// 検証用コメント。
 export { TEST_AUTH_USER }
 
-// Container hiển thị (UnitPage) tái sử dụng root — tránh createRoot lặp khi
-// React StrictMode chạy effect 2 lần trong dev
+// 検証用コメント。
+// 検証用コメント。
 const visibleRoots = new WeakMap<HTMLElement, Root>()
 
 function computeVerdict(checks: Check[], blockedReason?: string): Verdict {
@@ -48,7 +48,7 @@ function buildActContext(root: HTMLElement): ActContext {
     root,
     click: async selector => {
       const el = root.querySelector<HTMLElement>(selector)
-      if (!el) throw new Error(`act.click: không tìm thấy "${selector}"`)
+      if (!el) throw new Error(`act.click: "${selector}" が見つかりません`)
       flushSync(() => {
         el.click()
       })
@@ -56,8 +56,8 @@ function buildActContext(root: HTMLElement): ActContext {
     },
     type: async (selector, text) => {
       const el = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)
-      if (!el) throw new Error(`act.type: không tìm thấy "${selector}"`)
-      // Setter native để React onChange nhận giá trị (controlled inputs)
+      if (!el) throw new Error(`act.type: "${selector}" が見つかりません`)
+      // 検証用コメント。
       const proto = el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
         : HTMLInputElement.prototype
@@ -73,7 +73,7 @@ function buildActContext(root: HTMLElement): ActContext {
 }
 
 /**
- * Code path duy nhất cho cả 3 consumer (dashboard, agent handle, vitest matrix):
+ * 検証用コメント。
  * install mocks → mount → act → run verifiers → verdict → cleanup.
  */
 export async function runFixture<P>(
@@ -89,8 +89,8 @@ export async function runFixture<P>(
 
   const globals = verifyGlobals()
 
-  // Fixture cần firestore stub nhưng stub không active (đang chạy trên browser,
-  // không phải vitest với module alias) → SKIP, vitest là source of truth.
+  // 検証用コメント。
+  // 検証用コメント。
   if (fixture.mocks?.firestore && !globals.__verifyFirestoreSeed) {
     return {
       unitId: unit.id,
@@ -190,7 +190,7 @@ export async function runFixture<P>(
         checks.push({
           verifier: verifier.id,
           status: 'fail',
-          label: `Verifier "${verifier.id}" ném exception`,
+          label: `Verifier "${verifier.id}" が exception を投げました`,
           detail: e instanceof Error ? e.message : String(e),
         })
       }
@@ -204,11 +204,11 @@ export async function runFixture<P>(
           reactRoot?.unmount()
         })
       } catch {
-        // unmount lỗi không được che kết quả verify
+        // 検証用コメント。
       }
       if (createdContainer) container.remove()
     }
-    // Mocks luôn được khôi phục, kể cả khi keepMounted
+    // 検証用コメント。
     for (const restore of restoreFns.reverse()) restore()
   }
 
@@ -224,7 +224,7 @@ export async function runFixture<P>(
   }
 }
 
-/** Chạy toàn bộ fixtures của một unit */
+/** unit の全 fixture を実行する */
 export async function runUnit(unit: VerifiableUnit): Promise<VerifyResult[]> {
   const results: VerifyResult[] = []
   for (const fixture of unit.fixtures) {

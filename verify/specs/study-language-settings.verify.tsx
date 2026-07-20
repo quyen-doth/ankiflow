@@ -28,14 +28,14 @@ function clickButton(root: HTMLElement, label: string, last = false): void {
   const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
     .filter(button => button.textContent?.trim() === label)
   const button = last ? buttons.at(-1) : buttons[0]
-  if (!button) throw new Error(`không tìm thấy button "${label}"`)
+  if (!button) throw new Error(`button が見つかりません "${label}"`)
   button.click()
 }
 
 registerUnit<StudyLanguageSettingsProps>({
   id: 'StudyLanguageSettings',
   title: 'StudyLanguageSettings',
-  description: 'Quản lý danh sách ngôn ngữ BCP 47 theo user trong Settings.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <StudyLanguageSettings {...props} />,
   propsSchema: z.object({
@@ -50,12 +50,12 @@ registerUnit<StudyLanguageSettingsProps>({
   fixtures: [
     {
       id: 'configured',
-      description: 'Hiển thị tên tùy chỉnh, mã BCP 47 và trạng thái enabled.',
+      description: '検証ケース。',
       props: { languages: LANGUAGES, onChange: noop },
     },
     {
       id: 'act-reorder',
-      description: 'Act: chuyển French lên trên và đánh lại sort_order.',
+      description: '検証ケース。',
       props: { languages: LANGUAGES, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -64,7 +64,7 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'act-enable',
-      description: 'Act: bật French → callback nhận enabled=true.',
+      description: 'Act: French を有効化 → callback が enabled=true を受け取る。',
       props: { languages: LANGUAGES, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -73,7 +73,7 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'act-add-open-catalog',
-      description: 'Act: thêm mã ko → tự gợi ý tên Korean và callback nhận row mới.',
+      description: '検証ケース。',
       props: { languages: LANGUAGES, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -87,7 +87,7 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'act-remove-confirm',
-      description: 'Act: xóa French phải qua dialog xác nhận mới chạy callback.',
+      description: '検証ケース。',
       props: { languages: LANGUAGES, onChange: recordChange },
       act: async ctx => {
         resetSpy()
@@ -100,7 +100,7 @@ registerUnit<StudyLanguageSettingsProps>({
     {
       id: 'probe-last-enabled',
       probe: true,
-      description: 'Probe: ngôn ngữ enabled cuối cùng không thể tắt hoặc xóa.',
+      description: '検証ケース。',
       props: {
         languages: [{ code: 'en', display_name: 'English', enabled: true, sort_order: 0 }],
         onChange: recordChange,
@@ -115,18 +115,18 @@ registerUnit<StudyLanguageSettingsProps>({
   invariants: [
     {
       id: 'renders-configured-languages',
-      description: 'Tên và mã của mọi language đều hiển thị.',
+      description: '検証ケース。',
       check: ({ root, props }) => props.languages.every(language => {
         const nameInput = root.querySelector<HTMLInputElement>(
           `input[aria-label="Display name for ${language.code}"]`,
         )
         return nameInput?.value === language.display_name
           && (root.textContent ?? '').includes(language.code)
-      }) || 'thiếu tên hoặc mã language',
+      }) || '不足しています',
     },
     {
       id: 'reorder-callback',
-      description: 'Reorder trả French trước English với sort_order liên tục.',
+      description: '検証ケース。',
       onlyFixtures: ['act-reorder'],
       check: () => (
         changeSpy.count === 1
@@ -135,13 +135,13 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'enable-callback',
-      description: 'Toggle bật language bị tắt.',
+      description: '検証ケース。',
       onlyFixtures: ['act-enable'],
       check: () => changeSpy.lastValue?.[1]?.enabled === true || `value=${JSON.stringify(changeSpy.lastValue)}`,
     },
     {
       id: 'add-open-language',
-      description: 'Add modal thêm mã BCP 47 ngoài ba defaults.',
+      description: '検証ケース。',
       onlyFixtures: ['act-add-open-catalog'],
       check: () => {
         const added = changeSpy.lastValue?.at(-1)
@@ -150,7 +150,7 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'remove-requires-confirm',
-      description: 'Remove chỉ callback một lần sau khi xác nhận, French bị loại.',
+      description: '検証ケース。',
       onlyFixtures: ['act-remove-confirm'],
       check: () => (
         changeSpy.count === 1
@@ -159,7 +159,7 @@ registerUnit<StudyLanguageSettingsProps>({
     },
     {
       id: 'last-enabled-protected',
-      description: 'Switch và Remove disabled, callback không chạy.',
+      description: '検証ケース。',
       onlyFixtures: ['probe-last-enabled'],
       check: ({ root }) => {
         const toggle = root.querySelector<HTMLButtonElement>('[role="switch"]')

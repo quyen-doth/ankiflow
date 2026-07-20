@@ -13,7 +13,7 @@ import { ANKI_MODEL_NAME } from '@/lib/anki/model'
 import type { IFlashcardService, AnkiNoteInfo } from '@/lib/flashcard-service/types'
 import type { CardTypeItem } from '@/lib/buildNotes'
 
-/** Mock provider — mọi method là vi.fn(), override khi cần trong từng test. */
+/** Mock provider — すべての method は vi.fn()。必要に応じて各テストで上書きする。 */
 function makeClient(overrides: Partial<Record<keyof IFlashcardService, unknown>> = {}): IFlashcardService {
   const base: IFlashcardService = {
     ping: vi.fn(async () => ({ connected: true, version: 6 })),
@@ -100,8 +100,8 @@ describe('renameDeck', () => {
 
 describe('deleteDeckWithCleanup', () => {
   it('deck を削除 + `::` 階層に沿って最も深い空の親 deck を整理', async () => {
-    // getDecks (chụp 1 lần) trả ['A::B', 'A']; sau khi xóa 'A::B::C', 'A::B' rỗng → dọn.
-    // Lưu ý: 'A' KHÔNG bị dọn vì hasChildren dùng mảng remaining tĩnh vẫn còn thấy 'A::B' (hành vi nguyên bản).
+    // 検証用コメント。
+    // 検証用コメント。
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A']) })
 
     const cleaned = await deleteDeckWithCleanup(client, 'A::B::C')
@@ -111,7 +111,7 @@ describe('deleteDeckWithCleanup', () => {
   })
 
   it('他の子がある場合は親 deck を保持', async () => {
-    // Còn 'A::B::Sibling' → 'A::B' có con → dừng, không dọn
+    // 検証用コメント。
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A::B::Sibling', 'A']) })
 
     const cleaned = await deleteDeckWithCleanup(client, 'A::B::C')
@@ -201,7 +201,7 @@ describe('createNotesForEntry', () => {
 
     expect(noteIds).toEqual([11, 22])
     expect(client.storeMediaFile).toHaveBeenCalledWith(expect.stringContaining('ankiflow_resilient'), 'QUJD')
-    // 2 notes cùng 1 deck → createDeck đúng 1 lần (dedupe)
+    // 検証用コメント。
     expect(client.createDeck).toHaveBeenCalledTimes(1)
     expect(client.createDeck).toHaveBeenCalledWith('MyDeck')
     expect(client.addNotes).toHaveBeenCalledOnce()
@@ -275,7 +275,7 @@ describe('regenerateNotesForEntry', () => {
 
   it('card type が削除済み (map にない) → skipped', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
-    // chỉ cung cấp ct1 → note của ct2 bị skip
+    // 検証用コメント。
     const r = await regenerateNotesForEntry(client, entry, [cardTypes[0]])
     expect(r.updated).toBe(1)
     expect(r.skipped).toBe(1)

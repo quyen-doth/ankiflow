@@ -116,7 +116,7 @@ registerUnit({
         fetch: [{
           match: '/api/generate',
           response: {
-            json: { content: { word: 'book', meaning_vi: 'sách', level: 'B2' } },
+            json: { content: { word: 'book', meaning_vi: '本', level: 'B2' } },
           },
         }],
       },

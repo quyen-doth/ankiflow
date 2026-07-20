@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyRating } from '@/lib/srs/fsrs'
 import type { ReviewState } from '@/types'
 
-// Entry SM-2 cũ (Phase 0, trước khi có FSRS) — không có block `fsrs`.
+// 検証用コメント。
 function legacyState(overrides: Partial<ReviewState> = {}): ReviewState {
   return {
     ease_factor: 2.5,
@@ -17,55 +17,55 @@ function legacyState(overrides: Partial<ReviewState> = {}): ReviewState {
     source: 'anki_sync',
     synced_at: '2026-06-27T10:00:00.000Z',
     ...overrides,
-    // fsrs KHÔNG set — mô phỏng entry cũ hoặc vừa sync từ Anki
+    // 検証用コメント。
   }
 }
 
 const NOW = new Date('2026-06-27T10:00:00Z')
 
-describe('lib/srs/fsrs — lazy migration từ SM-2 cũ', () => {
-  it('entry chưa có fsrs block → applyRating tạo block fsrs mới', () => {
+describe('検証対象', () => {
+  it('検証ケース', () => {
     const state = legacyState()
     expect(state.fsrs).toBeUndefined()
 
     const result = applyRating(state, 'good', NOW)
 
     expect(result.fsrs).toBeDefined()
-    expect(result.fsrs?.state).toBe(2) // State.Review — vì interval_days cũ > 0
-    expect(result.fsrs?.reps).toBe(6) // total_reviews cũ (5) + 1
+    expect(result.fsrs?.state).toBe(2) // 検証用コメント。
+    expect(result.fsrs?.reps).toBe(6) // 検証用コメント。
   })
 
-  it('field mirror cũ vẫn consistent sau migrate (interval_days/total_reviews theo FSRS mới)', () => {
+  it('検証ケース', () => {
     const state = legacyState()
     const result = applyRating(state, 'good', NOW)
 
-    // Mirror phải khớp 1:1 với block fsrs vừa tính — không lệch giữa 2 nơi.
+    // 検証用コメント。
     expect(result.interval_days).toBe(result.fsrs?.scheduled_days)
     expect(result.total_reviews).toBe(result.fsrs?.reps)
     expect(result.due_date).toBeTruthy()
     expect(result.source).toBe('builtin')
   })
 
-  it('entry với interval_days=0 (chưa từng graduate) → migrate thành State.New', () => {
+  it('検証ケース', () => {
     const state = legacyState({ interval_days: 0, queue: 'new', total_reviews: 0, last_reviewed_at: '' })
     const result = applyRating(state, 'good', NOW)
-    // Trước rate, card migrate là New (interval_days=0) — sau 1 lần 'good' sẽ vào learning.
+    // 検証用コメント。
     expect(result.queue).toBe('learning')
   })
 
-  it('entry vừa sync từ Anki (source anki_sync, không có fsrs) → rate qua LINE vẫn migrate đúng', () => {
+  it('検証ケース', () => {
     const state = legacyState({ source: 'anki_sync', ease_factor: 1.8, interval_days: 45, lapses: 3 })
     const result = applyRating(state, 'hard', NOW)
     expect(result.source).toBe('builtin')
     expect(result.fsrs).toBeDefined()
-    // ease thấp (1.8) → difficulty migrate cao → vẫn tính ra kết quả hợp lệ, không NaN/undefined
+    // 検証用コメント。
     expect(Number.isFinite(result.fsrs?.difficulty)).toBe(true)
     expect(Number.isFinite(result.fsrs?.stability)).toBe(true)
   })
 
-  it('không mất lapses cũ khi migrate (lapses đọc từ legacy field, không phải fsrs block)', () => {
+  it('検証ケース', () => {
     const state = legacyState({ lapses: 7 })
-    const result = applyRating(state, 'hard', NOW) // 'hard' không tăng lapses
+    const result = applyRating(state, 'hard', NOW) // 検証用コメント。
     expect(result.lapses).toBe(7)
   })
 })

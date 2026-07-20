@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock client provider — kiểm soát AnkiConnect từ browser
+// 検証用コメント。
 const mockClient = {
   storeMediaFile: vi.fn(async (f: string) => f),
   createDeck: vi.fn(async () => 1),
@@ -53,7 +53,7 @@ describe('exportEntryToAnki — client-side', () => {
     expect(mockClient.createDeck).toHaveBeenCalledWith('MyDeck')
     expect(mockClient.addNotes).toHaveBeenCalledOnce()
 
-    // POST /api/entries/save với status 'synced' + anki_note_ids từ Anki
+    // status 'synced' + Anki 由来の anki_note_ids で POST /api/entries/save
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/entries/save')
     const body = JSON.parse(init.body as string)

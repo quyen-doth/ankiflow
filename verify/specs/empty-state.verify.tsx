@@ -9,7 +9,7 @@ type EmptyStateProps = ComponentProps<typeof EmptyState>
 registerUnit<EmptyStateProps>({
   id: 'EmptyState',
   title: 'EmptyState',
-  description: 'Placeholder trạng thái rỗng: icon, title, description, action.',
+  description: '検証ケース。',
   kind: 'component',
   render: props => <EmptyState {...props} />,
   propsSchema: z.object({
@@ -22,12 +22,12 @@ registerUnit<EmptyStateProps>({
   fixtures: [
     {
       id: 'title-only',
-      description: 'Chỉ có title.',
+      description: '検証ケース。',
       props: { title: 'No entries yet' },
     },
     {
       id: 'full',
-      description: 'Đầy đủ icon + description + action.',
+      description: '検証ケース。',
       props: {
         icon: <span data-icon="empty">📭</span>,
         title: 'No entries yet',
@@ -38,22 +38,22 @@ registerUnit<EmptyStateProps>({
     {
       id: 'probe-empty-title',
       probe: true,
-      description: 'Probe (EXPECTED_FAIL): title rỗng — empty state mất tiêu đề.',
+      description: '検証ケース。',
       props: { title: '' },
     },
   ],
   invariants: [
     {
       id: 'title-visible',
-      description: 'Title phải hiển thị (không rỗng)',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.title.trim()) return 'title rỗng'
-        return (root.textContent ?? '').includes(props.title) || `không thấy title "${props.title}"`
+        return (root.textContent ?? '').includes(props.title) || `title が見つかりません "${props.title}"`
       },
     },
     {
       id: 'action-iff-provided',
-      description: 'Action slot render khi và chỉ khi có props.action',
+      description: '検証ケース。',
       check: ({ props, contract }) => {
         const expected = props.action != null
         if (contract.hasaction !== String(expected)) {
@@ -64,12 +64,12 @@ registerUnit<EmptyStateProps>({
     },
     {
       id: 'description-iff-provided',
-      description: 'Description render khi và chỉ khi có props.description',
+      description: '検証ケース。',
       check: ({ root, props }) => {
         if (!props.description) return true
         return (
           (root.textContent ?? '').includes(props.description) ||
-          `không thấy description`
+          `表示が見つかりません`
         )
       },
     },
