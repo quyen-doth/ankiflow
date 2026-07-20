@@ -63,3 +63,40 @@ export function resetAnkiClientCache(): void {
   cachedClient = null
   cachedUrl = null
 }
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname === '[::1]'
+    || hostname === '::1'
+}
+
+/**
+ * デプロイ版 origin (loopback 以外) から loopback の AnkiConnect を呼ぶ状況かを判定する。
+ * ブラウザの Local Network Access / Private Network Access はこの public→localhost を
+ * ブロックし、失敗は「Anki 未起動」と同じ `TypeError: Failed to fetch` になって区別できない —
+ * そこで throw された error ではなく実行コンテキストから推測する。
+ */
+export function isLocalNetworkBlockedContext(
+  ankiUrl: string = DEFAULT_ANKI_CONNECT_URL,
+  pageHostname: string | undefined =
+    typeof window !== 'undefined' ? window.location.hostname : undefined,
+): boolean {
+  if (!pageHostname || isLoopbackHost(pageHostname)) return false
+  try {
+    return isLoopbackHost(new URL(ankiUrl).hostname)
+  } catch {
+    return true
+  }
+}
+
+/** AnkiConnect 接続失敗時のユーザー向けメッセージ — 実行コンテキストに応じて出し分ける。 */
+export function ankiConnectionErrorMessage(
+  ankiUrl: string = DEFAULT_ANKI_CONNECT_URL,
+  pageHostname: string | undefined =
+    typeof window !== 'undefined' ? window.location.hostname : undefined,
+): string {
+  return isLocalNetworkBlockedContext(ankiUrl, pageHostname)
+    ? 'Cannot reach Anki. Your browser blocks a deployed site from accessing localhost (Local Network Access). Open AnkiFlow at http://localhost:3000 to sync with Anki, or allow local network access for this site.'
+    : 'Cannot connect to AnkiConnect. Make sure Anki Desktop is open.'
+}

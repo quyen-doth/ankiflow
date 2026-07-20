@@ -26,7 +26,7 @@ import { Plus, Pencil, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useSortableList } from '@/hooks/useSortableList';
 import { verifyAttrs } from '@/verify/core/contract';
-import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ankiConnectionErrorMessage, getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureDeck, renameDeck, deleteDeckWithCleanup, setDeckSuspended, syncAllDecks } from '@/lib/flashcard-service/client-ops';
 import { FormType } from '@/types';
 import type { DeckConfig, LanguageCode } from '@/types';
@@ -295,7 +295,7 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
             }
         } catch (e) {
             console.error('Sync-all failed:', e);
-            toast.error('Failed to sync with Anki. Make sure Anki is open.');
+            toast.error(ankiConnectionErrorMessage());
         } finally {
             setSyncing(false);
         }
@@ -313,7 +313,7 @@ export function DeckManager({ ownerId: ownerIdProp }: DeckManagerProps = {}) {
             toast.success('Deleted deck from AnkiFlow and Anki');
         } catch (error) {
             console.error('Error deleting deck:', error);
-            toast.error('Delete failed — make sure Anki is open.');
+            toast.error(ankiConnectionErrorMessage());
         } finally {
             setDeleting(false);
         }

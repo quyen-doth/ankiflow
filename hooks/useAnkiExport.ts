@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/Toast';
 import { buildNotes } from '@/lib/buildNotes';
-import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
+import { ankiConnectionErrorMessage, getAnkiClientFromSettings } from '@/lib/flashcard-service/client';
 import { ensureModel, createNotesForEntry } from '@/lib/flashcard-service/client-ops';
 import type { Entry, CardTemplate } from '@/types';
 
@@ -133,7 +133,7 @@ export function useAnkiExport({ entry, selectedCardTypeIds, cardTypes = [] }: An
             }
         } catch (err) {
             console.error('Anki connection error:', err);
-            toast.error('Cannot connect to AnkiConnect. Make sure Anki is open.');
+            toast.error(ankiConnectionErrorMessage());
         } finally {
             setIsExporting(false);
         }
