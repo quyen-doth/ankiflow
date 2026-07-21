@@ -128,6 +128,33 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
     expect(spec.userMessage).toContain('Context note: Printed object')
   })
 
+  it('builtin collocations の instruction に max_items(5) を反映する', () => {
+    const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'book' })
+    const props = (spec.inputSchema as { properties: Record<string, { description?: string }> }).properties
+    expect(props.collocations.description).toContain('Up to 5 of the most important collocations')
+  })
+
+  it('string_array instruction 内の {max_items} を設定値で解決する', () => {
+    const spec = resolveCardSpec({
+      form_type: 'quiz',
+      word: 'q',
+      output_language: 'en',
+      content_type: {
+        name: 'Quiz',
+        primary_field_key: 'prompt',
+        ai_output_profiles: [{
+          profile: 'default',
+          fields: [
+            { key: 'prompt', type: 'string', instruction: 'Question' },
+            { key: 'items', type: 'string_array', instruction: 'Up to {max_items} of the most important items', max_items: 3 },
+          ],
+        }],
+      },
+    })
+    const props = (spec.inputSchema as { properties: Record<string, { description?: string }> }).properties
+    expect(props.items.description).toBe('Up to 3 of the most important items')
+  })
+
   it('custom definition は configured primary と output fields を使用する', () => {
     const spec = resolveCardSpec({
       form_type: 'quiz',

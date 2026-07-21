@@ -37,10 +37,12 @@ function resolveTemplate(
   outputLanguage: EngineLanguage,
   studyLanguage: EngineLanguage | undefined,
   definitionName: string,
+  maxItems: number,
 ): string {
   return template
     .replaceAll('{output_language}', outputLanguage.name)
     .replaceAll('{study_language}', studyLanguage?.name ?? definitionName)
+    .replaceAll('{max_items}', String(maxItems))
 }
 
 function singleLine(value: string): string {
@@ -127,14 +129,16 @@ export function buildEngineCardSpec(args: BuildEngineCardSpecArgs): CardSpec {
 
   const schemaShape: Record<string, z.ZodType> = {}
   for (const outputField of fields) {
+    const maxItems = outputField.max_items ?? DEFAULT_AI_ARRAY_MAX_ITEMS
     const instruction = resolveTemplate(
       outputField.instruction,
       outputLanguage,
       studyLanguage,
       definition.name,
+      maxItems,
     )
     schemaShape[outputField.key] = outputField.type === 'string_array'
-      ? z.array(z.string()).max(outputField.max_items ?? DEFAULT_AI_ARRAY_MAX_ITEMS).describe(instruction)
+      ? z.array(z.string()).max(maxItems).describe(instruction)
       : z.string().describe(instruction)
   }
 
