@@ -403,7 +403,7 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* Workspace-owned Create form configuration. */}
-                <ContentTypeManager />
+                <ContentTypeManager origin="settings" />
 
                 {/* Integrations */}
                 <Card>

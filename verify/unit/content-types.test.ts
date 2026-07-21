@@ -198,12 +198,20 @@ describe('Content Type materialization', () => {
 
   it('AI output profiles を user snapshot へ deep clone する', () => {
     const source = sourceDocument()
-    source.ai_output_profiles = createGenericAiOutputProfiles('term', 'Term')
+    source.ai_output_profiles = [
+      ...createGenericAiOutputProfiles('term', 'Term'),
+      { profile: 'en', inherit: true, exclude: ['meaning_vi'], fields: [] },
+    ]
 
     const materialized = materializeUserContentType(source, 'user-1')
     materialized.data.ai_output_profiles![0].fields[0].instruction = 'Changed snapshot'
+    materialized.data.ai_output_profiles![1].exclude![0] = 'example_sentence'
 
     expect(source.ai_output_profiles[0].fields[0].instruction).toBe('Primary value for Term')
+    expect(source.ai_output_profiles[1]).toMatchObject({
+      inherit: true,
+      exclude: ['meaning_vi'],
+    })
   })
 
   it('fields[] を deep clone し、source と参照を共有しない', () => {

@@ -26,6 +26,7 @@ import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { seedUserDefaults, publishTemplateDefaults } from '../lib/seed-defaults';
 import { DEFAULT_CONTENT_TYPES } from '../lib/contentTypes';
+import { cloneAiOutputProfiles } from '../lib/ai-agent/outputProfiles';
 import { GLOBAL_CONTENT_TYPES_COLLECTION, GLOBAL_SETTINGS_DOC_ID } from '../lib/constants';
 
 // Khởi tạo Firebase Admin
@@ -64,12 +65,7 @@ async function seedContentTypes() {
             icon: ct.icon,
             fields: ct.fields.map(field => ({ ...field })),
             ...(ct.ai_output_profiles
-                ? {
-                    ai_output_profiles: ct.ai_output_profiles.map(profile => ({
-                        profile: profile.profile,
-                        fields: profile.fields.map(field => ({ ...field })),
-                    })),
-                }
+                ? { ai_output_profiles: cloneAiOutputProfiles(ct.ai_output_profiles) }
                 : {}),
             is_active: ct.is_active,
             sort_order: ct.sort_order,

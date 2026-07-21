@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AiOutputProfile } from '@/types'
+import type { AiOutputField, AiOutputProfile } from '@/types'
 
 export const AI_OUTPUT_FIELD_KEY_PATTERN = /^[a-z][a-z0-9_]{0,39}$/
 export const AI_OUTPUT_PROFILE_KEY_PATTERN = /^(?:default|[a-z]{2,8})$/
@@ -63,8 +63,44 @@ export const aiOutputProfileSchema = z.object({
   profile: z.string()
     .trim()
     .regex(AI_OUTPUT_PROFILE_KEY_PATTERN, 'AI output profile must be "default" or a primary language subtag'),
-  fields: z.array(aiOutputFieldSchema).min(1).max(MAX_AI_OUTPUT_FIELDS),
+  fields: z.array(aiOutputFieldSchema).max(MAX_AI_OUTPUT_FIELDS),
+  inherit: z.literal(true).optional(),
+  exclude: z.array(
+    z.string()
+      .trim()
+      .regex(AI_OUTPUT_FIELD_KEY_PATTERN, 'Excluded AI output key must use lowercase snake_case'),
+  ).max(MAX_AI_OUTPUT_FIELDS).optional(),
 }).superRefine((profile, ctx) => {
+  if (profile.profile === 'default') {
+    if (profile.fields.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fields'],
+        message: 'Default AI output profile must include at least one field',
+      })
+    }
+    if (profile.inherit !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['inherit'],
+        message: 'Default AI output profile cannot inherit another profile',
+      })
+    }
+    if (profile.exclude !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['exclude'],
+        message: 'Default AI output profile cannot exclude inherited fields',
+      })
+    }
+  } else if (profile.exclude !== undefined && profile.inherit !== true) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['exclude'],
+      message: 'Excluded fields require profile inheritance',
+    })
+  }
+
   const seen = new Map<string, number>()
   profile.fields.forEach((field, index) => {
     const firstIndex = seen.get(field.key)
@@ -77,6 +113,20 @@ export const aiOutputProfileSchema = z.object({
       return
     }
     seen.set(field.key, index)
+  })
+
+  const seenExcluded = new Map<string, number>()
+  profile.exclude?.forEach((key, index) => {
+    const firstIndex = seenExcluded.get(key)
+    if (firstIndex !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['exclude', index],
+        message: `Excluded AI output key must be unique; it duplicates exclude.${firstIndex}`,
+      })
+      return
+    }
+    seenExcluded.set(key, index)
   })
 })
 
@@ -106,12 +156,81 @@ export const aiOutputProfilesSchema = z.array(aiOutputProfileSchema)
     }
   })
 
-/** Parse + clone を行い、Firestore/client object を engine 内で変更しない。 */
+/** Legacy profile を明示的な inheritance state に変換し、入力 object は変更しない。 */
+export function normalizeAiOutputProfiles(
+  profiles: readonly AiOutputProfile[],
+): AiOutputProfile[] {
+  const defaultProfile = profiles.find(profile => profile.profile === 'default')
+  const defaultKeys = defaultProfile?.fields.map(field => field.key) ?? []
+
+  return profiles.map(profile => {
+    const fields = profile.fields.map(field => ({ ...field }))
+    if (profile.profile === 'default') {
+      return { profile: profile.profile, fields }
+    }
+
+    const ownKeys = new Set(profile.fields.map(field => field.key))
+    // Default に存在しない key の exclude は意味を持たない。放置すると
+    // 「Default から削除 → 同じ key を再追加」で古い exclude が生き残り、
+    // 追加したばかりの field が黙って継承されなくなる。
+    const excluded = profile.inherit === true
+      ? (profile.exclude ?? []).filter(key => defaultKeys.includes(key))
+      : defaultKeys.filter(key => !ownKeys.has(key))
+    return {
+      profile: profile.profile,
+      fields,
+      inherit: true,
+      exclude: excluded,
+    }
+  })
+}
+
+function effectiveProfileFields(
+  profiles: readonly AiOutputProfile[],
+  primaryStudyLanguage: string | null,
+): AiOutputField[] {
+  const selected = selectAiOutputProfile(profiles, primaryStudyLanguage)
+  if (selected.profile === 'default') {
+    return selected.fields.map(field => ({ ...field }))
+  }
+
+  const fallback = profiles.find(profile => profile.profile === 'default')
+  if (!fallback) throw new Error('AI output profiles must include a default profile')
+  const ownKeys = new Set(selected.fields.map(field => field.key))
+  const excludedKeys = new Set(selected.exclude ?? [])
+
+  return [
+    ...selected.fields.map(field => ({ ...field })),
+    ...fallback.fields
+      .filter(field => !ownKeys.has(field.key) && !excludedKeys.has(field.key))
+      .map(field => ({ ...field })),
+  ]
+}
+
+/** Language profile の own fields と継承される Default fields を順序を保って解決する。 */
+export function resolveEffectiveProfileFields(
+  profiles: readonly AiOutputProfile[],
+  primaryStudyLanguage: string | null,
+): AiOutputField[] {
+  return effectiveProfileFields(normalizeAiOutputProfiles(profiles), primaryStudyLanguage)
+}
+
+/** Parse + normalize + clone を行い、Firestore/client object を engine 内で変更しない。 */
 export function parseAiOutputProfiles(input: unknown, primaryFieldKey?: string): AiOutputProfile[] {
-  const profiles = aiOutputProfilesSchema.parse(input)
+  const profiles = normalizeAiOutputProfiles(aiOutputProfilesSchema.parse(input))
   if (primaryFieldKey) {
+    // Primary は own field か継承のどちらかにあればよい。merge 結果を profile ごとに
+    // 組み直す必要はないので、own / default の該当 field だけを直接引く。
+    const defaultPrimary = profiles
+      .find(profile => profile.profile === 'default')
+      ?.fields.find(field => field.key === primaryFieldKey)
+
     for (const profile of profiles) {
-      const primaryField = profile.fields.find(field => field.key === primaryFieldKey)
+      if (profile.exclude?.includes(primaryFieldKey)) {
+        throw new Error(`AI output profile "${profile.profile}" cannot exclude primary field "${primaryFieldKey}"`)
+      }
+      const ownPrimary = profile.fields.find(field => field.key === primaryFieldKey)
+      const primaryField = ownPrimary ?? (profile.profile === 'default' ? undefined : defaultPrimary)
       if (!primaryField) {
         throw new Error(`AI output profile "${profile.profile}" must include primary field "${primaryFieldKey}"`)
       }
@@ -128,6 +247,8 @@ export function cloneAiOutputProfiles(profiles: readonly AiOutputProfile[]): AiO
   return profiles.map(profile => ({
     profile: profile.profile,
     fields: profile.fields.map(field => ({ ...field })),
+    ...(profile.inherit === true ? { inherit: true as const } : {}),
+    ...(profile.exclude !== undefined ? { exclude: [...profile.exclude] } : {}),
   }))
 }
 

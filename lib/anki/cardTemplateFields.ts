@@ -1,5 +1,5 @@
 import { materializeContentTypeAiProfiles } from '@/lib/ai-agent/contentTypeProfiles'
-import { selectAiOutputProfile } from '@/lib/ai-agent/outputProfiles'
+import { resolveEffectiveProfileFields } from '@/lib/ai-agent/outputProfiles'
 import { prepareRuntimeContentTypes, resolveRuntimeContentTypeCode } from '@/lib/contentTypes'
 import { getFieldLabel } from '@/lib/anki/renderCard'
 import { primaryLanguageSubtag } from '@/lib/studyLanguages'
@@ -56,7 +56,7 @@ export function resolveCardTemplateCustomFields(
   try {
     const materialized = materializeContentTypeAiProfiles(contentType)
     if (materialized.profiles.length === 0) return []
-    const profile = selectAiOutputProfile(
+    const fields = resolveEffectiveProfileFields(
       materialized.profiles,
       language ? primaryLanguageSubtag(language) : null,
     )
@@ -65,7 +65,7 @@ export function resolveCardTemplateCustomFields(
     )
     const seen = new Set<string>()
 
-    return profile.fields.flatMap(field => {
+    return fields.flatMap(field => {
       if (isBuiltinRenderedOutputKey(field.key) || seen.has(field.key)) return []
       seen.add(field.key)
       const source = `custom:${field.key}` as const

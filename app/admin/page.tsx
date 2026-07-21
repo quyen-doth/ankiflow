@@ -60,7 +60,8 @@ function AdminContent() {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(TAB_IDS.includes(initialTab ?? '') ? initialTab! : 'categories')
-  const [templateMode, setTemplateMode] = useState(false)
+  // 編集ページから戻ったときに defaults モードを失わないよう URL から復元する。
+  const [templateMode, setTemplateMode] = useState(searchParams.get('scope') === 'global-defaults')
 
   // ownerId=undefined → 各 manager が現在 user の uid を使用 (既定の挙動)。
   const ownerId = isAdmin && templateMode ? DEFAULTS_OWNER_ID : undefined

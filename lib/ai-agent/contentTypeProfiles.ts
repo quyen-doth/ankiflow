@@ -1,7 +1,7 @@
 import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
 import {
-  cloneAiOutputProfiles,
   createGenericAiOutputProfiles,
+  normalizeAiOutputProfiles,
   parseAiOutputProfiles,
 } from '@/lib/ai-agent/outputProfiles'
 import { resolveContentTypeFormType } from '@/lib/contentTypes'
@@ -43,21 +43,23 @@ export function materializeContentTypeAiProfiles(
     : null
   const primaryLabel = source.fields.find(field => field.field_key === primaryFieldKey)?.label
     ?? primaryFieldKey
+  if (!usesAiGeneration) {
+    return { primaryFieldKey, usesAiGeneration, profiles: [] }
+  }
+  const fallbackProfiles = builtInProfiles ?? createGenericAiOutputProfiles(
+    primaryFieldKey,
+    primaryLabel,
+    source.fields.map(field => field.field_key),
+  )
   return {
     primaryFieldKey,
     usesAiGeneration,
-    profiles: usesAiGeneration
-      ? builtInProfiles ?? createGenericAiOutputProfiles(
-          primaryFieldKey,
-          primaryLabel,
-          source.fields.map(field => field.field_key),
-        )
-      : [],
+    profiles: parseAiOutputProfiles(fallbackProfiles, primaryFieldKey),
   }
 }
 
 export function cloneStoredContentTypeAiProfiles(
   source: Pick<ContentTypeAiProfileSource, 'ai_output_profiles'>,
 ): AiOutputProfile[] {
-  return source.ai_output_profiles ? cloneAiOutputProfiles(source.ai_output_profiles) : []
+  return source.ai_output_profiles ? normalizeAiOutputProfiles(source.ai_output_profiles) : []
 }

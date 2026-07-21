@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildEngineCardSpec } from '@/lib/ai-agent/promptEngine'
 import {
+  cloneAiOutputProfiles,
   parseAiOutputProfiles,
   RESERVED_AI_OUTPUT_KEYS,
 } from '@/lib/ai-agent/outputProfiles'
@@ -144,6 +145,51 @@ describe('AI output profile validation', () => {
         include_when: 'output_vi',
       }],
     }], 'prompt')).toThrow('must always be included')
+  })
+
+  it('明示的な inheritance は空の own fields を許可し、metadata を round-trip する', () => {
+    const parsed = parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: true,
+        exclude: [],
+        fields: [],
+      },
+    ], 'prompt')
+
+    expect(parseAiOutputProfiles(cloneAiOutputProfiles(parsed), 'prompt')).toEqual(parsed)
+    expect(parsed[1]).toEqual({ profile: 'fr', inherit: true, exclude: [], fields: [] })
+  })
+
+  it('inherit=false と primary field の exclude を拒否する', () => {
+    expect(() => parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: false,
+        fields: [],
+      },
+    ], 'prompt')).toThrow()
+
+    expect(() => parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: true,
+        exclude: ['prompt'],
+        fields: [],
+      },
+    ], 'prompt')).toThrow('cannot exclude primary field')
   })
 
   it('string field の max_items と不正 profile key を拒否する', () => {
