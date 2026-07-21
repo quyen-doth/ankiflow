@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { Check, Upload, Search, ImageIcon, X } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
+import { compressImageFile } from '@/lib/image/compress'
 
 export interface ImageItem {
   id: string
@@ -26,19 +27,22 @@ interface ImageSelectorProps {
 export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUpload, loading }: ImageSelectorProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [processing, setProcessing] = useState(false)
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') onUpload(reader.result)
+    setProcessing(true)
+    try {
+      // 大きい画像でもクライアント側で縮小・圧縮してから保存する (Firestore の doc サイズを抑える)。
+      onUpload(await compressImageFile(file))
+    } finally {
+      setProcessing(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) processFile(file)
+    if (file) void processFile(file)
     e.target.value = ''
   }
 
@@ -51,7 +55,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
           const file = item.getAsFile()
           if (file) {
             e.preventDefault()
-            processFile(file)
+            void processFile(file)
             return
           }
         }
@@ -69,7 +73,7 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
     setIsDragging(false)
     const file = e.dataTransfer?.files?.[0]
     if (file && file.type.startsWith('image/')) {
-      processFile(file)
+      void processFile(file)
       return
     }
     const url = (e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain') || '').trim()
@@ -100,8 +104,8 @@ export function ImageSelector({ images, selectedUrl, onSelect, onRefetch, onUplo
           </span>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} leftIcon={<Upload className="w-3.5 h-3.5" />}>
-            Upload
+          <Button type="button" variant="secondary" size="sm" onClick={() => fileRef.current?.click()} disabled={processing} leftIcon={<Upload className={cn('w-3.5 h-3.5', processing && 'animate-pulse')} />}>
+            {processing ? 'Processing...' : 'Upload'}
           </Button>
           <Button type="button" variant="secondary" size="sm" onClick={onRefetch} disabled={loading} leftIcon={<Search className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />}>
             {loading ? 'Searching...' : 'Find more'}
