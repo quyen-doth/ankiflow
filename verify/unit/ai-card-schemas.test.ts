@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  capitalizeFirst,
   normalizeGeneratedCard,
   resolveCardSpec,
   toToolInputSchema,
@@ -127,6 +128,33 @@ describe('ai-agent/card-schemas — resolveCardSpec', () => {
     expect(spec.userMessage).toContain('Context note: Printed object')
   })
 
+  it('builtin collocations の instruction に max_items(5) を反映する', () => {
+    const spec = resolveCardSpec({ form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, word: 'book' })
+    const props = (spec.inputSchema as { properties: Record<string, { description?: string }> }).properties
+    expect(props.collocations.description).toContain('Up to 5 of the most important collocations')
+  })
+
+  it('string_array instruction 内の {max_items} を設定値で解決する', () => {
+    const spec = resolveCardSpec({
+      form_type: 'quiz',
+      word: 'q',
+      output_language: 'en',
+      content_type: {
+        name: 'Quiz',
+        primary_field_key: 'prompt',
+        ai_output_profiles: [{
+          profile: 'default',
+          fields: [
+            { key: 'prompt', type: 'string', instruction: 'Question' },
+            { key: 'items', type: 'string_array', instruction: 'Up to {max_items} of the most important items', max_items: 3 },
+          ],
+        }],
+      },
+    })
+    const props = (spec.inputSchema as { properties: Record<string, { description?: string }> }).properties
+    expect(props.items.description).toBe('Up to 3 of the most important items')
+  })
+
   it('custom definition は configured primary と output fields を使用する', () => {
     const spec = resolveCardSpec({
       form_type: 'quiz',
@@ -225,5 +253,47 @@ describe('ai-agent/card-schemas — normalizeGeneratedCard', () => {
 
     expect(normalized.prompt).toBe('Trusted question')
     expect(normalized.word_type).toBe('名词')
+  })
+
+  it('meaning_vi と definition の先頭を大文字化する', () => {
+    const normalized = normalizeGeneratedCard({
+      form_type: FormType.LANGUAGE,
+      word: 'serendipity',
+      output_language: 'en',
+    }, {
+      word: 'serendipity',
+      meaning_vi: 'a fortunate discovery',
+      definition: 'the occurrence of happy events by chance',
+    })
+
+    expect(normalized.meaning_vi).toBe('A fortunate discovery')
+    expect(normalized.definition).toBe('The occurrence of happy events by chance')
+  })
+
+  it('既に大文字・空・CJK の meaning は壊さない', () => {
+    const normalized = normalizeGeneratedCard({
+      form_type: FormType.LANGUAGE,
+      word: 'x',
+      output_language: 'vi',
+    }, {
+      word: 'x',
+      meaning_vi: '这是意思',
+    })
+
+    // 大文字小文字の概念がない文字は変化しない。
+    expect(normalized.meaning_vi).toBe('这是意思')
+  })
+})
+
+describe('ai-agent/card-schemas — capitalizeFirst', () => {
+  it('先頭の非空白文字だけを大文字化する', () => {
+    expect(capitalizeFirst('hello world')).toBe('Hello world')
+    expect(capitalizeFirst('  spaced', 'en')).toBe('  Spaced')
+  })
+
+  it('空文字・空白のみ・非 cased 文字はそのまま返す', () => {
+    expect(capitalizeFirst('')).toBe('')
+    expect(capitalizeFirst('   ')).toBe('   ')
+    expect(capitalizeFirst('日本語')).toBe('日本語')
   })
 })

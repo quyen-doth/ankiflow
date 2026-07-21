@@ -27,12 +27,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        '3-5 common phrases with {output_language} meanings in parentheses',
+        'Up to {max_items} of the most important collocations, each with its {output_language} meaning in parentheses',
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Related words with {output_language} meanings',
+        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),
@@ -50,7 +50,7 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        '3-5 common collocations with {output_language} meanings in parentheses',
+        'Up to {max_items} of the most important collocations, each with its {output_language} meaning in parentheses',
         { type: 'string_array', max_items: 5 },
       ),
       mediaKeyword(),
@@ -71,12 +71,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        '3-5 common phrases or measure-word combinations with {output_language} meanings',
+        'Up to {max_items} of the most important phrases or measure-word combinations, each with its {output_language} meaning',
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Related words with {output_language} meanings',
+        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),
@@ -102,12 +102,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        '3-5 common phrases or particle combinations with {output_language} meanings',
+        'Up to {max_items} of the most important phrases or particle combinations, each with its {output_language} meaning',
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Related words with {output_language} meanings',
+        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),

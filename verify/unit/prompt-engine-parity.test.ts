@@ -111,7 +111,7 @@ describe('prompt engine — built-in output contract', () => {
 
     expect(english.systemPrompt).toContain('expert in English language')
     expect(english.systemPrompt).toContain('12 words or fewer')
-    expect(english.systemPrompt).toContain('3-5')
+    expect(english.systemPrompt).toContain('collocations')
     expect(chinese.systemPrompt).toContain('measure-word')
     expect(chinese.systemPrompt).toContain('一本书')
     expect(chinese.systemPrompt).toContain('HSK')
