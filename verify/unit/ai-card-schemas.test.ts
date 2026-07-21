@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  capitalizeFirst,
   normalizeGeneratedCard,
   resolveCardSpec,
   toToolInputSchema,
@@ -225,5 +226,47 @@ describe('ai-agent/card-schemas — normalizeGeneratedCard', () => {
 
     expect(normalized.prompt).toBe('Trusted question')
     expect(normalized.word_type).toBe('名词')
+  })
+
+  it('meaning_vi と definition の先頭を大文字化する', () => {
+    const normalized = normalizeGeneratedCard({
+      form_type: FormType.LANGUAGE,
+      word: 'serendipity',
+      output_language: 'en',
+    }, {
+      word: 'serendipity',
+      meaning_vi: 'a fortunate discovery',
+      definition: 'the occurrence of happy events by chance',
+    })
+
+    expect(normalized.meaning_vi).toBe('A fortunate discovery')
+    expect(normalized.definition).toBe('The occurrence of happy events by chance')
+  })
+
+  it('既に大文字・空・CJK の meaning は壊さない', () => {
+    const normalized = normalizeGeneratedCard({
+      form_type: FormType.LANGUAGE,
+      word: 'x',
+      output_language: 'vi',
+    }, {
+      word: 'x',
+      meaning_vi: '这是意思',
+    })
+
+    // 大文字小文字の概念がない文字は変化しない。
+    expect(normalized.meaning_vi).toBe('这是意思')
+  })
+})
+
+describe('ai-agent/card-schemas — capitalizeFirst', () => {
+  it('先頭の非空白文字だけを大文字化する', () => {
+    expect(capitalizeFirst('hello world')).toBe('Hello world')
+    expect(capitalizeFirst('  spaced', 'en')).toBe('  Spaced')
+  })
+
+  it('空文字・空白のみ・非 cased 文字はそのまま返す', () => {
+    expect(capitalizeFirst('')).toBe('')
+    expect(capitalizeFirst('   ')).toBe('   ')
+    expect(capitalizeFirst('日本語')).toBe('日本語')
   })
 })
