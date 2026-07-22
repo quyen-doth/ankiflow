@@ -56,6 +56,25 @@ function schemaProperties(spec: ReturnType<typeof build>) {
   }).properties
 }
 
+function buildArrayInstructionSpec(key: string, instruction: string, maxItems = 2) {
+  return buildEngineCardSpec({
+    definition: {
+      name: 'Legacy Language',
+      primary_field_key: 'prompt',
+      ai_output_profiles: [{
+        profile: 'default',
+        fields: [
+          { key: 'prompt', type: 'string', instruction: 'Primary value' },
+          { key, type: 'string_array', instruction, max_items: maxItems },
+        ],
+      }],
+    },
+    studyLanguage: { code: 'en', name: 'English' },
+    outputLanguage: { code: 'vi', name: 'Vietnamese' },
+    primaryValue: 'sample',
+  })
+}
+
 describe('prompt engine — custom profiles', () => {
   it('exact language profile を選び、なければ default に fallback する', () => {
     expect(Object.keys(schemaProperties(build({ studyCode: 'en-GB' })))).toEqual(['prompt', 'answer'])
@@ -73,6 +92,54 @@ describe('prompt engine — custom profiles', () => {
     expect(vietnamese.sources?.maxItems).toBe(3)
     expect(vietnamese).toHaveProperty('local_note')
     expect(english).not.toHaveProperty('local_note')
+  })
+
+  it('保存済み built-in の旧 array instruction を max_items と一致する template に読み替える', () => {
+    const cases = [
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases with {output_language} meanings in parentheses',
+        expected: 'Up to 2 of the most important collocations, each with its Vietnamese meaning in parentheses',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common collocations with {output_language} meanings in parentheses',
+        expected: 'Up to 2 of the most important collocations, each with its Vietnamese meaning in parentheses',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases or measure-word combinations with {output_language} meanings',
+        expected: 'Up to 2 of the most important phrases or measure-word combinations, each with its Vietnamese meaning',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases or particle combinations with {output_language} meanings',
+        expected: 'Up to 2 of the most important phrases or particle combinations, each with its Vietnamese meaning',
+      },
+      {
+        key: 'related_words',
+        instruction: 'Related words with {output_language} meanings',
+        expected: 'Up to 2 of the most important related words, each with its Vietnamese meaning',
+      },
+    ]
+
+    for (const testCase of cases) {
+      const property = schemaProperties(
+        buildArrayInstructionSpec(testCase.key, testCase.instruction),
+      )[testCase.key]
+      expect(property.maxItems).toBe(2)
+      expect(property.description).toBe(testCase.expected)
+    }
+  })
+
+  it('exact-match しない custom array instruction は変更しない', () => {
+    const instruction = 'Return 3-5 custom collocations selected by the workspace owner'
+    const property = schemaProperties(
+      buildArrayInstructionSpec('collocations', instruction),
+    ).collocations
+
+    expect(property.maxItems).toBe(2)
+    expect(property.description).toBe(instruction)
   })
 
   it('user context は label を使用し、blank/primary duplicate を除外する', () => {

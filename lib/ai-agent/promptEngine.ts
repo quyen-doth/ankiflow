@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { inferLanguageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
 import { getLanguageProfile } from '@/lib/ai-agent/languageProfiles'
+import { resolveCompatibleBuiltinArrayInstruction } from '@/lib/ai-agent/builtinOutputProfiles'
 import {
   DEFAULT_AI_ARRAY_MAX_ITEMS,
   parseAiOutputProfiles,
@@ -130,8 +131,11 @@ export function buildEngineCardSpec(args: BuildEngineCardSpecArgs): CardSpec {
   const schemaShape: Record<string, z.ZodType> = {}
   for (const outputField of fields) {
     const maxItems = outputField.max_items ?? DEFAULT_AI_ARRAY_MAX_ITEMS
+    const instructionTemplate = outputField.type === 'string_array'
+      ? resolveCompatibleBuiltinArrayInstruction(outputField.key, outputField.instruction)
+      : outputField.instruction
     const instruction = resolveTemplate(
-      outputField.instruction,
+      instructionTemplate,
       outputLanguage,
       studyLanguage,
       definition.name,

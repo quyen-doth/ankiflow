@@ -13,6 +13,33 @@ const mediaKeyword = (): AiOutputField => field(
   'Short English keyword for an illustration image search',
 )
 
+const ARRAY_INSTRUCTIONS = {
+  collocations: 'Up to {max_items} of the most important collocations, each with its {output_language} meaning in parentheses',
+  measureWords: 'Up to {max_items} of the most important phrases or measure-word combinations, each with its {output_language} meaning',
+  particles: 'Up to {max_items} of the most important phrases or particle combinations, each with its {output_language} meaning',
+  relatedWords: 'Up to {max_items} of the most important related words, each with its {output_language} meaning',
+} as const
+
+const LEGACY_ARRAY_INSTRUCTIONS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  collocations: {
+    '3-5 common phrases with {output_language} meanings in parentheses': ARRAY_INSTRUCTIONS.collocations,
+    '3-5 common collocations with {output_language} meanings in parentheses': ARRAY_INSTRUCTIONS.collocations,
+    '3-5 common phrases or measure-word combinations with {output_language} meanings': ARRAY_INSTRUCTIONS.measureWords,
+    '3-5 common phrases or particle combinations with {output_language} meanings': ARRAY_INSTRUCTIONS.particles,
+  },
+  related_words: {
+    'Related words with {output_language} meanings': ARRAY_INSTRUCTIONS.relatedWords,
+  },
+}
+
+/** 保存済み built-in instruction の既知の旧版だけを現在の template に読み替える。 */
+export function resolveCompatibleBuiltinArrayInstruction(
+  fieldKey: string,
+  instruction: string,
+): string {
+  return LEGACY_ARRAY_INSTRUCTIONS[fieldKey]?.[instruction] ?? instruction
+}
+
 const LANGUAGE_PROFILES: AiOutputProfile[] = [
   {
     profile: 'default',
@@ -27,12 +54,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        'Up to {max_items} of the most important collocations, each with its {output_language} meaning in parentheses',
+        ARRAY_INSTRUCTIONS.collocations,
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
+        ARRAY_INSTRUCTIONS.relatedWords,
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),
@@ -50,7 +77,7 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        'Up to {max_items} of the most important collocations, each with its {output_language} meaning in parentheses',
+        ARRAY_INSTRUCTIONS.collocations,
         { type: 'string_array', max_items: 5 },
       ),
       mediaKeyword(),
@@ -71,12 +98,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        'Up to {max_items} of the most important phrases or measure-word combinations, each with its {output_language} meaning',
+        ARRAY_INSTRUCTIONS.measureWords,
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
+        ARRAY_INSTRUCTIONS.relatedWords,
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),
@@ -102,12 +129,12 @@ const LANGUAGE_PROFILES: AiOutputProfile[] = [
       field('example_blank', 'Example sentence with the vocabulary word replaced by "___"'),
       field(
         'collocations',
-        'Up to {max_items} of the most important phrases or particle combinations, each with its {output_language} meaning',
+        ARRAY_INSTRUCTIONS.particles,
         { type: 'string_array', max_items: 5 },
       ),
       field(
         'related_words',
-        'Up to {max_items} of the most important related words, each with its {output_language} meaning',
+        ARRAY_INSTRUCTIONS.relatedWords,
         { type: 'string_array', max_items: 10 },
       ),
       mediaKeyword(),
