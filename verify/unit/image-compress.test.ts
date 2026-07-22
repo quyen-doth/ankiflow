@@ -1,5 +1,42 @@
-import { describe, expect, it } from 'vitest'
-import { computeTargetDimensions } from '@/lib/image/compress'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  compressImageFile,
+  computeTargetDimensions,
+  resolveCompressionMimeType,
+} from '@/lib/image/compress'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('resolveCompressionMimeType', () => {
+  it('JPEG/PNG/WebP は入力 MIME を保つ', () => {
+    expect(resolveCompressionMimeType('image/jpeg')).toBe('image/jpeg')
+    expect(resolveCompressionMimeType('image/jpg')).toBe('image/jpeg')
+    expect(resolveCompressionMimeType('image/png')).toBe('image/png')
+    expect(resolveCompressionMimeType('image/webp')).toBe('image/webp')
+  })
+
+  it('GIF animation は canvas 再エンコードを回避する', () => {
+    expect(resolveCompressionMimeType('image/gif')).toBeNull()
+  })
+
+  it('その他の image format は PNG、明示 override は指定 MIME を使う', () => {
+    expect(resolveCompressionMimeType('image/bmp')).toBe('image/png')
+    expect(resolveCompressionMimeType('image/svg+xml')).toBe('image/png')
+    expect(resolveCompressionMimeType('image/gif', 'image/webp')).toBe('image/webp')
+  })
+
+  it('GIF は実際の compressor でも canvas を使わず元 data URL を返す', async () => {
+    const createElement = vi.spyOn(document, 'createElement')
+    const file = new File(['GIF89a'], 'animated.gif', { type: 'image/gif' })
+
+    const result = await compressImageFile(file)
+
+    expect(result).toMatch(/^data:image\/gif;base64,/)
+    expect(createElement).not.toHaveBeenCalled()
+  })
+})
 
 describe('computeTargetDimensions', () => {
   it('does not scale when both sides are within the limit', () => {

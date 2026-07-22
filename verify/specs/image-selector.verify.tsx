@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ComponentProps } from 'react'
 import { z } from 'zod'
 import { ImageSelector } from '@/components/preview/ImageSelector'
@@ -6,6 +7,29 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type ImageSelectorProps = ComponentProps<typeof ImageSelector>
 type ImageItem = ImageSelectorProps['images'][number]
+
+interface VerifyImageSelectorProps extends ImageSelectorProps {
+  persistUpload?: boolean
+}
+
+function ImageSelectorHarness({
+  persistUpload,
+  selectedUrl,
+  onUpload,
+  ...props
+}: VerifyImageSelectorProps) {
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null)
+  return (
+    <ImageSelector
+      {...props}
+      selectedUrl={uploadedUrl ?? selectedUrl}
+      onUpload={(dataUrl) => {
+        onUpload(dataUrl)
+        if (persistUpload) setUploadedUrl(dataUrl || null)
+      }}
+    />
+  )
+}
 
 function makeImage(id: string, creditName: string): ImageItem {
   return {
@@ -35,12 +59,12 @@ const recordRefetch = () => {
 }
 const noop = () => undefined
 
-registerUnit<ImageSelectorProps>({
+registerUnit<VerifyImageSelectorProps>({
   id: 'ImageSelector',
   title: 'ImageSelector',
   description: '検証ケース。',
   kind: 'component',
-  render: props => <ImageSelector {...props} />,
+  render: props => <ImageSelectorHarness {...props} />,
   propsSchema: z.object({
     images: z.array(z.looseObject({ id: z.string() })),
     selectedUrl: z.string().nullable(),
@@ -48,6 +72,7 @@ registerUnit<ImageSelectorProps>({
     onRefetch: fn<() => void>(),
     onUpload: fn<(dataUrl: string) => void>(),
     loading: z.boolean().optional(),
+    persistUpload: z.boolean().optional(),
   }),
   fixtures: [
     {
@@ -94,6 +119,18 @@ registerUnit<ImageSelectorProps>({
       probe: true,
       description: '検証ケース。',
       props: { images: [], selectedUrl: null, onSelect: noop, onRefetch: noop, onUpload: noop },
+    },
+    {
+      id: 'e2e-upload-transparent-png',
+      description: '透過 PNG を実際に圧縮し、preview に保持する Playwright 用 fixture。',
+      props: {
+        images: [],
+        selectedUrl: null,
+        onSelect: noop,
+        onRefetch: noop,
+        onUpload: noop,
+        persistUpload: true,
+      },
     },
   ],
   invariants: [
