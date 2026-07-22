@@ -22,7 +22,7 @@ export interface ActContext {
   wait: (ms: number) => Promise<void>
 }
 
-/** Quy tắc mock cho một request fetch */
+/** fetch request 1件分の mock rule */
 export interface FetchRule {
   match: string | RegExp
   response: {

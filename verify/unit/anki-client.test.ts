@@ -44,7 +44,7 @@ afterEach(() => {
   mutableAuth.currentUser = null
 })
 
-describe('getAnkiClient — cache theo URL', () => {
+describe('getAnkiClient — URL ごとの cache', () => {
   it('同じ URL は同じ instance を返す', () => {
     const a = getAnkiClient()
     const b = getAnkiClient()

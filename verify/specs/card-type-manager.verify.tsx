@@ -117,7 +117,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — empty message.',
+      description: 'Collection が空 — empty message。',
       props: {},
       mocks: { firestore: { card_types: [] } },
       act: async ctx => {
@@ -126,7 +126,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-open-create-modal',
-      description: 'Act: click Add card type → modal mở.',
+      description: 'Act: Add card type を click → modal が開く。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -331,7 +331,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'create-modal-opens',
-      description: 'Click Add: modal mở',
+      description: 'Add を click すると modal が開く',
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
@@ -349,7 +349,7 @@ registerUnit<Record<string, never>>({
         if (!created) return '要素が見つかりません'
         if (created.name !== 'Cloze') return `name=${created.name}`
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
-        return !modalOpen(root) || 'modal vẫn mở sau Save'
+        return !modalOpen(root) || 'Save 後も modal が開いたままです'
       },
     },
     {
@@ -440,7 +440,7 @@ registerUnit<Record<string, never>>({
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
         if (!text.includes('Basic')) return '表示が見つかりません'
-        return !text.includes('undefined') || 'leak "undefined" ra UI'
+        return !text.includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
   ],

@@ -15,11 +15,7 @@ import {
 } from '@/lib/constants'
 import { FormType, LanguageType } from '@/types'
 
-/**
- * 検証用コメント。
- * CLIENT SDK 'firebase/firestore'; seed-defaults.ts nhận `db: Firestore` (Admin SDK,
- * 検証用コメント。
- */
+/** Firestore client SDK を使わず、seed-defaults.ts が受け取る Admin SDK 互換 db の最小 fake。 */
 interface FakeDoc {
   id: string
   data: Record<string, unknown>

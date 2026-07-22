@@ -101,7 +101,7 @@ registerUnit<VerifyProps>({
 
     {
       id: 'act-open-edit-modal',
-      description: 'Act: click Edit fields → modal mở với editor cho từng field.',
+      description: 'Act: Edit fields を click → 各 field の editor を持つ modal が開く。',
       props: { contentTypeId: 'ct-lang' },
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -111,7 +111,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'act-edit-save',
-      description: 'Act: mở edit → đổi Label field đầu → Save → updateDoc ghi fields, modal đóng.',
+      description: 'Act: edit を開く → 先頭 field の Label を変更 → Save → updateDoc が fields を保存し modal が閉じる。',
       props: { contentTypeId: 'ct-lang' },
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -190,7 +190,7 @@ registerUnit<VerifyProps>({
     {
       id: 'probe-empty-fields',
       probe: true,
-      description: 'Probe: content type có fields=[] — cột Fields = 0, edit modal mở không có editor, không crash.',
+      description: 'Probe: Content Type が fields=[] — Fields 列は 0、edit modal に field editor はなく crash しない。',
       props: { contentTypeId: 'ct-empty' },
       mocks: {
         firestore: {
@@ -302,32 +302,32 @@ registerUnit<VerifyProps>({
   invariants: [
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh ContentTypeEditorPage',
+      description: 'Contract は ContentTypeEditorPage として自己識別する',
       check: ({ contract }) =>
         contract.unit === 'ContentTypeEditorPage' || `contract.unit="${contract.unit}"`,
     },
 
     {
       id: 'edit-modal-opens-with-fields',
-      description: 'Click Edit: modal mở, có input cho từng field (theo field_key)',
+      description: 'Edit を click すると modal が開き、field_key ごとの input が表示される',
       onlyFixtures: ['act-open-edit-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
         if (!editorVisible(root)) return 'editor form が表示されない'
         const text = root.textContent ?? ''
-        return (text.includes('word') && text.includes('note')) || 'không thấy field editor'
+        return (text.includes('word') && text.includes('note')) || 'field editor が見つかりません'
       },
     },
     {
       id: 'edit-save-updates-fields',
-      description: 'Save: store doc fields[0].label cập nhật, modal đóng',
+      description: 'Save: store doc の fields[0].label が更新され、modal が閉じる',
       onlyFixtures: ['act-edit-save'],
       check: () => {
         const doc = collectionDocs('user_content_types').find(d => d.id === 'ct-lang')
-        if (!doc) return 'mất doc ct-lang'
+        if (!doc) return 'doc ct-lang が失われています'
         const fields = doc.fields as FormFieldConfig[]
         const updated = fields.find(f => f.field_key === 'word')
-        if (!updated) return 'mất field word'
+        if (!updated) return 'field word が失われています'
         if (updated.label !== 'Vocabulary Item') return `label="${updated.label}"`
         return navPushes().length > 0 || 'Save 後に一覧へ戻っていない'
       },
@@ -389,11 +389,11 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'empty-fields-graceful',
-      description: 'fields=[]: cột Fields = 0, edit modal mở không crash, không "undefined"',
+      description: 'fields=[]: Fields 列は 0、edit modal は crash せず "undefined" を表示しない',
       onlyFixtures: ['probe-empty-fields'],
       check: ({ root }) => {
         if (!editorVisible(root)) return 'editor form が表示されない'
-        return !(root.textContent ?? '').includes('undefined') || 'leak "undefined" ra UI'
+        return !(root.textContent ?? '').includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
     {

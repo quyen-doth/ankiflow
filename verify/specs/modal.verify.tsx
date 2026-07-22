@@ -114,7 +114,7 @@ registerUnit<ModalProps>({
     },
     {
       id: 'children-rendered-when-open',
-      description: 'Children render trong body khi mở',
+      description: 'open 時に children を body 内へ render する',
       check: ({ root, props }) => {
         if (!props.open) return true
         const text = root.textContent ?? ''
@@ -128,13 +128,13 @@ registerUnit<ModalProps>({
       id: 'close-button-fires-once',
       description: '検証ケース。',
       onlyFixtures: ['act-close-button'],
-      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} lần`,
+      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} 回`,
     },
     {
       id: 'escape-fires-once',
       description: '検証ケース。',
       onlyFixtures: ['act-escape'],
-      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} lần`,
+      check: () => closeSpy.count === 1 || `onClose 呼び出し ${closeSpy.count} 回`,
     },
   ],
 })

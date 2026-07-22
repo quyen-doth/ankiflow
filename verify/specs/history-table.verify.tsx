@@ -57,7 +57,7 @@ const DEFAULT_SELECTION_PROPS = {
   onToggleSelectAll: noop,
 }
 
-// Spy cho onDelete — reset trong act
+// onDelete 用 spy — act 内で reset
 const deleteSpy = { count: 0, lastId: null as string | null }
 const recordDelete = (id: string) => {
   deleteSpy.count++
@@ -287,7 +287,7 @@ registerUnit<HistoryTableProps>({
         }
         if (!g.__verifyNav) return true
         const pushes = g.__verifyNav.calls.filter(c => c.method === 'push').length
-        return pushes === 0 || `router.push が呼ばれています ${pushes} lần`
+        return pushes === 0 || `router.push が ${pushes} 回呼ばれています`
       },
     },
     {
@@ -314,7 +314,7 @@ registerUnit<HistoryTableProps>({
           __verifyNav?: { calls: Array<{ method: string }> }
         }
         const pushes = g.__verifyNav?.calls.filter(call => call.method === 'push').length ?? 0
-        if (pushes !== 0) return `router.push が呼ばれています ${pushes} lần`
+        if (pushes !== 0) return `router.push が ${pushes} 回呼ばれています`
         const checkbox = document.querySelector<HTMLInputElement>('input[aria-label="Select serendipity"]')
         return checkbox?.checked === true || 'row checkbox が checked に変わりません'
       },
@@ -348,7 +348,7 @@ registerUnit<HistoryTableProps>({
       check: ({ root }) => {
         const text = root.textContent ?? ''
         if (!text.includes('—')) return 'placeholder が見つかりません "—"'
-        return !text.includes('undefined') || 'leak chữ "undefined" ra UI'
+        return !text.includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
   ],

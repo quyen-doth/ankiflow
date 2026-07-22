@@ -32,7 +32,7 @@ const FIRESTORE_SEED = {
   card_types: [],
 }
 
-// Spy cho onValidityChange — reset trong act
+// onValidityChange 用 spy — act 内で reset
 const validitySpy = { last: null as boolean | null, sawTrue: false }
 const recordValidity = (canSubmit: boolean) => {
   validitySpy.last = canSubmit
@@ -135,7 +135,7 @@ registerUnit<ITFormProps>({
     {
       id: 'probe-empty-term-invalid',
       probe: true,
-      description: 'Probe: term rỗng → onValidityChange(false).',
+      description: 'Probe: term が空なら onValidityChange(false)。',
       props: { onValidityChange: recordValidity },
       mocks: {
         firestore: FIRESTORE_SEED,

@@ -98,7 +98,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — empty message.',
+      description: 'Collection が空 — empty message。',
       props: {},
       mocks: { firestore: { user_content_types: [] } },
       act: async ctx => {
@@ -341,10 +341,10 @@ registerUnit<VerifyProps>({
         const docs = collectionDocs('user_content_types')
         const ownDocs = docs.filter(doc => doc.user_id === 'test-user')
         if (ownDocs.length !== 1) return `ownDocs=${ownDocs.length}, expected=1`
-        if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang まだ残っています trong store'
+        if (docs.find(d => d.id === 'ct-lang')) return 'ct-lang が store にまだ残っています'
         if (!docs.find(d => d.id === 'other-user-type')) return '他 user doc まで削除された'
         return !root.querySelector('[data-verify-unit="Modal"][data-verify-open="true"]')
-          || 'delete modal vẫn mở sau Delete'
+          || 'Delete 後も delete modal が開いたままです'
       },
     },
     {
