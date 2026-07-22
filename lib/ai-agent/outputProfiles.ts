@@ -156,6 +156,17 @@ export const aiOutputProfilesSchema = z.array(aiOutputProfileSchema)
     }
   })
 
+/** Optional field を undefined の key ごと複製しない。Firestore は nested undefined を拒否する。 */
+function cloneAiOutputField(field: AiOutputField): AiOutputField {
+  return {
+    key: field.key,
+    type: field.type,
+    instruction: field.instruction,
+    ...(field.include_when !== undefined ? { include_when: field.include_when } : {}),
+    ...(field.max_items !== undefined ? { max_items: field.max_items } : {}),
+  }
+}
+
 /** Legacy profile を明示的な inheritance state に変換し、入力 object は変更しない。 */
 export function normalizeAiOutputProfiles(
   profiles: readonly AiOutputProfile[],
@@ -164,7 +175,7 @@ export function normalizeAiOutputProfiles(
   const defaultKeys = defaultProfile?.fields.map(field => field.key) ?? []
 
   return profiles.map(profile => {
-    const fields = profile.fields.map(field => ({ ...field }))
+    const fields = profile.fields.map(cloneAiOutputField)
     if (profile.profile === 'default') {
       return { profile: profile.profile, fields }
     }
@@ -246,7 +257,7 @@ export function parseAiOutputProfiles(input: unknown, primaryFieldKey?: string):
 export function cloneAiOutputProfiles(profiles: readonly AiOutputProfile[]): AiOutputProfile[] {
   return profiles.map(profile => ({
     profile: profile.profile,
-    fields: profile.fields.map(field => ({ ...field })),
+    fields: profile.fields.map(cloneAiOutputField),
     ...(profile.inherit === true ? { inherit: true as const } : {}),
     ...(profile.exclude !== undefined ? { exclude: [...profile.exclude] } : {}),
   }))

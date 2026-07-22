@@ -136,6 +136,23 @@ registerUnit<VerifyProps>({
       },
     },
     {
+      id: 'act-edit-ai-array-to-string-save',
+      description: '配列 field を string に変更しても undefined の max_items を保存しない。',
+      props: { contentTypeId: 'ct-lang' },
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.wait(0)
+        const typeSelect = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output type 8"]')
+        if (!typeSelect) throw new Error('collocations の type select が見つからない')
+        typeSelect.value = 'string'
+        typeSelect.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
+    {
       id: 'probe-ai-primary-locked',
       probe: true,
       description: 'Probe: legacy fallback でも primary AI output は locked で削除できない。',
@@ -331,6 +348,22 @@ registerUnit<VerifyProps>({
         const word = profiles[0].fields.find(field => field.key === 'word')
         if (word?.instruction !== 'Workspace primary identity') return `instruction="${word?.instruction}"`
         return navPushes().length > 0 || 'Save 後に一覧へ戻っていない'
+      },
+    },
+    {
+      id: 'ai-array-to-string-omits-max-items',
+      description: 'string に変更した field の保存 payload から max_items key 自体を除外する',
+      onlyFixtures: ['act-edit-ai-array-to-string-save'],
+      check: () => {
+        const doc = collectionDocs('user_content_types').find(item => item.id === 'ct-lang')
+        const profiles = doc?.ai_output_profiles as Array<{
+          profile: string
+          fields: Array<Record<string, unknown>>
+        }> | undefined
+        const collocations = profiles?.[0].fields.find(field => field.key === 'collocations')
+        if (collocations?.type !== 'string') return `type="${collocations?.type}"`
+        return !Object.prototype.hasOwnProperty.call(collocations, 'max_items')
+          || 'max_items key が保存 payload に残っている'
       },
     },
     {
