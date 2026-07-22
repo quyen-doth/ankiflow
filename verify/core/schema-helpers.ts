@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * Schema cho callback props (onChange, onRemove...).
+ * callback props (onChange、onRemove...) 用 schema。
  * 検証用コメント。
  * 検証用コメント。
  */

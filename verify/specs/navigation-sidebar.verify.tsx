@@ -116,7 +116,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'logo-present',
-      description: 'Logo AnkiFlow hiện diện',
+      description: 'AnkiFlow logo が表示される',
       check: ({ root }) =>
         !!root.querySelector('[data-verify-unit="AnkiFlowLogo"]') || '対象がありません',
     },

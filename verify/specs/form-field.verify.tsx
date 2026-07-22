@@ -34,7 +34,7 @@ registerUnit<InputProps>({
   fixtures: [
     {
       id: 'default',
-      description: 'Input với placeholder.',
+      description: 'placeholder 付き Input。',
       props: { placeholder: 'Enter word' },
     },
     {
@@ -85,7 +85,7 @@ registerUnit<TextareaProps>({
   fixtures: [
     {
       id: 'default',
-      description: 'Textarea với placeholder.',
+      description: 'placeholder 付き Textarea。',
       props: { placeholder: 'Notes for AI context', rows: 3 },
     },
     {

@@ -16,7 +16,7 @@ const DECK_SEED = {
   ],
 }
 
-// Spy cho onChange(deckId, uiFormType) — reset trong act
+// onChange(deckId, uiFormType) 用 spy — act 内で reset
 const changeSpy = { count: 0, lastId: null as string | null, lastFormType: null as string | null }
 const recordChange = (deckId: string, formType: 'Language' | 'IT' | 'General') => {
   changeSpy.count++
@@ -117,7 +117,7 @@ registerUnit<DeckSelectorProps>({
           .map(o => o.textContent)
         return (
           JSON.stringify(labels) === JSON.stringify(['IT Terms', 'English Vocab']) ||
-          `thứ tự: ${labels.join(' | ')}`
+          `順序: ${labels.join(' | ')}`
         )
       },
     },

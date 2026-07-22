@@ -12,7 +12,7 @@ export function verifyAttrs(
   for (const [key, value] of Object.entries(attrs)) {
     if (value === null || value === undefined) continue
     // 検証用コメント。
-    // "React does not recognize the prop" trong dev
+    // dev の "React does not recognize the prop" を防ぐ。
     out[`${VERIFY_PREFIX}${key.toLowerCase()}`] = String(value)
   }
   return out

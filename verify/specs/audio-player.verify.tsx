@@ -14,7 +14,7 @@ function audioInstances(): Array<{ src: string }> | null {
   return g.__verifyAudioInstances ?? null
 }
 
-// Spy cho onRegenerate — reset trong act
+// onRegenerate 用 spy — act 内で reset
 const regenSpy = { count: 0 }
 const recordRegen = () => {
   regenSpy.count++

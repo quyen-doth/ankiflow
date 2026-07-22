@@ -5,13 +5,14 @@ import {
   materializeContentTypeAiProfiles,
 } from '@/lib/ai-agent/contentTypeProfiles'
 import {
+  cloneAiOutputProfiles,
   createGenericAiOutputProfiles,
   normalizeAiOutputProfiles,
   parseAiOutputProfiles,
   resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
 import { FormType } from '@/types'
-import type { FormFieldConfig } from '@/types'
+import type { AiOutputProfile, FormFieldConfig } from '@/types'
 
 function field(
   fieldKey: string,
@@ -28,6 +29,29 @@ function field(
     ...overrides,
   }
 }
+
+describe('AI output profile serialization', () => {
+  it('Firestore が拒否する undefined optional property を clone/parse 結果から除外する', () => {
+    const profiles: AiOutputProfile[] = [{
+      profile: 'default',
+      fields: [{
+        key: 'word',
+        type: 'string',
+        instruction: 'Primary value',
+        include_when: undefined,
+        max_items: undefined,
+      }],
+    }]
+
+    const clonedField = cloneAiOutputProfiles(profiles)[0].fields[0]
+    const parsedField = parseAiOutputProfiles(profiles, 'word')[0].fields[0]
+
+    expect(Object.prototype.hasOwnProperty.call(clonedField, 'include_when')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(clonedField, 'max_items')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsedField, 'include_when')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsedField, 'max_items')).toBe(false)
+  })
+})
 
 describe('materializeContentTypeAiProfiles', () => {
   it('legacy Language document は default/en/zh/ja fallback を editor state にする', () => {

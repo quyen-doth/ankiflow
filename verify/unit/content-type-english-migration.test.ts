@@ -25,6 +25,7 @@ function defaultData(formType: FormType): Record<string, unknown> {
   }
 }
 
+/** migration の exact-match 対象となる既知の旧 Vietnamese default data を再現する。 */
 function legacyData(formType: FormType): Record<string, unknown> {
   const data = defaultData(formType)
   const fields = (data.fields as Array<Record<string, unknown>>).map(field => ({ ...field }))

@@ -47,7 +47,7 @@ registerUnit<EmptyStateProps>({
       id: 'title-visible',
       description: '検証ケース。',
       check: ({ root, props }) => {
-        if (!props.title.trim()) return 'title rỗng'
+        if (!props.title.trim()) return 'title が空です'
         return (root.textContent ?? '').includes(props.title) || `title が見つかりません "${props.title}"`
       },
     },

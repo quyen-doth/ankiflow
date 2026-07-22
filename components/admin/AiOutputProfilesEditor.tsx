@@ -467,11 +467,9 @@ export function AiOutputProfilesEditor({
                     onChange={(event) => {
                       dismissInstructionSuggestion()
                       const type = event.target.value as AiOutputField['type']
-                      updateField(fieldIndex, {
-                        ...field,
-                        type,
-                        ...(type === 'string' ? { max_items: undefined } : {}),
-                      })
+                      const nextField = { ...field, type }
+                      if (type === 'string') delete nextField.max_items
+                      updateField(fieldIndex, nextField)
                     }}
                   >
                     <option value="string">String</option>

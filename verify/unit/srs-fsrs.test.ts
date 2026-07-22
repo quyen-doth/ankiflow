@@ -63,7 +63,7 @@ describe('lib/srs/fsrs', () => {
       expect(result.fsrs?.state).toBe(2) // State.Review
     })
 
-    it('review state + again → về short-term, interval reset 0', () => {
+    it('review state + again → short-term に戻り、interval は 0 に reset される', () => {
       const state = {
         ...createDefaultReviewState(NOW.toISOString()),
         queue: 'review' as const,
@@ -119,7 +119,7 @@ describe('lib/srs/fsrs', () => {
   })
 
   describe('検証対象', () => {
-    it('isDue so due_date với now', () => {
+    it('isDue は due_date と now を比較する', () => {
       const state = createDefaultReviewState('2026-01-01T00:00:00Z')
       expect(isDue(state, new Date('2026-01-02T00:00:00Z'))).toBe(true)
       expect(isDue(state, new Date('2025-12-31T00:00:00Z'))).toBe(false)

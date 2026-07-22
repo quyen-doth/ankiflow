@@ -65,7 +65,7 @@ registerUnit<ProgressBarProps>({
     },
     {
       id: 'valuenow-clamped',
-      description: 'aria-valuenow = clamp(props.value) trong [0,100]',
+      description: 'aria-valuenow = clamp(props.value)、範囲は [0,100]',
       check: ({ root, props }) => {
         const bar = root.querySelector('[role="progressbar"]')
         if (!bar) return '対象がありません'

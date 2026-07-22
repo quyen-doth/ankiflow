@@ -101,7 +101,7 @@ registerUnit<VerifyProps>({
 
     {
       id: 'act-open-edit-modal',
-      description: 'Act: click Edit fields → modal mở với editor cho từng field.',
+      description: 'Act: Edit fields を click → 各 field の editor を持つ modal が開く。',
       props: { contentTypeId: 'ct-lang' },
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -111,7 +111,7 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'act-edit-save',
-      description: 'Act: mở edit → đổi Label field đầu → Save → updateDoc ghi fields, modal đóng.',
+      description: 'Act: edit を開く → 先頭 field の Label を変更 → Save → updateDoc が fields を保存し modal が閉じる。',
       props: { contentTypeId: 'ct-lang' },
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -131,6 +131,23 @@ registerUnit<VerifyProps>({
         await ctx.wait(50)
         await ctx.wait(0)
         setFieldValue(ctx.root, 'Instruction', 'Workspace primary identity')
+        clickButtonByText(ctx.root, 'Save')
+        await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-edit-ai-array-to-string-save',
+      description: '配列 field を string に変更しても undefined の max_items を保存しない。',
+      props: { contentTypeId: 'ct-lang' },
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.wait(0)
+        const typeSelect = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output type 8"]')
+        if (!typeSelect) throw new Error('collocations の type select が見つからない')
+        typeSelect.value = 'string'
+        typeSelect.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
         clickButtonByText(ctx.root, 'Save')
         await ctx.wait(80)
       },
@@ -173,7 +190,7 @@ registerUnit<VerifyProps>({
     {
       id: 'probe-empty-fields',
       probe: true,
-      description: 'Probe: content type có fields=[] — cột Fields = 0, edit modal mở không có editor, không crash.',
+      description: 'Probe: Content Type が fields=[] — Fields 列は 0、edit modal に field editor はなく crash しない。',
       props: { contentTypeId: 'ct-empty' },
       mocks: {
         firestore: {
@@ -285,32 +302,32 @@ registerUnit<VerifyProps>({
   invariants: [
     {
       id: 'self-identifies',
-      description: 'Contract tự định danh ContentTypeEditorPage',
+      description: 'Contract は ContentTypeEditorPage として自己識別する',
       check: ({ contract }) =>
         contract.unit === 'ContentTypeEditorPage' || `contract.unit="${contract.unit}"`,
     },
 
     {
       id: 'edit-modal-opens-with-fields',
-      description: 'Click Edit: modal mở, có input cho từng field (theo field_key)',
+      description: 'Edit を click すると modal が開き、field_key ごとの input が表示される',
       onlyFixtures: ['act-open-edit-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
         if (!editorVisible(root)) return 'editor form が表示されない'
         const text = root.textContent ?? ''
-        return (text.includes('word') && text.includes('note')) || 'không thấy field editor'
+        return (text.includes('word') && text.includes('note')) || 'field editor が見つかりません'
       },
     },
     {
       id: 'edit-save-updates-fields',
-      description: 'Save: store doc fields[0].label cập nhật, modal đóng',
+      description: 'Save: store doc の fields[0].label が更新され、modal が閉じる',
       onlyFixtures: ['act-edit-save'],
       check: () => {
         const doc = collectionDocs('user_content_types').find(d => d.id === 'ct-lang')
-        if (!doc) return 'mất doc ct-lang'
+        if (!doc) return 'doc ct-lang が失われています'
         const fields = doc.fields as FormFieldConfig[]
         const updated = fields.find(f => f.field_key === 'word')
-        if (!updated) return 'mất field word'
+        if (!updated) return 'field word が失われています'
         if (updated.label !== 'Vocabulary Item') return `label="${updated.label}"`
         return navPushes().length > 0 || 'Save 後に一覧へ戻っていない'
       },
@@ -331,6 +348,22 @@ registerUnit<VerifyProps>({
         const word = profiles[0].fields.find(field => field.key === 'word')
         if (word?.instruction !== 'Workspace primary identity') return `instruction="${word?.instruction}"`
         return navPushes().length > 0 || 'Save 後に一覧へ戻っていない'
+      },
+    },
+    {
+      id: 'ai-array-to-string-omits-max-items',
+      description: 'string に変更した field の保存 payload から max_items key 自体を除外する',
+      onlyFixtures: ['act-edit-ai-array-to-string-save'],
+      check: () => {
+        const doc = collectionDocs('user_content_types').find(item => item.id === 'ct-lang')
+        const profiles = doc?.ai_output_profiles as Array<{
+          profile: string
+          fields: Array<Record<string, unknown>>
+        }> | undefined
+        const collocations = profiles?.[0].fields.find(field => field.key === 'collocations')
+        if (collocations?.type !== 'string') return `type="${collocations?.type}"`
+        return !Object.prototype.hasOwnProperty.call(collocations, 'max_items')
+          || 'max_items key が保存 payload に残っている'
       },
     },
     {
@@ -356,11 +389,11 @@ registerUnit<VerifyProps>({
     },
     {
       id: 'empty-fields-graceful',
-      description: 'fields=[]: cột Fields = 0, edit modal mở không crash, không "undefined"',
+      description: 'fields=[]: Fields 列は 0、edit modal は crash せず "undefined" を表示しない',
       onlyFixtures: ['probe-empty-fields'],
       check: ({ root }) => {
         if (!editorVisible(root)) return 'editor form が表示されない'
-        return !(root.textContent ?? '').includes('undefined') || 'leak "undefined" ra UI'
+        return !(root.textContent ?? '').includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
     {

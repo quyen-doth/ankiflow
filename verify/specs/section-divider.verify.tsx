@@ -38,7 +38,7 @@ registerUnit<SectionDividerProps>({
       description: '検証ケース。',
       check: ({ root }) => {
         const text = root.querySelector('span')?.textContent?.trim() ?? ''
-        return text.length > 0 || 'label rỗng'
+        return text.length > 0 || 'label が空です'
       },
     },
     {

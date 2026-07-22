@@ -6,7 +6,7 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type EditableFieldProps = ComponentProps<typeof EditableField>
 
-// Spy cho onSave — reset trong act
+// onSave 用 spy — act 内で reset
 const saveSpy = { count: 0, lastValue: null as string | null }
 const recordSave = (value: string) => {
   saveSpy.count++
@@ -117,7 +117,7 @@ registerUnit<EditableFieldProps>({
         if (saveSpy.count !== 1 || saveSpy.lastValue !== 'new value') {
           return `count=${saveSpy.count}, lastValue="${saveSpy.lastValue}"`
         }
-        return contract.editing === 'false' || 'vẫn ở edit mode sau Save'
+        return contract.editing === 'false' || 'Save 後も edit mode のままです'
       },
     },
     {
@@ -125,8 +125,8 @@ registerUnit<EditableFieldProps>({
       description: '検証ケース。',
       onlyFixtures: ['act-edit-cancel'],
       check: ({ root, contract }) => {
-        if (saveSpy.count !== 0) return `onSave が呼ばれています ${saveSpy.count} lần`
-        if (contract.editing !== 'false') return 'vẫn ở edit mode sau Cancel'
+        if (saveSpy.count !== 0) return `onSave が ${saveSpy.count} 回呼ばれています`
+        if (contract.editing !== 'false') return 'Cancel 後も edit mode のままです'
         return (root.textContent ?? '').includes('original') || 'original value が再表示されません'
       },
     },

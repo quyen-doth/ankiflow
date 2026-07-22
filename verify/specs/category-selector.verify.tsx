@@ -17,7 +17,7 @@ const CATEGORY_SEED = {
   ],
 }
 
-// Spy cho onChange — reset trong act
+// onChange 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as string | null }
 const recordChange = (value: string) => {
   changeSpy.count++

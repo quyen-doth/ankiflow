@@ -18,7 +18,7 @@ const SESSION = JSON.stringify({
 
 const FIRESTORE_SEED = { decks: [] }
 
-// Spy cho onValidityChange — reset trong act
+// onValidityChange 用 spy — act 内で reset
 const validitySpy = { last: null as boolean | null, sawTrue: false }
 const recordValidity = (canSubmit: boolean) => {
   validitySpy.last = canSubmit
@@ -65,7 +65,7 @@ registerUnit<GeneralFormProps>({
   fixtures: [
     {
       id: 'initial',
-      description: 'Mount với session — title input, content textarea, DeckSelector, TagInput.',
+      description: 'session ありで mount — title input、content textarea、DeckSelector、TagInput。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
@@ -97,7 +97,7 @@ registerUnit<GeneralFormProps>({
     {
       id: 'probe-empty-title-invalid',
       probe: true,
-      description: 'Probe: title rỗng → onValidityChange(false).',
+      description: 'Probe: title が空なら onValidityChange(false)。',
       props: { onValidityChange: recordValidity },
       mocks: {
         firestore: FIRESTORE_SEED,

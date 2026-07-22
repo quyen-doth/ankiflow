@@ -41,7 +41,7 @@ registerUnit<TabsProps>({
     },
     {
       id: 'three-middle-active',
-      description: '3 tab, tab giữa active.',
+      description: '3 tabs の中央が active。',
       props: {
         tabs: [
           { id: 'a', label: 'Word' },

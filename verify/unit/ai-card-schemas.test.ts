@@ -270,6 +270,21 @@ describe('ai-agent/card-schemas — normalizeGeneratedCard', () => {
     expect(normalized.definition).toBe('The occurrence of happy events by chance')
   })
 
+  it('meaning/definition の句読点 prefix を保持し最初の文字を大文字化する', () => {
+    const normalized = normalizeGeneratedCard({
+      form_type: FormType.LANGUAGE,
+      word: 'serendipity',
+      output_language: 'en',
+    }, {
+      word: 'serendipity',
+      meaning_vi: '"a fortunate discovery"',
+      definition: '(the occurrence of happy events by chance)',
+    })
+
+    expect(normalized.meaning_vi).toBe('"A fortunate discovery"')
+    expect(normalized.definition).toBe('(The occurrence of happy events by chance)')
+  })
+
   it('既に大文字・空・CJK の meaning は壊さない', () => {
     const normalized = normalizeGeneratedCard({
       form_type: FormType.LANGUAGE,
@@ -286,14 +301,25 @@ describe('ai-agent/card-schemas — normalizeGeneratedCard', () => {
 })
 
 describe('ai-agent/card-schemas — capitalizeFirst', () => {
-  it('先頭の非空白文字だけを大文字化する', () => {
+  it('先頭の Unicode letter だけを大文字化する', () => {
     expect(capitalizeFirst('hello world')).toBe('Hello world')
     expect(capitalizeFirst('  spaced', 'en')).toBe('  Spaced')
+    expect(capitalizeFirst('"hello"', 'en')).toBe('"Hello"')
+    expect(capitalizeFirst('(example)', 'en')).toBe('(Example)')
+    expect(capitalizeFirst('- meaning', 'en')).toBe('- Meaning')
+    expect(capitalizeFirst('123abc', 'en')).toBe('123Abc')
   })
 
-  it('空文字・空白のみ・非 cased 文字はそのまま返す', () => {
+  it('Unicode/locale を尊重し、prefix と結合文字を保持する', () => {
+    expect(capitalizeFirst('👋 café', 'fr')).toBe('👋 Café')
+    expect(capitalizeFirst('e\u0301lan', 'fr')).toBe('E\u0301lan')
+    expect(capitalizeFirst('istanbul', 'tr')).toBe('İstanbul')
+  })
+
+  it('空文字・letter なし・大文字小文字のない文字はそのまま返す', () => {
     expect(capitalizeFirst('')).toBe('')
     expect(capitalizeFirst('   ')).toBe('   ')
+    expect(capitalizeFirst('123 - !')).toBe('123 - !')
     expect(capitalizeFirst('日本語')).toBe('日本語')
   })
 })

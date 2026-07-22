@@ -111,7 +111,7 @@ registerUnit<SampleTableProps>({
     },
     {
       id: 'header-count-matches',
-      description: 'Số th = columns.length',
+      description: 'th の数は columns.length と一致する',
       check: ({ root, props }) => {
         const headers = root.querySelectorAll('thead th').length
         return (

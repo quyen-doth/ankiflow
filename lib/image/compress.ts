@@ -7,8 +7,27 @@ export interface CompressOptions {
   targetBytes?: number
   /** 圧縮品質の下限。既定 0.5。 */
   minQuality?: number
-  /** 出力 MIME。既定 image/jpeg。 */
+  /** 出力 MIME の明示 override。未指定時は入力 format と transparency/animation を保つ。 */
   mimeType?: string
+}
+
+/** canvas 再エンコード先。null は GIF animation を守るため元 data URL をそのまま使う。 */
+export function resolveCompressionMimeType(
+  inputMimeType: string,
+  overrideMimeType?: string,
+): string | null {
+  const override = overrideMimeType?.trim().toLowerCase()
+  if (override) return override
+
+  const input = inputMimeType.trim().toLowerCase()
+  if (input === 'image/gif') return null
+  if (input === 'image/jpeg' || input === 'image/jpg' || input === 'image/pjpeg') {
+    return 'image/jpeg'
+  }
+  if (input === 'image/png' || input === 'image/webp') return input
+
+  // その他の image format は alpha channel を失わない PNG へ変換する。
+  return 'image/png'
 }
 
 /**
@@ -58,11 +77,13 @@ export async function compressImageFile(file: File, opts: CompressOptions = {}):
     maxDimension = 1600,
     targetBytes = 500 * 1024,
     minQuality = 0.5,
-    mimeType = 'image/jpeg',
+    mimeType,
   } = opts
 
   const original = await readAsDataUrl(file)
   if (!original.startsWith('data:image')) return original
+  const outputMimeType = resolveCompressionMimeType(file.type, mimeType)
+  if (outputMimeType === null) return original
 
   let img: HTMLImageElement
   try {
@@ -85,10 +106,11 @@ export async function compressImageFile(file: File, opts: CompressOptions = {}):
   ctx.drawImage(img, 0, 0, width, height)
 
   let quality = 0.9
-  let best = canvas.toDataURL(mimeType, quality)
-  while (dataUrlBytes(best) > targetBytes && quality > minQuality) {
+  let best = canvas.toDataURL(outputMimeType, quality)
+  const supportsQuality = outputMimeType === 'image/jpeg' || outputMimeType === 'image/webp'
+  while (supportsQuality && dataUrlBytes(best) > targetBytes && quality > minQuality) {
     quality = Math.max(minQuality, Math.round((quality - 0.1) * 100) / 100)
-    best = canvas.toDataURL(mimeType, quality)
+    best = canvas.toDataURL(outputMimeType, quality)
   }
 
   // 元より小さくなった時だけ採用 (再エンコードで逆に大きくなる小さい画像は元を維持)。
