@@ -87,14 +87,11 @@ function nonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value : null
 }
 
-/**
- * 先頭の非空白文字を大文字にする。出力言語の locale を尊重し、大文字小文字の概念が
- * ない文字 (CJK 等) では実質 no-op。
- */
+/** 先頭の Unicode letter を locale に従って大文字化する。句読点等の prefix は保持する。 */
 export function capitalizeFirst(value: string, locale?: string): string {
   if (!value) return value
   const chars = Array.from(value)
-  const index = chars.findIndex(char => char.trim() !== '')
+  const index = chars.findIndex(char => /\p{L}/u.test(char))
   if (index === -1) return value
   chars[index] = locale
     ? chars[index].toLocaleUpperCase(locale)
