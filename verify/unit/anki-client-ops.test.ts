@@ -246,7 +246,7 @@ describe('regenerateNotesForEntry', () => {
     { id: 'ct1', name: 'Word → Meaning', code: 'word_to_meaning' },
     { id: 'ct2', name: 'Meaning → Word', code: 'meaning_to_word' },
   ]
-  // entry map anki_note_ids[i] ↔ card_type_ids[i] theo thứ tự
+  // entry は anki_note_ids[i] ↔ card_type_ids[i] を同じ順序で対応付ける。
   const entry = { word: 'resilient', anki_deck: 'D', tags: [], anki_note_ids: [11, 22], card_type_ids: ['ct1', 'ct2'] }
 
   const noteInfo = (noteId: number): AnkiNoteInfo => ({

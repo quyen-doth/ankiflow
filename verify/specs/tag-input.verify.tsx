@@ -88,7 +88,7 @@ registerUnit<TagInputProps>({
   invariants: [
     {
       id: 'chip-count-matches',
-      description: 'Số chip Badge = tags.length',
+      description: 'Badge chip の数は tags.length と一致する',
       check: ({ root, props }) => {
         const chips = root.querySelectorAll('[data-verify-unit="Badge"]').length
         return chips === props.tags.length || `chips=${chips}, tags=${props.tags.length}`

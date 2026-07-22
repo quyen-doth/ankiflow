@@ -81,4 +81,30 @@ describe('buildTestGenerationRequest', () => {
       output_language: 'en',
     })
   })
+
+  it('inherit/exclude metadata を inline profile に保持し、参照を共有しない', () => {
+    const inheritedProfiles: AiOutputProfile[] = [
+      ...profiles,
+      { profile: 'zh', inherit: true, exclude: ['memory_hook'], fields: [] },
+    ]
+    const body = buildTestGenerationRequest({
+      contentType: {
+        code: 'language',
+        name: 'Language draft',
+        description: '',
+        fields,
+      },
+      profiles: inheritedProfiles,
+      sample: 'book',
+      studyLanguage: { code: 'zh', display_name: 'Chinese' },
+      outputLanguage: 'vi',
+    })
+    const inlineProfiles = (body.content_type_inline as {
+      ai_output_profiles: AiOutputProfile[]
+    }).ai_output_profiles
+
+    expect(inlineProfiles).toEqual(inheritedProfiles)
+    expect(inlineProfiles).not.toBe(inheritedProfiles)
+    expect(inlineProfiles[1].exclude).not.toBe(inheritedProfiles[1].exclude)
+  })
 })

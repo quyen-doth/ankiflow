@@ -175,7 +175,7 @@ registerUnit<CardPreviewProps>({
       check: ({ root }) => {
         const html = srcdoc(root)
         if (!html.includes('No fields')) return 'placeholder が見つかりません "No fields"'
-        return !html.includes('undefined') || 'leak chữ "undefined" ra srcdoc'
+        return !html.includes('undefined') || '"undefined" が srcdoc に漏れています'
       },
     },
     {

@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { materializeContentTypeAiProfiles } from '@/lib/ai-agent/contentTypeProfiles'
-import { createGenericAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
+import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
+import {
+  cloneStoredContentTypeAiProfiles,
+  materializeContentTypeAiProfiles,
+} from '@/lib/ai-agent/contentTypeProfiles'
+import {
+  cloneAiOutputProfiles,
+  createGenericAiOutputProfiles,
+  normalizeAiOutputProfiles,
+  parseAiOutputProfiles,
+  resolveEffectiveProfileFields,
+} from '@/lib/ai-agent/outputProfiles'
 import { FormType } from '@/types'
-import type { FormFieldConfig } from '@/types'
+import type { AiOutputProfile, FormFieldConfig } from '@/types'
 
 function field(
   fieldKey: string,
@@ -19,6 +29,29 @@ function field(
     ...overrides,
   }
 }
+
+describe('AI output profile serialization', () => {
+  it('Firestore が拒否する undefined optional property を clone/parse 結果から除外する', () => {
+    const profiles: AiOutputProfile[] = [{
+      profile: 'default',
+      fields: [{
+        key: 'word',
+        type: 'string',
+        instruction: 'Primary value',
+        include_when: undefined,
+        max_items: undefined,
+      }],
+    }]
+
+    const clonedField = cloneAiOutputProfiles(profiles)[0].fields[0]
+    const parsedField = parseAiOutputProfiles(profiles, 'word')[0].fields[0]
+
+    expect(Object.prototype.hasOwnProperty.call(clonedField, 'include_when')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(clonedField, 'max_items')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsedField, 'include_when')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsedField, 'max_items')).toBe(false)
+  })
+})
 
 describe('materializeContentTypeAiProfiles', () => {
   it('legacy Language document は default/en/zh/ja fallback を editor state にする', () => {
@@ -37,6 +70,107 @@ describe('materializeContentTypeAiProfiles', () => {
     expect(result.profiles.every(profile => profile.fields.some(output => output.key === 'word'))).toBe(true)
   })
 
+  it('legacy built-in profile は normalize 後も field と順序を完全に維持する', () => {
+    const legacy = resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)!
+    const normalized = normalizeAiOutputProfiles(legacy)
+
+    for (const language of ['en', 'zh', 'ja']) {
+      const previousFields = legacy.find(profile => profile.profile === language)!.fields
+      expect(resolveEffectiveProfileFields(normalized, language)).toEqual(previousFields)
+    }
+    expect(legacy.every(profile => profile.inherit === undefined && profile.exclude === undefined)).toBe(true)
+    expect(normalized.filter(profile => profile.profile !== 'default').every(profile => (
+      profile.inherit === true && Array.isArray(profile.exclude)
+    ))).toBe(true)
+  })
+
+  it('normalize 後に Default へ追加した field を末尾で継承する', () => {
+    const normalized = normalizeAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [
+          { key: 'word', type: 'string', instruction: 'Default word' },
+          { key: 'ipa', type: 'string', instruction: 'Default IPA' },
+        ],
+      },
+      {
+        profile: 'zh',
+        fields: [
+          { key: 'word', type: 'string', instruction: 'Chinese word' },
+          { key: 'pinyin', type: 'string', instruction: 'Pinyin' },
+        ],
+      },
+    ])
+    normalized[0].fields.push({
+      key: 'phon_the',
+      type: 'string',
+      instruction: 'Traditional Chinese form',
+    })
+
+    expect(resolveEffectiveProfileFields(normalized, 'zh').map(output => output.key)).toEqual([
+      'word',
+      'pinyin',
+      'phon_the',
+    ])
+  })
+
+  it('Default から削除した key を再追加すると継承が復活する (stale exclude を残さない)', () => {
+    const field = (key: string) => ({ key, type: 'string' as const, instruction: key })
+    // legacy → normalize で zh は ipa を exclude する。
+    let profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word'), field('ipa')] },
+      { profile: 'zh', fields: [field('word'), field('pinyin')] },
+    ])
+    expect(profiles[1].exclude).toEqual(['ipa'])
+
+    // Default から ipa を削除 → 意味を失った exclude は消える。
+    profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word')] },
+      profiles[1],
+    ])
+    expect(profiles[1].exclude).toEqual([])
+
+    // 同じ key を再追加 → 今度は継承される。
+    profiles = normalizeAiOutputProfiles([
+      { profile: 'default', fields: [field('word'), field('ipa')] },
+      profiles[1],
+    ])
+    expect(resolveEffectiveProfileFields(profiles, 'zh').map(output => output.key))
+      .toEqual(['word', 'pinyin', 'ipa'])
+  })
+
+  it('snake_case でない primary field key は materialize が throw する (呼び出し側が捕捉する契約)', () => {
+    expect(() => materializeContentTypeAiProfiles({
+      code: 'medical_terms',
+      name: 'Medical',
+      fields: [field('Question', 0)],
+    })).toThrow()
+  })
+
+  it('own field は Default を上書きし、exclude field は継承しない', () => {
+    const profiles = [
+      {
+        profile: 'default',
+        fields: [
+          { key: 'word', type: 'string' as const, instruction: 'Default word' },
+          { key: 'meaning_vi', type: 'string' as const, instruction: 'Default meaning' },
+          { key: 'phon_the', type: 'string' as const, instruction: 'Default traditional form' },
+        ],
+      },
+      {
+        profile: 'zh',
+        inherit: true as const,
+        exclude: ['meaning_vi'],
+        fields: [{ key: 'word', type: 'string' as const, instruction: 'Chinese word' }],
+      },
+    ]
+
+    expect(resolveEffectiveProfileFields(profiles, 'zh')).toEqual([
+      { key: 'word', type: 'string', instruction: 'Chinese word' },
+      { key: 'phon_the', type: 'string', instruction: 'Default traditional form' },
+    ])
+  })
+
   it('stored profile を primary invariant 付きで parse + clone する', () => {
     const stored = createGenericAiOutputProfiles('prompt', 'Prompt')
     const result = materializeContentTypeAiProfiles({
@@ -48,6 +182,40 @@ describe('materializeContentTypeAiProfiles', () => {
 
     result.profiles[0].fields[0].instruction = 'Changed editor state'
     expect(stored[0].fields[0].instruction).toBe('Primary value for Prompt')
+  })
+
+  it('parse failure fallback は Default edit 前に normalize して新 field を継承する', () => {
+    const source = {
+      code: 'language',
+      name: 'Language',
+      fields: [field('language', 0, { type: 'dropdown' }), field('word', 1)],
+      ai_output_profiles: [
+        {
+          profile: 'default',
+          fields: [{ key: 'word', type: 'string' as const, instruction: 'Default word' }],
+        },
+        {
+          profile: 'zh-CN',
+          fields: [{ key: 'word', type: 'string' as const, instruction: 'Chinese word' }],
+        },
+      ],
+    }
+    expect(() => materializeContentTypeAiProfiles(source)).toThrow()
+
+    const fallback = cloneStoredContentTypeAiProfiles(source)
+    fallback[1].profile = 'zh'
+    fallback[0].fields.push({
+      key: 'phon_the',
+      type: 'string',
+      instruction: 'Traditional Chinese form',
+    })
+    const saved = parseAiOutputProfiles(fallback, 'word')
+
+    expect(saved[1]).toMatchObject({ inherit: true, exclude: [] })
+    expect(resolveEffectiveProfileFields(saved, 'zh').map(output => output.key)).toEqual([
+      'word',
+      'phon_the',
+    ])
   })
 
   it('profile 未設定 custom document は safe core fields を含む generic default を materialize する', () => {

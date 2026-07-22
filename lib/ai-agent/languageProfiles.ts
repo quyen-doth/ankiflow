@@ -12,14 +12,14 @@ export const LANGUAGE_PROFILES: Readonly<Record<string, LanguageProfile>> = {
     expertLabel: 'English language',
     promptNotes: [
       'Example sentences must be concise (12 words or fewer), easy to understand, and natural.',
-      'Provide 3-5 common phrases or collocations with meanings in the output language in parentheses.',
+      'Prefer common, natural collocations and give each its meaning in the output language in parentheses.',
     ],
   },
   zh: {
     expertLabel: 'Chinese language',
     promptNotes: [
       'Example sentences must be concise (10 words or fewer), grammatically correct, and natural in everyday use.',
-      'Provide 3-5 common phrases or measure-word combinations with meanings in the output language.',
+      'Prefer common phrases or measure-word combinations and give each its meaning in the output language.',
       'For nouns, include appropriate measure words, for example 一本书 or 一杯水.',
       'Use the HSK level when it can be determined, for example HSK1.',
     ],
@@ -28,7 +28,7 @@ export const LANGUAGE_PROFILES: Readonly<Record<string, LanguageProfile>> = {
     expertLabel: 'Japanese language',
     promptNotes: [
       'Example sentences must be concise (10 words or fewer), grammatically correct, and natural.',
-      'Provide 3-5 common phrases or particle combinations with meanings in the output language.',
+      'Prefer common phrases or particle combinations and give each its meaning in the output language.',
       'Fill katakana only for loanwords; otherwise return an empty string.',
       'Fill romaji and all reading fields accurately.',
       'Use the JLPT level when it can be determined, for example N5.',

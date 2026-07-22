@@ -56,6 +56,8 @@ const CUSTOM_CONTENT_TYPES = [
       },
       {
         profile: 'zh',
+        inherit: true,
+        exclude: [],
         fields: [
           { key: 'word', type: 'string', instruction: 'Word' },
           { key: 'pinyin', type: 'string', instruction: 'Pinyin' },
@@ -115,7 +117,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — empty message.',
+      description: 'Collection が空 — empty message。',
       props: {},
       mocks: { firestore: { card_types: [] } },
       act: async ctx => {
@@ -124,7 +126,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-open-create-modal',
-      description: 'Act: click Add card type → modal mở.',
+      description: 'Act: Add card type を click → modal が開く。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -184,7 +186,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-custom-options-zh',
-      description: 'Act: Language/zh card type は zh profile の custom field だけを表示する。',
+      description: 'Act: Language/zh card type は Default と zh profile の custom field を表示する。',
       props: {},
       mocks: {
         firestore: {
@@ -200,6 +202,72 @@ registerUnit<Record<string, never>>({
       act: async ctx => {
         await ctx.wait(80)
         const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Chinese custom"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-language-switch-keeps-unavailable-field',
+      description: 'Act: Chinese から All へ変更すると zh 固有 field を保持したまま警告する。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-zh-template',
+            name: 'Chinese field template',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:phon_the'],
+            },
+          }],
+          user_content_types: CUSTOM_CONTENT_TYPES,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Chinese field template"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+
+        const language = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Language"]')
+        if (!language) throw new Error('Language select が見つからない')
+        language.value = '__none__'
+        language.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-content-types-load-failure',
+      description: 'Act: Content Type の読み込み失敗時は custom field を保持し、availability 警告を出さない。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-load-failure',
+            name: 'Content type load failure',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:phon_the'],
+            },
+          }],
+          user_content_types: CUSTOM_CONTENT_TYPES,
+          __verify_failures__: [{
+            id: 'fail-content-type-read',
+            operation: 'getDocs',
+            collection: 'user_content_types',
+            message: 'Simulated content type read failure',
+          }],
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Content type load failure"]')
         if (!edit) throw new Error('編集 button が見つからない')
         edit.click()
         await ctx.wait(0)
@@ -263,7 +331,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'create-modal-opens',
-      description: 'Click Add: modal mở',
+      description: 'Add を click すると modal が開く',
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
@@ -281,7 +349,7 @@ registerUnit<Record<string, never>>({
         if (!created) return '要素が見つかりません'
         if (created.name !== 'Cloze') return `name=${created.name}`
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
-        return !modalOpen(root) || 'modal vẫn mở sau Save'
+        return !modalOpen(root) || 'Save 後も modal が開いたままです'
       },
     },
     {
@@ -314,19 +382,54 @@ registerUnit<Record<string, never>>({
         const select = root.querySelector<HTMLSelectElement>('select[aria-label="Add field to back"]')
         const options = Array.from(select?.options ?? [])
         const values = options.map(option => option.value)
-        const expected = ['custom:phon_the', 'custom:related_words']
+        const expected = ['custom:phon_the', 'custom:related_words', 'custom:default_note']
         const missing = expected.filter(value => !values.includes(value))
         if (missing.length > 0) return `missing=${missing.join(',')}`
         const forbidden = [
           'custom:word',
           'custom:pinyin',
-          'custom:default_note',
           'custom:furigana_extra',
           'custom:analogy_vi',
         ].filter(value => values.includes(value))
         if (forbidden.length > 0) return `unexpected=${forbidden.join(',')}`
         const label = options.find(option => option.value === 'custom:phon_the')?.textContent
-        return label === 'Phon the' || `label=${label}`
+        if (label !== 'Phon the') return `label=${label}`
+        return (root.textContent ?? '').includes("'All' shows Default fields only.")
+          || 'language field hint が表示されない'
+      },
+    },
+    {
+      id: 'language-switch-warns-without-removing-field',
+      description: 'All で利用不可になった zh 固有 field を警告し、template から削除しない',
+      onlyFixtures: ['act-language-switch-keeps-unavailable-field'],
+      check: ({ root }) => {
+        const alert = root.querySelector<HTMLElement>('[role="alert"]')
+        const alertText = alert?.textContent ?? ''
+        if (!alertText.includes('Unavailable for the current selection: Phon the.')) {
+          return `alert="${alertText}"`
+        }
+        if (!root.querySelector('[aria-label="Remove Phon the"]')) {
+          return 'custom:phon_the was removed from the template'
+        }
+
+        const select = root.querySelector<HTMLSelectElement>('select[aria-label="Add field to front"]')
+        const values = Array.from(select?.options ?? []).map(option => option.value)
+        if (!values.includes('custom:default_note')) return 'Default field is missing for All'
+        const unavailable = ['custom:phon_the', 'custom:related_words'].filter(value => values.includes(value))
+        return unavailable.length === 0 || `language-specific options=${unavailable.join(',')}`
+      },
+    },
+    {
+      id: 'load-failure-does-not-claim-field-is-unavailable',
+      description: 'Content Type の読み込み失敗を unavailable field と誤表示しない',
+      onlyFixtures: ['act-content-types-load-failure'],
+      check: ({ root }) => {
+        if (root.querySelector('[role="alert"]')) {
+          return 'availability alert is visible while content types are unknown'
+        }
+        return root.querySelector('[aria-label="Remove Phon the"]')
+          ? true
+          : 'custom:phon_the was removed from the template'
       },
     },
     {
@@ -337,7 +440,7 @@ registerUnit<Record<string, never>>({
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
         if (!text.includes('Basic')) return '表示が見つかりません'
-        return !text.includes('undefined') || 'leak "undefined" ra UI'
+        return !text.includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
   ],

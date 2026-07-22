@@ -24,7 +24,7 @@ vi.mock('@/lib/firebase-admin', () => ({
   getAdminAuthInstance: () => ({ verifySessionCookie: verifyMock }),
   getAdminDb: () => ({
     collection: (name: string) => ({
-      // query GET entries synced (2 where lồng nhau rồi get)
+      // GET query: synced entries (where を2段重ねてから get)
       where: () => ({
         where: () => ({
           get: async () => ({

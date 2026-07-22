@@ -37,7 +37,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'empty',
-      description: 'Collection rỗng — empty message.',
+      description: 'Collection が空 — empty message。',
       props: {},
       mocks: { firestore: { categories: [] } },
       act: async ctx => {
@@ -46,7 +46,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-open-create-modal',
-      description: 'Act: click Add Category → modal mở.',
+      description: 'Act: Add Category を click → modal が開く。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -120,7 +120,7 @@ registerUnit<Record<string, never>>({
         const text = root.textContent ?? ''
         return (
           text.indexOf('Daily Life') < text.indexOf('Business') ||
-          'thứ tự sort_order sai'
+          'sort_order の順序が不正です'
         )
       },
     },
@@ -142,7 +142,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'create-modal-opens',
-      description: 'Click Add: modal mở, contract modalopen=true',
+      description: 'Add を click すると modal が開き、contract modalopen=true',
       onlyFixtures: ['act-open-create-modal'],
       check: ({ root, contract }) => {
         if (contract.modalopen !== 'true') return `contract.modalopen="${contract.modalopen}"`
@@ -159,7 +159,7 @@ registerUnit<Record<string, never>>({
         const created = docs.find(d => d.name === 'Travel')
         if (!created) return '要素が見つかりません'
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
-        return !modalOpen(root) || 'modal vẫn mở sau khi Save'
+        return !modalOpen(root) || 'Save 後も modal が開いたままです'
       },
     },
     {
@@ -180,7 +180,7 @@ registerUnit<Record<string, never>>({
         if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
         const text = root.textContent ?? ''
         if (!text.includes('Mystery')) return '表示が見つかりません'
-        return !text.includes('undefined') || 'leak "undefined" ra UI'
+        return !text.includes('undefined') || '"undefined" が UI に漏れています'
       },
     },
   ],

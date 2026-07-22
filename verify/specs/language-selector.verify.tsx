@@ -8,7 +8,7 @@ import type { LanguageCode } from '@/types'
 
 type LanguageSelectorProps = ComponentProps<typeof LanguageSelector>
 
-// Spy cho act-change — reset trong act
+// act-change 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as LanguageCode | null }
 const recordChange = (value: LanguageCode) => {
   changeSpy.count++

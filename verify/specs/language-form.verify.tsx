@@ -43,7 +43,7 @@ const DETECT_MIXED = {
   ],
 }
 
-// Spy cho onValidityChange — reset trong act
+// onValidityChange 用 spy — act 内で reset
 const validitySpy = { last: null as boolean | null, sawTrue: false }
 const recordValidity = (canSubmit: boolean) => {
   validitySpy.last = canSubmit

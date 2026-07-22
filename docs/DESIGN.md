@@ -117,10 +117,27 @@
 | **Preview** | 生成されたコンテンツをレビュー (hero-word hierarchy)、warm amber surface 上のライブカードプレビュー、card types を選択、deck を選ぶ | Card flip、type toggles |
 | **History** | 作成されたカードのテーブル + detail drawer | Detail drawer、status filter |
 | **Admin** | Categories / Card Types / Topics / Decks / Content Types 用 CMS | Tab switching |
+| **Content Type editor** | Content Type 1 件の専用編集ページ (旧 modal を置換) | Loading / not-found / forbidden、unsaved guard |
 | **Settings** | Integrations + AI + preferences | Toggles、save |
 | **Design System** | この生きたスタイルガイド、アプリ内 | — |
 
 永続的なシェル: 固定 248px の左 **sidebar** (logo、nav、Anki-connection status、user) + 固定 **top header** (breadcrumb/title + primary action)。
+
+### Content Type editor page (2026-07-20 以降)
+
+Route: `/admin/content-types/new` と `/admin/content-types/[id]`。query は `?scope=global-defaults`
+(admin のみ) と `?from=settings|admin` (戻り先と breadcrumb を決定)。
+
+以前は `Modal size="lg"` (`max-w-2xl`) 内に `max-h-[60vh]` のスクロール領域を入れ子にしていたため、
+metadata + form fields + AI output profiles + Test セクションを収めるには狭すぎた。専用ページでは:
+
+- **2 カラム** (`lg` 以上): 左 = Metadata + Form fields、右 = AI output profiles + Test。`lg` 未満は 1 カラム。
+- **入れ子スクロールを廃止** — ページ全体が 1 つのスクロール文脈になる。
+- **Sticky action bar** をページ下端に固定し、長いフォームのどこにいても Save / Cancel に届く。
+- **Breadcrumb** は遷移元に追従 (`Admin / Content Types` または `Settings / Content Types`)。
+- **未保存ガード**: `useUnsavedChangesGuard` を再利用し、離脱前に確認する。保存直後は dirty を解除する。
+- 読み込み結果ごとに状態を出し分ける: loading / not-found (存在しない・他 workspace の document) /
+  forbidden (admin でない利用者が defaults scope を要求)。
 
 ---
 

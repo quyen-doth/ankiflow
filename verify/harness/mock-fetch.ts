@@ -1,7 +1,7 @@
 import type { FetchRule } from '@/verify/core/types'
 
 /**
- * Thay globalThis.fetch bằng matcher theo FetchRule[].
+ * globalThis.fetch を FetchRule[] に基づく matcher へ置き換える。
  * 検証用コメント。
  * 検証用コメント。
  */

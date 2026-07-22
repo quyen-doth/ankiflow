@@ -104,7 +104,7 @@ registerUnit<ConnectedBadgeProps>({
       check: ({ root, contract }) => {
         const text = root.textContent ?? ''
         const expected = contract.connected === 'true' ? 'Anki connected' : 'Anki offline'
-        return text.includes(expected) || `見つかりません "${expected}" trong "${text.trim()}"`
+        return text.includes(expected) || `"${text.trim()}" 内に "${expected}" が見つかりません`
       },
     },
     {

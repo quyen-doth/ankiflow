@@ -23,7 +23,7 @@ export interface RunOptions {
   keepMounted?: boolean
 }
 
-/** Chờ React flush render qua một macrotask */
+/** macrotask を1回待って React の render flush を完了させる */
 function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

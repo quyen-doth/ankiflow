@@ -6,7 +6,7 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type CollocationEditorProps = ComponentProps<typeof CollocationEditor>
 
-// Spy cho onChange — reset trong act
+// onChange 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as string[] | null }
 const recordChange = (items: string[]) => {
   changeSpy.count++
@@ -40,7 +40,7 @@ registerUnit<CollocationEditorProps>({
   fixtures: [
     {
       id: 'with-items',
-      description: '2 collocations — mỗi item một chip removable.',
+      description: 'collocation 2件 — 各 item を削除可能な chip で表示する。',
       props: { items: ['take a break', 'make sense'], onChange: noop },
     },
     {
@@ -122,7 +122,7 @@ registerUnit<CollocationEditorProps>({
       description: '検証ケース。',
       onlyFixtures: ['probe-duplicate-add'],
       check: ({ root }) => {
-        if (changeSpy.count !== 0) return `onChange が呼ばれています ${changeSpy.count} lần`
+        if (changeSpy.count !== 0) return `onChange が ${changeSpy.count} 回呼ばれています`
         const input = root.querySelector<HTMLInputElement>('input')
         return !input || input.value === '' || `input.value="${input?.value}"`
       },

@@ -20,7 +20,7 @@ vi.mock('@/lib/firebase-admin', () => ({
   getAdminDb: () => ({
     collection: (name: string) => ({
       where: () => ({
-        // entries: .where(user_id).get() — 1 lớp; decks: .where(user_id).where(form_type).limit(1).get() — nhiều lớp
+        // entries: .where(user_id).get() — 1段; decks: .where(user_id).where(form_type).limit(1).get() — 複数段
         get: async () => {
           const docs = name === 'entries' ? entryDocs : deckDocs
           return { docs: docs.map((d) => ({ id: d.id, data: () => d.data })), empty: docs.length === 0 }
@@ -135,7 +135,7 @@ describe('POST /api/integrations/term-drafts — validate body', () => {
     expect(res.status).toBe(400)
   })
 
-  it('items rỗng → 400', async () => {
+  it('items が空なら 400', async () => {
     const res = await POST(makeReq({ token: 'secret-token-123', body: { source: 'knowledge-hub', items: [] } }))
     expect(res.status).toBe(400)
   })

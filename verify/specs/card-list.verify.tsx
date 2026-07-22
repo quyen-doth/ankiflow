@@ -12,7 +12,7 @@ const CARD_TYPES = [
   { id: 'ct-cloze', name: 'Cloze', description: '検証ケース。' },
 ]
 
-// Spy cho onChange — reset trong act
+// onChange 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as string[] | null }
 const recordChange = (ids: string[]) => {
   changeSpy.count++
@@ -100,7 +100,7 @@ registerUnit<CardListProps>({
     },
     {
       id: 'toggle-on-adds-id',
-      description: 'Bật switch: onChange nhận selectedIds + id mới',
+      description: 'switch を有効化すると onChange は selectedIds と新しい id を受け取る',
       onlyFixtures: ['act-toggle-on'],
       check: () =>
         (changeSpy.count === 1 &&

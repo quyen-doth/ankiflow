@@ -22,7 +22,7 @@ registerUnit<StatCardProps>({
   fixtures: [
     {
       id: 'basic',
-      description: 'Label + value số.',
+      description: 'Label と数値 value。',
       props: { label: 'Total Cards', value: 128 },
     },
     {

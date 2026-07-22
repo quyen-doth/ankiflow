@@ -21,7 +21,7 @@ const TOPIC_SEED = {
   ],
 }
 
-// Spy cho onChange — reset trong act
+// onChange 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as TopicSelection | null }
 const recordChange = (selection: TopicSelection) => {
   changeSpy.count++

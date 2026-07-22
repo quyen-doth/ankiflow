@@ -87,6 +87,18 @@ function nonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value : null
 }
 
+/** 先頭の Unicode letter を locale に従って大文字化する。句読点等の prefix は保持する。 */
+export function capitalizeFirst(value: string, locale?: string): string {
+  if (!value) return value
+  const chars = Array.from(value)
+  const index = chars.findIndex(char => /\p{L}/u.test(char))
+  if (index === -1) return value
+  chars[index] = locale
+    ? chars[index].toLocaleUpperCase(locale)
+    : chars[index].toLocaleUpperCase()
+  return chars.join('')
+}
+
 /** Restore trusted identity and compatibility aliases after validating model output. */
 export function normalizeGeneratedCard(
   input: GenerateCardInput,
@@ -105,9 +117,15 @@ export function normalizeGeneratedCard(
     ?? nonEmptyString(normalized.word_type_vi)
   if (wordType) normalized.word_type = wordType
 
+  // 意味フィールドは出力言語の locale で先頭を大文字化する。
+  const locale = input.output_language || undefined
+
   const definition = nonEmptyString(normalized.definition)
     ?? nonEmptyString(normalized.definition_vi)
-  if (definition) normalized.definition = definition
+  if (definition) normalized.definition = capitalizeFirst(definition, locale)
+
+  const meaning = nonEmptyString(normalized.meaning_vi)
+  if (meaning) normalized.meaning_vi = capitalizeFirst(meaning, locale)
 
   return normalized
 }

@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import { inferLanguageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
 import { getLanguageProfile } from '@/lib/ai-agent/languageProfiles'
+import { resolveCompatibleBuiltinArrayInstruction } from '@/lib/ai-agent/builtinOutputProfiles'
 import {
   DEFAULT_AI_ARRAY_MAX_ITEMS,
   parseAiOutputProfiles,
-  selectAiOutputProfile,
+  resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
 import { TOOL_NAME, toToolInputSchema } from '@/lib/ai-agent/card-spec'
 import type { AiOutputProfile } from '@/types'
@@ -37,10 +38,12 @@ function resolveTemplate(
   outputLanguage: EngineLanguage,
   studyLanguage: EngineLanguage | undefined,
   definitionName: string,
+  maxItems: number,
 ): string {
   return template
     .replaceAll('{output_language}', outputLanguage.name)
     .replaceAll('{study_language}', studyLanguage?.name ?? definitionName)
+    .replaceAll('{max_items}', String(maxItems))
 }
 
 function singleLine(value: string): string {
@@ -52,9 +55,8 @@ function activeFields(
   primaryStudyLanguage: string | null,
   outputLanguageCode: string,
 ) {
-  const profile = selectAiOutputProfile(profiles, primaryStudyLanguage)
   const outputPrimary = primaryLanguageSubtag(outputLanguageCode)
-  return profile.fields.filter(outputField => (
+  return resolveEffectiveProfileFields(profiles, primaryStudyLanguage).filter(outputField => (
     outputField.include_when !== 'output_vi' || outputPrimary === 'vi'
   ))
 }
@@ -128,14 +130,19 @@ export function buildEngineCardSpec(args: BuildEngineCardSpecArgs): CardSpec {
 
   const schemaShape: Record<string, z.ZodType> = {}
   for (const outputField of fields) {
+    const maxItems = outputField.max_items ?? DEFAULT_AI_ARRAY_MAX_ITEMS
+    const instructionTemplate = outputField.type === 'string_array'
+      ? resolveCompatibleBuiltinArrayInstruction(outputField.key, outputField.instruction)
+      : outputField.instruction
     const instruction = resolveTemplate(
-      outputField.instruction,
+      instructionTemplate,
       outputLanguage,
       studyLanguage,
       definition.name,
+      maxItems,
     )
     schemaShape[outputField.key] = outputField.type === 'string_array'
-      ? z.array(z.string()).max(outputField.max_items ?? DEFAULT_AI_ARRAY_MAX_ITEMS).describe(instruction)
+      ? z.array(z.string()).max(maxItems).describe(instruction)
       : z.string().describe(instruction)
   }
 

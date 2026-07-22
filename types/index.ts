@@ -231,6 +231,10 @@ export interface AiOutputField {
 export interface AiOutputProfile {
   profile: string;
   fields: AiOutputField[];
+  /** Non-default profiles inherit Default fields; `false` is not a valid persisted state. */
+  inherit?: true;
+  /** Default field keys intentionally omitted from this language profile. */
+  exclude?: string[];
 }
 
 /**

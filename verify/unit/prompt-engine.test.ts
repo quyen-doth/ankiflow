@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildEngineCardSpec } from '@/lib/ai-agent/promptEngine'
 import {
+  cloneAiOutputProfiles,
   parseAiOutputProfiles,
   RESERVED_AI_OUTPUT_KEYS,
 } from '@/lib/ai-agent/outputProfiles'
@@ -55,6 +56,25 @@ function schemaProperties(spec: ReturnType<typeof build>) {
   }).properties
 }
 
+function buildArrayInstructionSpec(key: string, instruction: string, maxItems = 2) {
+  return buildEngineCardSpec({
+    definition: {
+      name: 'Legacy Language',
+      primary_field_key: 'prompt',
+      ai_output_profiles: [{
+        profile: 'default',
+        fields: [
+          { key: 'prompt', type: 'string', instruction: 'Primary value' },
+          { key, type: 'string_array', instruction, max_items: maxItems },
+        ],
+      }],
+    },
+    studyLanguage: { code: 'en', name: 'English' },
+    outputLanguage: { code: 'vi', name: 'Vietnamese' },
+    primaryValue: 'sample',
+  })
+}
+
 describe('prompt engine — custom profiles', () => {
   it('exact language profile を選び、なければ default に fallback する', () => {
     expect(Object.keys(schemaProperties(build({ studyCode: 'en-GB' })))).toEqual(['prompt', 'answer'])
@@ -72,6 +92,54 @@ describe('prompt engine — custom profiles', () => {
     expect(vietnamese.sources?.maxItems).toBe(3)
     expect(vietnamese).toHaveProperty('local_note')
     expect(english).not.toHaveProperty('local_note')
+  })
+
+  it('保存済み built-in の旧 array instruction を max_items と一致する template に読み替える', () => {
+    const cases = [
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases with {output_language} meanings in parentheses',
+        expected: 'Up to 2 of the most important collocations, each with its Vietnamese meaning in parentheses',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common collocations with {output_language} meanings in parentheses',
+        expected: 'Up to 2 of the most important collocations, each with its Vietnamese meaning in parentheses',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases or measure-word combinations with {output_language} meanings',
+        expected: 'Up to 2 of the most important phrases or measure-word combinations, each with its Vietnamese meaning',
+      },
+      {
+        key: 'collocations',
+        instruction: '3-5 common phrases or particle combinations with {output_language} meanings',
+        expected: 'Up to 2 of the most important phrases or particle combinations, each with its Vietnamese meaning',
+      },
+      {
+        key: 'related_words',
+        instruction: 'Related words with {output_language} meanings',
+        expected: 'Up to 2 of the most important related words, each with its Vietnamese meaning',
+      },
+    ]
+
+    for (const testCase of cases) {
+      const property = schemaProperties(
+        buildArrayInstructionSpec(testCase.key, testCase.instruction),
+      )[testCase.key]
+      expect(property.maxItems).toBe(2)
+      expect(property.description).toBe(testCase.expected)
+    }
+  })
+
+  it('exact-match しない custom array instruction は変更しない', () => {
+    const instruction = 'Return 3-5 custom collocations selected by the workspace owner'
+    const property = schemaProperties(
+      buildArrayInstructionSpec('collocations', instruction),
+    ).collocations
+
+    expect(property.maxItems).toBe(2)
+    expect(property.description).toBe(instruction)
   })
 
   it('user context は label を使用し、blank/primary duplicate を除外する', () => {
@@ -144,6 +212,51 @@ describe('AI output profile validation', () => {
         include_when: 'output_vi',
       }],
     }], 'prompt')).toThrow('must always be included')
+  })
+
+  it('明示的な inheritance は空の own fields を許可し、metadata を round-trip する', () => {
+    const parsed = parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: true,
+        exclude: [],
+        fields: [],
+      },
+    ], 'prompt')
+
+    expect(parseAiOutputProfiles(cloneAiOutputProfiles(parsed), 'prompt')).toEqual(parsed)
+    expect(parsed[1]).toEqual({ profile: 'fr', inherit: true, exclude: [], fields: [] })
+  })
+
+  it('inherit=false と primary field の exclude を拒否する', () => {
+    expect(() => parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: false,
+        fields: [],
+      },
+    ], 'prompt')).toThrow()
+
+    expect(() => parseAiOutputProfiles([
+      {
+        profile: 'default',
+        fields: [{ key: 'prompt', type: 'string', instruction: 'Prompt' }],
+      },
+      {
+        profile: 'fr',
+        inherit: true,
+        exclude: ['prompt'],
+        fields: [],
+      },
+    ], 'prompt')).toThrow('cannot exclude primary field')
   })
 
   it('string field の max_items と不正 profile key を拒否する', () => {
