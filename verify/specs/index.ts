@@ -54,6 +54,7 @@ import './language-form.verify'
 import './it-form.verify'
 import './general-form.verify'
 import './configured-card-form.verify'
+import './batch-preview-discard.verify'
 
 // Phase D — admin/ managers + feature spec
 import './category-manager.verify'
