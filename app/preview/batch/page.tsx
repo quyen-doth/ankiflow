@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { FlashcardReviewLayout } from "@/components/review/FlashcardReviewLayout";
 import { BatchNavStrip } from "@/components/review/BatchNavStrip";
 import { ValidationBanner } from "@/components/review/ValidationBanner";
@@ -15,6 +16,7 @@ import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
 import { resolveCustomFields } from "@/lib/entryCustomFields";
+import { discardBatchEntry } from "@/lib/preview/discardBatchEntry";
 import { languageDisplayName } from "@/lib/studyLanguages";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -23,7 +25,8 @@ import type { Entry, CardTypeConfig, UserContentType } from "@/types";
 type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">;
 
 // ── 表示中カードの Reviewer ──────────────────────────────────────────────
-// component に分離して parent 側で key={activeIndex} を付ける → カード切替で remount し、
+// component に分離して parent 側で active index + batch 件数の key を付ける → カード切替や
+// discard 後に remount し、
 // useCardMedia が新カードに対して再実行される (lazy)。生成済み audio は配列内の entry に
 // 保存されるため、戻ってきても再生成しない (cached)。
 interface BatchCardReviewerProps {
@@ -97,6 +100,7 @@ function BatchCardReviewer({
 // ── Trang review batch ─────────────────────────────────────────────────────
 export default function BatchPreviewPage() {
     const router = useRouter();
+    const toast = useToast();
 
     const {
         entries,
@@ -112,9 +116,11 @@ export default function BatchPreviewPage() {
     } = usePreviewBatch();
 
     const [activeIndex, setActiveIndex] = useState(0);
+    const [discardOpen, setDiscardOpen] = useState(false);
 
     const total = entries.length;
     const activeEntry = entries[activeIndex] ?? {};
+    const activeEntryLabel = activeEntry.word || activeEntry.term || activeEntry.title || `Card ${activeIndex + 1}`;
 
     const updateActiveField = useCallback(
         (field: keyof Entry, value: unknown) => {
@@ -171,6 +177,22 @@ export default function BatchPreviewPage() {
 
     const ankiConnected = useAnkiConnection();
 
+    const handleDiscard = useCallback(() => {
+        setDiscardOpen(false);
+        clearInvalid();
+
+        if (total === 1) {
+            toast.success("Batch discarded");
+            router.push("/create");
+            return;
+        }
+
+        const result = discardBatchEntry(entries, activeIndex);
+        setEntries(result.entries);
+        setActiveIndex(result.nextActiveIndex);
+        toast.success("Card discarded");
+    }, [activeIndex, clearInvalid, entries, router, setEntries, toast, total]);
+
     const goPrev = useCallback(() => setActiveIndex((i) => Math.max(0, i - 1)), []);
     const goNext = useCallback(() => setActiveIndex((i) => Math.min(total - 1, i + 1)), [total]);
 
@@ -180,9 +202,10 @@ export default function BatchPreviewPage() {
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                if (!isExporting) requestExport();
+                if (!isExporting && !discardOpen) requestExport();
                 return;
             }
+            if (discardOpen) return;
             if (e.key !== "Tab") return;
             const el = document.activeElement;
             const typing = el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
@@ -193,7 +216,7 @@ export default function BatchPreviewPage() {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [isExporting, requestExport, goPrev, goNext]);
+    }, [discardOpen, isExporting, requestExport, goPrev, goNext]);
 
     useEffect(() => {
         if (!confirmOpen || isExporting) return;
@@ -244,6 +267,15 @@ export default function BatchPreviewPage() {
                 Next
             </Button>
             <Button
+                variant="ghost"
+                onClick={() => setDiscardOpen(true)}
+                disabled={isExporting || isSaving}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+                className="text-danger hover:bg-danger-bg"
+            >
+                Discard
+            </Button>
+            <Button
                 variant="secondary"
                 onClick={handleSaveAll}
                 disabled={isSaving || isExporting}
@@ -284,7 +316,7 @@ export default function BatchPreviewPage() {
     return (
         <MotionPage>
             <BatchCardReviewer
-                key={activeIndex}
+                key={`${activeIndex}:${total}`}
                 entry={activeEntry}
                 setEntry={setActiveEntry}
                 contentType={contentType}
@@ -304,6 +336,26 @@ export default function BatchPreviewPage() {
                     ) : null
                 }
             />
+
+            <Modal
+                open={discardOpen}
+                onClose={() => setDiscardOpen(false)}
+                title="Discard this card?"
+                size="sm"
+            >
+                <p className="text-sm font-bold text-ink mb-2">{activeEntryLabel}</p>
+                <p className="text-sm text-slate-600">
+                    This card will be removed from the batch. This cannot be undone.
+                </p>
+                <div className="flex gap-3 justify-end mt-5">
+                    <Button variant="ghost" onClick={() => setDiscardOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={handleDiscard}>
+                        Discard
+                    </Button>
+                </div>
+            </Modal>
 
             <Modal
                 open={confirmOpen}
