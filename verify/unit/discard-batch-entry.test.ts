@@ -36,4 +36,31 @@ describe('discardBatchEntry', () => {
     const result = discardBatchEntry(ENTRIES, index)
     expect(result.entries).toBe(ENTRIES)
   })
+
+  describe('activeIndex 付き (表示中でないカードの破棄)', () => {
+    it('表示中より前を破棄 → activeIndex が 1 繰り上がり同じカードを指す', () => {
+      expect(discardBatchEntry(ENTRIES, 0, 2)).toEqual({
+        entries: ['second', 'third'],
+        nextActiveIndex: 1,
+      })
+    })
+
+    it('表示中より後を破棄 → activeIndex は変わらない', () => {
+      expect(discardBatchEntry(ENTRIES, 2, 0)).toEqual({
+        entries: ['first', 'second'],
+        nextActiveIndex: 0,
+      })
+    })
+
+    it('表示中そのものを破棄 (activeIndex 明示) → 同じ位置の次カード', () => {
+      expect(discardBatchEntry(ENTRIES, 1, 1)).toEqual({
+        entries: ['first', 'third'],
+        nextActiveIndex: 1,
+      })
+    })
+
+    it('末尾を表示中に末尾を破棄 → 一つ前へ clamp', () => {
+      expect(discardBatchEntry(ENTRIES, 2, 2).nextActiveIndex).toBe(1)
+    })
+  })
 })

@@ -75,10 +75,13 @@ function findButton(root: HTMLElement, label: string, occurrence = 0): HTMLButto
   return button
 }
 
-async function discardActiveCard(root: HTMLElement, wait: (ms: number) => Promise<void>): Promise<void> {
-  findButton(root, 'Discard').click()
+async function discardCard(root: HTMLElement, wait: (ms: number) => Promise<void>, cardNumber = 1): Promise<void> {
+  // chip 内の × (span[role=button]) → 確認 modal の Discard ボタン。
+  const x = root.querySelector<HTMLElement>(`[role="button"][aria-label="Discard card ${cardNumber}"]`)
+  if (!x) throw new Error(`Chip の × (Discard card ${cardNumber}) が見つかりません`)
+  x.click()
   await wait(20)
-  findButton(root, 'Discard', 1).click()
+  findButton(root, 'Discard').click()
   await wait(20)
 }
 
@@ -106,7 +109,24 @@ registerUnit<Record<string, never>>({
       },
       act: async ctx => {
         await ctx.wait(100)
-        await discardActiveCard(ctx.root, ctx.wait)
+        await discardCard(ctx.root, ctx.wait)
+      },
+    },
+    {
+      id: 'discard-nonactive-card',
+      description: '表示中でない 3 件目を chip の × から破棄しても表示中カードは変わらない。',
+      props: {},
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { [PENDING_BATCH_KEY]: pendingBatch('Alpha content') },
+        pathname: '/preview/batch',
+        fetch: [
+          { match: 'localhost:8765', response: { json: { result: 6, error: null } } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(100)
+        await discardCard(ctx.root, ctx.wait, 3)
       },
     },
     {
@@ -128,7 +148,7 @@ registerUnit<Record<string, never>>({
         findButton(ctx.root, 'Save all (3)').click()
         await ctx.wait(20)
         validationFlow.bannerWasVisible = ctx.root.querySelector('[role="alert"]') !== null
-        await discardActiveCard(ctx.root, ctx.wait)
+        await discardCard(ctx.root, ctx.wait)
       },
     },
   ],
@@ -136,6 +156,7 @@ registerUnit<Record<string, never>>({
     {
       id: 'discard-updates-batch-and-shows-next-card',
       description: '破棄後は件数が 2 になり、元の 2 件目を新しい先頭として表示する。',
+      onlyFixtures: ['discard-first-card', 'probe-clears-validation-banner'],
       check: ({ root }) => {
         const text = root.textContent ?? ''
         const firstTab = root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')
@@ -146,6 +167,21 @@ registerUnit<Record<string, never>>({
           && firstTab?.getAttribute('aria-label') === 'Card 1: Beta'
           && !text.includes('Discard this card?')
         ) || `text=${text.slice(0, 300)}, active=${firstTab?.getAttribute('aria-label')}`
+      },
+    },
+    {
+      id: 'discard-nonactive-keeps-current-card',
+      description: '表示中でないカードの破棄後も表示中カード (Alpha) を維持する。',
+      onlyFixtures: ['discard-nonactive-card'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        const activeTab = root.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')
+        return (
+          text.includes('Save all (2)')
+          && text.includes('Reviewing card 1 of 2')
+          && activeTab?.getAttribute('aria-label') === 'Card 1: Alpha'
+          && !text.includes('Gamma')
+        ) || `text=${text.slice(0, 300)}, active=${activeTab?.getAttribute('aria-label')}`
       },
     },
     {

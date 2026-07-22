@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -116,11 +116,15 @@ export default function BatchPreviewPage() {
     } = usePreviewBatch();
 
     const [activeIndex, setActiveIndex] = useState(0);
-    const [discardOpen, setDiscardOpen] = useState(false);
+    // 破棄対象の index (null = modal 非表示)。chip の × からどのカードでも指定できる。
+    const [discardIndex, setDiscardIndex] = useState<number | null>(null);
 
     const total = entries.length;
     const activeEntry = entries[activeIndex] ?? {};
-    const activeEntryLabel = activeEntry.word || activeEntry.term || activeEntry.title || `Card ${activeIndex + 1}`;
+    const discardEntry = discardIndex !== null ? entries[discardIndex] : undefined;
+    const discardLabel = discardEntry
+        ? discardEntry.word || discardEntry.term || discardEntry.title || `Card ${(discardIndex ?? 0) + 1}`
+        : "";
 
     const updateActiveField = useCallback(
         (field: keyof Entry, value: unknown) => {
@@ -178,7 +182,8 @@ export default function BatchPreviewPage() {
     const ankiConnected = useAnkiConnection();
 
     const handleDiscard = useCallback(() => {
-        setDiscardOpen(false);
+        if (discardIndex === null) return;
+        setDiscardIndex(null);
         clearInvalid();
 
         if (total === 1) {
@@ -187,11 +192,11 @@ export default function BatchPreviewPage() {
             return;
         }
 
-        const result = discardBatchEntry(entries, activeIndex);
+        const result = discardBatchEntry(entries, discardIndex, activeIndex);
         setEntries(result.entries);
         setActiveIndex(result.nextActiveIndex);
         toast.success("Card discarded");
-    }, [activeIndex, clearInvalid, entries, router, setEntries, toast, total]);
+    }, [activeIndex, clearInvalid, discardIndex, entries, router, setEntries, toast, total]);
 
     const goPrev = useCallback(() => setActiveIndex((i) => Math.max(0, i - 1)), []);
     const goNext = useCallback(() => setActiveIndex((i) => Math.min(total - 1, i + 1)), [total]);
@@ -202,10 +207,10 @@ export default function BatchPreviewPage() {
         const handler = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                if (!isExporting && !discardOpen) requestExport();
+                if (!isExporting && discardIndex === null) requestExport();
                 return;
             }
-            if (discardOpen) return;
+            if (discardIndex !== null) return;
             if (e.key !== "Tab") return;
             const el = document.activeElement;
             const typing = el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
@@ -216,7 +221,7 @@ export default function BatchPreviewPage() {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [discardOpen, isExporting, requestExport, goPrev, goNext]);
+    }, [discardIndex, isExporting, requestExport, goPrev, goNext]);
 
     useEffect(() => {
         if (!confirmOpen || isExporting) return;
@@ -267,15 +272,6 @@ export default function BatchPreviewPage() {
                 Next
             </Button>
             <Button
-                variant="ghost"
-                onClick={() => setDiscardOpen(true)}
-                disabled={isExporting || isSaving}
-                leftIcon={<Trash2 className="w-4 h-4" />}
-                className="text-danger hover:bg-danger-bg"
-            >
-                Discard
-            </Button>
-            <Button
                 variant="secondary"
                 onClick={handleSaveAll}
                 disabled={isSaving || isExporting}
@@ -309,6 +305,7 @@ export default function BatchPreviewPage() {
                 selectedCardTypeIds={selectedCardTypeIds}
                 activeIndex={activeIndex}
                 onSelect={setActiveIndex}
+                onDiscard={isExporting || isSaving ? undefined : setDiscardIndex}
             />
         </div>
     );
@@ -338,17 +335,17 @@ export default function BatchPreviewPage() {
             />
 
             <Modal
-                open={discardOpen}
-                onClose={() => setDiscardOpen(false)}
+                open={discardIndex !== null}
+                onClose={() => setDiscardIndex(null)}
                 title="Discard this card?"
                 size="sm"
             >
-                <p className="text-sm font-bold text-ink mb-2">{activeEntryLabel}</p>
+                <p className="text-sm font-bold text-ink mb-2">{discardLabel}</p>
                 <p className="text-sm text-slate-600">
                     This card will be removed from the batch. This cannot be undone.
                 </p>
                 <div className="flex gap-3 justify-end mt-5">
-                    <Button variant="ghost" onClick={() => setDiscardOpen(false)}>
+                    <Button variant="ghost" onClick={() => setDiscardIndex(null)}>
                         Cancel
                     </Button>
                     <Button variant="destructive" onClick={handleDiscard}>

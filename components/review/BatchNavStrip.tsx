@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Check, AlertCircle } from 'lucide-react'
+import { Check, AlertCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { staggerContainer, staggerItem } from '@/lib/motion'
 import { validateCardEntry } from '@/lib/cardValidation'
@@ -12,13 +12,15 @@ interface BatchNavStripProps {
   selectedCardTypeIds: string[]
   activeIndex: number
   onSelect: (index: number) => void
+  /** chip の × から該当カードの破棄を要求する (確認は呼び出し側)。 */
+  onDiscard?: (index: number) => void
 }
 
 /**
  * batch 内カードのナビゲーション chip バー。各 chip は番号 + validateCardEntry による
  * 有効状態 (緑 = field 充足 / 赤 = 不足) を表示。現在の chip は強調される。
  */
-export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSelect }: BatchNavStripProps) {
+export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSelect, onDiscard }: BatchNavStripProps) {
   return (
     <motion.div
       className="flex flex-wrap items-center gap-2"
@@ -62,6 +64,20 @@ export function BatchNavStrip({ entries, selectedCardTypeIds, activeIndex, onSel
             <span className="truncate">
               {index + 1}. {label}
             </span>
+            {onDiscard && (
+              // button 内に button は置けない (invalid HTML) → span[role=button] で代替。
+              <span
+                role="button"
+                aria-label={`Discard card ${index + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDiscard(index)
+                }}
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0 text-slate-400 hover:text-danger hover:bg-danger-bg transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </span>
+            )}
           </motion.button>
         )
       })}
