@@ -213,6 +213,53 @@ describe('validateSelectedCardTypes — template-aware content', () => {
     }, [cardType.id], [cardType])).toEqual([])
   })
 
+  it('例文 audio data URL は audio_example block の content として扱う', () => {
+    const cardType: CardValidationCardType = {
+      id: 'ct-example-audio',
+      name: 'Example audio → Word',
+      template: { front: ['audio_example'], back: ['word'] },
+    }
+
+    expect(validateSelectedCardTypes({
+      word: 'hello',
+      audio_example_url: 'data:audio/mp3;base64,QQ==',
+    }, [cardType.id], [cardType])).toEqual([])
+  })
+
+  it('明示 media に例文 audio filename がなければ data URL へ fallback しない', () => {
+    const cardType: CardValidationCardType = {
+      id: 'ct-example-audio-only',
+      name: 'Example audio → Word',
+      template: { front: ['audio_example'], back: ['word'] },
+    }
+
+    expect(validateSelectedCardTypes({
+      word: 'hello',
+      audio_example_url: 'data:audio/mp3;base64,QQ==',
+    }, [cardType.id], [cardType], {
+      media: { audioExampleFilename: undefined },
+    }).map(error => error.field)).toEqual([
+      'card_type:ct-example-audio-only:front',
+    ])
+  })
+
+  it('audio_example が空でも同じ side に別 content があれば通過する', () => {
+    const cardType: CardValidationCardType = {
+      id: 'ct-optional-example-audio',
+      name: 'Word → Meaning with optional example audio',
+      template: {
+        front: ['word'],
+        back: ['meaning', 'audio_example'],
+      },
+    }
+
+    expect(validateSelectedCardTypes(
+      { word: 'hello', meaning_vi: 'xin chào' },
+      [cardType.id],
+      [cardType],
+    )).toEqual([])
+  })
+
   it('不正な media data URL は content として扱わない', () => {
     const cardType: CardValidationCardType = {
       id: 'ct-broken-media',
@@ -269,6 +316,21 @@ describe('validateSelectedCardTypes — template-aware content', () => {
 
     expect(validateCardEntry(
       { anki_deck: 'Existing', anki_note_ids: [1] },
+      [cardType.id],
+      [cardType],
+      { assumeExistingMedia: true },
+    )).toEqual([])
+  })
+
+  it('History の既存例文 audio も placeholder content として扱う', () => {
+    const cardType: CardValidationCardType = {
+      id: 'ct-existing-example-audio',
+      name: 'Example audio → Word',
+      template: { front: ['audio_example'], back: ['word'] },
+    }
+
+    expect(validateCardEntry(
+      { word: 'hello', anki_deck: 'Existing', anki_note_ids: [1] },
       [cardType.id],
       [cardType],
       { assumeExistingMedia: true },

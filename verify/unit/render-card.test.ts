@@ -35,6 +35,29 @@ describe('renderSide — audio rendering', () => {
     const html = renderSide(['audio'], ENTRY, { side: 'back', audioIcon: true })
     expect(html).toBe('')
   })
+
+  it('audio_example は専用 filename を [sound:] としてレンダリングする', () => {
+    const html = renderSide(['audio_example'], ENTRY, {
+      side: 'back',
+      audioExampleFilename: 'ankiflow_audio_ex_hello.mp3',
+    })
+    expect(html).toContain('[sound:ankiflow_audio_ex_hello.mp3]')
+    expect(html).not.toContain('audio-chip')
+  })
+
+  it('audio_example preview は専用 chip label を表示する', () => {
+    const html = renderSide(['audio_example'], ENTRY, {
+      side: 'back',
+      audioExampleFilename: 'preview',
+      audioIcon: true,
+    })
+    expect(html).toContain('🔊 Example audio')
+    expect(html).not.toContain('[sound:')
+  })
+
+  it('audioExampleFilename がない audio_example block は非表示', () => {
+    expect(renderSide(['audio_example'], ENTRY, { side: 'back' })).toBe('')
+  })
 })
 
 describe('renderSide — han_viet', () => {
@@ -161,6 +184,7 @@ describe('card field source helpers', () => {
 
   it('builtin/custom label を解決する', () => {
     expect(getFieldLabel('meaning')).toBe('Meaning')
+    expect(getFieldLabel('audio_example')).toBe('Example audio')
     expect(getFieldLabel('custom:phon_the')).toBe('Phon the')
     expect(getFieldLabel('custom:phon_the', { phon_the: 'Traditional form' })).toBe('Traditional form')
   })
@@ -172,7 +196,7 @@ describe('card field source helpers', () => {
   it('正しい builtin/custom source を template schema が受け入れる', () => {
     expect(cardTemplateSchema.safeParse({
       front: ['word'],
-      back: ['meaning', 'custom:phon_the'],
+      back: ['meaning', 'audio_example', 'custom:phon_the'],
     }).success).toBe(true)
   })
 })

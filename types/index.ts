@@ -151,6 +151,7 @@ export type BuiltinCardFieldSource =
   | 'collocations'
   | 'image'
   | 'audio'
+  | 'audio_example'
 
 export type CardFieldSource = BuiltinCardFieldSource | `custom:${string}`
 

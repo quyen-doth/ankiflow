@@ -18,11 +18,16 @@ interface AnkiNote {
 
 export type { CardTypeItem, AnkiNote }
 
+export interface BuildNotesMedia {
+  audioFilename?: string
+  audioExampleFilename?: string
+  imageFilename?: string
+}
+
 export function buildNotes(
   entry: Partial<Entry>,
   cardTypes: CardTypeItem[],
-  audioFilename?: string,
-  imageFilename?: string,
+  media: BuildNotesMedia = {},
 ): AnkiNote[] {
   const deckName = entry.anki_deck || 'Default'
   const tags = [...(entry.tags || []), ...(entry.language ? [entry.language] : [])]
@@ -30,8 +35,8 @@ export function buildNotes(
   return cardTypes.map(ct => {
     const template = resolveCardTemplate(ct)
 
-    const front = renderSide(template.front, entry, { audioFilename, imageFilename, side: 'front' })
-    const back = renderSide(template.back, entry, { audioFilename, imageFilename, side: 'back' })
+    const front = renderSide(template.front, entry, { ...media, side: 'front' })
+    const back = renderSide(template.back, entry, { ...media, side: 'back' })
 
     return {
       deckName,

@@ -28,6 +28,16 @@ test('Card Template editor は custom field option を追加して preview す�
     .toHaveAttribute('srcdoc', /Sample Traditional form/)
 })
 
+test('Card Template editor は Example audio capability を追加して preview する', async ({ page }) => {
+  await page.goto('/verify/CardTemplateEditor/custom-options?chrome=0')
+
+  await page.getByRole('combobox', { name: 'Add field to back' }).selectOption('audio_example')
+
+  await expect(page.getByRole('button', { name: 'Remove Example audio' })).toBeVisible()
+  await expect(page.locator('iframe[title="Card preview"]'))
+    .toHaveAttribute('srcdoc', /🔊 Example audio/)
+})
+
 test('Preview additional fields は custom value を編集できる', async ({ page }) => {
   await page.goto('/verify/AdditionalFields/custom-values?chrome=0')
 

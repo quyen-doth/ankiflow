@@ -47,23 +47,50 @@ registerUnit<Record<string, never>>({
   kind: 'component',
   render: () => <CardTemplateEditorHarness />,
   propsSchema: z.object({}),
-  fixtures: [{
-    id: 'custom-options',
-    probe: true,
-    description: 'custom fields を Front/Back の追加候補として表示する。',
-    props: {},
-  }],
+  fixtures: [
+    {
+      id: 'custom-options',
+      probe: true,
+      description: 'builtin capability と custom fields を Front/Back の追加候補として表示する。',
+      props: {},
+    },
+    {
+      id: 'act-add-example-audio',
+      description: 'Example audio builtin を追加すると preview chip を表示する。',
+      props: {},
+      act: async ctx => {
+        const select = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add field to back"]')
+        if (!select) throw new Error('back field select が見つからない')
+        select.value = 'audio_example'
+        select.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+  ],
   invariants: [
     {
       id: 'custom-options-visible',
       description: 'custom source と label が追加 select に含まれる',
+      onlyFixtures: ['custom-options'],
       check: ({ root }) => {
         const select = root.querySelector<HTMLSelectElement>('select[aria-label="Add field to back"]')
         const options = Array.from(select?.options ?? [])
         const traditional = options.find(option => option.value === 'custom:phon_the')
         const related = options.find(option => option.value === 'custom:related_words')
+        const exampleAudio = options.find(option => option.value === 'audio_example')
         if (traditional?.textContent !== 'Traditional form') return 'Traditional form option がない'
-        return related?.textContent === 'Related words' || 'Related words option がない'
+        if (related?.textContent !== 'Related words') return 'Related words option がない'
+        return exampleAudio?.textContent === 'Example audio' || 'Example audio option がない'
+      },
+    },
+    {
+      id: 'example-audio-preview-visible',
+      description: 'Example audio block は admin preview で専用 chip を表示する',
+      onlyFixtures: ['act-add-example-audio'],
+      check: ({ root }) => {
+        const iframe = root.querySelector<HTMLIFrameElement>('iframe[title="Card preview"]')
+        return iframe?.getAttribute('srcdoc')?.includes('🔊 Example audio')
+          || 'Example audio preview chip が表示されない'
       },
     },
   ],
