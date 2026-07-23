@@ -26,6 +26,10 @@ const FIRESTORE_SEED = {
       name: 'Title → Content',
       description: 'Review the content from its title',
       form_type: FormType.GENERAL,
+      template: {
+        front: ['word'],
+        back: ['meaning'],
+      },
       is_default: true,
       is_active: true,
       sort_order: 1,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_TEMPLATES, getFieldLabel, renderSide } from '@/lib/anki/renderCard'
+import {
+  DEFAULT_TEMPLATES,
+  getFieldLabel,
+  renderSide,
+  resolveCardTemplate,
+} from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import { ANKI_CARD_CSS } from '@/lib/anki/model'
 import type { Entry } from '@/types'
@@ -70,6 +75,30 @@ describe('renderSide — core', () => {
     const html = renderSide(['collocations', 'image'], ENTRY, { side: 'back' })
     expect(html).toBe('')
   })
+
+  it('legacy alias を canonical block としてレンダリングする', () => {
+    const html = renderSide(
+      ['meaning', 'word_type', 'example'],
+      {
+        definition_vi: 'Legacy definition',
+        word_type_vi: 'Legacy type',
+        example_usage: 'Legacy example',
+      } as Partial<Entry>,
+      { side: 'back' },
+    )
+
+    expect(html).toContain('Legacy definition')
+    expect(html).toContain('Legacy type')
+    expect(html).toContain('Legacy example')
+  })
+
+  it('空白だけの builtin value は content としてレンダリングしない', () => {
+    expect(renderSide(
+      ['word', 'meaning'],
+      { word: '   ', meaning_vi: '\n\t' },
+      { side: 'front' },
+    )).toBe('')
+  })
 })
 
 describe('renderSide — custom fields', () => {
@@ -104,6 +133,19 @@ describe('renderSide — custom fields', () => {
     expect(renderSide(
       ['custom:phon_the'],
       { ...ENTRY, phon_the: ['valid', 42] } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+  })
+
+  it('空白だけの custom string/string[] は表示しない', () => {
+    expect(renderSide(
+      ['custom:phon_the'],
+      { phon_the: '   ' } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+    expect(renderSide(
+      ['custom:usage_notes'],
+      { usage_notes: [' ', '\n'] } as Partial<Entry>,
       { side: 'back' },
     )).toBe('')
   })
@@ -211,5 +253,22 @@ describe('DEFAULT_TEMPLATES — backward-compatible golden output', () => {
     ]))
 
     expect(rendered).toEqual(expected)
+  })
+})
+
+describe('resolveCardTemplate — safe fallback', () => {
+  it('prototype key の code を own template として扱わない', () => {
+    expect(resolveCardTemplate({
+      id: 'legacy-constructor',
+      code: 'constructor',
+    })).toBe(DEFAULT_TEMPLATES.word_to_meaning)
+  })
+
+  it('破損した persisted template は default へ fallback する', () => {
+    expect(resolveCardTemplate({
+      id: 'broken',
+      code: 'meaning_to_word',
+      template: { front: [], back: ['word'] },
+    })).toBe(DEFAULT_TEMPLATES.meaning_to_word)
   })
 })

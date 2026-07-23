@@ -7,6 +7,8 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingBatch, clearPendingBatch } from '@/lib/pendingBatch'
 import { findEntryContentType } from '@/lib/entryCustomFields'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
+import { matchesLanguageScope } from '@/lib/studyLanguages'
+import { normalizeEntryAliases } from '@/lib/entryAliases'
 import type { PendingBatch } from '@/lib/pendingBatch'
 import { FormType } from '@/types'
 import type { Entry, CardTypeConfig, UserContentType } from '@/types'
@@ -26,25 +28,17 @@ interface PreviewBatchState {
   error: string | null
 }
 
-function nonEmptyGeneratedString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value : null
-}
-
 export function mapPendingBatchToPreview(
   pending: PendingBatch,
   ankiDeckName: string,
 ): Partial<Entry>[] {
   return pending.items.map((content) => {
-    const generated = content as Record<string, unknown>
-    const wordType = nonEmptyGeneratedString(generated.word_type)
-      ?? nonEmptyGeneratedString(generated.word_type_vi)
-      ?? ''
-    const definition = nonEmptyGeneratedString(generated.definition)
-      ?? nonEmptyGeneratedString(generated.definition_vi)
+    const generated = normalizeEntryAliases(
+      content as Partial<Entry> & Record<string, unknown>,
+    )
     return {
-      ...(content as Partial<Entry>),
-      word_type: wordType,
-      ...(definition ? { definition } : {}),
+      ...generated,
+      word_type: generated.word_type ?? '',
       form_type: pending.formType,
       language: pending.language ?? undefined,
       output_language: pending.outputLanguage,
@@ -119,6 +113,7 @@ export function usePreviewBatch(): PreviewBatchState {
           id: string
           name: string
           description?: string
+          code?: string
           sort_order?: number
           is_active?: boolean
           language?: string | null
@@ -129,8 +124,7 @@ export function usePreviewBatch(): PreviewBatchState {
           .map(d => ({ id: d.id, ...(d.data() as Omit<FetchedCardType, 'id'>) }))
           .filter(ct => {
             if (ct.is_active === false) return false
-            if (!pending.language) return true
-            return !ct.language || ct.language === pending.language
+            return matchesLanguageScope(ct.language, pending.language)
           })
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 
@@ -138,12 +132,12 @@ export function usePreviewBatch(): PreviewBatchState {
           id: ct.id,
           name: ct.name,
           description: ct.description,
-          code: (ct as Record<string, unknown>).code as string || ct.id,
+          code: ct.code || ct.id,
           template: ct.template,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0
-          ? pending.cardTypeIds.filter(id => fetched.some(ct => ct.id === id))
+          ? pending.cardTypeIds
           : fetched.map(ct => ct.id)
         setSelectedCardTypeIds(preSelected)
       } catch (firestoreErr) {

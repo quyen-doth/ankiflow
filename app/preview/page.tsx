@@ -73,7 +73,7 @@ export default function PreviewPage() {
     const toast = useToast();
 
     const handleSaveOnly = useCallback(async () => {
-        const errors = validateCardEntry(entry, selectedCardTypeIds);
+        const errors = validateCardEntry(entry, selectedCardTypeIds, cardTypes);
         if (errors.length > 0) {
             setInvalid([{ index: 0, errors }]);
             return;
@@ -94,16 +94,16 @@ export default function PreviewPage() {
         }
     }, [entry, selectedCardTypeIds, cardTypes, toast, router]);
 
-    // 確認 modal を開く前に validate — 必須 field 不足 / 画像サイズ超過なら阻止。
+    // 確認 modal を開く前に validate — Card Type の空 side / 画像サイズ超過なら阻止。
     const requestConfirm = useCallback(() => {
-        const errors = validateCardEntry(entry, selectedCardTypeIds);
+        const errors = validateCardEntry(entry, selectedCardTypeIds, cardTypes);
         if (errors.length > 0) {
             setInvalid([{ index: 0, errors }]);
             return;
         }
         setInvalid([]);
         setConfirmOpen(true);
-    }, [entry, selectedCardTypeIds, setConfirmOpen]);
+    }, [entry, selectedCardTypeIds, cardTypes, setConfirmOpen]);
 
     // Keyboard shortcut: Cmd+Enter / Ctrl+Enter to open confirm modal
     useEffect(() => {
