@@ -192,6 +192,7 @@ describe('createNotesForEntry', () => {
     const client = makeClient({ addNotes: vi.fn(async () => [11, 22]) })
     const entry = {
       word: 'resilient',
+      meaning_vi: 'able to recover',
       anki_deck: 'MyDeck',
       tags: [],
       audio_url: 'data:audio/mp3;base64,QUJD',
@@ -209,7 +210,13 @@ describe('createNotesForEntry', () => {
 
   it('audio が http URL (data-URL でない) → メディアを store しない', async () => {
     const client = makeClient()
-    const entry = { word: 'x', anki_deck: 'D', tags: [], audio_url: 'https://cdn/x.mp3' }
+    const entry = {
+      word: 'x',
+      meaning_vi: 'meaning',
+      anki_deck: 'D',
+      tags: [],
+      audio_url: 'https://cdn/x.mp3',
+    }
 
     await createNotesForEntry(client, entry, cardTypes)
 
@@ -223,9 +230,35 @@ describe('createNotesForEntry', () => {
       }),
       addNotes: vi.fn(async () => [1]),
     })
-    const entry = { word: 'x', anki_deck: 'D', tags: [], audio_url: 'data:audio/mp3;base64,QUJD' }
+    const entry = {
+      word: 'x',
+      meaning_vi: 'meaning',
+      anki_deck: 'D',
+      tags: [],
+      audio_url: 'data:audio/mp3;base64,QUJD',
+    }
 
     await expect(createNotesForEntry(client, entry, [cardTypes[0]])).resolves.toEqual([1])
+  })
+
+  it('必須 media の store に失敗して side が空になる場合は note を作成しない', async () => {
+    const client = makeClient({
+      storeMediaFile: vi.fn(async () => {
+        throw new Error('media unavailable')
+      }),
+    })
+    const audioOnly: CardTypeItem = {
+      id: 'ct-audio-only',
+      name: 'Audio → Word',
+      template: { front: ['audio'], back: ['word'] },
+    }
+
+    await expect(createNotesForEntry(
+      client,
+      { word: 'x', anki_deck: 'D', audio_url: 'data:audio/mp3;base64,QUJD' },
+      [audioOnly],
+    )).rejects.toThrow('Audio → Word: Front has no content')
+    expect(client.addNotes).not.toHaveBeenCalled()
   })
 
   it('addNotes が throw (Anki が閉じている) → caller に伝播して処理させる', async () => {
@@ -236,7 +269,11 @@ describe('createNotesForEntry', () => {
     })
 
     await expect(
-      createNotesForEntry(client, { word: 'x', anki_deck: 'D', tags: [] }, cardTypes),
+      createNotesForEntry(
+        client,
+        { word: 'x', meaning_vi: 'meaning', anki_deck: 'D', tags: [] },
+        cardTypes,
+      ),
     ).rejects.toThrow('Failed to fetch')
   })
 })

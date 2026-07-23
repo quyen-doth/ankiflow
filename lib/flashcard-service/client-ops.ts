@@ -18,6 +18,8 @@ import {
 } from '@/lib/anki/model'
 import { regenerateEntryNotes } from '@/lib/anki/regenerateEntryNotes'
 import { buildNotes, type CardTypeItem } from '@/lib/buildNotes'
+import { parseAudioDataUrl, parseImageDataUrl } from '@/lib/anki/mediaDataUrl'
+import { validateSelectedCardTypes } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
 /**
@@ -181,13 +183,12 @@ export async function storeAudioMedia(
   client: IFlashcardService,
   entry: Partial<Entry>,
 ): Promise<string | undefined> {
-  if (!entry.audio_url || !entry.audio_url.startsWith('data:audio')) return undefined
-  const base64 = entry.audio_url.split(',')[1]
-  if (!base64) return undefined
+  const parsed = parseAudioDataUrl(entry.audio_url)
+  if (!parsed) return undefined
   const word = entry.word || entry.term || entry.title || 'audio'
   const fname = `ankiflow_${sanitizeFilename(word)}.mp3`
   try {
-    return await client.storeMediaFile(fname, base64)
+    return await client.storeMediaFile(fname, parsed.base64)
   } catch (e) {
     console.warn('Failed to store audio in Anki media — cards will export without audio:', e)
     return undefined
@@ -199,15 +200,13 @@ export async function storeImageMedia(
   client: IFlashcardService,
   entry: Partial<Entry>,
 ): Promise<string | undefined> {
-  if (!entry.image_url || !entry.image_url.startsWith('data:image')) return undefined
-  const match = entry.image_url.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,(.*)$/)
-  const base64 = match?.[2]
-  if (!base64) return undefined
-  const ext = (match?.[1] || 'png').replace('jpeg', 'jpg')
+  const parsed = parseImageDataUrl(entry.image_url)
+  if (!parsed) return undefined
+  const ext = parsed.subtype.replace('jpeg', 'jpg')
   const word = entry.word || entry.term || entry.title || 'image'
   const fname = `ankiflow_img_${sanitizeFilename(word)}.${ext}`
   try {
-    return await client.storeMediaFile(fname, base64)
+    return await client.storeMediaFile(fname, parsed.base64)
   } catch (e) {
     console.warn('Failed to store image in Anki media — cards will export without image:', e)
     return undefined
@@ -228,6 +227,16 @@ export async function createNotesForEntry(
 ): Promise<number[]> {
   const audioFilename = await storeAudioMedia(client, entry)
   const imageFilename = await storeImageMedia(client, entry)
+
+  const contentErrors = validateSelectedCardTypes(
+    entry,
+    cardTypes.map(cardType => cardType.id),
+    cardTypes,
+    { media: { audioFilename, imageFilename } },
+  )
+  if (contentErrors.length > 0) {
+    throw new Error(`Card content is unavailable: ${contentErrors.map(error => error.label).join(', ')}`)
+  }
 
   const notes = buildNotes(entry, cardTypes, audioFilename, imageFilename)
 

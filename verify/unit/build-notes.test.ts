@@ -159,4 +159,15 @@ describe('buildNotes — audio in all card types', () => {
     expect(notes[0].fields.Back).not.toContain('class="example"')
     expect(notes[0].fields.Back).not.toContain('class="translation"')
   })
+
+  it('prototype key の legacy code は安全な default template へ fallback する', () => {
+    const notes = buildNotes(makeEntry(), [{
+      id: 'ct-constructor',
+      code: 'constructor',
+      name: 'Constructor',
+    }])
+
+    expect(notes[0].fields.Front).toContain('class="word"')
+    expect(notes[0].fields.Back).toContain('class="meaning"')
+  })
 })
