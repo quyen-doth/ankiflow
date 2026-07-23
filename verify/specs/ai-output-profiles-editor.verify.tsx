@@ -121,6 +121,36 @@ registerUnit({
       },
     },
     {
+      id: 'act-add-suggested-field',
+      description: '中国語 profile の preset を選択し、設定済み field として追加する。',
+      props: {},
+      act: async ctx => {
+        const profile = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output profile"]')
+        if (!profile) throw new Error('profile select が見つからない')
+        profile.value = '2'
+        profile.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+
+        const picker = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        if (!picker) throw new Error('AI output field picker が見つからない')
+        picker.value = 'preset:phon_the'
+        picker.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-add-custom-field',
+      description: 'Custom field group から従来どおり空の text field を追加する。',
+      props: {},
+      act: async ctx => {
+        const picker = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        if (!picker) throw new Error('AI output field picker が見つからない')
+        picker.value = 'custom'
+        picker.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
       id: 'default-language-profiles',
       description: 'Language editor starts with Default/English/Chinese/Japanese profiles.',
       props: {},
@@ -290,6 +320,59 @@ registerUnit({
         return !!root.querySelector('button[aria-label="Exclude inherited output ipa"]')
           || '継承 field が表示されない'
       },
+    },
+    {
+      id: 'suggested-field-is-prefilled',
+      description: 'Preset は key/type/instruction を入力済みにし、追加済み option を除外する',
+      onlyFixtures: ['act-add-suggested-field'],
+      check: ({ root }) => {
+        const keys = Array.from(
+          root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]'),
+        )
+        const fieldIndex = keys.findIndex(input => input.value === 'phon_the')
+        if (fieldIndex < 0) return 'phon_the field が追加されていない'
+
+        const type = root.querySelector<HTMLSelectElement>(`select[aria-label="AI output type ${fieldIndex}"]`)
+        const instruction = root.querySelector<HTMLTextAreaElement>(
+          `textarea[aria-label="AI output instruction ${fieldIndex}"]`,
+        )
+        if (type?.value !== 'string') return `type="${type?.value}"`
+        if (!instruction?.value.includes('Return an empty string if identical to the simplified form.')) {
+          return `instruction="${instruction?.value}"`
+        }
+
+        const picker = root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        if (picker?.value !== '') return `picker sentinel="${picker?.value}"`
+        return !picker.querySelector('option[value="preset:phon_the"]')
+          || '追加済み preset が picker に残っている'
+      },
+    },
+    {
+      id: 'custom-field-path-remains-blank',
+      description: 'Custom field は空の string field を追加し、picker を sentinel に戻す',
+      onlyFixtures: ['act-add-custom-field'],
+      check: ({ root }) => {
+        const keys = root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]')
+        const instructions = root.querySelectorAll<HTMLTextAreaElement>(
+          'textarea[aria-label^="AI output instruction"]',
+        )
+        const types = root.querySelectorAll<HTMLSelectElement>('select[aria-label^="AI output type"]')
+        const last = keys.length - 1
+        if (last < 0) return 'custom field が追加されていない'
+        if (keys[last]?.value !== '') return `key="${keys[last]?.value}"`
+        if (instructions[last]?.value !== '') return `instruction="${instructions[last]?.value}"`
+        if (types[last]?.value !== 'string') return `type="${types[last]?.value}"`
+        const picker = root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        return picker?.value === '' || `picker sentinel="${picker?.value}"`
+      },
+    },
+    {
+      id: 'text-only-contract-is-visible',
+      description: 'Custom field の能力境界を editor 内で明示する',
+      onlyFixtures: ['default-language-profiles'],
+      check: ({ root }) => root.textContent?.includes(
+        'Custom fields are text-only. Audio, images and cloze come from system field types.',
+      ) || 'text-only contract が表示されていない',
     },
     {
       id: 'self-identifies',

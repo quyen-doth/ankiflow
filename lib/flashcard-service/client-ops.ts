@@ -19,6 +19,7 @@ import {
 import { regenerateEntryNotes } from '@/lib/anki/regenerateEntryNotes'
 import { buildNotes, type CardTypeItem } from '@/lib/buildNotes'
 import { parseAudioDataUrl, parseImageDataUrl } from '@/lib/anki/mediaDataUrl'
+import { ANKI_EXAMPLE_AUDIO_FILENAME_PREFIX } from '@/lib/anki/mediaFilenames'
 import { validateSelectedCardTypes } from '@/lib/cardValidation'
 import type { Entry } from '@/types'
 
@@ -195,6 +196,23 @@ export async function storeAudioMedia(
   }
 }
 
+/** 例文 audio data-URL を識別可能な filename で Anki media に保存する (best-effort)。 */
+export async function storeAudioExampleMedia(
+  client: IFlashcardService,
+  entry: Partial<Entry>,
+): Promise<string | undefined> {
+  const parsed = parseAudioDataUrl(entry.audio_example_url)
+  if (!parsed) return undefined
+  const word = entry.word || entry.term || entry.title || 'audio'
+  const fname = `${ANKI_EXAMPLE_AUDIO_FILENAME_PREFIX}${sanitizeFilename(word)}.mp3`
+  try {
+    return await client.storeMediaFile(fname, parsed.base64)
+  } catch (e) {
+    console.warn('Failed to store example audio in Anki media — cards will export without it:', e)
+    return undefined
+  }
+}
+
 /** ローカル画像 (data-URL) を Anki media に保存し、保存したファイル名を返す (スキップ/エラー時は undefined)。 */
 export async function storeImageMedia(
   client: IFlashcardService,
@@ -226,19 +244,21 @@ export async function createNotesForEntry(
   cardTypes: CardTypeItem[],
 ): Promise<number[]> {
   const audioFilename = await storeAudioMedia(client, entry)
+  const audioExampleFilename = await storeAudioExampleMedia(client, entry)
   const imageFilename = await storeImageMedia(client, entry)
+  const media = { audioFilename, audioExampleFilename, imageFilename }
 
   const contentErrors = validateSelectedCardTypes(
     entry,
     cardTypes.map(cardType => cardType.id),
     cardTypes,
-    { media: { audioFilename, imageFilename } },
+    { media },
   )
   if (contentErrors.length > 0) {
     throw new Error(`Card content is unavailable: ${contentErrors.map(error => error.label).join(', ')}`)
   }
 
-  const notes = buildNotes(entry, cardTypes, audioFilename, imageFilename)
+  const notes = buildNotes(entry, cardTypes, media)
 
   const deckNames = [...new Set(notes.map((n) => n.deckName))]
   for (const deckName of deckNames) {

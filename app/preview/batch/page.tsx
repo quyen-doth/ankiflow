@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,7 @@ import { useAnkiConnection } from "@/hooks/useAnkiConnection";
 import { useCardMedia } from "@/hooks/useCardMedia";
 import { useStudyLanguages } from "@/components/providers/StudyLanguageProvider";
 import { resolveCustomFields } from "@/lib/entryCustomFields";
+import { selectedCardTypesUseSource } from "@/lib/anki/renderCard";
 import { discardBatchEntry } from "@/lib/preview/discardBatchEntry";
 import { languageDisplayName } from "@/lib/studyLanguages";
 import { doc, getDoc } from "firebase/firestore";
@@ -62,7 +63,11 @@ function BatchCardReviewer({
     subHeader,
     banner,
 }: BatchCardReviewerProps) {
-    const media = useCardMedia(entry, setEntry, !!entry);
+    const usesExampleAudio = useMemo(
+        () => selectedCardTypesUseSource(cardTypes, selectedCardTypeIds, "audio_example"),
+        [cardTypes, selectedCardTypeIds],
+    );
+    const media = useCardMedia(entry, setEntry, !!entry, usesExampleAudio);
     const { languages } = useStudyLanguages();
     const customFields = resolveCustomFields(entry, contentType ?? undefined);
 
@@ -87,6 +92,10 @@ function BatchCardReviewer({
             audioLoading={media.audioLoading}
             onAudioRegenerate={media.generateAudio}
             audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
+            audioExampleUrl={media.audioExampleUrl}
+            audioExampleLoading={media.audioExampleLoading}
+            onAudioExampleRegenerate={media.generateExampleAudio}
+            usesExampleAudio={usesExampleAudio}
             selectedDeckId={selectedDeckId}
             onDeckChange={onDeckChange}
             onDeckClear={onDeckClear}

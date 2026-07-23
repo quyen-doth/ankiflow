@@ -14,6 +14,7 @@ export { parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 
 interface RenderOpts {
   audioFilename?: string
+  audioExampleFilename?: string
   imageFilename?: string
   side?: 'front' | 'back'
   /** Preview only: render audio as an icon chip instead of [sound:filename]. */
@@ -45,6 +46,7 @@ export const FIELD_LABELS: Record<BuiltinCardFieldSource, string> = {
   collocations: 'Collocations',
   image: 'Image',
   audio: 'Audio',
+  audio_example: 'Example audio',
 }
 
 export const ALL_FIELD_SOURCES: BuiltinCardFieldSource[] = [...BUILTIN_CARD_FIELD_SOURCES]
@@ -137,6 +139,11 @@ const FIELD_RENDERERS: Record<BuiltinCardFieldSource, FieldRenderer> = {
     getValue: (_, opts) => opts.audioFilename || '',
     render: (v) => `[sound:${v}]`,
   },
+  audio_example: {
+    label: 'Example audio',
+    getValue: (_, opts) => opts.audioExampleFilename || '',
+    render: (v) => `[sound:${v}]`,
+  },
 }
 
 function prettifyFieldKey(key: string): string {
@@ -177,8 +184,8 @@ export function renderSide(
       const value = renderer.getValue(entry, opts)
       if (!value) return ''
       // Preview: audio は [sound:] ではなく chip icon になる (Anki への export は [sound:] のまま)。
-      if (block === 'audio' && opts.audioIcon) {
-        return '<span class="audio-chip">🔊 Audio</span>'
+      if ((block === 'audio' || block === 'audio_example') && opts.audioIcon) {
+        return `<span class="audio-chip">🔊 ${renderer.label}</span>`
       }
       return renderer.render(value)
     })
@@ -235,6 +242,20 @@ export interface CardTemplateSource {
   id: string
   code?: string
   template?: CardTemplate
+}
+
+/** 選択中の Card Type が指定 field source を実際の template で利用するか判定する。 */
+export function selectedCardTypesUseSource(
+  cardTypes: readonly CardTemplateSource[],
+  selectedCardTypeIds: readonly string[],
+  source: CardFieldSource,
+): boolean {
+  const selectedIds = new Set(selectedCardTypeIds)
+  return cardTypes.some(cardType => {
+    if (!selectedIds.has(cardType.id)) return false
+    const template = resolveCardTemplate(cardType)
+    return template.front.includes(source) || template.back.includes(source)
+  })
 }
 
 /** Firestore の legacy/破損データや prototype key を安全に fallback する。 */

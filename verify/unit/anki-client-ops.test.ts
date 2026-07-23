@@ -8,6 +8,7 @@ import {
   syncAllDecks,
   regenerateNotesForEntry,
   createNotesForEntry,
+  storeAudioExampleMedia,
 } from '@/lib/flashcard-service/client-ops'
 import { ANKI_MODEL_NAME } from '@/lib/anki/model'
 import type { IFlashcardService, AnkiNoteInfo } from '@/lib/flashcard-service/types'
@@ -223,6 +224,40 @@ describe('createNotesForEntry', () => {
     expect(client.storeMediaFile).not.toHaveBeenCalled()
   })
 
+  it('通常 audio と例文 audio を別 filename で store して対応 block に埋め込む', async () => {
+    const client = makeClient({ addNotes: vi.fn(async () => [31]) })
+    const cardType: CardTypeItem = {
+      id: 'ct-two-audio',
+      name: 'Two audio',
+      template: {
+        front: ['audio'],
+        back: ['word', 'audio_example'],
+      },
+    }
+
+    await createNotesForEntry(client, {
+      word: 'hello world',
+      anki_deck: 'D',
+      tags: [],
+      audio_url: 'data:audio/mp3;base64,TUFJTg==',
+      audio_example_url: 'data:audio/mp3;base64,RVhBTVBMRQ==',
+    }, [cardType])
+
+    expect(client.storeMediaFile).toHaveBeenNthCalledWith(
+      1,
+      'ankiflow_hello_world.mp3',
+      'TUFJTg==',
+    )
+    expect(client.storeMediaFile).toHaveBeenNthCalledWith(
+      2,
+      'ankiflow_audio_ex_hello_world.mp3',
+      'RVhBTVBMRQ==',
+    )
+    const notes = (client.addNotes as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(notes[0].fields.Front).toContain('[sound:ankiflow_hello_world.mp3]')
+    expect(notes[0].fields.Back).toContain('[sound:ankiflow_audio_ex_hello_world.mp3]')
+  })
+
   it('storeMediaFile がエラー → best-effort、addNotes は実行される (throw しない)', async () => {
     const client = makeClient({
       storeMediaFile: vi.fn(async () => {
@@ -275,6 +310,23 @@ describe('createNotesForEntry', () => {
         cardTypes,
       ),
     ).rejects.toThrow('Failed to fetch')
+  })
+})
+
+describe('storeAudioExampleMedia', () => {
+  it('不正または data URL でない値は store しない', async () => {
+    const client = makeClient()
+
+    await expect(storeAudioExampleMedia(client, {
+      word: 'hello',
+      audio_example_url: 'https://cdn.example/example.mp3',
+    })).resolves.toBeUndefined()
+    await expect(storeAudioExampleMedia(client, {
+      word: 'hello',
+      audio_example_url: 'data:audio/mp3;base64,not-valid!',
+    })).resolves.toBeUndefined()
+
+    expect(client.storeMediaFile).not.toHaveBeenCalled()
   })
 })
 

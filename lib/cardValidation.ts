@@ -1,5 +1,6 @@
 import { renderSide, resolveCardTemplate } from '@/lib/anki/renderCard'
 import { parseAudioDataUrl, parseImageDataUrl } from '@/lib/anki/mediaDataUrl'
+import type { BuildNotesMedia } from '@/lib/buildNotes'
 import type { CardTemplate, Entry } from '@/types'
 
 export interface CardValidationError {
@@ -16,10 +17,7 @@ export interface CardValidationCardType {
 
 export interface CardValidationOptions {
   /** Media filename を明示した場合、entry の data URL へ fallback しない。 */
-  media?: {
-    audioFilename?: string
-    imageFilename?: string
-  }
+  media?: BuildNotesMedia
   /** History の既存 note 内 media は保存前に取得できないため placeholder として扱う。 */
   assumeExistingMedia?: boolean
 }
@@ -51,11 +49,20 @@ function hasRenderedSideContent(
     ?? (!options.media && (options.assumeExistingMedia || parseAudioDataUrl(entry.audio_url))
       ? 'audio'
       : undefined)
+  const audioExampleFilename = options.media?.audioExampleFilename
+    ?? (!options.media && (options.assumeExistingMedia || parseAudioDataUrl(entry.audio_example_url))
+      ? 'audio-example'
+      : undefined)
   const imageFilename = options.media?.imageFilename
     ?? (!options.media && (options.assumeExistingMedia || parseImageDataUrl(entry.image_url))
       ? 'image'
       : undefined)
-  return renderSide(blocks, entry, { side, audioFilename, imageFilename }).length > 0
+  return renderSide(blocks, entry, {
+    side,
+    audioFilename,
+    audioExampleFilename,
+    imageFilename,
+  }).length > 0
 }
 
 /** 選択済み Card Type が現在利用可能で、各 Front/Back が空でないことを確認する。 */
