@@ -39,6 +39,7 @@ registerUnit<AudioPlayerProps>({
     audioUrl: z.string().nullable(),
     onRegenerate: fn<() => void>(),
     loading: z.boolean().optional(),
+    regenerateDisabled: z.boolean().optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
   }),
@@ -57,6 +58,15 @@ registerUnit<AudioPlayerProps>({
       id: 'loading',
       description: '生成中 — 2 つのボタンは disabled、text は "Generating..."。',
       props: { audioUrl: AUDIO_URL, onRegenerate: noop, loading: true },
+    },
+    {
+      id: 'regenerate-disabled',
+      description: '利用されない capability は再生成を無効化する。',
+      props: {
+        audioUrl: AUDIO_URL,
+        onRegenerate: noop,
+        regenerateDisabled: true,
+      },
     },
     {
       id: 'act-play',
@@ -119,6 +129,17 @@ registerUnit<AudioPlayerProps>({
           b.textContent?.includes('Generating...')
         )
         return regen?.disabled === true || 'regenerate button が disabled ではありません'
+      },
+    },
+    {
+      id: 'regenerate-disabled-state',
+      description: 'regenerateDisabled の場合は再生成ボタンを無効化する',
+      onlyFixtures: ['regenerate-disabled'],
+      check: ({ root }) => {
+        const regenerate = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(button =>
+          button.textContent?.includes('Regenerate')
+        )
+        return regenerate?.disabled === true || 'regenerate button が disabled ではありません'
       },
     },
     {

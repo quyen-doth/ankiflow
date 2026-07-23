@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +17,7 @@ import { languageDisplayName } from "@/lib/studyLanguages";
 import { ValidationBanner } from "@/components/review/ValidationBanner";
 import { validateCardEntry, type InvalidCard } from "@/lib/cardValidation";
 import { resolveCustomFields } from "@/lib/entryCustomFields";
+import { selectedCardTypesUseSource } from "@/lib/anki/renderCard";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry } from "@/types";
@@ -69,7 +70,11 @@ export default function PreviewPage() {
     const ankiConnected = useAnkiConnection();
     const [isSaving, setIsSaving] = useState(false);
     const [invalid, setInvalid] = useState<InvalidCard[]>([]);
-    const media = useCardMedia(entry, setEntry, !isLoading && !error);
+    const usesExampleAudio = useMemo(
+        () => selectedCardTypesUseSource(cardTypes, selectedCardTypeIds, "audio_example"),
+        [cardTypes, selectedCardTypeIds],
+    );
+    const media = useCardMedia(entry, setEntry, !isLoading && !error, usesExampleAudio);
     const toast = useToast();
 
     const handleSaveOnly = useCallback(async () => {
@@ -213,6 +218,10 @@ export default function PreviewPage() {
                 audioLoading={media.audioLoading}
                 onAudioRegenerate={media.generateAudio}
                 audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
+                audioExampleUrl={media.audioExampleUrl}
+                audioExampleLoading={media.audioExampleLoading}
+                onAudioExampleRegenerate={media.generateExampleAudio}
+                usesExampleAudio={usesExampleAudio}
                 selectedDeckId={selectedDeckId}
                 onDeckChange={handleDeckChange}
                 onDeckClear={handleDeckClear}

@@ -4,7 +4,9 @@ import {
   getFieldLabel,
   renderSide,
   resolveCardTemplate,
+  selectedCardTypesUseSource,
 } from '@/lib/anki/renderCard'
+import type { CardTemplateSource } from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import { ANKI_CARD_CSS } from '@/lib/anki/model'
 import type { Entry } from '@/types'
@@ -57,6 +59,29 @@ describe('renderSide — audio rendering', () => {
 
   it('audioExampleFilename がない audio_example block は非表示', () => {
     expect(renderSide(['audio_example'], ENTRY, { side: 'back' })).toBe('')
+  })
+})
+
+describe('selectedCardTypesUseSource', () => {
+  const cardTypes: CardTemplateSource[] = [
+    {
+      id: 'main-only',
+      template: { front: ['word'], back: ['audio'] },
+    },
+    {
+      id: 'with-example',
+      template: { front: ['word'], back: ['audio_example'] },
+    },
+  ]
+
+  it('選択中 template に source がある場合だけ true', () => {
+    expect(selectedCardTypesUseSource(cardTypes, ['with-example'], 'audio_example')).toBe(true)
+    expect(selectedCardTypesUseSource(cardTypes, ['main-only'], 'audio_example')).toBe(false)
+  })
+
+  it('source を持つ未選択 template は generation gate に含めない', () => {
+    expect(selectedCardTypesUseSource(cardTypes, [], 'audio_example')).toBe(false)
+    expect(selectedCardTypesUseSource(cardTypes, ['missing'], 'audio_example')).toBe(false)
   })
 })
 

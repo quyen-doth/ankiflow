@@ -244,6 +244,20 @@ export interface CardTemplateSource {
   template?: CardTemplate
 }
 
+/** 選択中の Card Type が指定 field source を実際の template で利用するか判定する。 */
+export function selectedCardTypesUseSource(
+  cardTypes: readonly CardTemplateSource[],
+  selectedCardTypeIds: readonly string[],
+  source: CardFieldSource,
+): boolean {
+  const selectedIds = new Set(selectedCardTypeIds)
+  return cardTypes.some(cardType => {
+    if (!selectedIds.has(cardType.id)) return false
+    const template = resolveCardTemplate(cardType)
+    return template.front.includes(source) || template.back.includes(source)
+  })
+}
+
 /** Firestore の legacy/破損データや prototype key を安全に fallback する。 */
 export function resolveCardTemplate(cardType: CardTemplateSource): CardTemplate {
   if (cardType.template && cardTemplateSchema.safeParse(cardType.template).success) {

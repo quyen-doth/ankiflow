@@ -18,6 +18,23 @@ test('Card preview は custom string array の改行を保持する', async ({ p
   await expect(field).toHaveCSS('white-space', 'pre-line')
 })
 
+test('Card preview は例文 audio を専用 chip として表示する', async ({ page }) => {
+  await page.goto('/verify/CardPreview/example-audio?chrome=0')
+
+  const preview = page.locator('[data-verify-unit="CardPreview"]')
+  await expect(preview).toHaveAttribute('data-verify-flipped', 'true')
+  await expect(page.locator('iframe[title="Card preview"]'))
+    .toHaveAttribute('srcdoc', /🔊 Example audio/)
+})
+
+test('Review は選択 template が使う例文 audio player を表示する', async ({ page }) => {
+  await page.goto('/verify/ReviewAudioPlayers/uses-example?chrome=0')
+
+  const players = page.locator('[data-verify-unit="ReviewAudioPlayers"]')
+  await expect(players).toHaveAttribute('data-verify-showexampleaudio', 'true')
+  await expect(players.getByText('Example audio', { exact: true })).toBeVisible()
+})
+
 test('Card Template editor は custom field option を追加して preview する', async ({ page }) => {
   await page.goto('/verify/CardTemplateEditor/custom-options?chrome=0')
 

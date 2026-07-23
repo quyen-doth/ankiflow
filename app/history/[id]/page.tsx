@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -19,6 +19,7 @@ import { findEntryContentType, resolveCustomFields } from '@/lib/entryCustomFiel
 import { buildHistoryEntryUpdates } from '@/lib/historyEntryUpdates'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
 import { normalizeEntryAliases } from '@/lib/entryAliases'
+import { selectedCardTypesUseSource } from '@/lib/anki/renderCard'
 import type { UserContentType } from '@/types'
 
 interface CardTypeItem {
@@ -119,7 +120,16 @@ export default function HistoryDetailPage() {
     setEntry(prev => ({ ...prev, anki_deck: '' }))
   }, [])
 
-  const media = useCardMedia(entry, setEntry, !loading && !notFound && !!entry.id)
+  const usesExampleAudio = useMemo(
+    () => selectedCardTypesUseSource(cardTypes, selectedCardTypeIds, 'audio_example'),
+    [cardTypes, selectedCardTypeIds],
+  )
+  const media = useCardMedia(
+    entry,
+    setEntry,
+    !loading && !notFound && !!entry.id,
+    usesExampleAudio,
+  )
 
   const updateField = (field: keyof Entry, value: unknown) => {
     setEntry(prev => ({ ...prev, [field]: value }))
@@ -142,7 +152,10 @@ export default function HistoryDetailPage() {
         entry,
         customFields,
         selectedCardTypeIds,
-        media.audioUrl,
+        {
+          audioUrl: media.audioUrl,
+          audioExampleUrl: media.audioExampleUrl,
+        },
       )
 
       await saveEntry(entry as Entry, updates)
@@ -205,6 +218,10 @@ export default function HistoryDetailPage() {
       audioLoading={media.audioLoading}
       onAudioRegenerate={media.generateAudio}
       audioSubtitle={entry.language ? `Google TTS · ${languageDisplayName(entry.language, languages)}` : undefined}
+      audioExampleUrl={media.audioExampleUrl}
+      audioExampleLoading={media.audioExampleLoading}
+      onAudioExampleRegenerate={media.generateExampleAudio}
+      usesExampleAudio={usesExampleAudio}
       selectedDeckId={selectedDeckId}
       onDeckChange={handleDeckChange}
       onDeckClear={handleDeckClear}
