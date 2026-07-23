@@ -1,5 +1,6 @@
 import {
   BUILTIN_CARD_FIELD_SOURCES,
+  cardTemplateSchema,
   parseCustomFieldSource,
 } from '@/lib/anki/cardFieldSource'
 import type {
@@ -25,6 +26,13 @@ type FieldRenderer = {
   render: (value: string) => string
 }
 
+function firstNonBlankString(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
+
 export const FIELD_LABELS: Record<BuiltinCardFieldSource, string> = {
   word: 'Word / Term',
   reading: 'Reading',
@@ -44,39 +52,53 @@ export const ALL_FIELD_SOURCES: BuiltinCardFieldSource[] = [...BUILTIN_CARD_FIEL
 const FIELD_RENDERERS: Record<BuiltinCardFieldSource, FieldRenderer> = {
   word: {
     label: 'Word / Term',
-    getValue: (e) => e.word || e.term || e.title || '',
+    getValue: (e) => firstNonBlankString(e.word, e.term, e.title),
     render: (v) => `<div class="word">${v}</div>`,
   },
   reading: {
     label: 'Reading',
-    getValue: (e) => e.hiragana || e.pinyin || e.ipa || '',
+    getValue: (e) => firstNonBlankString(e.hiragana, e.pinyin, e.ipa),
     render: (v) => `<div class="reading">${v}</div>`,
   },
   han_viet: {
     label: 'Sino-Vietnamese reading',
-    getValue: (e) => e.han_viet || '',
+    getValue: (e) => firstNonBlankString(e.han_viet),
     render: (v) => `<div class="han-viet">${v}</div>`,
   },
   meaning: {
     label: 'Meaning',
-    getValue: (e) => e.meaning_vi || e.definition || e.content || '',
+    getValue: (e) => firstNonBlankString(
+      e.meaning_vi,
+      e.definition,
+      (e as unknown as Record<string, unknown>).definition_vi,
+      e.content,
+    ),
     render: (v) => `<div class="meaning">${v}</div>`,
   },
   word_type: {
     label: 'Word type',
-    getValue: (e) => e.word_type || '',
+    getValue: (e) => firstNonBlankString(
+      e.word_type,
+      (e as unknown as Record<string, unknown>).word_type_vi,
+    ),
     render: (v) => `<span class="pos">${v}</span>`,
   },
   example: {
     label: 'Example',
-    getValue: (e) => e.example_sentence || '',
+    getValue: (e) => firstNonBlankString(
+      e.example_sentence,
+      (e as unknown as Record<string, unknown>).example_usage,
+    ),
     render: (v) => `<div class="example">${v}</div>`,
   },
   example_blank: {
     label: 'Fill-in-blank',
     getValue: (e) => {
-      const sentence = e.example_sentence || ''
-      const target = e.word || e.term || e.title || ''
+      const sentence = firstNonBlankString(
+        e.example_sentence,
+        (e as unknown as Record<string, unknown>).example_usage,
+      )
+      const target = firstNonBlankString(e.word, e.term, e.title)
       if (!sentence) return ''
       if (!target) return sentence
       const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -86,12 +108,15 @@ const FIELD_RENDERERS: Record<BuiltinCardFieldSource, FieldRenderer> = {
   },
   translation: {
     label: 'Translation',
-    getValue: (e) => e.example_translation || '',
+    getValue: (e) => firstNonBlankString(e.example_translation),
     render: (v) => `<div class="translation">${v}</div>`,
   },
   collocations: {
     label: 'Collocations',
-    getValue: (e) => (e.collocations || []).filter(Boolean).join('\n'),
+    getValue: (e) => (e.collocations || [])
+      .filter(item => typeof item === 'string' && item.trim())
+      .map(item => item.trim())
+      .join('\n'),
     render: (v) => {
       const items = v.split('\n').filter(Boolean)
       if (!items.length) return ''
@@ -102,7 +127,7 @@ const FIELD_RENDERERS: Record<BuiltinCardFieldSource, FieldRenderer> = {
     label: 'Image',
     getValue: (e, opts) => {
       if (opts.imageFilename) return opts.imageFilename
-      const url = e.image_url || ''
+      const url = firstNonBlankString(e.image_url)
       return url.startsWith('data:') ? '' : url
     },
     render: (v) => `<div class="media"><img src="${v}" alt=""></div>`,
@@ -140,9 +165,9 @@ export function renderSide(
       if (customKey) {
         const rawValue = (entry as unknown as Record<string, unknown>)[customKey]
         const value = typeof rawValue === 'string'
-          ? rawValue
+          ? rawValue.trim()
           : Array.isArray(rawValue) && rawValue.every(item => typeof item === 'string')
-            ? rawValue.join('\n')
+            ? rawValue.filter(item => item.trim()).map(item => item.trim()).join('\n')
             : ''
         return value ? `<div class="custom-field custom-${customKey}">${value}</div>` : ''
       }
@@ -204,4 +229,22 @@ export const DEFAULT_TEMPLATES: Record<string, CardTemplate> = {
     front: ['word'],
     back: ['meaning', 'example', 'translation', 'audio'],
   },
+}
+
+export interface CardTemplateSource {
+  id: string
+  code?: string
+  template?: CardTemplate
+}
+
+/** Firestore の legacy/破損データや prototype key を安全に fallback する。 */
+export function resolveCardTemplate(cardType: CardTemplateSource): CardTemplate {
+  if (cardType.template && cardTemplateSchema.safeParse(cardType.template).success) {
+    return cardType.template
+  }
+
+  const code = cardType.code || cardType.id
+  return Object.prototype.hasOwnProperty.call(DEFAULT_TEMPLATES, code)
+    ? DEFAULT_TEMPLATES[code]
+    : DEFAULT_TEMPLATES.word_to_meaning
 }

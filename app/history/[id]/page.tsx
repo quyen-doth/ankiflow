@@ -14,16 +14,18 @@ import { useToast } from '@/components/ui/Toast'
 import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import { ArrowLeft, Check } from 'lucide-react'
 import type { Entry, CardTemplate } from '@/types'
-import { languageDisplayName } from '@/lib/studyLanguages'
+import { languageDisplayName, matchesLanguageScope } from '@/lib/studyLanguages'
 import { findEntryContentType, resolveCustomFields } from '@/lib/entryCustomFields'
 import { buildHistoryEntryUpdates } from '@/lib/historyEntryUpdates'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
+import { normalizeEntryAliases } from '@/lib/entryAliases'
 import type { UserContentType } from '@/types'
 
 interface CardTypeItem {
   id: string
   name: string
   description?: string
+  code?: string
   template?: CardTemplate
 }
 
@@ -58,7 +60,10 @@ export default function HistoryDetailPage() {
           setNotFound(true)
           return
         }
-        const data = { id: snap.id, ...snap.data() } as Entry
+        const data = normalizeEntryAliases({
+          id: snap.id,
+          ...snap.data(),
+        } as Entry & Record<string, unknown>)
         setEntry(data)
 
         // entry の form_type + language に応じた card types (per-user)
@@ -73,14 +78,14 @@ export default function HistoryDetailPage() {
             loadUserContentTypes(user!.uid),
           ])
           setContentType(findEntryContentType(contentTypes, data.form_type) ?? null)
-          type Fetched = { id: string; name: string; description?: string; sort_order?: number; is_active?: boolean; language?: string | null; template?: CardTemplate }
+          type Fetched = { id: string; name: string; description?: string; code?: string; sort_order?: number; is_active?: boolean; language?: string | null; template?: CardTemplate }
           const fetched: Fetched[] = ctSnap.docs
             .map(d => ({ id: d.id, ...(d.data() as Omit<Fetched, 'id'>) }))
-            .filter(ct => ct.is_active !== false && (!data.language || !ct.language || ct.language === data.language))
+            .filter(ct => ct.is_active !== false && matchesLanguageScope(ct.language, data.language))
             .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          setCardTypes(fetched.map(ct => ({ id: ct.id, name: ct.name, description: ct.description, template: ct.template })))
+          setCardTypes(fetched.map(ct => ({ id: ct.id, name: ct.name, description: ct.description, code: ct.code, template: ct.template })))
           const preset = data.card_type_ids?.length
-            ? data.card_type_ids.filter(cid => fetched.some(ct => ct.id === cid))
+            ? data.card_type_ids
             : fetched.map(ct => ct.id)
           setSelectedCardTypeIds(preset)
         } catch (e) {
@@ -123,7 +128,9 @@ export default function HistoryDetailPage() {
 
   const handleSave = async () => {
     if (!entry.id) return
-    const errors = validateCardEntry(entry, selectedCardTypeIds)
+    const errors = validateCardEntry(entry, selectedCardTypeIds, cardTypes, {
+      assumeExistingMedia: (entry.anki_note_ids?.length ?? 0) > 0,
+    })
     if (errors.length > 0) {
       toast.error(formatValidationMessage(errors))
       return

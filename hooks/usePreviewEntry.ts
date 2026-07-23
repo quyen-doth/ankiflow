@@ -7,6 +7,8 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
 import { findEntryContentType } from '@/lib/entryCustomFields'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
+import { matchesLanguageScope } from '@/lib/studyLanguages'
+import { normalizeEntryAliases } from '@/lib/entryAliases'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
 import type { Entry, CardTypeConfig, UserContentType } from '@/types'
@@ -24,24 +26,16 @@ interface PreviewEntryState {
   error: string | null
 }
 
-function nonEmptyGeneratedString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value : null
-}
-
 export function mapPendingEntryToPreview(
   pending: PendingEntry,
   ankiDeckName: string,
 ): Partial<Entry> {
-  const content = pending.generatedContent as Record<string, unknown>
-  const wordType = nonEmptyGeneratedString(content.word_type)
-    ?? nonEmptyGeneratedString(content.word_type_vi)
-    ?? ''
-  const definition = nonEmptyGeneratedString(content.definition)
-    ?? nonEmptyGeneratedString(content.definition_vi)
+  const content = normalizeEntryAliases(
+    pending.generatedContent as Partial<Entry> & Record<string, unknown>,
+  )
   return {
-    ...(content as Partial<Entry>),
-    word_type: wordType,
-    ...(definition ? { definition } : {}),
+    ...content,
+    word_type: content.word_type ?? '',
     form_type: pending.formType,
     language: pending.language ?? undefined,
     output_language: pending.outputLanguage,
@@ -107,6 +101,7 @@ export function usePreviewEntry(): PreviewEntryState {
           id: string
           name: string
           description?: string
+          code?: string
           sort_order?: number
           is_active?: boolean
           language?: string | null
@@ -117,8 +112,7 @@ export function usePreviewEntry(): PreviewEntryState {
           .map(doc => ({ id: doc.id, ...(doc.data() as Omit<FetchedCardType, 'id'>) }))
           .filter(ct => {
             if (ct.is_active === false) return false
-            if (!pending.language) return true
-            return !ct.language || ct.language === pending.language
+            return matchesLanguageScope(ct.language, pending.language)
           })
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 
@@ -126,12 +120,12 @@ export function usePreviewEntry(): PreviewEntryState {
           id: ct.id,
           name: ct.name,
           description: ct.description,
-          code: (ct as Record<string, unknown>).code as string || ct.id,
+          code: ct.code || ct.id,
           template: ct.template,
         })))
 
         const preSelected = pending.cardTypeIds.length > 0
-          ? pending.cardTypeIds.filter(id => fetchedCardTypes.some(ct => ct.id === id))
+          ? pending.cardTypeIds
           : fetchedCardTypes.map(ct => ct.id)
         setSelectedCardTypeIds(preSelected)
 

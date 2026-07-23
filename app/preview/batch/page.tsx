@@ -22,7 +22,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Entry, CardTypeConfig, UserContentType } from "@/types";
 
-type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code">;
+type CardTypeItem = Pick<CardTypeConfig, "id" | "name" | "description" | "code" | "template">;
 
 // ── 表示中カードの Reviewer ──────────────────────────────────────────────
 // component に分離して parent 側で active index + batch 件数の key を付ける → カード切替や
@@ -303,6 +303,7 @@ export default function BatchPreviewPage() {
             <BatchNavStrip
                 entries={entries}
                 selectedCardTypeIds={selectedCardTypeIds}
+                cardTypes={cardTypes}
                 activeIndex={activeIndex}
                 onSelect={setActiveIndex}
                 onDiscard={isExporting || isSaving ? undefined : setDiscardIndex}
