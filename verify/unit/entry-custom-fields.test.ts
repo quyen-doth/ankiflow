@@ -107,7 +107,7 @@ describe('resolveCustomFields', () => {
     } as Partial<Entry> & Record<string, unknown>
 
     const fields = resolveCustomFields(entry, typeChangedContentType)
-    const updates = buildHistoryEntryUpdates(entry, fields, [], null)
+    const updates = buildHistoryEntryUpdates(entry, fields, [], { audioUrl: null })
 
     expect(fields).toEqual([
       { key: 'phon_the', label: 'Traditional form', value: ['喫飯'] },

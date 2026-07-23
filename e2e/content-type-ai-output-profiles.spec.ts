@@ -11,7 +11,7 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await expect(primaryKey).toBeDisabled()
   await expect(page.getByText('Primary', { exact: true })).toBeVisible()
   await page.getByRole('textbox', { name: 'AI output instruction 0' }).fill('Chinese identity from workspace')
-  await page.getByRole('button', { name: 'Add Output Field' }).click()
+  await page.getByRole('combobox', { name: 'Add AI output field' }).selectOption('custom')
   await page.getByRole('textbox', { name: /AI output key/ }).last().fill('memory_hook')
   await page.getByRole('textbox', { name: /AI output instruction/ }).last().fill('Short memory hook')
   await page.getByRole('button', { name: 'Move AI output memory_hook up' }).click()
@@ -29,6 +29,30 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await page.getByRole('button', { name: 'Reopen editor' }).click()
   await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
   await expect(page.getByRole('button', { name: 'Remove AI output memory_hook' })).toHaveCount(0)
+})
+
+test('AI output editor は text-only 境界と profile preset を表示して field を追加する', async ({ page }) => {
+  await page.goto('/verify/AiOutputProfilesEditor/default-language-profiles?chrome=0')
+
+  await expect(page.getByText(
+    'Custom fields are text-only. Audio, images and cloze come from system field types.',
+  )).toBeVisible()
+
+  await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
+  const picker = page.getByRole('combobox', { name: 'Add AI output field' })
+  const suggested = picker.locator('optgroup[label="Suggested fields"] option')
+  await expect(suggested).toHaveCount(2)
+  await expect(suggested.nth(0)).toContainText('Traditional form')
+  await expect(suggested.nth(1)).toContainText('Common sentence patterns')
+
+  await picker.selectOption('preset:phon_the')
+
+  await expect(page.getByRole('textbox', { name: /AI output key/ }).last()).toHaveValue('phon_the')
+  await expect(page.getByRole('textbox', { name: /AI output instruction/ }).last()).toHaveValue(
+    /Return an empty string if identical to the simplified form\./,
+  )
+  await expect(picker).toHaveValue('')
+  await expect(picker.locator('option[value="preset:phon_the"]')).toHaveCount(0)
 })
 
 test('AI output editor は未保存 profile で sample generation を表示する', async ({ page }) => {

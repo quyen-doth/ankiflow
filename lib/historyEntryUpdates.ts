@@ -3,12 +3,17 @@ import type { Entry } from '@/types'
 
 export type HistoryEntryUpdates = Partial<Entry> & Record<string, unknown>
 
+export interface HistoryEntryMedia {
+  audioUrl?: string | null
+  audioExampleUrl?: string | null
+}
+
 /** History editor から保存する built-in/custom field を同じ payload にまとめる。 */
 export function buildHistoryEntryUpdates(
   entry: Partial<Entry>,
   customFields: readonly EntryCustomField[],
   selectedCardTypeIds: readonly string[],
-  audioUrl: string | null,
+  media: HistoryEntryMedia = {},
 ): HistoryEntryUpdates {
   const customValues = Object.fromEntries(
     customFields.map(field => [field.key, field.value]),
@@ -29,7 +34,8 @@ export function buildHistoryEntryUpdates(
     collocations: entry.collocations,
     image_url: entry.image_url,
     image_credit: entry.image_credit,
-    audio_url: audioUrl ?? entry.audio_url,
+    audio_url: media.audioUrl ?? entry.audio_url,
+    audio_example_url: media.audioExampleUrl ?? entry.audio_example_url,
     anki_deck: entry.anki_deck,
     card_type_ids: [...selectedCardTypeIds],
     category_id: entry.category_id ?? null,

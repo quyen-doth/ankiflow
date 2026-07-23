@@ -65,8 +65,8 @@
 | `collocations` | string[] | 付随するフレーズ |
 | `image_url` | string | イラスト画像 URL |
 | `image_credit` | string | 画像のソース (Unsplash...) |
-| `audio_url` | string | 単語の音声ファイル URL/名前 |
-| `audio_example_url` | string | 例文の音声ファイル URL/名前 |
+| `audio_url` | string | 単語 TTS の data-URL。Anki export 時にクライアントが media file として保存 |
+| `audio_example_url` | string | 例文 TTS の data-URL。選択中 template が `audio_example` block を使う場合だけ生成し、Anki では `ankiflow_audio_ex_<word>.mp3` として保存 |
 | `anki_deck` | string | エクスポート先の Anki デック名 |
 | `anki_note_ids` | number[] | Anki 内のノート ID |
 | `card_type_ids` | string[] | 選択された `card_types` への参照 |
@@ -128,9 +128,14 @@ Anki カードの種類を定義 (例: Word→Meaning、Meaning→Word、Cloze..
 | `is_default` | boolean | デフォルトで選択されるか |
 | `is_active` | boolean | — |
 | `sort_order` | number | 表示順序 |
-| `template` | object | `{ front: string[], back: string[] }` — Front/Back のレンダリングレイアウトブロック |
+| `template` | object | `{ front: string[], back: string[] }` — Front/Back のレンダリングレイアウトブロック。例文音声は built-in source `audio_example` |
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
+
+Template source は capability 境界を持ちます。`custom:<key>` は `entries[key]` の
+`string` / `string[]` を表示する text-only block です。TTS、画像、cloze のように runtime
+処理が必要な field は system-owned built-in source (`audio` / `audio_example` / `image` /
+`example_blank` など) として追加し、任意の `custom:` key へ capability を付与しません。
 
 ---
 
@@ -277,6 +282,11 @@ study language と一致する profile を優先し、存在しない場合は `
 | `fields[].instruction` | string | 1〜300 文字。`{output_language}` / `{study_language}` placeholder を使用可能 |
 | `fields[].include_when` | string? | `always` (default) / `output_vi` |
 | `fields[].max_items` | number? | `string_array` のみ、1〜20。未指定時は engine default 10 |
+
+AI output profile でユーザーが追加できる field type は `string` / `string_array` のみです。
+Content Type editor の Suggested fields は、この同じ schema を事前入力する code-owned preset
+catalog であり、preset ID や capability metadata を Firestore へ追加保存しません。Audio、画像、
+cloze は AI output custom field ではなく system field type で扱います。
 
 #### 継承モデル (2026-07-20 以降)
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { validateCardEntry, dataUrlBytes, MAX_IMAGE_BYTES } from '@/lib/cardValidation'
+import type { CardValidationCardType } from '@/lib/cardValidation'
 import { FormType, type Entry } from '@/types'
+
+const CARD_TYPE: CardValidationCardType = {
+  id: 'ct',
+  name: 'Front → Back',
+  code: 'front_to_back',
+}
 
 /** 約 sizeBytes byte の data URL を作る (base64 長はおよそ sizeBytes * 4/3)。 */
 function makeDataUrl(sizeBytes: number): string {
@@ -34,17 +41,25 @@ describe('dataUrlBytes', () => {
 
 describe('validateCardEntry — image size', () => {
   it('画像 data URL が 800KB 超 → image エラーあり', () => {
-    const errors = validateCardEntry(validEntry({ image_url: makeDataUrl(MAX_IMAGE_BYTES + 100_000) }), ['ct'])
+    const errors = validateCardEntry(
+      validEntry({ image_url: makeDataUrl(MAX_IMAGE_BYTES + 100_000) }),
+      [CARD_TYPE.id],
+      [CARD_TYPE],
+    )
     expect(errors.some(e => e.field === 'image')).toBe(true)
   })
 
   it('画像 data URL が小さい → image エラーなし', () => {
-    const errors = validateCardEntry(validEntry({ image_url: makeDataUrl(100_000) }), ['ct'])
+    const errors = validateCardEntry(validEntry({ image_url: makeDataUrl(100_000) }), [CARD_TYPE.id], [CARD_TYPE])
     expect(errors.some(e => e.field === 'image')).toBe(false)
   })
 
   it('画像 http URL (Unsplash) は長くても → image エラーなし', () => {
-    const errors = validateCardEntry(validEntry({ image_url: 'https://images.unsplash.com/photo-x' }), ['ct'])
+    const errors = validateCardEntry(
+      validEntry({ image_url: 'https://images.unsplash.com/photo-x' }),
+      [CARD_TYPE.id],
+      [CARD_TYPE],
+    )
     expect(errors.some(e => e.field === 'image')).toBe(false)
   })
 })

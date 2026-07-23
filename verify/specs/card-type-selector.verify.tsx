@@ -13,8 +13,10 @@ const CARD_TYPE_SEED = {
     { id: 'ct-en', name: 'EN Word → Meaning', form_type: FormType.LANGUAGE, language: LanguageType.ENGLISH, is_active: true, sort_order: 1 },
     { id: 'ct-any', name: 'Listening', form_type: FormType.LANGUAGE, language: null, is_active: true, sort_order: 2 },
     { id: 'ct-zh', name: 'ZH Tones', form_type: FormType.LANGUAGE, language: LanguageType.CHINESE, is_active: true, sort_order: 3 },
+    { id: 'ct-zh-tw', name: 'Traditional only', form_type: FormType.LANGUAGE, language: 'zh-TW', is_active: true, sort_order: 4 },
+    { id: 'ct-zh-cn', name: 'Simplified only', form_type: FormType.LANGUAGE, language: 'zh-CN', is_active: true, sort_order: 5 },
     { id: 'ct-it', name: 'IT Concept', form_type: FormType.IT, language: null, is_active: true, sort_order: 1 },
-    { id: 'ct-old', name: 'Old Card', form_type: FormType.LANGUAGE, language: null, is_active: false, sort_order: 4 },
+    { id: 'ct-old', name: 'Old Card', form_type: FormType.LANGUAGE, language: null, is_active: false, sort_order: 6 },
   ],
 }
 
@@ -122,6 +124,15 @@ registerUnit<CardTypeSelectorProps>({
         await ctx.wait(50)
       },
     },
+    {
+      id: 'regional-language-includes-generic',
+      description: 'zh-TW では generic zh と exact zh-TW を表示し、zh-CN は除外する。',
+      props: { formType: 'Language', language: 'zh-TW', selectedIds: [], onChange: noop },
+      mocks: { firestore: CARD_TYPE_SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
   ],
   invariants: [
     {
@@ -182,6 +193,18 @@ registerUnit<CardTypeSelectorProps>({
           return `表示: ${names.join(' | ')}`
         }
         return contract.count === '1' || `contract.count="${contract.count}"`
+      },
+    },
+    {
+      id: 'regional-language-scope',
+      description: 'generic scope は regional entry に適用するが、別 regional scope は適用しない。',
+      onlyFixtures: ['regional-language-includes-generic'],
+      check: ({ root }) => {
+        const names = visibleNames(root)
+        return (
+          JSON.stringify(names) === JSON.stringify(['Listening', 'ZH Tones', 'Traditional only'])
+          || `表示: ${names.join(' | ')}`
+        )
       },
     },
   ],

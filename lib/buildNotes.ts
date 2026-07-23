@@ -1,6 +1,6 @@
 import type { Entry, CardTemplate } from '@/types'
 import { ANKI_MODEL_NAME } from '@/lib/anki/model'
-import { renderSide, DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
+import { renderSide, resolveCardTemplate } from '@/lib/anki/renderCard'
 
 interface CardTypeItem {
   id: string
@@ -18,21 +18,25 @@ interface AnkiNote {
 
 export type { CardTypeItem, AnkiNote }
 
+export interface BuildNotesMedia {
+  audioFilename?: string
+  audioExampleFilename?: string
+  imageFilename?: string
+}
+
 export function buildNotes(
   entry: Partial<Entry>,
   cardTypes: CardTypeItem[],
-  audioFilename?: string,
-  imageFilename?: string,
+  media: BuildNotesMedia = {},
 ): AnkiNote[] {
   const deckName = entry.anki_deck || 'Default'
   const tags = [...(entry.tags || []), ...(entry.language ? [entry.language] : [])]
 
   return cardTypes.map(ct => {
-    const code = ct.code || ct.id
-    const template = ct.template ?? DEFAULT_TEMPLATES[code] ?? DEFAULT_TEMPLATES['word_to_meaning']
+    const template = resolveCardTemplate(ct)
 
-    const front = renderSide(template.front, entry, { audioFilename, imageFilename, side: 'front' })
-    const back = renderSide(template.back, entry, { audioFilename, imageFilename, side: 'back' })
+    const front = renderSide(template.front, entry, { ...media, side: 'front' })
+    const back = renderSide(template.back, entry, { ...media, side: 'back' })
 
     return {
       deckName,

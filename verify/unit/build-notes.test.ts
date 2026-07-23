@@ -3,6 +3,7 @@ import { buildNotes } from '@/hooks/useAnkiExport'
 import type { Entry } from '@/types'
 
 const AUDIO_FILENAME = 'ankiflow_hello.mp3'
+const EXAMPLE_AUDIO_FILENAME = 'ankiflow_audio_ex_hello.mp3'
 
 function makeEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
   return {
@@ -28,26 +29,26 @@ function makeCardType(code: string, name?: string) {
 
 describe('buildNotes — audio in all card types', () => {
   it('word_to_meaning: audio tag appended to back', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], { audioFilename: AUDIO_FILENAME })
     expect(notes).toHaveLength(1)
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Front).not.toContain('[sound:')
   })
 
   it('meaning_to_word: audio tag appended to back', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('meaning_to_word')], AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), [makeCardType('meaning_to_word')], { audioFilename: AUDIO_FILENAME })
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Front).not.toContain('[sound:')
   })
 
   it('audio_to_word: audio on front, NOT on back', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')], AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')], { audioFilename: AUDIO_FILENAME })
     expect(notes[0].fields.Front).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Back).not.toContain('[sound:')
   })
 
   it('fill_in_blank: audio tag appended to back', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('fill_in_blank')], AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), [makeCardType('fill_in_blank')], { audioFilename: AUDIO_FILENAME })
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
   })
 
@@ -55,7 +56,7 @@ describe('buildNotes — audio in all card types', () => {
     const notes = buildNotes(
       makeEntry({ pinyin: 'nǐ hǎo', word: '你好' }),
       [makeCardType('reading_to_word')],
-      AUDIO_FILENAME,
+      { audioFilename: AUDIO_FILENAME },
     )
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
   })
@@ -64,19 +65,19 @@ describe('buildNotes — audio in all card types', () => {
     const notes = buildNotes(
       makeEntry({ term: 'API', definition: 'Application Programming Interface' }),
       [makeCardType('concept_to_def')],
-      AUDIO_FILENAME,
+      { audioFilename: AUDIO_FILENAME },
     )
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
   })
 
   it('front_to_back (General): audio tag appended to back', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('front_to_back')], AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), [makeCardType('front_to_back')], { audioFilename: AUDIO_FILENAME })
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
   })
 
   it('no audio filename: no [sound:] tag in any card type', () => {
     const types = ['word_to_meaning', 'meaning_to_word', 'audio_to_word', 'fill_in_blank'].map(c => makeCardType(c))
-    const notes = buildNotes(makeEntry(), types, undefined)
+    const notes = buildNotes(makeEntry(), types)
     for (const note of notes) {
       expect(note.fields.Front).not.toContain('[sound:')
       expect(note.fields.Back).not.toContain('[sound:')
@@ -84,7 +85,7 @@ describe('buildNotes — audio in all card types', () => {
   })
 
   it('audio_to_word without filename: front is empty (no fallback)', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')], undefined)
+    const notes = buildNotes(makeEntry(), [makeCardType('audio_to_word')])
     expect(notes[0].fields.Front).toBe('')
   })
 
@@ -94,7 +95,7 @@ describe('buildNotes — audio in all card types', () => {
       makeCardType('audio_to_word'),
       makeCardType('meaning_to_word'),
     ]
-    const notes = buildNotes(makeEntry(), types, AUDIO_FILENAME)
+    const notes = buildNotes(makeEntry(), types, { audioFilename: AUDIO_FILENAME })
 
     expect(notes[0].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[0].fields.Front).not.toContain('[sound:')
@@ -104,6 +105,26 @@ describe('buildNotes — audio in all card types', () => {
 
     expect(notes[2].fields.Back).toContain(`[sound:${AUDIO_FILENAME}]`)
     expect(notes[2].fields.Front).not.toContain('[sound:')
+  })
+
+  it('media options は通常 audio と例文 audio を別 block に渡す', () => {
+    const cardType = {
+      id: 'ct-two-audio',
+      name: 'Two audio',
+      template: {
+        front: ['audio' as const],
+        back: ['word' as const, 'audio_example' as const],
+      },
+    }
+    const notes = buildNotes(makeEntry(), [cardType], {
+      audioFilename: AUDIO_FILENAME,
+      audioExampleFilename: EXAMPLE_AUDIO_FILENAME,
+    })
+
+    expect(notes[0].fields.Front).toContain(`[sound:${AUDIO_FILENAME}]`)
+    expect(notes[0].fields.Front).not.toContain(EXAMPLE_AUDIO_FILENAME)
+    expect(notes[0].fields.Back).toContain(`[sound:${EXAMPLE_AUDIO_FILENAME}]`)
+    expect(notes[0].fields.Back).not.toContain(`[sound:${AUDIO_FILENAME}]`)
   })
 
   it('uses AnkiFlow-Basic as model name', () => {
@@ -118,12 +139,16 @@ describe('buildNotes — audio in all card types', () => {
   })
 
   it('imageFilename: back に Anki メディアファイル名を使った <img> を埋め込む', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], undefined, 'ankiflow_img_hello.png')
+    const notes = buildNotes(makeEntry(), [makeCardType('word_to_meaning')], {
+      imageFilename: 'ankiflow_img_hello.png',
+    })
     expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
   })
 
   it('image_to_word: imageFilename を front として使用', () => {
-    const notes = buildNotes(makeEntry(), [makeCardType('image_to_word')], undefined, 'ankiflow_img_hello.png')
+    const notes = buildNotes(makeEntry(), [makeCardType('image_to_word')], {
+      imageFilename: 'ankiflow_img_hello.png',
+    })
     expect(notes[0].fields.Front).toContain('<img src="ankiflow_img_hello.png"')
   })
 
@@ -152,11 +177,24 @@ describe('buildNotes — audio in all card types', () => {
         back: ['reading' as const, 'image' as const],
       },
     }
-    const notes = buildNotes(makeEntry(), [customType], undefined, 'ankiflow_img_hello.png')
+    const notes = buildNotes(makeEntry(), [customType], {
+      imageFilename: 'ankiflow_img_hello.png',
+    })
     expect(notes[0].fields.Back).toContain('class="reading"')
     expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
     // 検証用コメント。
     expect(notes[0].fields.Back).not.toContain('class="example"')
     expect(notes[0].fields.Back).not.toContain('class="translation"')
+  })
+
+  it('prototype key の legacy code は安全な default template へ fallback する', () => {
+    const notes = buildNotes(makeEntry(), [{
+      id: 'ct-constructor',
+      code: 'constructor',
+      name: 'Constructor',
+    }])
+
+    expect(notes[0].fields.Front).toContain('class="word"')
+    expect(notes[0].fields.Back).toContain('class="meaning"')
   })
 })

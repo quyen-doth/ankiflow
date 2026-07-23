@@ -6,12 +6,13 @@ import { useToast } from '@/components/ui/Toast'
 import { ensureAnkiModel, exportEntryToAnki, saveEntryToFirestore } from '@/hooks/useAnkiExport'
 import { ankiConnectionErrorMessage } from '@/lib/flashcard-service/client'
 import { collectInvalidCards, type InvalidCard } from '@/lib/cardValidation'
-import type { Entry } from '@/types'
+import type { CardTemplate, Entry } from '@/types'
 
 interface CardTypeItem {
   id: string
   name: string
   code?: string
+  template?: CardTemplate
 }
 
 interface BatchAnkiExportOptions {
@@ -53,7 +54,7 @@ export function useBatchAnkiExport({
 
   // ルール: 1 枚でもエラー → 1 枚も作成しない。全エラーを集めて banner 表示 + nav strip にマーク。
   const checkAll = (): boolean => {
-    const bad = collectInvalidCards(entries, selectedCardTypeIds)
+    const bad = collectInvalidCards(entries, selectedCardTypeIds, cardTypes)
     setInvalid(bad)
     if (bad.length > 0) {
       onInvalid(bad[0].index)

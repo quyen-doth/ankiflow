@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_TEMPLATES, getFieldLabel, renderSide } from '@/lib/anki/renderCard'
+import {
+  DEFAULT_TEMPLATES,
+  getFieldLabel,
+  renderSide,
+  resolveCardTemplate,
+  selectedCardTypesUseSource,
+} from '@/lib/anki/renderCard'
+import type { CardTemplateSource } from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import { ANKI_CARD_CSS } from '@/lib/anki/model'
 import type { Entry } from '@/types'
@@ -29,6 +36,52 @@ describe('renderSide — audio rendering', () => {
   it('audioIcon だが audioFilename がない → block 非表示 (空)', () => {
     const html = renderSide(['audio'], ENTRY, { side: 'back', audioIcon: true })
     expect(html).toBe('')
+  })
+
+  it('audio_example は専用 filename を [sound:] としてレンダリングする', () => {
+    const html = renderSide(['audio_example'], ENTRY, {
+      side: 'back',
+      audioExampleFilename: 'ankiflow_audio_ex_hello.mp3',
+    })
+    expect(html).toContain('[sound:ankiflow_audio_ex_hello.mp3]')
+    expect(html).not.toContain('audio-chip')
+  })
+
+  it('audio_example preview は専用 chip label を表示する', () => {
+    const html = renderSide(['audio_example'], ENTRY, {
+      side: 'back',
+      audioExampleFilename: 'preview',
+      audioIcon: true,
+    })
+    expect(html).toContain('🔊 Example audio')
+    expect(html).not.toContain('[sound:')
+  })
+
+  it('audioExampleFilename がない audio_example block は非表示', () => {
+    expect(renderSide(['audio_example'], ENTRY, { side: 'back' })).toBe('')
+  })
+})
+
+describe('selectedCardTypesUseSource', () => {
+  const cardTypes: CardTemplateSource[] = [
+    {
+      id: 'main-only',
+      template: { front: ['word'], back: ['audio'] },
+    },
+    {
+      id: 'with-example',
+      template: { front: ['word'], back: ['audio_example'] },
+    },
+  ]
+
+  it('選択中 template に source がある場合だけ true', () => {
+    expect(selectedCardTypesUseSource(cardTypes, ['with-example'], 'audio_example')).toBe(true)
+    expect(selectedCardTypesUseSource(cardTypes, ['main-only'], 'audio_example')).toBe(false)
+  })
+
+  it('source を持つ未選択 template は generation gate に含めない', () => {
+    expect(selectedCardTypesUseSource(cardTypes, [], 'audio_example')).toBe(false)
+    expect(selectedCardTypesUseSource(cardTypes, ['missing'], 'audio_example')).toBe(false)
   })
 })
 
@@ -70,6 +123,30 @@ describe('renderSide — core', () => {
     const html = renderSide(['collocations', 'image'], ENTRY, { side: 'back' })
     expect(html).toBe('')
   })
+
+  it('legacy alias を canonical block としてレンダリングする', () => {
+    const html = renderSide(
+      ['meaning', 'word_type', 'example'],
+      {
+        definition_vi: 'Legacy definition',
+        word_type_vi: 'Legacy type',
+        example_usage: 'Legacy example',
+      } as Partial<Entry>,
+      { side: 'back' },
+    )
+
+    expect(html).toContain('Legacy definition')
+    expect(html).toContain('Legacy type')
+    expect(html).toContain('Legacy example')
+  })
+
+  it('空白だけの builtin value は content としてレンダリングしない', () => {
+    expect(renderSide(
+      ['word', 'meaning'],
+      { word: '   ', meaning_vi: '\n\t' },
+      { side: 'front' },
+    )).toBe('')
+  })
 })
 
 describe('renderSide — custom fields', () => {
@@ -107,6 +184,19 @@ describe('renderSide — custom fields', () => {
       { side: 'back' },
     )).toBe('')
   })
+
+  it('空白だけの custom string/string[] は表示しない', () => {
+    expect(renderSide(
+      ['custom:phon_the'],
+      { phon_the: '   ' } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+    expect(renderSide(
+      ['custom:usage_notes'],
+      { usage_notes: [' ', '\n'] } as Partial<Entry>,
+      { side: 'back' },
+    )).toBe('')
+  })
 })
 
 describe('card field source helpers', () => {
@@ -119,6 +209,7 @@ describe('card field source helpers', () => {
 
   it('builtin/custom label を解決する', () => {
     expect(getFieldLabel('meaning')).toBe('Meaning')
+    expect(getFieldLabel('audio_example')).toBe('Example audio')
     expect(getFieldLabel('custom:phon_the')).toBe('Phon the')
     expect(getFieldLabel('custom:phon_the', { phon_the: 'Traditional form' })).toBe('Traditional form')
   })
@@ -130,7 +221,7 @@ describe('card field source helpers', () => {
   it('正しい builtin/custom source を template schema が受け入れる', () => {
     expect(cardTemplateSchema.safeParse({
       front: ['word'],
-      back: ['meaning', 'custom:phon_the'],
+      back: ['meaning', 'audio_example', 'custom:phon_the'],
     }).success).toBe(true)
   })
 })
@@ -211,5 +302,22 @@ describe('DEFAULT_TEMPLATES — backward-compatible golden output', () => {
     ]))
 
     expect(rendered).toEqual(expected)
+  })
+})
+
+describe('resolveCardTemplate — safe fallback', () => {
+  it('prototype key の code を own template として扱わない', () => {
+    expect(resolveCardTemplate({
+      id: 'legacy-constructor',
+      code: 'constructor',
+    })).toBe(DEFAULT_TEMPLATES.word_to_meaning)
+  })
+
+  it('破損した persisted template は default へ fallback する', () => {
+    expect(resolveCardTemplate({
+      id: 'broken',
+      code: 'meaning_to_word',
+      template: { front: [], back: ['word'] },
+    })).toBe(DEFAULT_TEMPLATES.meaning_to_word)
   })
 })

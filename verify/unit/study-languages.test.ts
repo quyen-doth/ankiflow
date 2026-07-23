@@ -4,6 +4,7 @@ import {
   addOrEnableStudyLanguage,
   canonicalizeLanguageCode,
   languageDisplayName,
+  matchesLanguageScope,
   mergeStudyLanguageEdits,
   normalizeStudyLanguages,
   resolveStudyLanguage,
@@ -34,6 +35,16 @@ describe('studyLanguages — BCP 47 normalization', () => {
       { code: 'pt-BR', display_name: 'Português', enabled: false, sort_order: 0 },
       { code: 'fr', display_name: 'French', enabled: true, sort_order: 1 },
     ])
+  })
+
+  it('language scope は generic tag だけを regional variant へ広げる', () => {
+    expect(matchesLanguageScope(null, 'zh-TW')).toBe(true)
+    expect(matchesLanguageScope('zh', 'zh-TW')).toBe(true)
+    expect(matchesLanguageScope('ZH', 'zh-Hant')).toBe(true)
+    expect(matchesLanguageScope('zh-TW', 'zh-TW')).toBe(true)
+    expect(matchesLanguageScope('zh-TW', 'zh-CN')).toBe(false)
+    expect(matchesLanguageScope('zh-TW', 'zh')).toBe(false)
+    expect(matchesLanguageScope('ja', 'zh-TW')).toBe(false)
   })
 })
 describe('studyLanguages — validation and updates', () => {
