@@ -58,7 +58,7 @@ test('Card Template editor は Example audio capability を追加して preview 
 test('Preview additional fields は custom value を編集できる', async ({ page }) => {
   await page.goto('/verify/AdditionalFields/custom-values?chrome=0')
 
-  await expect(page.getByText('Additional fields', { exact: true })).toBeVisible()
+  await expect(page.getByText('Additional fields (2)', { exact: true })).toBeVisible()
   await page.getByText('喫飯', { exact: true }).click()
   await page.getByRole('textbox', { name: 'Edit value' }).fill('吃飯')
   await page.getByRole('button', { name: 'Save' }).click()
