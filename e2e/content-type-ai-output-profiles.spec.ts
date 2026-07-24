@@ -3,9 +3,9 @@ import { expect, test } from '@playwright/test'
 test('Content Type editor は profile ごとの AI output instruction を保存して再表示する', async ({ page }) => {
   await page.goto('/verify/AiOutputProfilesEditor/e2e-editor-flow?chrome=0')
 
-  const profileSelect = page.getByRole('combobox', { name: 'AI output profile' })
-  await expect(profileSelect.locator('option')).toHaveText(['Default', 'English', 'Chinese', 'Japanese'])
-  await profileSelect.selectOption({ label: 'Chinese' })
+  const profileSwitcher = page.getByRole('radiogroup', { name: 'AI output profile' })
+  await expect(profileSwitcher.getByRole('radio')).toHaveText(['Default', 'English', 'Chinese', 'Japanese'])
+  await profileSwitcher.getByRole('radio', { name: 'Chinese', exact: true }).click()
 
   const primaryKey = page.getByRole('textbox', { name: 'AI output key 0' })
   await expect(primaryKey).toBeDisabled()
@@ -19,7 +19,7 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
 
   await expect(page.getByText('Profile draft saved.')).toBeVisible()
   await page.getByRole('button', { name: 'Reopen editor' }).click()
-  await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
+  await page.getByRole('radio', { name: 'Chinese', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'AI output instruction 0' }))
     .toHaveValue('Chinese identity from workspace')
   await expect(page.getByRole('button', { name: 'Remove AI output memory_hook' })).toBeVisible()
@@ -27,7 +27,7 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await page.getByRole('button', { name: 'Remove AI output memory_hook' }).click()
   await page.getByRole('button', { name: 'Save Profile Draft' }).click()
   await page.getByRole('button', { name: 'Reopen editor' }).click()
-  await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
+  await page.getByRole('radio', { name: 'Chinese', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Remove AI output memory_hook' })).toHaveCount(0)
 })
 
@@ -38,7 +38,7 @@ test('AI output editor は text-only 境界と profile preset を表示して fi
     'Custom fields are text-only. Audio, images and cloze come from system field types.',
   )).toBeVisible()
 
-  await page.getByRole('combobox', { name: 'AI output profile' }).selectOption({ label: 'Chinese' })
+  await page.getByRole('radio', { name: 'Chinese', exact: true }).click()
   const picker = page.getByRole('combobox', { name: 'Add AI output field' })
   const suggested = picker.locator('optgroup[label="Suggested fields"] option')
   await expect(suggested).toHaveCount(2)

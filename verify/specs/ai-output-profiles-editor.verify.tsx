@@ -33,11 +33,29 @@ const TEST_CONTENT_TYPE = {
   ],
 }
 
-function initialProfiles(): AiOutputProfile[] {
+type EditorScenario = 'builtin' | 'override-badges'
+
+function initialProfiles(scenario: EditorScenario = 'builtin'): AiOutputProfile[] {
   const profiles = resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)
   if (!profiles) throw new Error('Language profiles are required')
   // 実アプリは materialize 経由で normalize 済み profile を渡すため、harness も揃える。
-  return normalizeAiOutputProfiles(profiles)
+  const normalized = normalizeAiOutputProfiles(profiles)
+  if (scenario !== 'override-badges') return normalized
+
+  // Default=3、Chinese=5、Japanese=10 の差を badge で確認する。
+  return normalized.map(profile => ({
+    ...profile,
+    fields: profile.fields.flatMap(field => {
+      if (field.key !== 'collocations') return [field]
+      if (profile.profile === 'en') return []
+      const maxItems = profile.profile === 'default'
+        ? 3
+        : profile.profile === 'zh'
+          ? 5
+          : 10
+      return [{ ...field, max_items: maxItems }]
+    }),
+  }))
 }
 
 function clickButtonByText(root: HTMLElement, text: string): void {
@@ -48,9 +66,21 @@ function clickButtonByText(root: HTMLElement, text: string): void {
   button.click()
 }
 
-function EditorHarness() {
-  const [draft, setDraft] = useState<AiOutputProfile[]>(initialProfiles)
-  const [saved, setSaved] = useState<AiOutputProfile[]>(initialProfiles)
+function clickProfile(root: HTMLElement, label: string): void {
+  const group = root.querySelector('[role="radiogroup"][aria-label="AI output profile"]')
+  const button = Array.from(group?.querySelectorAll<HTMLButtonElement>('[role="radio"]') ?? [])
+    .find(candidate => candidate.textContent?.trim() === label)
+  if (!button) throw new Error(`profile "${label}" was not found`)
+  button.click()
+}
+
+interface EditorHarnessProps {
+  scenario?: EditorScenario
+}
+
+function EditorHarness({ scenario = 'builtin' }: EditorHarnessProps) {
+  const [draft, setDraft] = useState<AiOutputProfile[]>(() => initialProfiles(scenario))
+  const [saved, setSaved] = useState<AiOutputProfile[]>(() => initialProfiles(scenario))
   const [editing, setEditing] = useState(true)
 
   const save = () => {
@@ -85,13 +115,15 @@ function EditorHarness() {
   )
 }
 
-registerUnit({
+registerUnit<EditorHarnessProps>({
   id: 'AiOutputProfilesEditor',
   title: 'AI Output Profiles Editor',
   description: 'Profile switching, locked primary output, add/remove/reorder and draft persistence.',
   kind: 'component',
-  render: () => <EditorHarness />,
-  propsSchema: z.object({}),
+  render: props => <EditorHarness {...props} />,
+  propsSchema: z.object({
+    scenario: z.enum(['builtin', 'override-badges']).optional(),
+  }),
   fixtures: [
     {
       id: 'act-exclude-inherited-field',
@@ -99,10 +131,7 @@ registerUnit({
       props: {},
       act: async ctx => {
         // Chinese profile へ切り替える (Default=0, English=1, Chinese=2)。
-        const select = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output profile"]')
-        if (!select) throw new Error('profile select が見つからない')
-        select.value = '2'
-        select.dispatchEvent(new Event('change', { bubbles: true }))
+        clickProfile(ctx.root, 'Chinese')
         await ctx.wait(0)
         // legacy zh は normalize 済みで ipa を exclude している → Restore で戻す。
         const restore = ctx.root.querySelector<HTMLButtonElement>('button[aria-label="Restore inherited output ipa"]')
@@ -125,10 +154,7 @@ registerUnit({
       description: '中国語 profile の preset を選択し、設定済み field として追加する。',
       props: {},
       act: async ctx => {
-        const profile = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="AI output profile"]')
-        if (!profile) throw new Error('profile select が見つからない')
-        profile.value = '2'
-        profile.dispatchEvent(new Event('change', { bubbles: true }))
+        clickProfile(ctx.root, 'Chinese')
         await ctx.wait(0)
 
         const picker = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
@@ -154,6 +180,11 @@ registerUnit({
       id: 'default-language-profiles',
       description: 'Language editor starts with Default/English/Chinese/Japanese profiles.',
       props: {},
+    },
+    {
+      id: 'override-badges',
+      description: 'Default field に profile ごとの override と max 差分を表示する。',
+      props: { scenario: 'override-badges' },
     },
     {
       id: 'e2e-editor-flow',
@@ -307,6 +338,13 @@ registerUnit({
       },
     },
     {
+      id: 'language-own-fields-show-override-hint',
+      description: '言語 profile の own field は Default override を明示する',
+      onlyFixtures: ['act-exclude-inherited-field'],
+      check: ({ root }) => root.textContent?.includes('Overrides Default')
+        || '言語 own field に Overrides Default hint がない',
+    },
+    {
       id: 'new-profile-starts-empty',
       description: '新規 profile は own field 0 件で作成される',
       onlyFixtures: ['act-add-profile-inherits'],
@@ -316,6 +354,12 @@ registerUnit({
         // 新規 profile では primary(word) が継承側に現れる → exclude 不可であること。
         if (root.querySelector('button[aria-label="Exclude inherited output word"]')) {
           return 'primary field を exclude できてしまう'
+        }
+        const profileButtons = root.querySelectorAll(
+          '[role="radiogroup"][aria-label="AI output profile"] [role="radio"]',
+        )
+        if (profileButtons.length !== 5 || profileButtons[4]?.textContent?.trim() !== 'New profile') {
+          return '空 key の新規 profile segment が安定して表示されない'
         }
         return !!root.querySelector('button[aria-label="Exclude inherited output ipa"]')
           || '継承 field が表示されない'
@@ -392,11 +436,32 @@ registerUnit({
         'act-exclude-inherited-field',
       ],
       check: ({ root }) => {
-        const options = Array.from(root.querySelectorAll('select[aria-label="AI output profile"] option'))
-          .map(option => option.textContent)
+        const options = Array.from(root.querySelectorAll(
+          '[role="radiogroup"][aria-label="AI output profile"] [role="radio"]',
+        )).map(option => option.textContent)
         return options.join(',') === 'Default,English,Chinese,Japanese'
-          || `options=${options.join(',')}`
+          || `segments=${options.join(',')}`
       },
+    },
+    {
+      id: 'default-profile-hides-profile-key-controls',
+      description: 'Default view は不要な profile key と Remove control を表示しない',
+      onlyFixtures: ['default-language-profiles'],
+      check: ({ root }) => {
+        if (root.querySelector('input[aria-label="AI profile key"]')) {
+          return 'Default view に profile key input が表示されている'
+        }
+        return !root.querySelector('button[aria-label^="Remove AI profile"]')
+          || 'Default view に profile Remove が表示されている'
+      },
+    },
+    {
+      id: 'default-override-badge-is-visible',
+      description: 'Default view は override profile と max 差分を badge で表示する',
+      onlyFixtures: ['override-badges'],
+      check: ({ root }) => root.textContent?.includes(
+        'Overridden in Chinese (max 5), Japanese (max 10)',
+      ) || 'collocations の override badge が表示されていない',
     },
     {
       id: 'primary-is-locked',

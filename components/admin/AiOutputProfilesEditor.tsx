@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, LockKeyhole, Play, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FieldWrapper, Input, Select, Textarea } from '@/components/ui/FormField'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { isBuiltinRenderedOutputKey } from '@/lib/anki/cardTemplateFields'
 import { getFieldLabel } from '@/lib/anki/renderCard'
@@ -13,6 +14,10 @@ import {
   type TestGenerationContentTypeDraft,
 } from '@/lib/ai-agent/testGeneration'
 import { resolveFieldPresets, type FieldPreset } from '@/lib/ai-agent/fieldPresets'
+import {
+  getAiOutputProfileLabel as profileLabel,
+  resolveDefaultFieldOverrides,
+} from '@/lib/ai-agent/profileOverrides'
 import { cn } from '@/lib/utils'
 import { FormType } from '@/types'
 import type { AiOutputField, AiOutputProfile } from '@/types'
@@ -24,17 +29,6 @@ interface AiOutputProfilesEditorProps {
   contentType?: TestGenerationContentTypeDraft
   onInitialize: () => void
   onChange: (profiles: AiOutputProfile[]) => void
-}
-
-const PROFILE_LABELS: Readonly<Record<string, string>> = {
-  default: 'Default',
-  en: 'English',
-  zh: 'Chinese',
-  ja: 'Japanese',
-}
-
-function profileLabel(profile: string): string {
-  return PROFILE_LABELS[profile] ?? (profile ? profile.toUpperCase() : 'New profile')
 }
 
 export function AiOutputProfilesEditor({
@@ -67,6 +61,11 @@ export function AiOutputProfilesEditor({
   const activeProfile = profiles[resolvedActiveIndex]
   const defaultProfileIndex = profiles.findIndex(profile => profile.profile === 'default')
   const isDefaultProfile = resolvedActiveIndex === defaultProfileIndex
+  const profileOptions = profiles.map((profile, index) => ({
+    value: `profile-${index}`,
+    label: profileLabel(profile.profile),
+  }))
+  const activeProfileValue = `profile-${resolvedActiveIndex}`
   const primaryFieldIndex = activeProfile?.fields.findIndex(field => field.key === primaryFieldKey) ?? -1
   const isLanguageContentType = contentType
     ? resolveContentTypeFormType(contentType.code.trim()) === FormType.LANGUAGE
@@ -78,6 +77,10 @@ export function AiOutputProfilesEditor({
   // 言語 profile は Default を継承する。ここでは own field で上書きされていない
   // Default field を「継承 (読み取り専用)」として提示し、exclude/restore を切り替える。
   const defaultProfile = defaultProfileIndex >= 0 ? profiles[defaultProfileIndex] : undefined
+  const defaultFieldOverrides = useMemo(
+    () => resolveDefaultFieldOverrides(profiles),
+    [profiles],
+  )
   const ownKeys = new Set(activeProfile?.fields.map(field => field.key) ?? [])
   const excludedKeys = new Set(activeProfile?.exclude ?? [])
   const inheritedFields = isDefaultProfile
@@ -324,42 +327,42 @@ export function AiOutputProfilesEditor({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 items-end">
+      <div className="flex flex-col gap-3">
         <FieldWrapper label="Profile">
-          <Select
+          <SegmentedControl
             aria-label="AI output profile"
-            value={resolvedActiveIndex}
-            onChange={(event) => {
+            options={profileOptions}
+            value={activeProfileValue}
+            onChange={(value) => {
+              const nextIndex = profileOptions.findIndex(option => option.value === value)
+              if (nextIndex < 0) return
               dismissInstructionSuggestion()
-              setActiveIndex(Number(event.target.value))
+              setActiveIndex(nextIndex)
             }}
-          >
-            {profiles.map((profile, index) => (
-              <option key={index} value={index}>
-                {profileLabel(profile.profile)}
-              </option>
-            ))}
-          </Select>
-        </FieldWrapper>
-        <FieldWrapper label="Profile key">
-          <Input
-            aria-label="AI profile key"
-            value={activeProfile.profile}
-            disabled={isDefaultProfile}
-            onChange={(event) => replaceProfile({ ...activeProfile, profile: event.target.value })}
-            placeholder="e.g. fr"
+            className="w-full"
           />
         </FieldWrapper>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={removeActiveProfile}
-          disabled={isDefaultProfile}
-          aria-label={`Remove AI profile ${activeProfile.profile || 'new'}`}
-          className="text-danger"
-        >
-          Remove
-        </Button>
+        {!isDefaultProfile && (
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+            <FieldWrapper label="Profile key">
+              <Input
+                aria-label="AI profile key"
+                value={activeProfile.profile}
+                onChange={(event) => replaceProfile({ ...activeProfile, profile: event.target.value })}
+                placeholder="e.g. fr"
+              />
+            </FieldWrapper>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={removeActiveProfile}
+              aria-label={`Remove AI profile ${activeProfile.profile || 'new'}`}
+              className="text-danger"
+            >
+              Remove
+            </Button>
+          </div>
+        )}
       </div>
 
       <p className="text-[12px] leading-relaxed text-slate-500 -mt-1">
@@ -418,16 +421,34 @@ export function AiOutputProfilesEditor({
       <div className="flex flex-col gap-3">
         {activeProfile.fields.map((field, fieldIndex) => {
           const isPrimary = fieldIndex === primaryFieldIndex
+          const fieldOverrides = isDefaultProfile
+            ? defaultFieldOverrides.get(field.key) ?? []
+            : []
+          const overridesDefault = !isDefaultProfile
+            && Boolean(defaultProfile?.fields.some(defaultField => defaultField.key === field.key))
+          const overrideSummary = fieldOverrides.map(override => (
+            `${override.label}${override.diffs.length > 0 ? ` (${override.diffs.join(', ')})` : ''}`
+          )).join(', ')
           return (
             <div key={fieldIndex} className="rounded-[9px] border border-border/60 bg-surface/40 p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[12px] font-semibold text-slate-600">
                     {field.key || `output_${fieldIndex}`}
                   </span>
                   {isPrimary && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary-bg px-2 py-0.5 text-[10px] font-bold text-primary">
                       <LockKeyhole className="w-3 h-3" /> Primary
+                    </span>
+                  )}
+                  {fieldOverrides.length > 0 && (
+                    <span className="rounded-full bg-[#faf3e6] px-2 py-0.5 text-[10px] font-bold text-[#8a5810]">
+                      Overridden in {overrideSummary}
+                    </span>
+                  )}
+                  {overridesDefault && (
+                    <span className="rounded-full bg-[#f0f0ec] px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                      Overrides Default
                     </span>
                   )}
                 </div>
