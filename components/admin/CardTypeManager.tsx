@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import {
   collection, query, where, getDocs,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, deleteField,
@@ -25,7 +26,10 @@ import type { CardTypeConfig, CardTemplate, ContentType, LanguageCode } from '@/
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
 import { DEFAULT_TEMPLATES, getFieldLabel } from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
-import { resolveCardTemplateCustomFields } from '@/lib/anki/cardTemplateFields'
+import {
+  explainUnavailableTemplateFields,
+  resolveCardTemplateCustomFields,
+} from '@/lib/anki/cardTemplateFields'
 import { loadGlobalContentTypes, loadUserContentTypes } from '@/lib/userContentTypes'
 import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplateEditor'
@@ -123,17 +127,23 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     draft.language === NO_LANGUAGE ? null : draft.language,
   ), [contentTypes, draft.form_type, draft.language])
 
-  const unavailableTemplateFields = useMemo(() => {
-    const availableSources = new Set<string>(customFields.map(field => field.source))
+  const templateCustomKeys = useMemo(() => {
     const seen = new Set<string>()
 
     return [...draft.template.front, ...draft.template.back].flatMap(source => {
       const customKey = parseCustomFieldSource(source)
-      if (!customKey || availableSources.has(source) || seen.has(source)) return []
-      seen.add(source)
-      return [getFieldLabel(source)]
+      if (!customKey || seen.has(customKey)) return []
+      seen.add(customKey)
+      return [customKey]
     })
-  }, [customFields, draft.template.back, draft.template.front])
+  }, [draft.template.back, draft.template.front])
+
+  const unavailableTemplateFields = useMemo(() => explainUnavailableTemplateFields(
+    contentTypes,
+    draft.form_type,
+    draft.language === NO_LANGUAGE ? null : draft.language,
+    templateCustomKeys,
+  ), [contentTypes, draft.form_type, draft.language, templateCustomKeys])
 
   useEffect(() => {
     if (authLoading || !ownerId) return
@@ -480,10 +490,38 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
               {contentTypesLoaded && unavailableTemplateFields.length > 0 && (
                 <div role="alert" className="mt-3 flex items-start gap-2 rounded-[7px] border border-[#efe0c6] bg-[#faf3e6] px-3 py-2.5 text-[#8a5a12]">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  <p className="text-[12px] leading-relaxed">
-                    <span className="font-semibold">Unavailable for the current selection: {unavailableTemplateFields.join(', ')}.</span>{' '}
-                    These fields remain in the card structure, but their AI output may be empty.
-                  </p>
+                  <div className="text-[12px] leading-relaxed">
+                    <p className="font-semibold">Some card fields are unavailable for the current selection.</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-4">
+                      {unavailableTemplateFields.map(field => {
+                        const label = getFieldLabel(`custom:${field.key}`)
+                        const editorHref = `/admin/content-types/${encodeURIComponent(field.contentTypeId)}${
+                          ownerId === DEFAULTS_OWNER_ID ? '?scope=global-defaults' : ''
+                        }`
+                        const missingTarget = field.profileLabel === 'Default'
+                          ? 'add it to Default.'
+                          : `add it to Default or ${field.profileLabel}.`
+                        return (
+                          <li key={field.key}>
+                            <span>
+                              {field.reason === 'excluded'
+                                ? `"${label}" is excluded in the ${field.profileLabel} profile — restore it in Content Type settings.`
+                                : `"${label}" is not defined for the ${field.profileLabel} profile — ${missingTarget}`}
+                            </span>{' '}
+                            <Link
+                              href={editorHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={`Edit Content Type for ${label}`}
+                              className="font-semibold underline underline-offset-2 hover:text-[#6f470e]"
+                            >
+                              Edit Content Type
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
                 </div>
               )}
               {showErrors && (errors.front || errors.back) && (
