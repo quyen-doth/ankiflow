@@ -35,7 +35,7 @@ test('AI output editor は text-only 境界と profile preset を表示して fi
   await page.goto('/verify/AiOutputProfilesEditor/default-language-profiles?chrome=0')
 
   await expect(page.getByText(
-    'Custom fields are text-only. Audio, images and cloze come from system field types.',
+    'Custom fields support text and lists; media and cloze use system fields.',
   )).toBeVisible()
 
   await page.getByRole('radio', { name: 'Chinese', exact: true }).click()

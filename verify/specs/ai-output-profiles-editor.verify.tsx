@@ -415,8 +415,32 @@ registerUnit<EditorHarnessProps>({
       description: 'Custom field の能力境界を editor 内で明示する',
       onlyFixtures: ['default-language-profiles'],
       check: ({ root }) => root.textContent?.includes(
-        'Custom fields are text-only. Audio, images and cloze come from system field types.',
+        'Custom fields support text and lists; media and cloze use system fields.',
       ) || 'text-only contract が表示されていない',
+    },
+    {
+      id: 'typography-follows-design-tiers',
+      description: 'section heading、helper、badge は DESIGN の typography tier を使う',
+      onlyFixtures: ['default-language-profiles'],
+      check: ({ root }) => {
+        const heading = Array.from(root.querySelectorAll('h3'))
+          .find(candidate => candidate.textContent?.trim() === 'AI output profiles')
+        if (!heading?.classList.contains('text-section-heading')
+          || !heading.classList.contains('text-ink')) {
+          return `heading classes="${heading?.className ?? 'missing'}"`
+        }
+        const helper = heading.nextElementSibling
+        if (!helper?.classList.contains('text-secondary')
+          || !helper.classList.contains('text-slate-400')) {
+          return `helper classes="${helper?.className ?? 'missing'}"`
+        }
+        const legacySizes = Array.from(root.querySelectorAll('*')).filter(element => (
+          element.classList.contains('text-[9px]')
+          || element.classList.contains('text-[11.5px]')
+        ))
+        return legacySizes.length === 0
+          || `legacy typography=${legacySizes.map(element => element.className).join('|')}`
+      },
     },
     {
       id: 'self-identifies',

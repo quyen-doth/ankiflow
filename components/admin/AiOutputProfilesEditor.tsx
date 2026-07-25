@@ -291,8 +291,8 @@ export function AiOutputProfilesEditor({
   if (disabledReason) {
     return (
       <section className="rounded-[9px] border border-border bg-surface px-4 py-3">
-        <h3 className="text-body font-semibold text-slate-600">AI output profiles</h3>
-        <p className="text-[12.5px] text-slate-500 mt-1">{disabledReason}</p>
+        <h3 className="text-section-heading text-ink">AI output profiles</h3>
+        <p className="text-secondary text-slate-400 mt-1">{disabledReason}</p>
       </section>
     )
   }
@@ -301,8 +301,8 @@ export function AiOutputProfilesEditor({
     return (
       <section className="rounded-[9px] border border-primary/20 bg-primary-bg px-4 py-3 flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-body font-semibold text-slate-600">AI output profiles</h3>
-          <p className="text-[12.5px] text-slate-500 mt-1">
+          <h3 className="text-section-heading text-ink">AI output profiles</h3>
+          <p className="text-secondary text-slate-400 mt-1">
             Add a valid primary form field, then initialize a safe default output profile.
           </p>
         </div>
@@ -317,9 +317,9 @@ export function AiOutputProfilesEditor({
     <section className="rounded-card border border-border/60 p-4 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-body font-semibold text-slate-600">AI output profiles</h3>
-          <p className="text-[12px] text-slate-400 mt-1">
-            The server uses these fields to build the AI tool schema. The primary field is always locked.
+          <h3 className="text-section-heading text-ink">AI output profiles</h3>
+          <p className="text-secondary text-slate-400 mt-1">
+            Defines the AI response fields; the primary field stays locked.
           </p>
         </div>
         <Button variant="ghost" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={addProfile}>
@@ -365,10 +365,10 @@ export function AiOutputProfilesEditor({
         )}
       </div>
 
-      <p className="text-[12px] leading-relaxed text-slate-500 -mt-1">
+      <p className="text-secondary text-slate-400 -mt-1">
         {isDefaultProfile
-          ? 'Fields here apply to every language unless a language profile excludes them.'
-          : `${profileLabel(activeProfile.profile)} inherits every Default field. The fields below are specific to ${profileLabel(activeProfile.profile)} and override Default when the key matches.`}
+          ? 'Default fields apply unless a language profile excludes or overrides them.'
+          : `${profileLabel(activeProfile.profile)} inherits Default; matching own keys override it.`}
       </p>
 
       {!isDefaultProfile && inheritedFields.length > 0 && (
@@ -379,9 +379,11 @@ export function AiOutputProfilesEditor({
           {inheritedFields.every(field => excludedKeys.has(field.key)) && (
             // 既存 profile は移行時に「今まで通りの出力」を保つため全 Default field が
             // excluded になる。説明がないとデータ破損に見えるので明示する。
-            <p className="text-[11.5px] leading-relaxed text-slate-500">
-              This profile was set up before inheritance existed, so it keeps its previous output
-              exactly. Restore a field to start inheriting it here.
+            <p
+              className="text-secondary text-slate-400"
+              title="This legacy profile preserves its previous output until fields are restored."
+            >
+              Legacy profile: restore fields to inherit current Default values.
             </p>
           )}
           {inheritedFields.map(field => {
@@ -405,7 +407,7 @@ export function AiOutputProfilesEditor({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="p-1.5 h-auto text-[11.5px]"
+                    className="p-1.5 h-auto"
                     aria-label={`${excluded ? 'Restore' : 'Exclude'} inherited output ${field.key}`}
                     onClick={() => setExcluded(field.key, !excluded)}
                   >
@@ -548,9 +550,9 @@ export function AiOutputProfilesEditor({
                 {suggestingFieldIndex === fieldIndex && (
                   <div className="rounded-[9px] border border-primary/20 bg-primary-bg/40 p-3 flex flex-col gap-2">
                     <div>
-                      <p className="text-[12.5px] font-semibold text-slate-600">Describe the output you want</p>
-                      <p className="text-[11.5px] text-slate-400 mt-0.5">
-                        Claude will draft a concise schema instruction. You can edit it before saving.
+                      <p className="text-body text-ink">Describe the output you want</p>
+                      <p className="text-secondary text-slate-400 mt-0.5">
+                        Describe the field; Claude will draft an editable instruction.
                       </p>
                     </div>
                     <Textarea
@@ -562,7 +564,7 @@ export function AiOutputProfilesEditor({
                       placeholder="e.g. A short definition in the selected output language"
                     />
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] text-slate-400">{suggestionDescription.length}/300</span>
+                      <span className="font-mono text-[12px] text-slate-400">{suggestionDescription.length}/300</span>
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
@@ -585,7 +587,7 @@ export function AiOutputProfilesEditor({
                       </div>
                     </div>
                     {suggestionError && (
-                      <p role="alert" className="text-[12.5px] text-danger">{suggestionError}</p>
+                      <p role="alert" className="text-secondary text-danger">{suggestionError}</p>
                     )}
                   </div>
                 )}
@@ -627,8 +629,8 @@ export function AiOutputProfilesEditor({
       </div>
 
       <div className="flex flex-col gap-2 max-w-xl">
-        <p className="text-[12px] leading-relaxed text-slate-500">
-          Custom fields are text-only. Audio, images and cloze come from system field types.
+        <p className="text-secondary text-slate-400">
+          Custom fields support text and lists; media and cloze use system fields.
         </p>
         <FieldWrapper label="Add output field">
           <Select
@@ -669,9 +671,9 @@ export function AiOutputProfilesEditor({
       {contentType && (
         <div className="border-t border-border/60 pt-4 flex flex-col gap-3">
           <div>
-            <h4 className="text-body font-semibold text-slate-600">Test with a sample word</h4>
-            <p className="text-[12px] text-slate-400 mt-1">
-              Run the unsaved fields and instructions without changing this Content Type.
+            <h4 className="text-section-heading text-ink">Test with a sample word</h4>
+            <p className="text-secondary text-slate-400 mt-1">
+              Test unsaved fields and instructions without saving this Content Type.
             </p>
           </div>
           <div className={cn('grid grid-cols-1 gap-3 items-end', isLanguageContentType && 'sm:grid-cols-2')}>
@@ -716,7 +718,7 @@ export function AiOutputProfilesEditor({
             Run test
           </Button>
 
-          {testError && <p role="alert" className="text-[12.5px] text-danger">{testError}</p>}
+          {testError && <p role="alert" className="text-secondary text-danger">{testError}</p>}
           {testResult && (
             <div aria-label="AI test result" className="rounded-[9px] border border-primary/20 bg-primary-bg/40 p-3 flex flex-col gap-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.05em] font-mono text-primary">Test result</p>
@@ -732,14 +734,14 @@ export function AiOutputProfilesEditor({
                 return (
                   <div key={key} className="rounded-[7px] border border-border/60 bg-white px-3 py-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[11px] font-semibold text-slate-600">{label}</span>
+                      <span className="font-mono text-[12px] font-medium text-slate-600">{label}</span>
                       {isCustom && (
-                        <span className="rounded-full bg-primary-bg px-2 py-0.5 text-[9px] font-bold uppercase text-primary">
+                        <span className="rounded-full bg-primary-bg px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
                           Custom
                         </span>
                       )}
                     </div>
-                    <p className="text-[13px] text-ink whitespace-pre-wrap">{renderedValue}</p>
+                    <p className="text-body text-ink whitespace-pre-wrap">{renderedValue}</p>
                   </div>
                 )
               })}

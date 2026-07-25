@@ -322,6 +322,18 @@ registerUnit<VerifyProps>({
       },
     },
     {
+      id: 'editor-section-heading-follows-design-tier',
+      description: 'Fields section heading は DESIGN の 15px/ink tier を使う',
+      onlyFixtures: ['act-open-edit-modal'],
+      check: ({ root }) => {
+        const heading = Array.from(root.querySelectorAll('h3'))
+          .find(candidate => candidate.textContent?.trim() === 'Fields')
+        return heading?.classList.contains('text-section-heading')
+          && heading.classList.contains('text-ink')
+          || `heading classes="${heading?.className ?? 'missing'}"`
+      },
+    },
+    {
       id: 'edit-save-updates-fields',
       description: 'Save: store doc の fields[0].label が更新され、modal が閉じる',
       onlyFixtures: ['act-edit-save'],
