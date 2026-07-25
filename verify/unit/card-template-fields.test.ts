@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCardTemplateCustomFields } from '@/lib/anki/cardTemplateFields'
+import {
+  explainUnavailableTemplateFields,
+  resolveCardTemplateCustomFields,
+} from '@/lib/anki/cardTemplateFields'
 import { FormType } from '@/types'
 import type { AiOutputProfile, ContentType, FormFieldConfig } from '@/types'
 
@@ -42,6 +45,10 @@ const languageContentType = {
       { key: 'meaning_vi', type: 'string', instruction: 'Meaning' },
       { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
       { key: 'related_words', type: 'string_array', instruction: 'Related words' },
+    ]),
+    profile('ja', [
+      { key: 'word', type: 'string', instruction: 'Word' },
+      { key: 'furigana_extra', type: 'string', instruction: 'Furigana' },
     ]),
   ],
   is_active: true,
@@ -170,5 +177,58 @@ describe('resolveCardTemplateCustomFields', () => {
     expect(resolveCardTemplateCustomFields([
       { ...languageContentType, ai_output_profiles: [{ profile: 'zh', fields: [] }] },
     ] as ContentType[], FormType.LANGUAGE, 'zh')).toEqual([])
+  })
+})
+
+describe('explainUnavailableTemplateFields', () => {
+  it('選択 profile の exclude と effective field 不足を区別する', () => {
+    expect(explainUnavailableTemplateFields(
+      [languageContentType],
+      FormType.LANGUAGE,
+      'zh-Hant',
+      ['default_note', 'furigana_extra', 'phon_the', 'default_note'],
+    )).toEqual([
+      {
+        key: 'default_note',
+        reason: 'excluded',
+        profileLabel: 'Chinese',
+        contentTypeId: 'language-user',
+      },
+      {
+        key: 'furigana_extra',
+        reason: 'missing',
+        profileLabel: 'Chinese',
+        contentTypeId: 'language-user',
+      },
+    ])
+  })
+
+  it('language がない場合は Default effective profile を説明に使う', () => {
+    expect(explainUnavailableTemplateFields(
+      [languageContentType],
+      FormType.LANGUAGE,
+      null,
+      ['default_note', 'phon_the'],
+    )).toEqual([{
+      key: 'phon_the',
+      reason: 'missing',
+      profileLabel: 'Default',
+      contentTypeId: 'language-user',
+    }])
+  })
+
+  it('route 不一致または profile 不正時は誤診を返さない', () => {
+    expect(explainUnavailableTemplateFields(
+      [languageContentType],
+      FormType.IT,
+      'zh',
+      ['phon_the'],
+    )).toEqual([])
+    expect(explainUnavailableTemplateFields(
+      [{ ...languageContentType, ai_output_profiles: [{ profile: 'zh', fields: [] }] }] as ContentType[],
+      FormType.LANGUAGE,
+      'zh',
+      ['phon_the'],
+    )).toEqual([])
   })
 })

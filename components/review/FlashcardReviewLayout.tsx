@@ -13,6 +13,7 @@ import { DeckCreatableField } from '@/components/create/DeckCreatableField'
 import type { Entry, LanguageCode, CardTemplate } from '@/types'
 import type { EntryCustomField } from '@/lib/entryCustomFields'
 import { primaryLanguageSubtag } from '@/lib/studyLanguages'
+import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
 
 interface CardTypeItem {
@@ -129,9 +130,15 @@ export function AdditionalFieldsSection({ fields, onChange }: AdditionalFieldsSe
   return (
     <div data-testid="additional-fields">
       <p className="text-[11px] font-bold tracking-[0.05em] uppercase font-mono text-slate-400 mb-3">
-        Additional fields
+        Additional fields ({fields.length})
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div
+        data-testid="additional-fields-grid"
+        className={cn(
+          'grid grid-cols-1 gap-4',
+          fields.length > 2 && 'sm:grid-cols-2',
+        )}
+      >
         {fields.map(field => {
           const isArray = Array.isArray(field.value)
           const displayValue = Array.isArray(field.value) ? field.value.join('\n') : field.value
@@ -148,7 +155,7 @@ export function AdditionalFieldsSection({ fields, onChange }: AdditionalFieldsSe
                 )}
                 multiline={isArray}
                 placeholder={isArray ? 'Add one item per line…' : 'Click to add…'}
-                className="block text-[14px] text-ink leading-relaxed whitespace-pre-line"
+                className="block text-[15px] text-ink leading-relaxed whitespace-pre-line"
               />
             </div>
           )

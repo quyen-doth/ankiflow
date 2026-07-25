@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { CardTypeManager } from '@/components/admin/CardTypeManager'
 import { registerUnit } from '@/verify/core/registry'
+import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import { FormType, LanguageType } from '@/types'
 import {
   clickButtonByText,
@@ -98,13 +99,32 @@ const CUSTOM_CONTENT_TYPES = [
   },
 ]
 
-registerUnit<Record<string, never>>({
+const CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE = CUSTOM_CONTENT_TYPES.map(contentType => (
+  contentType.id === 'language-test-user'
+    ? {
+        ...contentType,
+        ai_output_profiles: contentType.ai_output_profiles?.map(profile => (
+          profile.profile === 'zh'
+            ? { ...profile, inherit: true as const, exclude: ['default_note'] }
+            : profile
+        )),
+      }
+    : contentType
+))
+
+interface CardTypeManagerFixtureProps {
+  ownerId?: string
+}
+
+registerUnit<CardTypeManagerFixtureProps>({
   id: 'CardTypeManager',
   title: 'CardTypeManager',
   description: '検証ケース。',
   kind: 'component',
-  render: () => <CardTypeManager />,
-  propsSchema: z.object({}),
+  render: props => <CardTypeManager {...props} />,
+  propsSchema: z.object({
+    ownerId: z.string().optional(),
+  }),
   fixtures: [
     {
       id: 'loaded',
@@ -237,6 +257,61 @@ registerUnit<Record<string, never>>({
         if (!language) throw new Error('Language select が見つからない')
         language.value = '__none__'
         language.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-excluded-template-field',
+      description: 'Act: selected profile が除外した custom field の理由と編集 link を表示する。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-zh-excluded',
+            name: 'Chinese excluded field',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:default_note'],
+            },
+          }],
+          user_content_types: CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Chinese excluded field"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-defaults-excluded-template-field',
+      description: 'Act: defaults scope の Content Type 編集 link は scope query を保持する。',
+      props: { ownerId: DEFAULTS_OWNER_ID },
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-defaults-excluded',
+            user_id: DEFAULTS_OWNER_ID,
+            name: 'Defaults excluded field',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:default_note'],
+            },
+          }],
+          content_types: CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Defaults excluded field"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
         await ctx.wait(0)
       },
     },
@@ -405,8 +480,16 @@ registerUnit<Record<string, never>>({
       check: ({ root }) => {
         const alert = root.querySelector<HTMLElement>('[role="alert"]')
         const alertText = alert?.textContent ?? ''
-        if (!alertText.includes('Unavailable for the current selection: Phon the.')) {
+        if (!alertText.includes(
+          '"Phon the" is not defined for the Default profile — add it to Default.',
+        )) {
           return `alert="${alertText}"`
+        }
+        const link = alert?.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Phon the"]',
+        )
+        if (link?.getAttribute('href') !== '/admin/content-types/language-test-user') {
+          return `href="${link?.getAttribute('href')}"`
         }
         if (!root.querySelector('[aria-label="Remove Phon the"]')) {
           return 'custom:phon_the was removed from the template'
@@ -417,6 +500,38 @@ registerUnit<Record<string, never>>({
         if (!values.includes('custom:default_note')) return 'Default field is missing for All'
         const unavailable = ['custom:phon_the', 'custom:related_words'].filter(value => values.includes(value))
         return unavailable.length === 0 || `language-specific options=${unavailable.join(',')}`
+      },
+    },
+    {
+      id: 'excluded-warning-is-actionable',
+      description: 'exclude 理由、matched profile、対象 Content Type link を表示する',
+      onlyFixtures: ['act-excluded-template-field'],
+      check: ({ root }) => {
+        const alert = root.querySelector<HTMLElement>('[role="alert"]')
+        const alertText = alert?.textContent ?? ''
+        if (!alertText.includes(
+          '"Default note" is excluded in the Chinese profile — restore it in Content Type settings.',
+        )) {
+          return `alert="${alertText}"`
+        }
+        const link = alert?.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Default note"]',
+        )
+        return link?.getAttribute('href') === '/admin/content-types/language-test-user'
+          || `href="${link?.getAttribute('href')}"`
+      },
+    },
+    {
+      id: 'defaults-warning-keeps-global-scope',
+      description: 'defaults warning の link は global Content Type editor を開く',
+      onlyFixtures: ['act-defaults-excluded-template-field'],
+      check: ({ root }) => {
+        const link = root.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Default note"]',
+        )
+        return link?.getAttribute('href')
+          === '/admin/content-types/language-test-user?scope=global-defaults'
+          || `href="${link?.getAttribute('href')}"`
       },
     },
     {

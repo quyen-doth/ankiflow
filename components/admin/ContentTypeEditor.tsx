@@ -362,7 +362,9 @@ export function ContentTypeEditor({
             )
           })}
         </div>
-        <p className="text-[12px] text-slate-400 mt-1.5">Pre-selected when this content type is opened in Create (user can still switch).</p>
+        <p className="text-secondary text-slate-400 mt-1.5">
+          Default for Create; users can switch per entry.
+        </p>
       </FieldWrapper>
     </>
   )
@@ -371,7 +373,7 @@ export function ContentTypeEditor({
     <>
       {/* Fields */}
       <div className="flex items-center justify-between mt-2">
-        <h3 className="text-body font-semibold text-slate-600">Fields</h3>
+        <h3 className="text-section-heading text-ink">Fields</h3>
         <Button variant="ghost" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={addField}>
           Add Field
         </Button>
@@ -380,7 +382,7 @@ export function ContentTypeEditor({
       {fields.map((field, index) => (
         <div key={index} className="rounded-card border border-border/40 p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-overline text-slate-600">
+            <span className="font-mono text-[12px] font-medium text-slate-600">
               {field.field_key || `field_${index}`}
             </span>
             <Button
@@ -471,7 +473,7 @@ export function ContentTypeEditor({
       ))}
 
       {fields.length === 0 && (
-        <p className="text-sm text-slate-600 text-center py-4">
+        <p className="text-body text-slate-600 text-center py-4">
           No fields yet. Click &quot;Add Field&quot; to define form fields.
         </p>
       )}
