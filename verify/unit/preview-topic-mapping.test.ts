@@ -97,6 +97,7 @@ describe('preview Topic mapping', () => {
       items: [{
         term: 'Event Loop',
         definition_vi: 'Runtime scheduler',
+        example_usage: 'Runs queued callbacks',
         form_type: 'forged',
         output_language: 'vi',
       }, {
@@ -108,6 +109,7 @@ describe('preview Topic mapping', () => {
 
     expect(entries[0]).toMatchObject({
       definition: 'Runtime scheduler',
+      example_sentence: 'Runs queued callbacks',
       form_type: FormType.IT,
       output_language: 'en',
     })

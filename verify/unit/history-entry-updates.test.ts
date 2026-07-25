@@ -8,6 +8,7 @@ describe('buildHistoryEntryUpdates', () => {
         word: '吃饭',
         meaning_vi: 'ご飯を食べる',
         audio_url: 'old.mp3',
+        audio_example_url: 'old-example.mp3',
         anki_deck: 'Chinese',
         category_id: null,
       },
@@ -16,13 +17,17 @@ describe('buildHistoryEntryUpdates', () => {
         { key: 'related_words', label: 'Related words', value: ['用餐', '吃東西'] },
       ],
       ['card-type-1'],
-      'new.mp3',
+      {
+        audioUrl: 'new.mp3',
+        audioExampleUrl: 'new-example.mp3',
+      },
     )
 
     expect(updates).toMatchObject({
       word: '吃饭',
       meaning_vi: 'ご飯を食べる',
       audio_url: 'new.mp3',
+      audio_example_url: 'new-example.mp3',
       card_type_ids: ['card-type-1'],
       phon_the: '喫飯',
       related_words: ['用餐', '吃東西'],

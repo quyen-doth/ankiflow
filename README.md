@@ -33,7 +33,7 @@
 
 | 機能                     | 説明                                                                     |
 | ------------------------ | ------------------------------------------------------------------------ |
-| **メール認証**           | メール + パスワードでの登録・ログイン・ログアウト                        |
+| **メール認証**           | メール + パスワードでの登録（停止中）・ログイン・ログアウト              |
 | **セッション Cookie**    | httpOnly セッション Cookie による認証（XSS でトークンを盗まれない）      |
 | **ユーザー間データ分離** | Firestore セキュリティルールで、各ユーザーは自分のデータのみ読み書き可能 |
 | **初期データの自動生成** | 新規登録時にデフォルトのデッキ・カテゴリ・カードタイプ一式を自動でシード |
@@ -60,11 +60,11 @@
 
 ### 復習・連携
 
-| 機能                        | 説明                                                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Anki エクスポート**       | AnkiConnect 経由で複数カードタイプを一括生成（音声・画像メディア同期対応）                                                     |
+| 機能                        | 説明                                                                                                                                                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Anki エクスポート**       | AnkiConnect 経由で複数カードタイプを一括生成（音声・画像メディア同期対応）                                                                                                                                                         |
 | **LINE 通知による受動 SRS** | FSRS アルゴリズムに基づき、復習タイミングを LINE に Flex Message で自動プッシュ通知（GitHub Actions cron による毎時実行・管理者が設定した配信時刻を各ユーザーのタイムゾーンで解釈）。Anki Desktop を開かなくても隙間時間に復習可能 |
-| **セッション永続化**        | デッキ・言語・タグなどの設定を保持し、次回入力を高速化                                                                         |
+| **セッション永続化**        | デッキ・言語・タグなどの設定を保持し、次回入力を高速化                                                                                                                                                                             |
 
 ## システム構成
 
@@ -104,8 +104,8 @@
 | 暗記アプリ連携 | AnkiConnect（クライアントから `localhost:8765` へ直接）                            |
 | プッシュ通知   | LINE Messaging API                                                                 |
 | バリデーション | Zod v4                                                                             |
-| ランタイム検証 | Vitest + jsdom（移植・カスタマイズしたランタイム検証基盤）                       |
-| E2E テスト     | Playwright（Chromium）                                                            |
+| ランタイム検証 | Vitest + jsdom（移植・カスタマイズしたランタイム検証基盤）                         |
+| E2E テスト     | Playwright（Chromium）                                                             |
 
 ## 技術的ハイライト
 
@@ -216,20 +216,20 @@ npm run dev
 
 主な環境変数:
 
-| 変数                                          | 取得元 / 用途                          |
-| --------------------------------------------- | -------------------------------------- |
-| `FIREBASE_ADMIN_*` / `NEXT_PUBLIC_FIREBASE_*` | Firebase Console（Auth + Firestore）   |
-| `ANTHROPIC_API_KEY`                           | Anthropic Console                      |
-| `GOOGLE_TTS_CREDENTIALS_JSON`                 | GCP サービスアカウント JSON の中身（Vercel などの serverless では必須） |
-| `GOOGLE_APPLICATION_CREDENTIALS`              | GCP サービスアカウント key file のパス（ローカル開発用の代替）          |
-| `UNSPLASH_ACCESS_KEY`                         | Unsplash Developers                    |
-| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Messaging API / webhook     |
-| `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`             | LINE 公式アカウント追加 URL             |
-| `CRON_SECRET`                                 | LINE 通知 cron API の bearer 認証       |
-| `NEXT_PUBLIC_LINE_BOT_ID`                     | LINE 公式アカウントの ID（モバイル連携ディープリンク用・任意） |
-| `SIGNUP_ENABLED`                              | 公開サインアップの有効化（`true` のみ有効・既定は無効） |
-| `ADMIN_EMAIL`                                 | サーバー側の管理者判定用メール         |
-| `NEXT_PUBLIC_ADMIN_EMAIL`                     | クライアント側の管理者 UI 表示用メール |
+| 変数                                                | 取得元 / 用途                                                           |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| `FIREBASE_ADMIN_*` / `NEXT_PUBLIC_FIREBASE_*`       | Firebase Console（Auth + Firestore）                                    |
+| `ANTHROPIC_API_KEY`                                 | Anthropic Console                                                       |
+| `GOOGLE_TTS_CREDENTIALS_JSON`                       | GCP サービスアカウント JSON の中身（Vercel などの serverless では必須） |
+| `GOOGLE_APPLICATION_CREDENTIALS`                    | GCP サービスアカウント key file のパス（ローカル開発用の代替）          |
+| `UNSPLASH_ACCESS_KEY`                               | Unsplash Developers                                                     |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Messaging API / webhook                                            |
+| `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`                   | LINE 公式アカウント追加 URL                                             |
+| `CRON_SECRET`                                       | LINE 通知 cron API の bearer 認証                                       |
+| `NEXT_PUBLIC_LINE_BOT_ID`                           | LINE 公式アカウントの ID（モバイル連携ディープリンク用・任意）          |
+| `SIGNUP_ENABLED`                                    | 公開サインアップの有効化（`true` のみ有効・既定は無効）                 |
+| `ADMIN_EMAIL`                                       | サーバー側の管理者判定用メール                                          |
+| `NEXT_PUBLIC_ADMIN_EMAIL`                           | クライアント側の管理者 UI 表示用メール                                  |
 
 > **AnkiConnect の CORS 設定**: ブラウザから `localhost:8765` を呼ぶため、Anki の AnkiConnect アドオン設定で `webCorsOriginList` にアプリのオリジン（`http://localhost:3000` やデプロイ先ドメイン）を追加する必要があります。設定画面に案内を用意しています（Safari は HTTPS ページから localhost への接続を許可しないため、デプロイ環境では Chrome / Edge / Firefox を使用）。
 >
@@ -242,9 +242,10 @@ npm run dev
 ## 今後の展望
 
 - 独自 SRS エンジンの実装（Anki Desktop 依存の完全な解消）
-- LINE 通知の配信履歴・利用量モニタリング
 - モバイル向け UI 最適化 / 学習状況統計の画面
+- LINE 通知の配信履歴・利用量モニタリング
 - 複数デバイスからのメモ入力（Chrome 拡張機能などの活用）
+- その他の新機能開発し、拡張性向上させる：文法や受験勉強などの学習カード作成
 
 ## 作者
 

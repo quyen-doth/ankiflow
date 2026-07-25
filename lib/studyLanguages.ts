@@ -113,6 +113,28 @@ export function primaryLanguageSubtag(code: string): string | null {
   return canonicalizeLanguageCode(code)?.split('-')[0]?.toLowerCase() ?? null
 }
 
+/**
+ * Card Type などの language scope と entry の language を照合する。
+ * scope なしは全 language、`zh` のような primary tag は `zh-TW` にも適用するが、
+ * `zh-TW` のような具体 tag は別 variant (`zh-CN`) へ広げない。
+ */
+export function matchesLanguageScope(
+  scopeCode: string | null | undefined,
+  entryCode: string | null | undefined,
+): boolean {
+  if (!scopeCode || !entryCode) return true
+
+  const scope = canonicalizeLanguageCode(scopeCode)
+  const entry = canonicalizeLanguageCode(entryCode)
+  if (!scope || !entry) {
+    return scopeCode.trim().toLowerCase() === entryCode.trim().toLowerCase()
+  }
+  if (scope === entry) return true
+
+  return !scope.includes('-')
+    && primaryLanguageSubtag(scope) === primaryLanguageSubtag(entry)
+}
+
 /** Resolve an enabled configured language by exact tag, then deterministic base-language match. */
 export function resolveStudyLanguage(
   code: string,

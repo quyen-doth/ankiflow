@@ -67,8 +67,13 @@ registerUnit<CardListProps>({
     {
       id: 'probe-unknown-selected',
       probe: true,
-      description: '検証ケース。',
-      props: { cardTypes: CARD_TYPES, selectedIds: ['ghost-id'], onChange: noop },
+      description: '利用不能 selected ID を警告し、回復操作で除去する。',
+      props: { cardTypes: CARD_TYPES, selectedIds: ['ghost-id', 'ct-word'], onChange: recordChange },
+      act: async ctx => {
+        changeSpy.count = 0
+        changeSpy.lastValue = null
+        await ctx.click('button[aria-label="Remove unavailable card types"]')
+      },
     },
   ],
   invariants: [
@@ -114,6 +119,20 @@ registerUnit<CardListProps>({
       check: () =>
         (changeSpy.count === 1 && JSON.stringify(changeSpy.lastValue) === JSON.stringify([])) ||
         `count=${changeSpy.count}, lastValue=${JSON.stringify(changeSpy.lastValue)}`,
+    },
+    {
+      id: 'unavailable-selection-can-be-removed',
+      description: 'recovery action は利用可能な selected ID だけを残す。',
+      onlyFixtures: ['probe-unknown-selected'],
+      check: ({ root }) => {
+        if (!(root.textContent ?? '').includes('Remove unavailable')) {
+          return 'recovery action が表示されていません'
+        }
+        return (
+          changeSpy.count === 1
+          && JSON.stringify(changeSpy.lastValue) === JSON.stringify(['ct-word'])
+        ) || `count=${changeSpy.count}, lastValue=${JSON.stringify(changeSpy.lastValue)}`
+      },
     },
   ],
 })

@@ -1,10 +1,25 @@
-import { FormType } from '@/types'
-import { resolveBuiltinFormType } from '@/lib/create/formBlueprint'
-import type { Entry } from '@/types'
+import { renderSide, resolveCardTemplate } from '@/lib/anki/renderCard'
+import { parseAudioDataUrl, parseImageDataUrl } from '@/lib/anki/mediaDataUrl'
+import type { BuildNotesMedia } from '@/lib/buildNotes'
+import type { CardTemplate, Entry } from '@/types'
 
 export interface CardValidationError {
   field: string
   label: string
+}
+
+export interface CardValidationCardType {
+  id: string
+  name: string
+  code?: string
+  template?: CardTemplate
+}
+
+export interface CardValidationOptions {
+  /** Media filename を明示した場合、entry の data URL へ fallback しない。 */
+  media?: BuildNotesMedia
+  /** History の既存 note 内 media は保存前に取得できないため placeholder として扱う。 */
+  assumeExistingMedia?: boolean
 }
 
 /** カードに埋め込む画像の容量しきい値。カードは小さい画像を表示 (max-height 220px) するので 800KB で十分。 */
@@ -20,70 +35,92 @@ export function dataUrlBytes(dataUrl: string | undefined | null): number {
   return Math.floor((b64.length * 3) / 4) - padding
 }
 
-/** 柔軟な Getter — content type ごとのフィールド名の違い (English/IT/General/Dynamic) を吸収する。 */
-const get = {
-  word: (e: Partial<Entry>) => (e.word || e.term || e.title || '').trim(),
-  meaning: (e: Partial<Entry>) =>
-    (
-      e.meaning_vi ||
-      e.definition ||
-      (e as Record<string, string>).definition_vi ||
-      e.content ||
-      ''
-    ).trim(),
-  reading: (e: Partial<Entry>) => (e.hiragana || e.pinyin || e.ipa || '').trim(),
-  word_type: (e: Partial<Entry>) => (e.word_type || '').trim(),
-  example: (e: Partial<Entry>) =>
-    (e.example_sentence || (e as Record<string, string>).example_usage || '').trim(),
-  translation: (e: Partial<Entry>) => (e.example_translation || '').trim(),
+/**
+ * Export と同じ renderer で、選択 Card Type の Front/Back に実データがあるか確認する。
+ * data URL media は export 時に filename へ変換されるため、placeholder filename を渡す。
+ */
+function hasRenderedSideContent(
+  blocks: CardTemplate['front'],
+  entry: Partial<Entry>,
+  side: 'front' | 'back',
+  options: CardValidationOptions,
+): boolean {
+  const audioFilename = options.media?.audioFilename
+    ?? (!options.media && (options.assumeExistingMedia || parseAudioDataUrl(entry.audio_url))
+      ? 'audio'
+      : undefined)
+  const audioExampleFilename = options.media?.audioExampleFilename
+    ?? (!options.media && (options.assumeExistingMedia || parseAudioDataUrl(entry.audio_example_url))
+      ? 'audio-example'
+      : undefined)
+  const imageFilename = options.media?.imageFilename
+    ?? (!options.media && (options.assumeExistingMedia || parseImageDataUrl(entry.image_url))
+      ? 'image'
+      : undefined)
+  return renderSide(blocks, entry, {
+    side,
+    audioFilename,
+    audioExampleFilename,
+    imageFilename,
+  }).length > 0
 }
 
-type FieldKey = keyof typeof get
-
-const FIELD_LABELS: Record<FieldKey, string> = {
-  word: 'Word / Term / Title',
-  meaning: 'Meaning',
-  reading: 'Reading',
-  word_type: 'Word type',
-  example: 'Example sentence',
-  translation: 'Example translation',
-}
-
-/** content の種類ごとの必須コアコンテンツフィールドの集合。 */
-function requiredFieldsFor(entry: Partial<Entry>): FieldKey[] {
-  const ft = resolveBuiltinFormType(String(entry.form_type ?? ''))
-  switch (ft) {
-    case FormType.LANGUAGE:
-      return ['word', 'reading', 'meaning', 'word_type', 'example', 'translation']
-    case FormType.IT:
-      return ['word', 'meaning', 'example']
-    case FormType.GENERAL:
-      return ['word', 'meaning']
-    default:
-      // Custom / dynamic content type
-      return ['word', 'meaning', 'example']
+/** 選択済み Card Type が現在利用可能で、各 Front/Back が空でないことを確認する。 */
+export function validateSelectedCardTypes(
+  entry: Partial<Entry>,
+  selectedCardTypeIds: readonly string[],
+  cardTypes: readonly CardValidationCardType[],
+  options: CardValidationOptions = {},
+): CardValidationError[] {
+  if (selectedCardTypeIds.length === 0) {
+    return [{ field: 'card_types', label: 'Card type (select at least one)' }]
   }
+
+  const byId = new Map(cardTypes.map(cardType => [cardType.id, cardType]))
+  const errors: CardValidationError[] = []
+
+  for (const id of new Set(selectedCardTypeIds)) {
+    const cardType = byId.get(id)
+    if (!cardType) {
+      errors.push({
+        field: `card_type:${id}`,
+        label: 'Selected card type is unavailable',
+      })
+      continue
+    }
+
+    const template = resolveCardTemplate(cardType)
+    if (!hasRenderedSideContent(template.front, entry, 'front', options)) {
+      errors.push({
+        field: `card_type:${id}:front`,
+        label: `${cardType.name}: Front has no content`,
+      })
+    }
+    if (!hasRenderedSideContent(template.back, entry, 'back', options)) {
+      errors.push({
+        field: `card_type:${id}:back`,
+        label: `${cardType.name}: Back has no content`,
+      })
+    }
+  }
+
+  return errors
 }
 
 /**
- * 作成/保存前のカードをチェック。空のフィールドのリストを返す。
- * 空配列 = 有効。選択された deck と ≥1 個の card type も含む。
+ * 作成/保存前のカードをチェック。空配列 = 有効。
+ * Content Type 固有の固定 field ではなく、選択 Card Type の実際の Front/Back を検証する。
  */
 export function validateCardEntry(
   entry: Partial<Entry>,
-  selectedCardTypeIds: string[],
+  selectedCardTypeIds: readonly string[],
+  cardTypes: readonly CardValidationCardType[],
+  options: CardValidationOptions = {},
 ): CardValidationError[] {
-  const errors: CardValidationError[] = []
-
-  for (const key of requiredFieldsFor(entry)) {
-    if (!get[key](entry)) errors.push({ field: key, label: FIELD_LABELS[key] })
-  }
+  const errors = validateSelectedCardTypes(entry, selectedCardTypeIds, cardTypes, options)
 
   if (!(entry.anki_deck || '').trim()) {
     errors.push({ field: 'anki_deck', label: 'Anki Deck' })
-  }
-  if (!selectedCardTypeIds || selectedCardTypeIds.length === 0) {
-    errors.push({ field: 'card_types', label: 'Card type (select at least one)' })
   }
 
   // ローカル画像 (data URL) が大きすぎる → export をブロック。http URL の画像はメディア保存しないのでスキップ。
@@ -98,7 +135,7 @@ export function validateCardEntry(
 
 /** エラーラベルを 1 行にまとめて toast に表示する。 */
 export function formatValidationMessage(errors: CardValidationError[]): string {
-  return `Missing: ${errors.map(e => e.label).join(', ')}. Complete all required fields before creating.`
+  return `Card cannot be saved: ${errors.map(e => e.label).join(', ')}.`
 }
 
 export interface InvalidCard {
@@ -109,11 +146,12 @@ export interface InvalidCard {
 /** すべてのカードをスキャンし、エラーのあるカードのリスト (index 付き) を返す — banner 表示 + nav strip のマーク用。 */
 export function collectInvalidCards(
   entries: Partial<Entry>[],
-  selectedCardTypeIds: string[],
+  selectedCardTypeIds: readonly string[],
+  cardTypes: readonly CardValidationCardType[],
 ): InvalidCard[] {
   const result: InvalidCard[] = []
   for (let i = 0; i < entries.length; i++) {
-    const errors = validateCardEntry(entries[i], selectedCardTypeIds)
+    const errors = validateCardEntry(entries[i], selectedCardTypeIds, cardTypes)
     if (errors.length > 0) result.push({ index: i, errors })
   }
   return result

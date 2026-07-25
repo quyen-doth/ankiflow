@@ -12,6 +12,7 @@ import {
   buildTestGenerationRequest,
   type TestGenerationContentTypeDraft,
 } from '@/lib/ai-agent/testGeneration'
+import { resolveFieldPresets, type FieldPreset } from '@/lib/ai-agent/fieldPresets'
 import { cn } from '@/lib/utils'
 import { FormType } from '@/types'
 import type { AiOutputField, AiOutputProfile } from '@/types'
@@ -82,6 +83,10 @@ export function AiOutputProfilesEditor({
   const inheritedFields = isDefaultProfile
     ? []
     : (defaultProfile?.fields ?? []).filter(field => !ownKeys.has(field.key))
+  const suggestedFieldPresets = resolveFieldPresets(
+    activeProfile?.profile ?? '',
+    activeProfile?.fields.map(field => field.key) ?? [],
+  )
 
   const setExcluded = (key: string, excluded: boolean) => {
     if (!activeProfile || isDefaultProfile) return
@@ -118,6 +123,25 @@ export function AiOutputProfilesEditor({
     setSuggestionDescription('')
     setSuggestionLoading(false)
     setSuggestionError(null)
+  }
+
+  const appendOutputField = (field: AiOutputField) => {
+    if (!activeProfile) return
+    dismissInstructionSuggestion()
+    replaceProfile({
+      ...activeProfile,
+      fields: [...activeProfile.fields, field],
+    })
+  }
+
+  const appendPresetField = (preset: FieldPreset) => {
+    appendOutputField({
+      key: preset.key,
+      type: preset.type,
+      instruction: preset.instruction,
+      ...(preset.include_when !== undefined ? { include_when: preset.include_when } : {}),
+      ...(preset.max_items !== undefined ? { max_items: preset.max_items } : {}),
+    })
   }
 
   const openInstructionSuggestion = (fieldIndex: number) => {
@@ -581,18 +605,45 @@ export function AiOutputProfilesEditor({
         })}
       </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        leftIcon={<Plus className="w-3.5 h-3.5" />}
-        onClick={() => replaceProfile({
-          ...activeProfile,
-          fields: [...activeProfile.fields, { key: '', type: 'string', instruction: '' }],
-        })}
-        className="self-start"
-      >
-        Add Output Field
-      </Button>
+      <div className="flex flex-col gap-2 max-w-xl">
+        <p className="text-[12px] leading-relaxed text-slate-500">
+          Custom fields are text-only. Audio, images and cloze come from system field types.
+        </p>
+        <FieldWrapper label="Add output field">
+          <Select
+            aria-label="Add AI output field"
+            value=""
+            onChange={(event) => {
+              const selection = event.target.value
+              if (selection === 'custom') {
+                appendOutputField({ key: '', type: 'string', instruction: '' })
+                return
+              }
+              const presetKey = selection.startsWith('preset:')
+                ? selection.slice('preset:'.length)
+                : ''
+              const preset = suggestedFieldPresets.find(candidate => candidate.key === presetKey)
+              if (preset) appendPresetField(preset)
+            }}
+          >
+            <option value="">Choose a field…</option>
+            <optgroup label="Suggested fields">
+              {suggestedFieldPresets.length > 0 ? (
+                suggestedFieldPresets.map(preset => (
+                  <option key={preset.key} value={`preset:${preset.key}`}>
+                    {preset.label} — {preset.description}
+                  </option>
+                ))
+              ) : (
+                <option value="no-suggestions" disabled>No suggested fields for this profile</option>
+              )}
+            </optgroup>
+            <optgroup label="Custom field">
+              <option value="custom">Blank custom field — Configure a text output from scratch</option>
+            </optgroup>
+          </Select>
+        </FieldWrapper>
+      </div>
 
       {contentType && (
         <div className="border-t border-border/60 pt-4 flex flex-col gap-3">

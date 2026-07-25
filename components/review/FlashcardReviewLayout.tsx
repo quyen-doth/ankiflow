@@ -13,6 +13,7 @@ import { DeckCreatableField } from '@/components/create/DeckCreatableField'
 import type { Entry, LanguageCode, CardTemplate } from '@/types'
 import type { EntryCustomField } from '@/lib/entryCustomFields'
 import { primaryLanguageSubtag } from '@/lib/studyLanguages'
+import { verifyAttrs } from '@/verify/core/contract'
 
 interface CardTypeItem {
   id: string
@@ -42,6 +43,10 @@ interface FlashcardReviewLayoutProps {
   audioLoading: boolean
   onAudioRegenerate: () => void
   audioSubtitle?: string
+  audioExampleUrl: string | null
+  audioExampleLoading: boolean
+  onAudioExampleRegenerate: () => void
+  usesExampleAudio: boolean
   // Deck
   selectedDeckId: string
   onDeckChange: (deckId: string) => void
@@ -55,6 +60,66 @@ interface FlashcardReviewLayoutProps {
 interface AdditionalFieldsSectionProps {
   fields: EntryCustomField[]
   onChange: (key: string, value: string | string[]) => void
+}
+
+interface ReviewAudioPlayersProps {
+  audioUrl: string | null
+  audioLoading: boolean
+  onAudioRegenerate: () => void
+  audioSubtitle?: string
+  audioExampleUrl: string | null
+  audioExampleLoading: boolean
+  onAudioExampleRegenerate: () => void
+  usesExampleAudio: boolean
+}
+
+/** 通常音声と、選択 template が利用する例文音声を同じ review UI で表示する。 */
+export function ReviewAudioPlayers({
+  audioUrl,
+  audioLoading,
+  onAudioRegenerate,
+  audioSubtitle,
+  audioExampleUrl,
+  audioExampleLoading,
+  onAudioExampleRegenerate,
+  usesExampleAudio,
+}: ReviewAudioPlayersProps) {
+  const showExampleAudio = usesExampleAudio || Boolean(audioExampleUrl)
+
+  return (
+    <motion.div
+      className="flex flex-col gap-[18px]"
+      variants={staggerItem}
+      {...verifyAttrs({
+        unit: 'ReviewAudioPlayers',
+        showExampleAudio,
+        usesExampleAudio,
+        hasExampleAudio: Boolean(audioExampleUrl),
+      })}
+    >
+      <section className="bg-white border border-border rounded-[14px] px-6 py-[18px]">
+        <AudioPlayer
+          audioUrl={audioUrl}
+          onRegenerate={onAudioRegenerate}
+          loading={audioLoading}
+          subtitle={audioSubtitle}
+        />
+      </section>
+
+      {showExampleAudio && (
+        <section className="bg-white border border-border rounded-[14px] px-6 py-[18px]">
+          <AudioPlayer
+            audioUrl={audioExampleUrl}
+            onRegenerate={onAudioExampleRegenerate}
+            loading={audioExampleLoading}
+            regenerateDisabled={!usesExampleAudio}
+            title="Example audio"
+            subtitle={audioSubtitle}
+          />
+        </section>
+      )}
+    </motion.div>
+  )
 }
 
 /** AI profile または既存 Entry から解決した追加 field を編集する。 */
@@ -115,6 +180,10 @@ export function FlashcardReviewLayout({
   audioLoading,
   onAudioRegenerate,
   audioSubtitle,
+  audioExampleUrl,
+  audioExampleLoading,
+  onAudioExampleRegenerate,
+  usesExampleAudio,
   selectedDeckId,
   onDeckChange,
   onDeckClear,
@@ -277,14 +346,16 @@ export function FlashcardReviewLayout({
           </motion.section>
 
           {/* Pronunciation */}
-          <motion.section className="bg-white border border-border rounded-[14px] px-6 py-[18px]" variants={staggerItem}>
-            <AudioPlayer
-              audioUrl={audioUrl}
-              onRegenerate={onAudioRegenerate}
-              loading={audioLoading}
-              subtitle={audioSubtitle}
-            />
-          </motion.section>
+          <ReviewAudioPlayers
+            audioUrl={audioUrl}
+            audioLoading={audioLoading}
+            onAudioRegenerate={onAudioRegenerate}
+            audioSubtitle={audioSubtitle}
+            audioExampleUrl={audioExampleUrl}
+            audioExampleLoading={audioExampleLoading}
+            onAudioExampleRegenerate={onAudioExampleRegenerate}
+            usesExampleAudio={usesExampleAudio}
+          />
         </motion.div>
 
         {/* ── RIGHT ── */}
@@ -292,6 +363,7 @@ export function FlashcardReviewLayout({
           <CardPreview
             entry={entry}
             audioUrl={audioUrl}
+            audioExampleUrl={audioExampleUrl}
             cardTypes={cardTypes}
             selectedCardTypeIds={selectedCardTypeIds}
           />

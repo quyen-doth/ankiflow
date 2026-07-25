@@ -41,6 +41,34 @@ describe('regenerateEntryNotes', () => {
     expect(updates[0].fields.Back).toContain('[sound:old.mp3]')
   })
 
+  it('既存 note の通常 audio と例文 audio を順序に依存せず別 block へ再埋め込み', () => {
+    const entry = {
+      ...ENTRY,
+      anki_note_ids: [201],
+      card_type_ids: ['ct-two-audio'],
+    }
+    const types = new Map<string, CardTypeItem>([
+      ['ct-two-audio', {
+        id: 'ct-two-audio',
+        name: 'Two audio',
+        template: {
+          front: ['audio'],
+          back: ['word', 'audio_example'],
+        },
+      }],
+    ])
+    const infos = infoMap({
+      201: '[sound:ankiflow_audio_ex_hello.mp3] [sound:ankiflow_hello.mp3]',
+    })
+
+    const { updates } = regenerateEntryNotes(entry, types, infos)
+
+    expect(updates[0].fields.Front).toContain('[sound:ankiflow_hello.mp3]')
+    expect(updates[0].fields.Front).not.toContain('ankiflow_audio_ex_hello.mp3')
+    expect(updates[0].fields.Back).toContain('[sound:ankiflow_audio_ex_hello.mp3]')
+    expect(updates[0].fields.Back).not.toContain('[sound:ankiflow_hello.mp3]')
+  })
+
   it('length 不一致 (note ≠ card type) → skipped、update なし', () => {
     const bad = { ...ENTRY, anki_note_ids: [101], card_type_ids: ['ct_wm', 'ct_mw'] }
     const { updates, skipped } = regenerateEntryNotes(bad, cardTypeMap, infoMap({}))

@@ -17,6 +17,7 @@ interface CardTypeItem {
 interface CardPreviewProps {
   entry: Partial<Entry>
   audioUrl?: string | null
+  audioExampleUrl?: string | null
   cardTypes?: CardTypeItem[]
   selectedCardTypeIds?: string[]
 }
@@ -31,7 +32,13 @@ const DEFAULT_TAB: CardTypeItem = {
  * 選択した card type の template どおりの Anki カード preview (renderSide + CSS を export と共用)。
  * 各 tab = 1 card type; カードをクリックで裏面へ反転。card type 未選択 → 既定 tab を 1 つ表示。
  */
-export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeIds = [] }: CardPreviewProps) {
+export function CardPreview({
+  entry,
+  audioUrl,
+  audioExampleUrl,
+  cardTypes = [],
+  selectedCardTypeIds = [],
+}: CardPreviewProps) {
   // Tabs = 選択済み card type (cardTypes の順序を維持)。空 → 既定 tab 1 つ。
   const tabs = useMemo<CardTypeItem[]>(() => {
     const selected = cardTypes.filter(ct => selectedCardTypeIds.includes(ct.id))
@@ -47,11 +54,16 @@ export function CardPreview({ entry, audioUrl, cardTypes = [], selectedCardTypeI
   const template = active.template ?? DEFAULT_TEMPLATES.word_to_meaning
 
   const html = useMemo(() => {
-    const front = renderSide(template.front, entry, { side: 'front', audioFilename: 'preview', audioIcon: true })
+    const media = {
+      audioFilename: 'preview',
+      audioExampleFilename: audioExampleUrl || entry.audio_example_url ? 'preview' : undefined,
+      audioIcon: true,
+    }
+    const front = renderSide(template.front, entry, { ...media, side: 'front' })
     if (!flipped) return buildCardHtml(front)
-    const back = renderSide(template.back, entry, { side: 'back', audioFilename: 'preview', audioIcon: true })
+    const back = renderSide(template.back, entry, { ...media, side: 'back' })
     return buildCardHtml(front, back)
-  }, [template, entry, flipped])
+  }, [template, entry, audioExampleUrl, flipped])
 
   const hasAudio = !!(audioUrl || entry.audio_url)
 

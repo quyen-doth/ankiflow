@@ -8,6 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { UI_FORM_TYPE_MAP } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { verifyAttrs } from '@/verify/core/contract'
+import { matchesLanguageScope } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
 import type { CardTypeConfig, LanguageCode } from '@/types'
 
@@ -56,7 +57,7 @@ export function CardTypeSelector({
           .filter(ct => ct.is_active !== false)
 
         if (dbFormType === FormType.LANGUAGE && language) {
-          data = data.filter(ct => !ct.language || ct.language === language)
+          data = data.filter(ct => matchesLanguageScope(ct.language, language))
         }
 
         data.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))

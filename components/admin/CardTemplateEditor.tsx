@@ -193,8 +193,13 @@ export function CardPreview({ template, language, customFields = [] }: CardPrevi
     ...Object.fromEntries(customFields.map(field => [field.key, field.sampleValue])),
   } as Partial<Entry>
 
-  const previewFront = renderSide(template.front, sample, { side: 'front', audioFilename: 'preview', audioIcon: true })
-  const previewBack = renderSide(template.back, sample, { side: 'back', audioFilename: 'preview', audioIcon: true })
+  const previewMedia = {
+    audioFilename: 'preview',
+    audioExampleFilename: 'preview',
+    audioIcon: true,
+  }
+  const previewFront = renderSide(template.front, sample, { ...previewMedia, side: 'front' })
+  const previewBack = renderSide(template.back, sample, { ...previewMedia, side: 'back' })
   const previewHtml = buildCardHtml(previewFront, previewBack)
 
   return (

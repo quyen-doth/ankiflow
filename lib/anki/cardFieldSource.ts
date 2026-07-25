@@ -14,6 +14,7 @@ export const BUILTIN_CARD_FIELD_SOURCES = [
   'collocations',
   'image',
   'audio',
+  'audio_example',
 ] as const satisfies readonly BuiltinCardFieldSource[]
 
 const BUILTIN_CARD_FIELD_SOURCE_SET = new Set<string>(BUILTIN_CARD_FIELD_SOURCES)

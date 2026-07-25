@@ -15,6 +15,7 @@ import type { Entry } from '@/types'
 
 const entry: Partial<Entry> = {
   word: 'resilient',
+  meaning_vi: 'able to recover',
   anki_deck: 'MyDeck',
   tags: [],
 }

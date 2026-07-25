@@ -17,6 +17,9 @@ interface CardListProps {
 }
 
 export function CardList({ cardTypes, selectedIds, onChange }: CardListProps) {
+  const availableIds = new Set(cardTypes.map(cardType => cardType.id))
+  const unavailableIds = selectedIds.filter(id => !availableIds.has(id))
+
   const toggle = (id: string, checked: boolean) => {
     onChange(checked ? [...selectedIds, id] : selectedIds.filter(v => v !== id))
   }
@@ -48,6 +51,22 @@ export function CardList({ cardTypes, selectedIds, onChange }: CardListProps) {
           )
         })}
       </div>
+
+      {unavailableIds.length > 0 && (
+        <div role="alert" className="mt-3 rounded-[8px] border border-danger/30 bg-danger-bg px-3 py-2.5">
+          <p className="text-[12px] text-danger">
+            {unavailableIds.length} selected card type{unavailableIds.length === 1 ? ' is' : 's are'} no longer available.
+          </p>
+          <button
+            type="button"
+            aria-label="Remove unavailable card types"
+            onClick={() => onChange(selectedIds.filter(id => availableIds.has(id)))}
+            className="mt-1 text-[11.5px] font-bold text-danger hover:underline"
+          >
+            Remove unavailable
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#f0f0ec]">
         <span className="text-[12.5px] text-slate-400">Will create</span>

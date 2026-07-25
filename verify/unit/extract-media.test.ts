@@ -8,6 +8,30 @@ describe('extractMedia', () => {
     })
   })
 
+  it('例文 audio だけなら専用 prefix で分類する', () => {
+    expect(extractMedia('[sound:ankiflow_audio_ex_hello.mp3]')).toEqual({
+      audioExampleFilename: 'ankiflow_audio_ex_hello.mp3',
+    })
+  })
+
+  it('通常 audio と例文 audio の両方を抽出する', () => {
+    expect(extractMedia(
+      '[sound:ankiflow_hello.mp3] [sound:ankiflow_audio_ex_hello.mp3]',
+    )).toEqual({
+      audioFilename: 'ankiflow_hello.mp3',
+      audioExampleFilename: 'ankiflow_audio_ex_hello.mp3',
+    })
+  })
+
+  it('例文 audio が先でも通常 audio と取り違えない', () => {
+    expect(extractMedia(
+      '[sound:ankiflow_audio_ex_hello.mp3] [sound:ankiflow_hello.mp3]',
+    )).toEqual({
+      audioFilename: 'ankiflow_hello.mp3',
+      audioExampleFilename: 'ankiflow_audio_ex_hello.mp3',
+    })
+  })
+
   it('Anki メディア画像を抽出 (素のファイル名)', () => {
     const html = '<div class="media"><img src="ankiflow_img_hello.png" alt=""></div>'
     expect(extractMedia(html)).toEqual({ imageFilename: 'ankiflow_img_hello.png' })

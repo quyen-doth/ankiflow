@@ -53,9 +53,9 @@ export function regenerateEntryNotes(
 
     const info = infoById.get(noteId)
     const currentHtml = info ? Object.values(info.fields).map(f => f.value).join('\n') : ''
-    const { audioFilename, imageFilename } = extractMedia(currentHtml)
+    const media = extractMedia(currentHtml)
 
-    const [note] = buildNotes(entry, [cardType], audioFilename, imageFilename)
+    const [note] = buildNotes(entry, [cardType], media)
     updates.push({ noteId, fields: note.fields })
   }
 

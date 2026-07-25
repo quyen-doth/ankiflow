@@ -171,7 +171,10 @@ registerUnit<VerifyProps>({
       act: async ctx => {
         await ctx.wait(50)
         await ctx.wait(0)
-        clickButtonByText(ctx.root, 'Add Output Field')
+        const fieldPicker = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        if (!fieldPicker) throw new Error('AI output field picker が見つからない')
+        fieldPicker.value = 'custom'
+        fieldPicker.dispatchEvent(new Event('change', { bubbles: true }))
         await ctx.wait(0)
         const keyInputs = ctx.root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]')
         const instructionInputs = ctx.root.querySelectorAll<HTMLTextAreaElement>('textarea[aria-label^="AI output instruction"]')

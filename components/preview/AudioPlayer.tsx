@@ -10,6 +10,7 @@ interface AudioPlayerProps {
   audioUrl: string | null
   onRegenerate: () => void
   loading?: boolean
+  regenerateDisabled?: boolean
   title?: string
   subtitle?: string
 }
@@ -18,6 +19,7 @@ export function AudioPlayer({
   audioUrl,
   onRegenerate,
   loading,
+  regenerateDisabled,
   title = 'Native pronunciation',
   subtitle = 'Google TTS',
 }: AudioPlayerProps) {
@@ -69,7 +71,8 @@ export function AudioPlayer({
           variant="secondary"
           size="sm"
           onClick={onRegenerate}
-          disabled={loading}
+          disabled={loading || regenerateDisabled}
+          title={regenerateDisabled ? 'Select a card type that uses this audio to regenerate it.' : undefined}
           leftIcon={<RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />}
         >
           {loading ? 'Generating...' : 'Regenerate'}

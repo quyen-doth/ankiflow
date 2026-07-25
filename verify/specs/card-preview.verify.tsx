@@ -41,6 +41,8 @@ registerUnit<CardPreviewProps>({
   render: props => <CardPreview {...props} />,
   propsSchema: z.object({
     entry: z.looseObject({}),
+    audioUrl: z.string().nullable().optional(),
+    audioExampleUrl: z.string().nullable().optional(),
     cardTypes: z.array(z.looseObject({})).optional(),
     selectedCardTypeIds: z.array(z.string()).optional(),
   }),
@@ -94,6 +96,23 @@ registerUnit<CardPreviewProps>({
           template: { front: ['word'], back: ['custom:usage_notes'] },
         }],
         selectedCardTypeIds: ['ct_custom_array'],
+      },
+      act: async ctx => {
+        await ctx.click('[title="Click to flip"]')
+      },
+    },
+    {
+      id: 'example-audio',
+      description: '例文 audio URL がある場合は専用 block を preview chip として表示する。',
+      props: {
+        entry: JA_ENTRY,
+        audioExampleUrl: 'data:audio/mp3;base64,RVhBTVBMRQ==',
+        cardTypes: [{
+          id: 'ct_example_audio',
+          name: 'Example audio',
+          template: { front: ['word'], back: ['audio_example'] },
+        }],
+        selectedCardTypeIds: ['ct_example_audio'],
       },
       act: async ctx => {
         await ctx.click('[title="Click to flip"]')
@@ -196,6 +215,16 @@ registerUnit<CardPreviewProps>({
         const html = srcdoc(root)
         if (!html.includes('formal\nwritten')) return 'array item の newline がない'
         return html.includes('white-space: pre-line') || 'custom field の pre-line CSS がない'
+      },
+    },
+    {
+      id: 'example-audio-chip-renders',
+      description: '例文 audio は通常音声と異なる label の chip を表示する',
+      onlyFixtures: ['example-audio'],
+      check: ({ root }) => {
+        const html = srcdoc(root)
+        if (!html.includes('id="answer"')) return 'back side が表示されていません'
+        return html.includes('🔊 Example audio') || 'Example audio chip がありません'
       },
     },
   ],
