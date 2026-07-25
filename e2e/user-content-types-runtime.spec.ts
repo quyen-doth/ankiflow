@@ -69,9 +69,11 @@ test('Configured CardForm は成功後 nonpersistent field だけを reset す�
 })
 
 test('Create generate payload は selected workspace content_type_id を送信する', async ({ page }) => {
+  let duplicateBody: Record<string, unknown> | null = null
   let generateBody: Record<string, unknown> | null = null
 
   await page.route('**/api/entries/check-duplicate', async route => {
+    duplicateBody = route.request().postDataJSON() as Record<string, unknown>
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ duplicates: [] }) })
   })
   await page.route('**/api/generate', async route => {
@@ -93,6 +95,7 @@ test('Create generate payload は selected workspace content_type_id を送信�
   await page.getByRole('button', { name: /Generate/ }).click()
 
   await expect.poll(() => generateBody).not.toBeNull()
+  expect(duplicateBody).toEqual({ word: 'Event loop' })
   expect(generateBody).toMatchObject({
     form_type: 'quiz',
     content_type_id: 'quiz-type__test-user',

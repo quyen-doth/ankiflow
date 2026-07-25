@@ -1,4 +1,4 @@
-import { normalizeTerm } from '@/lib/entries/duplicate'
+import { normalizedEntryPrimaryValue } from '@/lib/entries/duplicate'
 
 export const ENTRY_QUERY_FIELD_PREFIX = '_query_' as const
 export const ENTRY_QUERY_SCHEMA_VERSION = 1 as const
@@ -20,12 +20,6 @@ export interface EntryQueryMetadata {
   [ENTRY_QUERY_CARD_COUNT_FIELD]: number
 }
 
-function primaryValue(data: Record<string, unknown>): string {
-  const value = [data.word, data.term, data.title]
-    .find(candidate => typeof candidate === 'string' && candidate.length > 0)
-  return typeof value === 'string' ? value : ''
-}
-
 /** Query metadata は server-side writer が必ず同じ規則で再計算する。 */
 export function deriveEntryQueryMetadata(
   data: Record<string, unknown>,
@@ -38,7 +32,7 @@ export function deriveEntryQueryMetadata(
 
   return {
     [ENTRY_QUERY_SCHEMA_VERSION_FIELD]: ENTRY_QUERY_SCHEMA_VERSION,
-    [ENTRY_QUERY_DUPLICATE_KEY_FIELD]: normalizeTerm(primaryValue(data)),
+    [ENTRY_QUERY_DUPLICATE_KEY_FIELD]: normalizedEntryPrimaryValue(data),
     [ENTRY_QUERY_CARD_COUNT_FIELD]: cardTypeIds.length,
   }
 }

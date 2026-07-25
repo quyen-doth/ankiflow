@@ -10,10 +10,11 @@ interface EntryDoc {
   data: Record<string, unknown>
 }
 
-const { entryDocs, deckDocs, setDocs } = vi.hoisted(() => ({
+const { entryDocs, deckDocs, setDocs, duplicateLookupCalls } = vi.hoisted(() => ({
   entryDocs: [] as EntryDoc[],
   deckDocs: [] as EntryDoc[],
   setDocs: [] as { ref: { col: string; id: string }; data: Record<string, unknown> }[],
+  duplicateLookupCalls: [] as { uid: string; targets: readonly string[] }[],
 }))
 
 vi.mock('@/lib/firebase-admin', () => ({
@@ -41,6 +42,32 @@ vi.mock('@/lib/firebase-admin', () => ({
       commit: async () => {},
     }),
   }),
+}))
+
+vi.mock('@/lib/entries/duplicateLookup', () => ({
+  lookupEntryDuplicates: async (
+    _db: unknown,
+    uid: string,
+    targets: readonly string[],
+  ) => {
+    duplicateLookupCalls.push({ uid, targets })
+    return targets.map(word => {
+      const normalized = word.toLowerCase().trim()
+      const duplicates = entryDocs
+        .filter(entry => {
+          const primary = entry.data.word || entry.data.term || entry.data.title || ''
+          return typeof primary === 'string' && primary.toLowerCase().trim() === normalized
+        })
+        .map(entry => ({
+          id: entry.id,
+          word,
+          anki_deck: '',
+          status: '',
+          created_at: null,
+        }))
+      return { word, duplicates }
+    })
+  },
 }))
 
 import { POST } from '@/app/api/integrations/term-drafts/route'
@@ -71,6 +98,7 @@ beforeEach(() => {
   entryDocs.length = 0
   deckDocs.length = 0
   setDocs.length = 0
+  duplicateLookupCalls.length = 0
 })
 
 afterEach(() => {
@@ -85,6 +113,10 @@ describe('POST /api/integrations/term-drafts — auth', () => {
     const body = await res.json()
     expect(body.created).toHaveLength(1)
     expect(body.skipped).toEqual([])
+    expect(duplicateLookupCalls).toEqual([{
+      uid: 'target-uid-1',
+      targets: ['Kubernetes'],
+    }])
     expect(setDocs[0].data).toMatchObject({
       user_id: 'target-uid-1',
       term: 'Kubernetes',
