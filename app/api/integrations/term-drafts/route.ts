@@ -5,6 +5,7 @@ import { verifyStaticToken } from '@/lib/auth-guard'
 import { normalizeTerm } from '@/lib/entries/duplicate'
 import { canonicalizeLanguageCode } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
+import { deriveEntryQueryMetadata } from '@/lib/entries/queryMetadata'
 
 /**
  * POST /api/integrations/term-drafts — 外部システム (Knowledge Hub) から term draft を受け取る。
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       seenInBatch.add(normalized)
 
       const ref = db.collection('entries').doc()
-      batch.set(ref, {
+      const entryData = {
         user_id: targetUid,
         term: item.term,
         language: item.language,
@@ -109,6 +110,10 @@ export async function POST(request: Request) {
         context_quote: item.context_quote,
         created_at: new Date(),
         updated_at: new Date(),
+      }
+      batch.set(ref, {
+        ...entryData,
+        ...deriveEntryQueryMetadata(entryData),
       })
       created.push(ref.id)
     }

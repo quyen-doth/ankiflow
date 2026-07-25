@@ -2,7 +2,12 @@ import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withAuth } from '@/lib/auth-guard'
 import { withTimestamps } from '@/lib/firestore-helpers'
-import { apiSuccess, catchError } from '@/lib/api-response'
+import { apiError, apiSuccess, catchError } from '@/lib/api-response'
+import {
+  deriveEntryQueryMetadata,
+  findReservedEntryQueryFields,
+  reservedEntryQueryFieldsError,
+} from '@/lib/entries/queryMetadata'
 import type { Entry } from '@/types'
 
 async function GET_handler(request: NextRequest, _ctx: unknown, uid: string) {
@@ -43,9 +48,20 @@ async function GET_handler(request: NextRequest, _ctx: unknown, uid: string) {
 
 async function POST_handler(request: NextRequest, _ctx: unknown, uid: string) {
   try {
-    const body = await request.json()
+    const body: unknown = await request.json()
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return apiError('Invalid request body', 400)
+    }
+    const reservedFields = findReservedEntryQueryFields(body)
+    if (reservedFields.length > 0) {
+      return apiError(reservedEntryQueryFieldsError(reservedFields), 400)
+    }
     const db = getAdminDb()
-    const newEntry = withTimestamps({ ...body, user_id: uid }, true)
+    const baseEntry = { ...body, user_id: uid }
+    const newEntry = withTimestamps({
+      ...baseEntry,
+      ...deriveEntryQueryMetadata(baseEntry),
+    }, true)
     const docRef = await db.collection('entries').add(newEntry)
     return apiSuccess({ success: true, id: docRef.id }, 201)
   } catch (error) {

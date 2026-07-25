@@ -92,6 +92,9 @@ describe('POST /api/integrations/term-drafts — auth', () => {
       form_type: 'form_it',
       category_id: null,
       integration_source: 'knowledge-hub',
+      _query_schema_version: 1,
+      _query_duplicate_key: 'kubernetes',
+      _query_card_count: 0,
     })
   })
 

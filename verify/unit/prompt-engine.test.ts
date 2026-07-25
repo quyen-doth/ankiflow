@@ -173,6 +173,13 @@ describe('prompt engine — custom profiles', () => {
 })
 
 describe('AI output profile validation', () => {
+  it('system query prefix を AI output key として拒否する', () => {
+    expect(() => parseAiOutputProfiles([{
+      profile: 'default',
+      fields: [{ key: '_query_custom', type: 'string', instruction: 'Unsafe' }],
+    }])).toThrow('reserved application prefix')
+  })
+
   it('reserved metadata key をすべて拒否する', () => {
     for (const key of RESERVED_AI_OUTPUT_KEYS) {
       expect(() => parseAiOutputProfiles([{

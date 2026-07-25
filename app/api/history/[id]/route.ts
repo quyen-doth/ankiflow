@@ -3,6 +3,11 @@ import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withTimestamps } from '@/lib/firestore-helpers'
 import { apiSuccess, apiError, catchError } from '@/lib/api-response'
+import {
+  deriveEntryQueryMetadata,
+  findReservedEntryQueryFields,
+  reservedEntryQueryFieldsError,
+} from '@/lib/entries/queryMetadata'
 
 type RouteContext = { params: Promise<Record<string, string>> }
 
@@ -36,14 +41,27 @@ async function GET_handler(_request: NextRequest, context: RouteContext, uid: st
 async function PUT_handler(request: NextRequest, context: RouteContext, uid: string) {
   try {
     const { id } = await context.params
-    const body = await request.json()
-    const { docRef } = await getOwnedEntryRef(id, uid)
-    if (!docRef) {
+    const body: unknown = await request.json()
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return apiError('Invalid request body', 400)
+    }
+    const bodyData = body as Record<string, unknown>
+    const reservedFields = findReservedEntryQueryFields(bodyData)
+    if (reservedFields.length > 0) {
+      return apiError(reservedEntryQueryFieldsError(reservedFields), 400)
+    }
+    const { docRef, docSnap } = await getOwnedEntryRef(id, uid)
+    if (!docRef || !docSnap) {
       return apiError('Entry not found', 404)
     }
     // body 経由での所有者変更は許可しない
-    delete body.user_id
-    await docRef.update(withTimestamps(body, false))
+    const updates = { ...bodyData }
+    delete updates.user_id
+    const mergedEntry = { ...docSnap.data(), ...updates }
+    await docRef.update(withTimestamps({
+      ...updates,
+      ...deriveEntryQueryMetadata(mergedEntry),
+    }, false))
     return apiSuccess({ success: true, id })
   } catch (error) {
     return catchError(error)

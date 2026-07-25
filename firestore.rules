@@ -72,8 +72,9 @@ service cloud.firestore {
 
     // ─── Entries — ユーザーの学習データ、テンプレート版はなく、admin にも特権なし ───
     match /entries/{id} {
-      allow read, update, delete: if owns(resource);
-      allow create: if creatingOwn();
+      // Query metadata とその source fields の整合性を保つため、mutation は認証済み
+      // server route (Admin SDK) だけが実行する。Client SDK は owner read のみ。
+      allow read: if owns(resource);
     }
 
     // ─── Notification triggers — ユーザーごと (現状 admin のみ使用するが、owner でスコープ) ───

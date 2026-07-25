@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
 import type { AiOutputField, AiOutputProfile } from '@/types'
 
 export const AI_OUTPUT_FIELD_KEY_PATTERN = /^[a-z][a-z0-9_]{0,39}$/
@@ -44,6 +45,7 @@ export const aiOutputFieldSchema = z.object({
   key: z.string()
     .trim()
     .regex(AI_OUTPUT_FIELD_KEY_PATTERN, 'AI output key must use lowercase snake_case and start with a letter')
+    .refine(key => !isReservedEntryQueryField(key), 'AI output key uses a reserved application prefix')
     .refine(key => !RESERVED_AI_OUTPUT_KEYS.has(key), 'AI output key is reserved by the application'),
   type: z.enum(['string', 'string_array']),
   instruction: z.string().trim().min(1).max(300),
@@ -68,7 +70,8 @@ export const aiOutputProfileSchema = z.object({
   exclude: z.array(
     z.string()
       .trim()
-      .regex(AI_OUTPUT_FIELD_KEY_PATTERN, 'Excluded AI output key must use lowercase snake_case'),
+      .regex(AI_OUTPUT_FIELD_KEY_PATTERN, 'Excluded AI output key must use lowercase snake_case')
+      .refine(key => !isReservedEntryQueryField(key), 'Excluded key uses a reserved application prefix'),
   ).max(MAX_AI_OUTPUT_FIELDS).optional(),
 }).superRefine((profile, ctx) => {
   if (profile.profile === 'default') {
