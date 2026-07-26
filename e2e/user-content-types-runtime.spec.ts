@@ -4,7 +4,7 @@ test('Create は Content Type が空の場合に Settings への導線を表示�
   await context.addCookies([{
     name: '__session',
     value: 'content-types-runtime-e2e',
-    url: 'http://localhost:3000',
+    url: 'http://127.0.0.1:3000',
   }])
   await page.goto('/verify/CreateContentTypes/e2e-empty-workspace?chrome=0')
 

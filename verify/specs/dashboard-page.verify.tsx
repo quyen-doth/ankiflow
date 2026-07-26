@@ -4,6 +4,21 @@ import { registerUnit } from '@/verify/core/registry'
 import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 
+const MANY_LANGUAGE_CODES = [
+  'en', 'ja', 'zh', 'fr', 'de',
+  'es', 'it', 'pt', 'ru', 'ko',
+  'ar', 'hi', 'nl', 'sv', 'no',
+  'da', 'fi', 'pl', 'tr', 'cs',
+  'el', 'he', 'id', 'vi', 'th',
+]
+
+const MANY_STUDY_LANGUAGES = MANY_LANGUAGE_CODES.map((code, index) => ({
+  code,
+  display_name: `Study ${code}`,
+  enabled: true,
+  sort_order: index,
+}))
+
 const POPULATED_RESPONSE = {
   stats: {
     total_vocabulary: 120,
@@ -75,6 +90,41 @@ registerUnit<Record<string, never>>({
       act: async ctx => ctx.wait(20),
     },
     {
+      id: 'many-languages',
+      description: '20 件を超える有効言語を batch request し、全 count を統合する。',
+      props: {},
+      mocks: {
+        studyLanguages: MANY_STUDY_LANGUAGES,
+        fetch: [
+          {
+            match: /day_end=[^&]+&language=el&language=he/,
+            response: {
+              json: {
+                ...EMPTY_RESPONSE,
+                language_counts: MANY_LANGUAGE_CODES.slice(20).map(language => ({
+                  language,
+                  count: 1,
+                })),
+              },
+            },
+          },
+          {
+            match: '/api/dashboard?',
+            response: {
+              json: {
+                ...EMPTY_RESPONSE,
+                language_counts: MANY_LANGUAGE_CODES.slice(0, 20).map(language => ({
+                  language,
+                  count: 1,
+                })),
+              },
+            },
+          },
+        ],
+      },
+      act: async ctx => ctx.wait(50),
+    },
+    {
       id: 'probe-api-error',
       probe: true,
       description: 'Probe: API error でも spinner に固着せず安全な empty state を表示する。',
@@ -126,6 +176,20 @@ registerUnit<Record<string, never>>({
           return 'language empty state が表示されていません'
         }
         return !root.querySelector('.animate-spin') || 'spinner が残っています'
+      },
+    },
+    {
+      id: 'all-language-batches-render',
+      description: '20 件を超える設定でも最初と最後の batch の count をすべて表示する。',
+      onlyFixtures: ['many-languages'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        for (const language of MANY_STUDY_LANGUAGES) {
+          if (!text.includes(language.display_name)) {
+            return `${language.display_name} が表示されていません`
+          }
+        }
+        return true
       },
     },
   ],

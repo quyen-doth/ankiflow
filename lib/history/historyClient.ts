@@ -6,6 +6,7 @@ import {
 import type { HistoryListResponse } from '@/lib/history/historyDto'
 
 export const HISTORY_PAGE_SIZE = 50
+export const HISTORY_SEARCH_DEBOUNCE_MS = 300
 
 export function buildHistoryListUrl(
   filters: HistoryFilters,

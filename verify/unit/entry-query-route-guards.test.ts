@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const { addedEntries, updatedEntries, existingEntry } = vi.hoisted(() => ({
+const {
+  addedEntries,
+  updatedEntries,
+  existingEntry,
+  transactionRuns,
+} = vi.hoisted(() => ({
   addedEntries: [] as Record<string, unknown>[],
   updatedEntries: [] as Record<string, unknown>[],
   existingEntry: {
@@ -9,6 +14,7 @@ const { addedEntries, updatedEntries, existingEntry } = vi.hoisted(() => ({
     word: 'Old',
     card_type_ids: ['ct-old'],
   } as Record<string, unknown>,
+  transactionRuns: { count: 0 },
 }))
 
 vi.mock('@/lib/auth-guard', () => ({
@@ -18,8 +24,8 @@ vi.mock('@/lib/auth-guard', () => ({
 }))
 
 vi.mock('@/lib/firebase-admin', () => ({
-  getAdminDb: () => ({
-    collection: () => ({
+  getAdminDb: () => {
+    const collection = () => ({
       add: async (data: Record<string, unknown>) => {
         addedEntries.push(data)
         return { id: 'new-entry' }
@@ -33,10 +39,31 @@ vi.mock('@/lib/firebase-admin', () => ({
         }),
         update: async (data: Record<string, unknown>) => {
           updatedEntries.push(data)
+          Object.assign(existingEntry, data)
         },
       }),
-    }),
-  }),
+    })
+    return {
+      collection,
+      runTransaction: async (
+        handler: (transaction: {
+          get: (ref: { get: () => Promise<unknown> }) => Promise<unknown>
+          update: (
+            ref: { update: (data: Record<string, unknown>) => Promise<void> },
+            data: Record<string, unknown>,
+          ) => void
+        }) => Promise<unknown>,
+      ) => {
+        transactionRuns.count += 1
+        return handler({
+          get: ref => ref.get(),
+          update: (ref, data) => {
+            void ref.update(data)
+          },
+        })
+      },
+    }
+  },
 }))
 
 import { POST as saveEntry } from '@/app/api/entries/save/route'
@@ -61,6 +88,13 @@ const historyContext = { params: Promise.resolve({ id: 'entry-1' }) }
 beforeEach(() => {
   addedEntries.length = 0
   updatedEntries.length = 0
+  transactionRuns.count = 0
+  for (const key of Object.keys(existingEntry)) delete existingEntry[key]
+  Object.assign(existingEntry, {
+    user_id: 'uid-1',
+    word: 'Old',
+    card_type_ids: ['ct-old'],
+  })
 })
 
 describe('Entry mutation route query metadata guards', () => {
@@ -124,6 +158,27 @@ describe('Entry mutation route query metadata guards', () => {
       _query_schema_version: 1,
       _query_duplicate_key: 'kubernetes',
       _query_card_count: 3,
+    })
+  })
+
+  it('History と Anki の source-changing update は共通 transaction path を使う', async () => {
+    const historyResponse = await updateHistoryEntry(request(
+      'http://localhost/api/history/entry-1',
+      'PUT',
+      { word: 'Concurrent safe word' },
+    ), historyContext)
+    const ankiResponse = await updateAnkiEntry(request(
+      'http://localhost/api/anki/update',
+      'PUT',
+      { entryId: 'entry-1', updates: { card_type_ids: ['front', 'back'] } },
+    ), historyContext)
+
+    expect(historyResponse.status).toBe(200)
+    expect(ankiResponse.status).toBe(200)
+    expect(transactionRuns.count).toBe(2)
+    expect(updatedEntries.at(-1)).toMatchObject({
+      _query_duplicate_key: 'concurrent safe word',
+      _query_card_count: 2,
     })
   })
 })

@@ -226,6 +226,8 @@ Entry を Firestore に保存。2 つのフローで使用: **deferred** (Anki �
 #### `PUT /api/anki/update`
 
 Firestore の Entry を更新し、クライアントが Anki でノートを再生成するためのデータを返す (best-effort — Anki がオフラインでも保存はブロックされない)。
+所有権確認、既存 Entry との merge、`_query_*` metadata の再計算、更新は同一 Firestore transaction
+で実行され、競合 retry 時も最新 snapshot から metadata を再計算する。
 
 - **Body Params:**
     ```ts
@@ -438,6 +440,8 @@ Anki メディアに保存します。例文 TTS の自動生成はクライア�
       DST を考慮し、区間は 22〜26 時間の半開区間 `[day_start, day_end)` でなければならない。
     - `language`: Optional、繰り返し指定、最大 20 件 — canonicalize 可能な BCP 47 code。
       大文字小文字を区別せず重複を除く。
+      Dashboard client は有効言語が 20 件を超える場合、最大 20 件ずつ順次 request し、
+      最初の response の stats/recent entries と全 batch の language counts を統合する。
 - **Response (200 OK):**
     ```json
     {
@@ -583,6 +587,8 @@ Firestore の `entries` コレクションと相互作用して学習者の記�
 #### `PUT /api/history/[id]`
 
 - **Body Params:** `<Partial Entry update>`
+- 所有権確認、partial update の merge、`_query_*` metadata の再計算、更新を同一 transaction
+  で行うため、競合 retry 後も primary text / card type と query metadata が一致する。
 
 #### `DELETE /api/history/[id]`
 

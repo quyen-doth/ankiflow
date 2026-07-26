@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 import { AuthContext } from '@/components/providers/AuthProvider'
+import { StudyLanguageContext } from '@/components/providers/StudyLanguageProvider'
 import { readContract } from './contract'
 import { verifyGlobals } from './globals'
 import { verifiersFor } from './registry'
@@ -157,12 +158,32 @@ export async function runFixture<P>(
           loading: fixture.mocks.auth.loading ?? false,
         }
       : { user: { ...TEST_AUTH_USER }, loading: false }
+    const renderedUnit = fixture.mocks?.studyLanguages
+      ? createElement(
+          StudyLanguageContext.Provider,
+          {
+            value: {
+              languages: fixture.mocks.studyLanguages,
+              enabledLanguages: fixture.mocks.studyLanguages.filter(language => language.enabled),
+              aiOutputLanguage: 'vi',
+              loading: false,
+              saveLanguages: async languages => languages,
+              addOrEnableLanguage: async language => ({
+                ...language,
+                enabled: true,
+                sort_order: fixture.mocks?.studyLanguages?.length ?? 0,
+              }),
+            },
+          },
+          unit.render(fixture.props),
+        )
+      : unit.render(fixture.props)
     flushSync(() => {
       root.render(
         createElement(
           AuthContext.Provider,
           { value: authValue },
-          unit.render(fixture.props),
+          renderedUnit,
         ),
       )
     })

@@ -1,13 +1,12 @@
 import { withAuth } from '@/lib/auth-guard'
 import { NextRequest } from 'next/server'
 import { getAdminDb } from '@/lib/firebase-admin'
-import { withTimestamps } from '@/lib/firestore-helpers'
 import { apiSuccess, apiError, catchError } from '@/lib/api-response'
 import {
-  deriveEntryQueryMetadata,
   findReservedEntryQueryFields,
   reservedEntryQueryFieldsError,
 } from '@/lib/entries/queryMetadata'
+import { updateOwnedEntryWithQueryMetadata } from '@/lib/entries/updateEntry'
 
 type RouteContext = { params: Promise<Record<string, string>> }
 
@@ -50,18 +49,12 @@ async function PUT_handler(request: NextRequest, context: RouteContext, uid: str
     if (reservedFields.length > 0) {
       return apiError(reservedEntryQueryFieldsError(reservedFields), 400)
     }
-    const { docRef, docSnap } = await getOwnedEntryRef(id, uid)
-    if (!docRef || !docSnap) {
+    const db = getAdminDb()
+    const docRef = db.collection('entries').doc(id)
+    const updated = await updateOwnedEntryWithQueryMetadata(db, docRef, uid, bodyData)
+    if (!updated) {
       return apiError('Entry not found', 404)
     }
-    // body 経由での所有者変更は許可しない
-    const updates = { ...bodyData }
-    delete updates.user_id
-    const mergedEntry = { ...docSnap.data(), ...updates }
-    await docRef.update(withTimestamps({
-      ...updates,
-      ...deriveEntryQueryMetadata(mergedEntry),
-    }, false))
     return apiSuccess({ success: true, id })
   } catch (error) {
     return catchError(error)

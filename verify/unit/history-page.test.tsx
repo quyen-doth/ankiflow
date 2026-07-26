@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormType } from '@/types'
 import type { HistoryEntrySummary } from '@/lib/history/historyDto'
+import { HISTORY_SEARCH_DEBOUNCE_MS } from '@/lib/history/historyClient'
 
 const { pushMock, loadContentTypesMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
@@ -87,6 +88,7 @@ describe('History page API pagination', () => {
   })
 
   afterEach(async () => {
+    vi.useRealTimers()
     await act(async () => root.unmount())
     container.remove()
     vi.unstubAllGlobals()
@@ -188,6 +190,144 @@ describe('History page API pagination', () => {
 
     expect(container.textContent).not.toContain('Stale draft')
     expect(container.textContent).toContain('Newest synced')
+  })
+
+  it('rapid search input は 300ms 後の keyword だけを一度 request する', async () => {
+    vi.useFakeTimers()
+    const requestedUrls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+      if (url === '/api/history/facets') {
+        return jsonResponse({ form_types: [], languages: [] })
+      }
+      return jsonResponse({
+        entries: [],
+        total: 0,
+        next_cursor: null,
+      })
+    }))
+
+    await act(async () => root.render(<HistoryPage />))
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')
+    expect(search).not.toBeNull()
+
+    const typeSearch = async (value: string) => {
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        )?.set
+        setter?.call(search, value)
+        search?.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    }
+    await typeSearch('a')
+    await typeSearch('al')
+    await typeSearch('alpha')
+
+    const listRequests = () => requestedUrls.filter(url => url.startsWith('/api/history?'))
+    expect(listRequests()).toEqual(['/api/history?limit=50'])
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(HISTORY_SEARCH_DEBOUNCE_MS - 1)
+    })
+    expect(listRequests()).toHaveLength(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(listRequests()).toEqual([
+      '/api/history?limit=50',
+      '/api/history?limit=50&keyword=alpha',
+    ])
+  })
+
+  it('settled search の Remove/Clear all 後に古い keyword を再適用しない', async () => {
+    vi.useFakeTimers()
+    const requestedUrls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      requestedUrls.push(url)
+      if (url === '/api/history/facets') {
+        return jsonResponse({ form_types: [], languages: [] })
+      }
+      return jsonResponse({ entries: [], total: 0, next_cursor: null })
+    }))
+
+    await act(async () => root.render(<HistoryPage />))
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const search = container.querySelector<HTMLInputElement>('input[type="search"]')
+    expect(search).not.toBeNull()
+    const typeSearch = async (value: string) => {
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        )?.set
+        setter?.call(search, value)
+        search?.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    }
+    const settleSearch = async () => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(HISTORY_SEARCH_DEBOUNCE_MS)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+    }
+    const listRequests = () => requestedUrls.filter(url => url.startsWith('/api/history?'))
+
+    await typeSearch('alpha')
+    await settleSearch()
+    expect(listRequests()).toEqual([
+      '/api/history?limit=50',
+      '/api/history?limit=50&keyword=alpha',
+    ])
+
+    const removeSearch = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Remove"]',
+    )
+    await act(async () => removeSearch?.click())
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await settleSearch()
+    expect(listRequests()).toEqual([
+      '/api/history?limit=50',
+      '/api/history?limit=50&keyword=alpha',
+      '/api/history?limit=50',
+    ])
+
+    await typeSearch('alpha')
+    await settleSearch()
+    expect(listRequests().at(-1)).toBe('/api/history?limit=50&keyword=alpha')
+
+    const clearAll = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
+      .find(button => button.textContent?.trim() === 'Clear all')
+    await act(async () => clearAll?.click())
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await settleSearch()
+    expect(listRequests()).toEqual([
+      '/api/history?limit=50',
+      '/api/history?limit=50&keyword=alpha',
+      '/api/history?limit=50',
+      '/api/history?limit=50&keyword=alpha',
+      '/api/history?limit=50',
+    ])
   })
 
   it('Edit click で summary row から full Entry を on-demand 読み込む', async () => {

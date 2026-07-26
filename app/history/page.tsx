@@ -15,6 +15,7 @@ import { EntryEditModal } from '@/components/history/EntryEditModal'
 import { Button } from '@/components/ui/Button'
 import { useEntryEdit } from '@/hooks/useEntryEdit'
 import { useEntryDelete } from '@/hooks/useEntryDelete'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PlusCircle, Trash2 } from 'lucide-react'
 import { FormType, type Entry, type UserContentType } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
@@ -24,7 +25,10 @@ import {
   type HistoryEntrySummary,
   type HistoryFacetsResponse,
 } from '@/lib/history/historyDto'
-import { requestHistory } from '@/lib/history/historyClient'
+import {
+  HISTORY_SEARCH_DEBOUNCE_MS,
+  requestHistory,
+} from '@/lib/history/historyClient'
 import {
   ALL_HISTORY_FILTERS,
   buildHistoryContentTypeOptions,
@@ -54,6 +58,8 @@ export default function HistoryPage() {
   const [total, setTotal] = useState(0)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [filters, setFilters] = useState<HistoryFilters>(DEFAULT_HISTORY_FILTERS)
+  const [searchDraft, setSearchDraft] = useState(DEFAULT_HISTORY_FILTERS.search)
+  const settledSearch = useDebouncedValue(searchDraft, HISTORY_SEARCH_DEBOUNCE_MS)
   const [editEntry, setEditEntry] = useState<Entry | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<HistoryEntrySummary[] | null>(null)
@@ -138,6 +144,24 @@ export default function HistoryPage() {
 
     return () => controller.abort()
   }, [authLoading, filters, toast, uid])
+
+  useEffect(() => {
+    if (settledSearch !== searchDraft || settledSearch === filters.search) return
+    let cancelled = false
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      historyRequestRef.current?.abort()
+      setFilters(current => (
+        current.search === settledSearch
+          ? current
+          : { ...current, search: settledSearch }
+      ))
+      setSelectedIds(new Set())
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [filters.search, searchDraft, settledSearch])
 
   useEffect(() => () => {
     editRequestRef.current?.abort()
@@ -306,7 +330,10 @@ export default function HistoryPage() {
 
   const removeFilter = (key: string) => {
     let nextFilters = filters
-    if (key === 'search') nextFilters = { ...filters, search: '' }
+    if (key === 'search') {
+      setSearchDraft('')
+      nextFilters = { ...filters, search: '' }
+    }
     if (key === 'contentType') {
       nextFilters = {
         ...filters,
@@ -361,11 +388,14 @@ export default function HistoryPage() {
           <div className="flex-1 min-w-[240px]">
             <FilterBar
               searchPlaceholder="Search vocabulary, meaning…"
-              searchValue={filters.search}
-              onSearchChange={search => applyFilters({ ...filters, search })}
+              searchValue={searchDraft}
+              onSearchChange={setSearchDraft}
               activeFilters={activeFilters}
               onRemoveFilter={removeFilter}
-              onClearAll={() => applyFilters({ ...DEFAULT_HISTORY_FILTERS })}
+              onClearAll={() => {
+                setSearchDraft(DEFAULT_HISTORY_FILTERS.search)
+                applyFilters({ ...DEFAULT_HISTORY_FILTERS })
+              }}
             />
           </div>
           <div className="w-full sm:w-[200px]">

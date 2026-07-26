@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Firestore } from 'firebase-admin/firestore'
 import { describe, expect, it } from 'vitest'
 import { FormType } from '@/types'
@@ -277,6 +279,7 @@ describe('History paginated query', () => {
           form_type: 'language',
           language: 'en',
           status: 'reviewed',
+          category_id: 'category-1',
         },
       },
     ], logs)
@@ -286,6 +289,7 @@ describe('History paginated query', () => {
       formType: FormType.LANGUAGE,
       language: 'en',
       status: 'reviewed',
+      categoryId: 'category-1',
     })
 
     expect(result.entries[0].form_type).toBe(FormType.LANGUAGE)
@@ -293,6 +297,29 @@ describe('History paginated query', () => {
     expect(filters).toContainEqual(['form_type', 'in', [FormType.LANGUAGE, 'language']])
     expect(filters).toContainEqual(['language', '==', 'en'])
     expect(filters).toContainEqual(['status', '==', 'reviewed'])
+    expect(filters).toContainEqual(['category_id', '==', 'category-1'])
+  })
+
+  it('category_id の全 supported filter combination に composite index を宣言する', () => {
+    const config = JSON.parse(readFileSync(
+      join(process.cwd(), 'firestore.indexes.json'),
+      'utf8',
+    )) as {
+      indexes: Array<{ fields: Array<{ fieldPath: string }> }>
+    }
+    const declared = new Set(config.indexes.map(index => (
+      index.fields.map(field => field.fieldPath).join(',')
+    )))
+    const categoryShapes = [
+      'user_id,category_id,created_at',
+      'user_id,category_id,status,created_at',
+      'user_id,category_id,form_type,created_at',
+      'user_id,category_id,form_type,status,created_at',
+      'user_id,category_id,form_type,language,created_at',
+      'user_id,category_id,form_type,language,status,created_at',
+    ]
+
+    for (const shape of categoryShapes) expect(declared).toContain(shape)
   })
 })
 

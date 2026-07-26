@@ -20,4 +20,16 @@ test.describe('Dashboard aggregate API UI', () => {
       }).__verify?.current()?.verdict
     ))).toBe('PASS')
   })
+
+  test('20 件を超える有効言語でも全 batch の breakdown を表示する', async ({ page }) => {
+    await page.goto('/verify/DashboardPage/many-languages?chrome=0')
+
+    await expect(page.getByText('Study en', { exact: true })).toBeVisible()
+    await expect(page.getByText('Study th', { exact: true })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => (
+      (window as unknown as {
+        __verify?: { current: () => { verdict: string } | null }
+      }).__verify?.current()?.verdict
+    ))).toBe('PASS')
+  })
 })

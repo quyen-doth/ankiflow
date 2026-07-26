@@ -474,7 +474,9 @@ Source file: `docs/database-diagram.txt`
   英語・中国語・日本語以外は汎用 AI schema (`ipa` など) を使用し、未設定 field を前提にしてはいけません。
 - `_query_*` は Entry query 用の予約 namespace。API request / Content Type field として受け付けず、
   server-side Entry writer が primary text と `card_type_ids` から毎回再計算する。新規・更新 writer を追加する場合も
-  `deriveEntryQueryMetadata` を通し、クライアント入力をそのまま保存しない。
+  `deriveEntryQueryMetadata` を通し、クライアント入力をそのまま保存しない。Partial update の writer は
+  ownership read、既存値との merge、metadata derivation、update を同一 Firestore transaction 内で行い、
+  transaction retry 時も最新 snapshot から再計算する。
 - `settings` はシングルトンではなくなりました — 3 種類の doc (`{uid}` / `global` / `default`)、Settings セクション参照。
 
 ---
@@ -514,6 +516,12 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
     - `(user_id ASC, form_type ASC[, status ASC], created_at DESC)` — History Content Type filter。
     - `(user_id ASC, form_type ASC, language ASC[, status ASC][, created_at DESC])` —
       Dashboard language count と History language filter。
+    - `(user_id ASC, category_id ASC[, status ASC], created_at DESC)` —
+      History category filter。
+    - `(user_id ASC, category_id ASC, form_type ASC[, status ASC], created_at DESC)` —
+      History category + Content Type filter。
+    - `(user_id ASC, category_id ASC, form_type ASC, language ASC[, status ASC], created_at DESC)` —
+      History category + Language Content Type filter。
   Runtime の `user_content_types` query は `user_id` filter 後に in-memory sort するため専用 composite index は不要。
   旧 `content_types (is_active ASC, sort_order ASC)` index は global default load 用に残す。
 - **Single-field index exemption**: 大きな media field `audio_url`、`audio_example_url`、`image_url` は

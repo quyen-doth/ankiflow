@@ -5,10 +5,10 @@ import { fetchCardTypesByIds } from '@/lib/firestore-helpers'
 import type { CardTypeItem } from '@/lib/buildNotes'
 import type { Entry } from '@/types'
 import {
-  deriveEntryQueryMetadata,
   findReservedEntryQueryFields,
   reservedEntryQueryFieldsError,
 } from '@/lib/entries/queryMetadata'
+import { updateOwnedEntryWithQueryMetadata } from '@/lib/entries/updateEntry'
 
 /**
  * PUT — Firestore の entry を更新し、CLIENT が Anki 側の note を再生成するための
@@ -42,21 +42,22 @@ export const PUT = withAuth(async (request, _ctx, uid) => {
     const db = getAdminDb()
     const entryRef = db.collection('entries').doc(entryId)
 
-    // update 前に ownership check — 他 user の entry は編集不可 (404、存在も漏らさない)
-    const ownedSnap = await entryRef.get()
-    if (!ownedSnap.exists || ownedSnap.data()?.user_id !== uid) {
-      return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
-    }
-
     if (updates && Object.keys(updates).length > 0) {
-      const safeUpdates = { ...(updates as Record<string, unknown>) }
-      delete safeUpdates.user_id
-      const mergedEntry = { ...ownedSnap.data(), ...safeUpdates }
-      await entryRef.update({
-        ...safeUpdates,
-        ...deriveEntryQueryMetadata(mergedEntry),
-        updated_at: new Date(),
-      })
+      const updated = await updateOwnedEntryWithQueryMetadata(
+        db,
+        entryRef,
+        uid,
+        updates as Record<string, unknown>,
+      )
+      if (!updated) {
+        return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+      }
+    } else {
+      // update がない場合も ownership を確認し、他 user の存在を漏らさない。
+      const ownedSnap = await entryRef.get()
+      if (!ownedSnap.exists || ownedSnap.data()?.user_id !== uid) {
+        return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
+      }
     }
 
     const snap = await entryRef.get()
