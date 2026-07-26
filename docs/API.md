@@ -343,6 +343,11 @@ Content Type editor で、field の自然言語要件から AI output instructio
 
 最大 100 件の入力語を Claude の強制 tool call で判定し、各 item に対応する canonical BCP 47 code を返す。Create flow は結果を現在のユーザーの `settings/{uid}.study_languages` と照合し、未登録または無効な言語の場合に追加確認を表示する。
 
+> **学習言語の優先順位 (2026-07-26 以降):** Create flow で **Language 欄が空のときだけ**この
+> エンドポイントを呼び出し、値を補完する。ユーザーが学習言語を選択済みの場合は呼び出さず、
+> 選択された言語が authoritative となる。入力語の言語が学習言語と異なる場合は、学習言語を
+> 書き換えるのではなく `POST /api/languages/resolve-terms` で入力語を学習言語へ変換する。
+
 - **Body Params (zod-validated):**
     ```ts
     {
@@ -362,6 +367,39 @@ Content Type editor で、field の自然言語要件から AI output instructio
     }
     ```
 - **Response (400):** item 数・文字数・candidate code が不正。**Response (401):** session がない。**Response (500):** provider が失敗。
+
+#### `POST /api/languages/resolve-terms`
+
+最大 100 件の入力語を、指定された学習言語 (`target_language`) の語へ揃える。学習言語は
+authoritative で、入力語の言語によって書き換えられることはない。すでに学習言語の語であれば
+そのまま返し、別言語であればその学習言語の一般的な等価語へ変換する
+(例: 学習言語 `ja` + 入力 `water` → `水`)。
+
+Create flow は、文字体系だけで学習言語と一致すると確定できる語 (かな→`ja`、ハングル→`ko`、
+タイ文字→`th`、漢字のみ→`ja`/`zh`) についてはこのエンドポイントを呼ばない。Latin 文字の
+学習言語は文字体系で判別できないため常に呼び出す。変換後の語で重複チェックと
+`POST /api/generate` を実行するため、`card_types` の primary field は変換後の語になる。
+
+- **Body Params (zod-validated):**
+    ```ts
+    {
+      "items": ["water", "dog"],                        // 1〜100 件、各 1〜200 文字
+      "target_language": { "code": "ja", "display_name": "Japanese" }
+    }
+    ```
+- **Response (200 OK):**
+    ```json
+    {
+      "resolutions": [
+        { "index": 0, "resolved_term": "水", "source_language": "en", "was_translated": true },
+        { "index": 1, "resolved_term": "犬", "source_language": "en", "was_translated": true }
+      ]
+    }
+    ```
+- `was_translated` が `false` の場合、サーバーは model の出力を捨てて入力語をそのまま返す
+  (`card-schemas.ts` の "trusted identity" と同じ方針 — 不要な furigana 付与などを防ぐ)。
+- **Response (400):** item 数・文字数・target code が不正。**Response (401):** session がない。**Response (500):** provider が失敗。
+  クライアントは 500 でもカード生成をブロックせず、入力語のまま続行する。
 
 ---
 

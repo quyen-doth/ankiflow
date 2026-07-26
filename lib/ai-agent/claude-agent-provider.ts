@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { normalizeGeneratedCard, resolveCardSpec } from './card-schemas'
 import type { CardSpec } from './card-spec'
 import { buildLanguageDetectionSpec, languageDetectionResultSchema } from './language-detection'
+import { buildTermResolutionSpec, termResolutionResultSchema } from './term-resolution'
 import {
   buildInstructionSuggestionSpec,
   instructionSuggestionResultSchema,
@@ -12,7 +13,9 @@ import type {
   GenerateCardInput,
   IAIAgentProvider,
   LanguageDetection,
+  ResolveTermsInput,
   SuggestInstructionInput,
+  TermResolution,
 } from './types'
 
 // Lazy singleton client — import 時の初期化を回避 (key がない場合の test/build でも安全)。
@@ -102,6 +105,45 @@ export class ClaudeAgentProvider implements IAIAgentProvider {
       if (retries > 0) {
         console.warn(`Claude language detection failed, retrying... (${retries} left)`)
         return this.detectLanguages(input, retries - 1)
+      }
+      throw error
+    }
+  }
+
+  async resolveTerms(input: ResolveTermsInput, retries = 2): Promise<TermResolution[]> {
+    const spec = buildTermResolutionSpec(input)
+    try {
+      const raw = await this.runForced(spec)
+      const parsed = termResolutionResultSchema.parse(raw)
+      if (parsed.resolutions.length !== input.items.length) {
+        throw new Error('Term resolver returned an incomplete result')
+      }
+
+      const byIndex = new Map(parsed.resolutions.map(resolution => [resolution.index, resolution]))
+      if (byIndex.size !== input.items.length) {
+        throw new Error('Term resolver returned duplicate indexes')
+      }
+
+      return input.items.map((item, index) => {
+        const resolution = byIndex.get(index)
+        if (!resolution) throw new Error(`Term resolver omitted item ${index}`)
+        const sourceLanguage = canonicalizeLanguageCode(resolution.source_language)
+        if (!sourceLanguage) {
+          throw new Error(`Term resolver returned invalid BCP 47 code: ${resolution.source_language}`)
+        }
+        // 翻訳不要と判断した語は model に書き換えさせない (card-schemas の "trusted identity" と同じ方針)。
+        const resolvedTerm = resolution.was_translated ? resolution.resolved_term.trim() : item
+        return {
+          index,
+          resolved_term: resolvedTerm || item,
+          source_language: sourceLanguage,
+          was_translated: resolution.was_translated && resolvedTerm !== item,
+        }
+      })
+    } catch (error) {
+      if (retries > 0) {
+        console.warn(`Claude term resolution failed, retrying... (${retries} left)`)
+        return this.resolveTerms(input, retries - 1)
       }
       throw error
     }

@@ -52,7 +52,7 @@ interface LoadingStep {
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-    { label: 'Detecting language', status: 'active' },
+    { label: 'Preparing terms', status: 'active' },
     { label: 'Checking duplicates', status: 'pending' },
     { label: 'Calling Claude AI', status: 'pending' },
 ];

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { detectItemLanguages, formatMixedLanguageError } from '@/lib/create/languageDetection'
+import { detectItemLanguages } from '@/lib/create/languageDetection'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -43,23 +43,5 @@ describe('detectItemLanguages', () => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     )))
     await expect(detectItemLanguages(['hello'], [])).rejects.toThrow('incomplete')
-  })
-})
-
-describe('formatMixedLanguageError', () => {
-  it('returns null for a single-language batch', () => {
-    expect(formatMixedLanguageError(['cat', 'dog'], [
-      { index: 0, code: 'en', display_name: 'English', confidence: 0.9 },
-      { index: 1, code: 'en', display_name: 'English', confidence: 0.9 },
-    ])).toBeNull()
-  })
-
-  it('lists every item when a batch mixes languages', () => {
-    const message = formatMixedLanguageError(['cat', '猫'], [
-      { index: 0, code: 'en', display_name: 'English', confidence: 0.9 },
-      { index: 1, code: 'ja', display_name: 'Japanese', confidence: 0.99 },
-    ])
-    expect(message).toContain('#1 “cat” → English (en)')
-    expect(message).toContain('#2 “猫” → Japanese (ja)')
   })
 })
