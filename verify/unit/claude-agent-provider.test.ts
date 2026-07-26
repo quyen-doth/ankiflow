@@ -62,6 +62,10 @@ function instructionToolResponse(input: unknown) {
   return { content: [{ type: 'tool_use', name: 'submit_instruction_suggestion', input }], stop_reason: 'tool_use' }
 }
 
+function resolutionToolResponse(input: unknown) {
+  return { content: [{ type: 'tool_use', name: 'submit_term_resolution', input }], stop_reason: 'tool_use' }
+}
+
 beforeEach(() => {
   createMock.mockReset()
 })
@@ -243,6 +247,72 @@ describe('ClaudeAgentProvider — language detection', () => {
     const result = await provider.detectLanguages({ items: ['안녕'], candidateLanguages: [] })
 
     expect(result[0].code).toBe('ko')
+    expect(createMock).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('ClaudeAgentProvider — term resolution', () => {
+  const JAPANESE = { code: 'ja', display_name: 'Japanese' }
+
+  it('学習言語を authoritative として翻訳し、source_language を canonicalize する', async () => {
+    createMock.mockResolvedValueOnce(resolutionToolResponse({
+      resolutions: [
+        { index: 0, resolved_term: '水', source_language: 'en_us', was_translated: true },
+      ],
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.resolveTerms({ items: ['water'], targetLanguage: JAPANESE })
+
+    expect(result).toEqual([
+      { index: 0, resolved_term: '水', source_language: 'en-US', was_translated: true },
+    ])
+    const params = createMock.mock.calls[0][0]
+    expect(params.tool_choice).toEqual({ type: 'tool', name: 'submit_term_resolution' })
+    expectCachedSystem(params.system, 'authoritative')
+  })
+
+  it('was_translated が false なら model の書き換えを捨てて入力を維持する', async () => {
+    createMock.mockResolvedValueOnce(resolutionToolResponse({
+      resolutions: [
+        // model が勝手に furigana を足しても入力が勝つ。
+        { index: 0, resolved_term: '冪等性 (べきとうせい)', source_language: 'ja', was_translated: false },
+      ],
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.resolveTerms({ items: ['冪等性'], targetLanguage: JAPANESE })
+
+    expect(result[0].resolved_term).toBe('冪等性')
+    expect(result[0].was_translated).toBe(false)
+  })
+
+  it('翻訳結果が入力と同じなら was_translated を false に落とす', async () => {
+    createMock.mockResolvedValueOnce(resolutionToolResponse({
+      resolutions: [
+        { index: 0, resolved_term: '猫', source_language: 'ja', was_translated: true },
+      ],
+    }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.resolveTerms({ items: ['猫'], targetLanguage: JAPANESE })
+
+    expect(result[0].was_translated).toBe(false)
+  })
+
+  it('不完全な index セットを retry して成功する', async () => {
+    createMock
+      .mockResolvedValueOnce(resolutionToolResponse({ resolutions: [] }))
+      .mockResolvedValueOnce(resolutionToolResponse({
+        resolutions: [
+          { index: 0, resolved_term: '犬', source_language: 'en', was_translated: true },
+        ],
+      }))
+    const provider = new ClaudeAgentProvider('claude-haiku-4-5')
+
+    const result = await provider.resolveTerms({ items: ['dog'], targetLanguage: JAPANESE })
+
+    expect(result[0].resolved_term).toBe('犬')
     expect(createMock).toHaveBeenCalledTimes(2)
   })
 })

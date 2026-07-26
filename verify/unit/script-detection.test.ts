@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectByScript } from '@/lib/create/scriptDetection'
+import { detectByScript, isScriptCompatibleWithTarget } from '@/lib/create/scriptDetection'
 
 const EN = { code: 'en', display_name: 'English' }
 const JA = { code: 'ja', display_name: 'Japanese' }
@@ -49,5 +49,42 @@ describe('detectByScript', () => {
 
   it('数字・記号だけの入力を中国語と誤判定しない', () => {
     expect(detectByScript(['123!?'], [ZH, EN])).toBeNull()
+  })
+})
+
+describe('isScriptCompatibleWithTarget', () => {
+  it('漢字だけの語は日本語・中国語のどちらでも互換 (学習言語が決める)', () => {
+    // 冪等性 は日本語だが漢字のみ — 学習言語が ja なら AI へ問い合わせずそのまま使う。
+    expect(isScriptCompatibleWithTarget('冪等性', 'ja')).toBe(true)
+    expect(isScriptCompatibleWithTarget('冪等性', 'zh')).toBe(true)
+    expect(isScriptCompatibleWithTarget('冪等性', 'en')).toBe(false)
+  })
+
+  it('かなは日本語のみ互換', () => {
+    expect(isScriptCompatibleWithTarget('たべる', 'ja')).toBe(true)
+    expect(isScriptCompatibleWithTarget('たべる', 'zh')).toBe(false)
+  })
+
+  it('ハングルとタイ文字をそれぞれの言語に対応させる', () => {
+    expect(isScriptCompatibleWithTarget('안녕하세요', 'ko')).toBe(true)
+    expect(isScriptCompatibleWithTarget('안녕하세요', 'ja')).toBe(false)
+    expect(isScriptCompatibleWithTarget('สวัสดี', 'th')).toBe(true)
+  })
+
+  it('Latin 文字の学習言語は常に false — 文字体系では判別できない', () => {
+    // "chó" も "dog" も Latin だが、学習言語が英語なら前者は翻訳が必要。
+    expect(isScriptCompatibleWithTarget('chó', 'en')).toBe(false)
+    expect(isScriptCompatibleWithTarget('dog', 'en')).toBe(false)
+    expect(isScriptCompatibleWithTarget('water', 'ja')).toBe(false)
+  })
+
+  it('region 付きの学習言語も primary subtag で照合', () => {
+    expect(isScriptCompatibleWithTarget('たべる', 'ja-JP')).toBe(true)
+    expect(isScriptCompatibleWithTarget('你好', 'zh-TW')).toBe(true)
+  })
+
+  it('空文字や不正な言語コードは false', () => {
+    expect(isScriptCompatibleWithTarget('   ', 'ja')).toBe(false)
+    expect(isScriptCompatibleWithTarget('冪等性', 'not a language')).toBe(false)
   })
 })

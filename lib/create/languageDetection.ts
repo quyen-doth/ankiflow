@@ -41,14 +41,3 @@ export async function detectItemLanguages(
     return { ...detection, code }
   })
 }
-export function formatMixedLanguageError(
-  items: string[],
-  detections: LanguageDetection[],
-): string | null {
-  const codes = new Set(detections.map(detection => detection.code.toLowerCase()))
-  if (codes.size <= 1) return null
-  const details = detections.map(detection => (
-    `#${detection.index + 1} “${items[detection.index]}” → ${detection.display_name} (${detection.code})`
-  ))
-  return `A batch can contain only one language. Split these items into separate batches: ${details.join('; ')}`
-}
