@@ -7,26 +7,35 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { languageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
-import { FormType, type Entry } from '@/types'
+import { FormType } from '@/types'
+import type { HistoryEntrySummary } from '@/lib/history/historyDto'
 
 interface HistoryTableProps {
-  data: Entry[]
+  data: HistoryEntrySummary[]
   selectedIds: ReadonlySet<string>
+  editingId?: string | null
+  hasMore?: boolean
+  loadingMore?: boolean
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
-  onOpen?: (entry: Entry) => void
-  onEdit?: (entry: Entry) => void
+  onOpen?: (entry: HistoryEntrySummary) => void
+  onEdit?: (entry: HistoryEntrySummary) => void
   onDelete?: (id: string) => void
+  onLoadMore?: () => void
 }
 
 export function HistoryTable({
   data,
   selectedIds,
+  editingId,
+  hasMore = false,
+  loadingMore = false,
   onToggleSelect,
   onToggleSelectAll,
   onOpen,
   onEdit,
   onDelete,
+  onLoadMore,
 }: HistoryTableProps) {
   const { languages } = useStudyLanguages()
 
@@ -43,13 +52,14 @@ export function HistoryTable({
     return '…' + deck.slice(-17)
   }
 
-  function formatDate(row: Entry): string {
+  function formatDate(row: HistoryEntrySummary): string {
     if (!row.created_at) return '—'
-    const date = row.created_at.toDate ? row.created_at.toDate() : new Date((row.created_at as { seconds: number }).seconds * 1000)
+    const date = new Date(row.created_at)
+    if (Number.isNaN(date.getTime())) return '—'
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
-  function langCode(row: Entry): string | null {
+  function langCode(row: HistoryEntrySummary): string | null {
     if (row.form_type !== FormType.LANGUAGE || !row.language) return null
     return primaryLanguageSubtag(row.language)?.toUpperCase() ?? row.language.toUpperCase()
   }
@@ -71,8 +81,8 @@ export function HistoryTable({
       ),
       width: '48px',
       align: 'center' as const,
-      render: (_: unknown, row: Entry) => {
-        const id = typeof row.id === 'string' ? row.id : ''
+      render: (_: unknown, row: HistoryEntrySummary) => {
+        const id = row.id
         const label = row.word || row.term || row.title || 'card'
         return (
           <input
@@ -90,7 +100,7 @@ export function HistoryTable({
     {
       key: 'word',
       header: 'Word',
-      render: (_: unknown, row: Entry) => (
+      render: (_: unknown, row: HistoryEntrySummary) => (
         <span className="font-bold text-lg text-ink">
           {row.word || row.term || row.title || '—'}
         </span>
@@ -99,7 +109,7 @@ export function HistoryTable({
     {
       key: 'meaning',
       header: 'Meaning',
-      render: (_: unknown, row: Entry) => (
+      render: (_: unknown, row: HistoryEntrySummary) => (
         <span className="text-slate-600">
           {row.meaning_vi || row.definition || row.content || '—'}
         </span>
@@ -108,7 +118,7 @@ export function HistoryTable({
     {
       key: 'language',
       header: 'Lang',
-      render: (_: unknown, row: Entry) => {
+      render: (_: unknown, row: HistoryEntrySummary) => {
         const code = langCode(row)
         if (!code) return <span className="text-slate-400">—</span>
         const isJa = code === 'JA'
@@ -124,7 +134,7 @@ export function HistoryTable({
     {
       key: 'anki_deck',
       header: 'Deck',
-      render: (_: unknown, row: Entry) => (
+      render: (_: unknown, row: HistoryEntrySummary) => (
         <span className="text-ink font-medium text-[13px] font-mono">
           {truncateDeck(row.anki_deck)}
         </span>
@@ -133,7 +143,7 @@ export function HistoryTable({
     {
       key: 'status',
       header: 'Status',
-      render: (_: unknown, row: Entry) => {
+      render: (_: unknown, row: HistoryEntrySummary) => {
         const isSynced = row.status === 'synced'
         return (
           <Badge className={isSynced
@@ -149,7 +159,7 @@ export function HistoryTable({
     {
       key: 'created_at',
       header: 'Created',
-      render: (_: unknown, row: Entry) => (
+      render: (_: unknown, row: HistoryEntrySummary) => (
         <span className="text-slate-600 text-sm">{formatDate(row)}</span>
       ),
     },
@@ -157,7 +167,7 @@ export function HistoryTable({
       key: 'actions',
       header: '',
       align: 'right' as const,
-      render: (_: unknown, row: Entry) => (
+      render: (_: unknown, row: HistoryEntrySummary) => (
         <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
@@ -165,6 +175,8 @@ export function HistoryTable({
               e.stopPropagation()
               onEdit?.(row)
             }}
+            loading={editingId === row.id}
+            disabled={!!editingId}
             className="p-2 h-auto text-slate-600 hover:text-primary hover:bg-primary-bg rounded-full"
             title="Edit"
           >
@@ -174,8 +186,9 @@ export function HistoryTable({
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation()
-              onDelete?.(row.id as string)
+              onDelete?.(row.id)
             }}
+            disabled={!!editingId}
             className="p-2 h-auto text-slate-600 hover:text-danger hover:bg-danger-bg rounded-full"
             title="Delete"
           >
@@ -188,16 +201,30 @@ export function HistoryTable({
 
   return (
     <div
-      className="bg-white rounded-card border border-border/40 overflow-hidden"
+      className="flex flex-col gap-4"
       {...verifyAttrs({ unit: 'HistoryTable', rows: data.length, selected: selectedIds.size })}
     >
-      <DataTable
-        data={data}
-        columns={columns}
-        keyField="id"
-        onRowClick={onOpen}
-        emptyMessage="No vocabulary cards created yet."
-      />
+      <div className="bg-white rounded-card border border-border/40 overflow-hidden">
+        <DataTable
+          data={data}
+          columns={columns}
+          keyField="id"
+          onRowClick={onOpen}
+          emptyMessage="No vocabulary cards created yet."
+        />
+      </div>
+      {hasMore && (
+        <div className="flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={onLoadMore}
+            loading={loadingMore}
+            title="Load more cards"
+          >
+            Load more
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

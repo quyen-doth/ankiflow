@@ -8,39 +8,24 @@ import {
   findReservedEntryQueryFields,
   reservedEntryQueryFieldsError,
 } from '@/lib/entries/queryMetadata'
-import type { Entry } from '@/types'
+import {
+  InvalidHistoryCursorError,
+  loadHistoryPage,
+  parseHistoryListParams,
+} from '@/lib/history/historyQuery'
 
 async function GET_handler(request: NextRequest, _ctx: unknown, uid: string) {
+  const parsed = parseHistoryListParams(new URL(request.url))
+  if (!parsed.success) {
+    return apiError('Invalid query parameters', 400)
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const limitParam = searchParams.get('limit') || '50'
-    const formType = searchParams.get('form_type')
-    const categoryId = searchParams.get('category_id')
-    const keyword = searchParams.get('keyword')
-
-    const db = getAdminDb()
-    let query: FirebaseFirestore.Query = db.collection('entries')
-
-    query = query.where('user_id', '==', uid)
-    if (formType) query = query.where('form_type', '==', formType)
-    if (categoryId) query = query.where('category_id', '==', categoryId)
-    query = query.orderBy('created_at', 'desc').limit(parseInt(limitParam, 10))
-
-    const snapshot = await query.get()
-    let entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Entry))
-
-    if (keyword) {
-      const lowerKeyword = keyword.toLowerCase()
-      entries = entries.filter((entry: Entry) =>
-        (entry.word ?? '').toLowerCase().includes(lowerKeyword) ||
-        (entry.term ?? '').toLowerCase().includes(lowerKeyword) ||
-        (entry.meaning_vi ?? '').toLowerCase().includes(lowerKeyword) ||
-        (entry.pinyin ?? '').toLowerCase().includes(lowerKeyword)
-      )
-    }
-
-    return apiSuccess({ entries })
+    return apiSuccess(await loadHistoryPage(getAdminDb(), uid, parsed.data))
   } catch (error) {
+    if (error instanceof InvalidHistoryCursorError) {
+      return apiError('Invalid cursor', 400)
+    }
     console.error('Fetch History Error:', error)
     return catchError(error)
   }
