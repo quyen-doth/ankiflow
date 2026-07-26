@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -15,75 +13,97 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { FlowTip } from '@/components/ui/FlowTip'
 import { Layers, BookOpen, CalendarCheck, CheckCircle2, PlusCircle, Inbox, Search, ArrowRight } from 'lucide-react'
 import { canonicalizeLanguageCode, languageDisplayName, primaryLanguageSubtag } from '@/lib/studyLanguages'
-import { FormType, type Entry } from '@/types'
+import { FormType } from '@/types'
+import {
+  localDayBounds,
+  requestDashboard,
+} from '@/lib/dashboard/dashboardClient'
+import type { DashboardResponse } from '@/lib/dashboard/dashboardDto'
 
-function entryDate(entry: Entry): Date | null {
-  if (!entry.created_at) return null
-  return entry.created_at.toDate
-    ? entry.created_at.toDate()
-    : new Date((entry.created_at as unknown as { seconds: number }).seconds * 1000)
-}
-
-function isToday(date: Date | null): boolean {
-  if (!date) return false
-  const now = new Date()
-  return date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate()
+interface DashboardContentProps {
+  navigate: (href: string) => void
 }
 
 export default function DashboardPage() {
   const router = useRouter()
+
+  return <DashboardContent navigate={href => router.push(href)} />
+}
+
+export function DashboardContent({ navigate }: DashboardContentProps) {
   const { user, loading: authLoading } = useAuth()
-  const { languages } = useStudyLanguages()
-  const [entries, setEntries] = useState<Entry[]>([])
+  const uid = user?.uid
+  const {
+    languages,
+    enabledLanguages,
+    loading: languagesLoading,
+  } = useStudyLanguages()
+  const languageCodesKey = enabledLanguages
+    .flatMap(language => canonicalizeLanguageCode(language.code) ?? [])
+    .join(',')
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const requestRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    // user 未確定 (authLoading または null) → spinner を維持; ログイン済みは middleware が保証
-    if (authLoading || !user) return
-    async function fetchEntries(uid: string) {
-      try {
-        const q = query(
-          collection(db, 'entries'),
-          where('user_id', '==', uid),
-          orderBy('created_at', 'desc'),
-          limit(50),
-        )
-        const snapshot = await getDocs(q)
-        setEntries(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Entry)))
-      } catch (error) {
-        console.error('Error fetching dashboard entries:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchEntries(user.uid)
-  }, [user, authLoading])
+    if (authLoading || languagesLoading || !uid) return
 
-  const stats = useMemo(() => {
-    const totalCards = entries.reduce((sum, e) => sum + (e.card_type_ids?.length || 0), 0)
-    const createdToday = entries.filter(e => isToday(entryDate(e))).length
-    const synced = entries.filter(e => e.status === 'synced').length
-    const successRate = entries.length > 0 ? Math.round((synced / entries.length) * 100) : 0
-    return { totalCards, createdToday, successRate }
-  }, [entries])
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+
+    Promise.resolve()
+      .then(() => {
+        if (controller.signal.aborted) return undefined
+        setDashboard(null)
+        setLoading(true)
+        const languageCodes = languageCodesKey ? languageCodesKey.split(',') : []
+        return requestDashboard(localDayBounds(), languageCodes, controller.signal)
+      })
+      .then(response => {
+        if (!response || requestRef.current !== controller || controller.signal.aborted) {
+          return
+        }
+        setDashboard(response)
+      })
+      .catch(error => {
+        if (!controller.signal.aborted) {
+          console.error('Error fetching dashboard:', error)
+        }
+      })
+      .finally(() => {
+        if (requestRef.current === controller) {
+          requestRef.current = null
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      controller.abort()
+      if (requestRef.current === controller) requestRef.current = null
+    }
+  }, [authLoading, languageCodesKey, languagesLoading, uid])
+
+  const stats = dashboard?.stats
+  const successRate = stats && stats.total_vocabulary > 0
+    ? Math.round((stats.synced / stats.total_vocabulary) * 100)
+    : 0
 
   const languageBreakdown = useMemo(() => {
-    const langEntries = entries.filter(e => e.form_type === FormType.LANGUAGE && e.language)
-    const counts = new Map<string, number>()
-    langEntries.forEach(e => {
-      const key = canonicalizeLanguageCode(e.language as string) ?? e.language as string
-      counts.set(key, (counts.get(key) || 0) + 1)
-    })
-    const total = langEntries.length || 1
-    return Array.from(counts.entries())
-      .map(([lang, count]) => ({ lang, label: languageDisplayName(lang, languages), count, pct: Math.round((count / total) * 100) }))
+    const counts = (dashboard?.language_counts ?? []).filter(item => item.count > 0)
+    const total = counts.reduce((sum, item) => sum + item.count, 0) || 1
+    return counts
+      .map(({ language, count }) => ({
+        lang: language,
+        label: languageDisplayName(language, languages),
+        count,
+        pct: Math.round((count / total) * 100),
+      }))
       .sort((a, b) => b.count - a.count)
-  }, [entries, languages])
+  }, [dashboard?.language_counts, languages])
 
-  const recentEntries = entries.slice(0, 6)
+  const recentEntries = dashboard?.recent_entries ?? []
 
   return (
     <MotionPage>
@@ -96,6 +116,7 @@ export default function DashboardPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
+                aria-label="Search cards"
                 placeholder="Search cards…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -103,7 +124,7 @@ export default function DashboardPage() {
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-mono text-slate-400 border border-border rounded px-1.5 py-0.5">/</kbd>
             </div>
-            <Button variant="primary" leftIcon={<PlusCircle className="w-4 h-4" />} onClick={() => router.push('/create')}>
+            <Button variant="primary" leftIcon={<PlusCircle className="w-4 h-4" />} onClick={() => navigate('/create')}>
               Create card
               <kbd className="ml-2 text-xs font-semibold opacity-70 tracking-wide">⌘N</kbd>
             </Button>
@@ -117,22 +138,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Vocabulary"
-            value={loading ? '—' : entries.length}
+            value={loading ? '—' : stats?.total_vocabulary ?? 0}
             icon={<BookOpen className="w-5 h-5" />}
           />
           <StatCard
             label="Cards"
-            value={loading ? '—' : stats.totalCards}
+            value={loading ? '—' : stats?.total_cards ?? 0}
             icon={<Layers className="w-5 h-5" />}
           />
           <StatCard
             label="Today"
-            value={loading ? '—' : stats.createdToday}
+            value={loading ? '—' : stats?.created_today ?? 0}
             icon={<CalendarCheck className="w-5 h-5" />}
           />
           <StatCard
             label="Synced"
-            value={loading ? '—' : `${stats.successRate}%`}
+            value={loading ? '—' : `${successRate}%`}
             icon={<CheckCircle2 className="w-5 h-5" />}
           />
         </div>
@@ -144,7 +165,7 @@ export default function DashboardPage() {
               <h2 className="text-overline uppercase tracking-[0.05em] text-slate-400 font-mono font-bold">Recently created</h2>
               <button
                 type="button"
-                onClick={() => router.push('/history')}
+                onClick={() => navigate('/history')}
                 className="flex items-center gap-1.5 text-[13px] font-medium text-ink hover:text-primary transition-colors"
               >
                 View all <ArrowRight className="w-3.5 h-3.5" />
@@ -159,7 +180,7 @@ export default function DashboardPage() {
                 icon={<Inbox className="w-6 h-6" />}
                 title="No cards yet"
                 description="Create your first vocabulary card to see it appear here."
-                action={<Button variant="primary" size="sm" onClick={() => router.push('/create')}>Create a card</Button>}
+                action={<Button variant="primary" size="sm" onClick={() => navigate('/create')}>Create a card</Button>}
               />
             ) : (
               <div className="flex flex-col divide-y divide-border">
@@ -174,7 +195,7 @@ export default function DashboardPage() {
                     <button
                       key={entry.id}
                       type="button"
-                      onClick={() => router.push(`/history/${entry.id}`)}
+                      onClick={() => navigate(`/history/${entry.id}`)}
                       className="flex items-center gap-3 py-3.5 text-left transition-colors hover:bg-surface/60 rounded-lg px-2 -mx-2"
                     >
                       {langCode && (
