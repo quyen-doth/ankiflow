@@ -5,6 +5,7 @@ import {
 } from '@/lib/constants'
 import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
 import { aiOutputProfilesSchema, cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
+import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
 import { FormType } from '@/types'
 import type { ContentType, UserContentType } from '@/types'
 
@@ -69,7 +70,13 @@ const fieldTypeSchema = z.enum([
 ])
 
 export const formFieldConfigSchema = z.object({
-  field_key: z.string().trim().min(1, 'Field key is required'),
+  field_key: z.string()
+    .trim()
+    .min(1, 'Field key is required')
+    .refine(
+      key => !isReservedEntryQueryField(key),
+      'Field key uses a reserved application prefix',
+    ),
   label: z.string().trim().min(1, 'Field label is required'),
   type: fieldTypeSchema,
   is_required: z.boolean(),

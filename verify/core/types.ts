@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import type { ZodType } from 'zod'
+import type { StudyLanguage } from '@/types'
 
 /** fixture の判定結果: BLOCKED > FAIL > SKIP > PASS */
 export type Verdict = 'PASS' | 'FAIL' | 'BLOCKED' | 'SKIP'
@@ -54,6 +55,8 @@ export interface FixtureMocks {
     user: { uid: string; email: string | null } | null
     loading?: boolean
   }
+  /** fixture 用 Study Language context。 */
+  studyLanguages?: StudyLanguage[]
   /** mock next/navigation 用 pathname (vitest 内のみ有効) */
   pathname?: string
 }

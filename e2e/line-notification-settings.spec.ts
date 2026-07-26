@@ -4,7 +4,7 @@ test.describe('LINE notification mobile linking', () => {
   test('mobile は pre-filled send link と copy feedback を表示する', async ({ context, page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-      origin: 'http://localhost:3000',
+      origin: 'http://127.0.0.1:3000',
     })
     await page.goto('/verify/LineNotificationSettings/code-ready?chrome=0')
 

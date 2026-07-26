@@ -13,7 +13,7 @@ import {
 } from '@/lib/studyLanguages'
 import type { StudyLanguage } from '@/types'
 
-interface StudyLanguageContextValue {
+export interface StudyLanguageContextValue {
   languages: StudyLanguage[]
   enabledLanguages: StudyLanguage[]
   aiOutputLanguage: string
@@ -26,7 +26,7 @@ interface StudyLanguageContextValue {
 
 const DEFAULT_LANGUAGES = DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language }))
 
-const StudyLanguageContext = createContext<StudyLanguageContextValue>({
+export const StudyLanguageContext = createContext<StudyLanguageContextValue>({
   languages: DEFAULT_LANGUAGES,
   enabledLanguages: DEFAULT_LANGUAGES,
   aiOutputLanguage: 'vi',

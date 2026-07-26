@@ -17,6 +17,7 @@ graph TD
         AnkiDataAPI[/api/anki/update, resync, sync-srs]
         GenAPI[/api/generate, /api/content-types/suggest-instruction]
         MediaAPI[/api/audio/generate, /api/image]
+        DashboardAPI[/api/dashboard]
         HistoryAPI[/api/history/*]
         AdminAPI[/api/admin/*]
     end
@@ -34,6 +35,7 @@ graph TD
     Client <-->|REST| AnkiDataAPI
     Client <-->|REST| GenAPI
     Client <-->|REST| MediaAPI
+    Client <-->|REST| DashboardAPI
     Client <-->|REST| HistoryAPI
     Client <-->|REST| AdminAPI
 
@@ -42,6 +44,7 @@ graph TD
     GenAPI <-->|SDK| Claude
     MediaAPI <-->|SDK| TTS
     MediaAPI <-->|HTTP GET| Unsplash
+    DashboardAPI <-->|Admin SDK| Firestore
     HistoryAPI <-->|Admin SDK| Firestore
     AdminAPI <-->|Admin SDK| Firestore
 ```
@@ -92,7 +95,7 @@ AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly �
 | `/api/auth/*` | Public | session (ログイン)、サインアップ、ログアウト — サインアップは `SIGNUP_ENABLED=true` の場合のみ実行 |
 | `/api/notifications/line-webhook` | Public (LINE 署名) | LINE プラットフォームが外部から呼び出し |
 | `/api/notifications/line-link`、`/api/notifications/send` | **`withAuth` 相当** (セッションクッキー) → 不足/不正時 401 | 呼び出し元 UID の LINE 連携・テスト通知のみ操作 |
-| `/api/entries/*`、`/api/anki/*`、`/api/history/*`、`/api/generate`、`/api/content-types/suggest-instruction`、`/api/languages/detect`、`/api/audio/generate`、`/api/image` | **`withAuth`** (セッションクッキー) → 不足/不正時 401 | UID に基づいてデータをスコープ |
+| `/api/entries/*`、`/api/anki/*`、`/api/dashboard`、`/api/history/*`、`/api/generate`、`/api/content-types/suggest-instruction`、`/api/languages/detect`、`/api/audio/generate`、`/api/image` | **`withAuth`** (セッションクッキー) → 不足/不正時 401 | UID に基づいてデータをスコープ |
 | `/api/admin/global-config` (POST)、`/api/admin/content-types` (PUT/DELETE) | セッションクッキー **+ `email === ADMIN_EMAIL`** → 管理者でない場合 403 | コントロールプレーン mutation |
 | `/api/admin/content-types` (GET) | `withAuth` | 新規ユーザー用 global Content Type defaults を取得 |
 | その他の `/api/admin/*` (CRUD レガシー) | `withAuth` | クライアントコーラーなし (UI は Client SDK を使用) |
@@ -158,7 +161,9 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | **POST**          | `/api/languages/detect`        | 入力語の言語を BCP 47 形式で構造化判定                                                         |
 | **POST**          | `/api/audio/generate`          | TTS をレンダリング → base64 を返す (クライアントが必要に応じて Anki メディアに保存)              |
 | **GET**           | `/api/image`                   | Unsplash で説明用画像を検索                                                                      |
-| **GET、POST**     | `/api/history`                 | Entry 履歴のリストを取得 / 新規 Entry を追加                                                     |
+| **GET**           | `/api/dashboard`               | 全件ベースの集約統計、言語別件数、最新 6 件の軽量 summary を取得                                 |
+| **GET、POST**     | `/api/history`                 | Cursor pagination された Entry summary を取得 / 新規 Entry を追加                                |
+| **GET**           | `/api/history/facets`          | History filter 用 Content Type / 言語 facet を取得                                                |
 | **GET、PUT、DEL** | `/api/history/[id]`            | Entry 履歴の詳細を読み込み、更新、削除                                                           |
 | **POST**          | `/api/history/bulk-delete`     | 所有する Entry を最大 100 件削除し、未処理の Anki note ID を user settings queue に保存          |
 | **CRUD**          | `/api/admin/categories`        | カード分類 Categories を管理                                                                     |
@@ -221,6 +226,8 @@ Entry を Firestore に保存。2 つのフローで使用: **deferred** (Anki �
 #### `PUT /api/anki/update`
 
 Firestore の Entry を更新し、クライアントが Anki でノートを再生成するためのデータを返す (best-effort — Anki がオフラインでも保存はブロックされない)。
+所有権確認、既存 Entry との merge、`_query_*` metadata の再計算、更新は同一 Firestore transaction
+で実行され、競合 retry 時も最新 snapshot から metadata を再計算する。
 
 - **Body Params:**
     ```ts
@@ -458,39 +465,152 @@ Anki メディアに保存します。例文 TTS の自動生成はクライア�
 
 ---
 
-### 6.4 重複チェック
+### 6.4 Dashboard
+
+#### `GET /api/dashboard`
+
+認証ユーザーの全 Entry を対象に Dashboard の統計を返す。ブラウザがローカル日付境界と有効な
+学習言語を送り、サーバーはすべての Firestore query に `user_id == uid` を付与する。
+
+- **Query Params:**
+    - `day_start`: 必須 — ブラウザローカル日の開始を表す offset 付き ISO datetime。
+    - `day_end`: 必須 — 次のブラウザローカル日の開始を表す offset 付き ISO datetime。
+      DST を考慮し、区間は 22〜26 時間の半開区間 `[day_start, day_end)` でなければならない。
+    - `language`: Optional、繰り返し指定、最大 20 件 — canonicalize 可能な BCP 47 code。
+      大文字小文字を区別せず重複を除く。
+      Dashboard client は有効言語が 20 件を超える場合、最大 20 件ずつ順次 request し、
+      最初の response の stats/recent entries と全 batch の language counts を統合する。
+- **Response (200 OK):**
+    ```json
+    {
+      "stats": {
+        "total_vocabulary": 120,
+        "total_cards": 245,
+        "created_today": 7,
+        "synced": 90
+      },
+      "language_counts": [
+        { "language": "en", "count": 30 },
+        { "language": "ja", "count": 10 }
+      ],
+      "recent_entries": [
+        {
+          "id": "doc123",
+          "form_type": "form_language",
+          "language": "ja",
+          "word": "流れ",
+          "meaning_vi": "flow",
+          "status": "synced"
+        }
+      ]
+    }
+    ```
+- `recent_entries` は `created_at DESC` の最新 6 件のみで、表示に必要な field だけを projection
+  する。TTS / image data URL や full Entry payload は返さない。
+- `settings/global.entry_query_schema_version == 1` の場合、`count()` / `sum()` aggregation を並列実行する。
+  Marker が未設定の場合は legacy Entry を欠落させないため、同じ UID scope の projected scan に
+  フォールバックし、`card_type_ids` から card 数を導出する。
+- **Response (400):** `{ "error": "Invalid query parameters" }`
+
+---
+
+### 6.5 重複チェック
 
 #### `POST /api/entries/check-duplicate`
 
-単語/用語が Firestore に既に存在するかをチェック。`word`、`term`、または `title` フィールドで大文字小文字を区別しない比較を行います。
+単語/用語が Firestore に既に存在するかをチェック。Entry の primary 値を
+`word` → `term` → `title` の順で解決し、trim + lowercase した値で大文字小文字を区別せず比較する。
 
 - **Body Params:**
     ```ts
     {
-      "word": "string",                    // 必須 — チェックする単語
-      "language"?: "string"                  // Optional — BCP 47 code でフィルタ
+      "word"?: "string",       // Single request
+      "words"?: ["string"]     // Batch request。指定時はこちらを優先、最大 100 件
     }
     ```
-- **Response (200 OK):**
+- **Single Response (200 OK):**
     ```json
     {
-        "duplicates": [{ "id": "doc123", "word": "书", "meaning_vi": "sách", "status": "synced", "created_at": "..." }]
+      "isDuplicate": true,
+      "duplicates": [
+        {
+          "id": "doc123",
+          "word": "书",
+          "anki_deck": "Chinese",
+          "status": "synced",
+          "created_at": "2026-07-26T00:00:00.000Z"
+        }
+      ]
     }
     ```
-- **Response (400):** `{ "error": "Missing word" }`
+- **Batch Response (200 OK):**
+    ```json
+    {
+      "results": [
+        { "word": "书", "duplicates": [{ "id": "doc123", "word": "书", "anki_deck": "Chinese", "status": "synced", "created_at": "..." }] },
+        { "word": "流れ", "duplicates": [] }
+      ]
+    }
+    ```
+- `settings/global.entry_query_schema_version == 1` の場合、最大 30 key ごとの
+  `_query_duplicate_key in [...]` query を並列実行する。Marker が未設定の場合は legacy Entry を
+  欠落させない projected scan にフォールバックする。どちらも UID scope と summary projection を使用する。
+- **Response (400):** Body schema 不正の場合 `{ "error": "Invalid request body", "issues": [...] }`、
+  対象がない場合 `{ "error": "Missing word" }`。
 
 ---
 
-### 6.5 履歴 (Entries Collection)
+### 6.6 履歴 (Entries Collection)
 
 Firestore の `entries` コレクションと相互作用して学習者の記録を保存。
 
 #### `GET /api/history`
 
-- **Query Params:** `limit` (default: 50), `form_type`, `category_id`, `keyword`
+- **Query Params:**
+    - `limit`: 1〜100、default 50。
+    - `form_type`、`status` (`draft` / `reviewed` / `synced`)、`category_id`: Optional filter。
+    - `language`: Optional。Language Content Type の `form_type` と同時指定する場合のみ有効。
+    - `keyword`: Optional、最大 200 文字。Primary text / meaning text の case-insensitive substring filter。
+    - `cursor`: Optional。直前 response の opaque `next_cursor`。Filter scope が変わった cursor は拒否する。
 - **Response (200 OK):**
     ```json
-    { "entries": [ { "id": "doc123", "word": "书", "status": "synced", ... } ] }
+    {
+      "entries": [
+        {
+          "id": "doc123",
+          "form_type": "form_language",
+          "language": "zh",
+          "word": "书",
+          "meaning_vi": "sách",
+          "anki_deck": "Chinese",
+          "anki_note_ids": [12345],
+          "card_count": 2,
+          "status": "synced",
+          "created_at": "2026-07-26T00:00:00.000Z"
+        }
+      ],
+      "total": 120,
+      "next_cursor": "<opaque cursor or null>"
+    }
+    ```
+- Keyword がない場合は `created_at DESC` + document ID の安定順序、`limit + 1`、Firestore
+  `count()` を使用し、次ページを cursor で取得する。Keyword substring は Firestore が直接扱えないため、
+  UID と他 filter を適用した summary projection を scan してから同じ cursor contract を返す。
+- API は History 表示に必要な summary field だけを返し、media data URL や full Entry payload を返さない。
+- **Response (400):** Query schema 不正は `{ "error": "Invalid query parameters" }`、
+  cursor 不正または filter scope 不一致は `{ "error": "Invalid cursor" }`。
+
+#### `GET /api/history/facets`
+
+認証ユーザーの Entry から History filter 用の canonical Content Type code と Language code を返す。
+`user_id`、`form_type`、`language` だけを projection し、配列は sort 済み。
+
+- **Response (200 OK):**
+    ```json
+    {
+      "form_types": ["form_general", "form_language"],
+      "languages": ["en", "ja"]
+    }
     ```
 
 #### `POST /api/history`
@@ -505,6 +625,8 @@ Firestore の `entries` コレクションと相互作用して学習者の記�
 #### `PUT /api/history/[id]`
 
 - **Body Params:** `<Partial Entry update>`
+- 所有権確認、partial update の merge、`_query_*` metadata の再計算、更新を同一 transaction
+  で行うため、競合 retry 後も primary text / card type と query metadata が一致する。
 
 #### `DELETE /api/history/[id]`
 
@@ -535,7 +657,7 @@ History UI の単一・一括削除で使用。対象 Entry を所有権確認�
 
 ---
 
-### 6.6 Admin CRUD (Collections Manager)
+### 6.7 Admin CRUD (Collections Manager)
 
 アプリ内のスキーマとドロップダウンリスト設定 (Category、Topic、Deck Configs) を管理するために使用される API グループ。ほとんどが標準的な RESTful CRUD アーキテクチャに従います。
 

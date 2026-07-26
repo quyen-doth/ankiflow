@@ -2,15 +2,21 @@
 
 import { useCallback } from 'react'
 import { getAnkiClientFromSettings } from '@/lib/flashcard-service/client'
-import type { Entry } from '@/types'
 
 export interface DeleteEntriesResult {
   deleted: number
   ankiCleaned: boolean
 }
 
+export interface DeletableEntry {
+  id?: string
+  anki_note_ids?: number[]
+}
+
 export function useEntryDelete() {
-  const deleteEntries = useCallback(async (entries: Entry[]): Promise<DeleteEntriesResult> => {
+  const deleteEntries = useCallback(async (
+    entries: DeletableEntry[],
+  ): Promise<DeleteEntriesResult> => {
     const ids = [...new Set(entries.flatMap(entry => (
       typeof entry.id === 'string' && entry.id ? [entry.id] : []
     )))]

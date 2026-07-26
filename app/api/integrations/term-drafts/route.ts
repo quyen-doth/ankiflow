@@ -5,6 +5,8 @@ import { verifyStaticToken } from '@/lib/auth-guard'
 import { normalizeTerm } from '@/lib/entries/duplicate'
 import { canonicalizeLanguageCode } from '@/lib/studyLanguages'
 import { FormType } from '@/types'
+import { deriveEntryQueryMetadata } from '@/lib/entries/queryMetadata'
+import { lookupEntryDuplicates } from '@/lib/entries/duplicateLookup'
 
 /**
  * POST /api/integrations/term-drafts — 外部システム (Knowledge Hub) から term draft を受け取る。
@@ -57,22 +59,23 @@ export async function POST(request: Request) {
   try {
     const db = getAdminDb()
 
-    // Duplicate check: query は 1 回だけ、メモリ内で比較 (app/api/entries/check-duplicate と同様)。
-    const existingSnap = await db.collection('entries').where('user_id', '==', targetUid).get()
+    // Duplicate lookup と default deck は独立しているため並列取得する。
+    const [duplicateResults, deckSnap] = await Promise.all([
+      lookupEntryDuplicates(db, targetUid, items.map(item => item.term)),
+      db
+        .collection('decks')
+        .where('user_id', '==', targetUid)
+        .where('form_type', '==', FormType.IT)
+        .limit(1)
+        .get(),
+    ])
     const existingNormalized = new Set(
-      existingSnap.docs.map((doc) => {
-        const data = doc.data()
-        return normalizeTerm(data.word || data.term || data.title || '')
-      }),
+      duplicateResults
+        .filter(result => result.duplicates.length > 0)
+        .map(result => normalizeTerm(result.word)),
     )
 
     // Default anki_deck/card_type_ids: target user 自身の form_it 既定 deck から取得。
-    const deckSnap = await db
-      .collection('decks')
-      .where('user_id', '==', targetUid)
-      .where('form_type', '==', FormType.IT)
-      .limit(1)
-      .get()
     const deckDoc = deckSnap.docs[0]?.data()
     const ankiDeck = deckDoc?.anki_deck_name ?? DEFAULT_DECK_NAME
     const defaultCardTypeIds: string[] = deckDoc?.default_card_type_ids ?? DEFAULT_CARD_TYPE_IDS
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
       seenInBatch.add(normalized)
 
       const ref = db.collection('entries').doc()
-      batch.set(ref, {
+      const entryData = {
         user_id: targetUid,
         term: item.term,
         language: item.language,
@@ -109,6 +112,10 @@ export async function POST(request: Request) {
         context_quote: item.context_quote,
         created_at: new Date(),
         updated_at: new Date(),
+      }
+      batch.set(ref, {
+        ...entryData,
+        ...deriveEntryQueryMetadata(entryData),
       })
       created.push(ref.id)
     }

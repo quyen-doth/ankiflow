@@ -19,4 +19,16 @@ test.describe('History table selection', () => {
     await expect(selectAll).toBeChecked()
     await expect(page.getByRole('button', { name: 'View' })).toHaveCount(0)
   })
+
+  test('Load more chỉ xuất hiện khi còn cursor và gọi pagination action', async ({ page }) => {
+    await page.goto('/verify/HistoryTable/act-load-more?chrome=0')
+
+    const loadMore = page.getByRole('button', { name: 'Load more' })
+    await expect(loadMore).toBeVisible()
+    await expect.poll(() => page.evaluate(() => (
+      (window as unknown as {
+        __verify?: { current: () => { verdict: string } | null }
+      }).__verify?.current()?.verdict
+    ))).toBe('PASS')
+  })
 })

@@ -231,6 +231,17 @@ describe('getBlueprintForContentType', () => {
 })
 
 describe('Content Type blueprint invariants', () => {
+  it('schema を bypass した stored config でも system query prefix を拒否する', () => {
+    const result = validateContentTypeBlueprint({
+      code: 'custom_type',
+      name: 'Custom',
+      fields: [field({ field_key: '_query_custom', is_required: true })],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('reserved application prefix')
+  })
+
   it.each([
     ['language', [field({ field_key: 'word', is_required: true })], 'language'],
     ['it', [field({ field_key: 'definition' })], 'term'],

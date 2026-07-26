@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { DUPLICATE_LOOKUP_BATCH_LIMIT } from '@/lib/entries/duplicate'
 
 export interface DuplicateEntry {
   id: string
@@ -67,15 +68,23 @@ export function useDuplicateCheck(): DuplicateCheckResult {
 
   const checkDuplicatesBatch = useCallback(async (words: string[], signal?: AbortSignal): Promise<BatchDuplicateResult[]> => {
     try {
-      const res = await fetch('/api/entries/check-duplicate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ words }),
-        signal,
-      })
-      if (!res.ok) return []
-      const data = await res.json()
-      return (data.results as BatchDuplicateResult[]) ?? []
+      const chunks: string[][] = []
+      for (let offset = 0; offset < words.length; offset += DUPLICATE_LOOKUP_BATCH_LIMIT) {
+        chunks.push(words.slice(offset, offset + DUPLICATE_LOOKUP_BATCH_LIMIT))
+      }
+      const responses = await Promise.all(chunks.map(chunk => (
+        fetch('/api/entries/check-duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ words: chunk }),
+          signal,
+        })
+      )))
+      if (responses.some(response => !response.ok)) return []
+      const payloads = await Promise.all(responses.map(response => response.json()))
+      return payloads.flatMap(data => (
+        (data.results as BatchDuplicateResult[] | undefined) ?? []
+      ))
     } catch {
       return []
     }

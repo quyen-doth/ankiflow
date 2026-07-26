@@ -1,4 +1,5 @@
 import { FormType } from '@/types'
+import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
 import { resolveContentTypeFormType } from '@/lib/contentTypes'
 import type { ContentType, FormFieldConfig } from '@/types'
 import type { SessionState } from '@/lib/session'
@@ -311,6 +312,9 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
     const key = field.field_key.trim()
     const normalizedKey = key.toLocaleLowerCase('en-US')
     if (!key) throw fieldError(field, 'field key is required.')
+    if (isReservedEntryQueryField(key)) {
+      throw fieldError(field, 'field key uses a reserved application prefix.')
+    }
     if (!field.label.trim()) throw fieldError(field, 'label is required.')
     if (seenKeys.has(normalizedKey)) throw fieldError(field, 'field key must be unique.')
     seenKeys.add(normalizedKey)

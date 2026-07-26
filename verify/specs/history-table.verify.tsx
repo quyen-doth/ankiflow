@@ -3,36 +3,25 @@ import { z } from 'zod'
 import { HistoryTable } from '@/components/history/HistoryTable'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
-import { FormType, LanguageType, type Entry, type FirestoreTimestamp } from '@/types'
+import { FormType, LanguageType } from '@/types'
+import type { HistoryEntrySummary } from '@/lib/history/historyDto'
 
 type HistoryTableProps = ComponentProps<typeof HistoryTable>
 
-function ts(iso: string): FirestoreTimestamp {
-  const date = new Date(iso)
-  return {
-    seconds: Math.floor(date.getTime() / 1000),
-    nanoseconds: 0,
-    toDate: () => date,
-  }
-}
-
-function makeEntry(overrides: Partial<Entry>): Entry {
+function makeEntry(overrides: Partial<HistoryEntrySummary>): HistoryEntrySummary {
   return {
     id: 'e0',
-    user_id: 'local-user',
-    category_id: null,
     form_type: FormType.LANGUAGE,
     anki_deck: 'English Vocab',
-    card_type_ids: [],
-    tags: [],
-    created_at: ts('2026-06-01T10:00:00Z'),
-    updated_at: ts('2026-06-01T10:00:00Z'),
+    anki_note_ids: [],
+    card_count: 0,
+    created_at: '2026-06-01T10:00:00.000Z',
     status: 'draft',
     ...overrides,
   }
 }
 
-const ENTRIES: Entry[] = [
+const ENTRIES: HistoryEntrySummary[] = [
   makeEntry({
     id: 'e1',
     word: 'serendipity',
@@ -75,10 +64,15 @@ const recordToggleAll = () => {
   toggleAllSpy.count++
 }
 
+const loadMoreSpy = { count: 0 }
+const recordLoadMore = () => {
+  loadMoreSpy.count++
+}
+
 const openSpy = { count: 0, lastId: null as string | null }
-const recordOpen = (entry: Entry) => {
+const recordOpen = (entry: HistoryEntrySummary) => {
   openSpy.count++
-  openSpy.lastId = entry.id ?? null
+  openSpy.lastId = entry.id
 }
 
 function HistoryTableHarness(props: HistoryTableProps) {
@@ -127,10 +121,15 @@ registerUnit<HistoryTableProps>({
   propsSchema: z.object({
     data: z.array(z.looseObject({})),
     selectedIds: z.custom<ReadonlySet<string>>(value => value instanceof Set),
+    hasMore: z.boolean().optional(),
+    loadingMore: z.boolean().optional(),
     onToggleSelect: fn<(id: string) => void>(),
     onToggleSelectAll: fn<() => void>(),
-    onOpen: fn<(entry: Entry) => void>().optional(),
+    editingId: z.string().nullable().optional(),
+    onOpen: fn<(entry: HistoryEntrySummary) => void>().optional(),
+    onEdit: fn<(entry: HistoryEntrySummary) => void>().optional(),
     onDelete: fn<(id: string) => void>().optional(),
+    onLoadMore: fn<() => void>().optional(),
   }),
   fixtures: [
     {
@@ -200,6 +199,20 @@ registerUnit<HistoryTableProps>({
       },
     },
     {
+      id: 'act-load-more',
+      description: 'Act: Load more を click → pagination callback を 1 回実行する。',
+      props: {
+        data: ENTRIES,
+        ...DEFAULT_SELECTION_PROPS,
+        hasMore: true,
+        onLoadMore: recordLoadMore,
+      },
+      act: async ctx => {
+        loadMoreSpy.count = 0
+        await ctx.click('button[title="Load more cards"]')
+      },
+    },
+    {
       id: 'custom-language',
       description: '検証ケース。',
       props: {
@@ -218,7 +231,7 @@ registerUnit<HistoryTableProps>({
       description: 'Probe: word/term/title と created_at が不足する entry は "—" を表示し、crash しない。',
       props: {
         data: [
-          makeEntry({ id: 'e3', created_at: undefined as unknown as FirestoreTimestamp }),
+          makeEntry({ id: 'e3', created_at: null }),
         ],
         ...DEFAULT_SELECTION_PROPS,
       },
@@ -335,6 +348,16 @@ registerUnit<HistoryTableProps>({
       onlyFixtures: ['act-row-navigation'],
       check: () => openSpy.count === 1 && openSpy.lastId === 'e1'
         || `count=${openSpy.count}, lastId=${openSpy.lastId}`,
+    },
+    {
+      id: 'load-more-fires-once',
+      description: '次ページがある場合だけ Load more が表示され、callback が 1 回実行される。',
+      onlyFixtures: ['act-load-more'],
+      check: ({ root }) => {
+        if (loadMoreSpy.count !== 1) return `count=${loadMoreSpy.count}`
+        return (root.textContent ?? '').includes('Load more')
+          || 'Load more button が表示されていません'
+      },
     },
     {
       id: 'eye-action-removed',

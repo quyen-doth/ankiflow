@@ -85,6 +85,25 @@ describe('Content Type constants', () => {
   })
 })
 
+describe('Content Type reserved Entry fields', () => {
+  it('system query prefix を field_key として保存できない', () => {
+    const result = validateContentTypeConfig(validConfig({
+      fields: [{
+        ...validConfig().fields[0],
+        field_key: '_query_custom',
+      }],
+    }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toContainEqual({
+        path: 'fields.0.field_key',
+        message: 'Field key uses a reserved application prefix',
+      })
+    }
+  })
+})
+
 describe('default global Content Types', () => {
   it('既存 seed と同じ built-in IDs、codes、mode、field keys を保持する', () => {
     expect(DEFAULT_CONTENT_TYPES.map(contentType => ({

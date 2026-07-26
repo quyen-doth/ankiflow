@@ -79,6 +79,9 @@
 | `source_url` / `source_title` | string | 連携元の参照 URL / タイトル — 同上、nullable |
 | `context_quote` | string | 連携元の引用テキスト (≤200 文字) — 同上、nullable |
 | `output_language` | string | AI が生成したコンテンツ (meaning_vi/example_translation...) の言語 — canonical BCP 47。未設定 = legacy `vi`。フィールド名 `_vi` は Anki テンプレート互換のため legacy 名のまま |
+| `_query_schema_version` | number | Server-managed query metadata version。現行値は `1` |
+| `_query_duplicate_key` | string | `word` → `term` → `title` の最初の non-empty 値を trim + lowercase した重複検索 key |
+| `_query_card_count` | number | 空でない `card_type_ids` の件数。Dashboard の `sum()` と History summary に使用 |
 | `created_at` | timestamp | 作成日時 |
 | `updated_at` | timestamp | 更新日時 |
 | `status` | string | ステータス: 下の enum 参照 |
@@ -412,6 +415,8 @@ v2.0 から、`settings` コレクションは権限と目的が異なる 3 種�
 | `line_notifications_available` | boolean | `true` | グローバル gate: オフ → 連携コード発行・手動送信・cron 配信を停止 |
 | `line_schedule_hours` | number[] | `[]` | 全 user 共通の配信時刻 (0〜23、各 user の `line_timezone` で評価) |
 | `line_words_per_notification` | number | `5` | 1 通あたりの単語数 (1〜10) |
+| `entry_query_schema_version` | number? | — | 全 Entry の query metadata backfill が検証済みであることを示す marker。現行値は `1` |
+| `entry_query_schema_ready_at` | timestamp? | — | Marker を有効化したサーバー時刻 |
 
 **`settings/default`** — アプリ所有者の legacy SECRETS (**管理者のみ読み書き** — ルールが非管理者をブロック):
 
@@ -467,6 +472,11 @@ Source file: `docs/database-diagram.txt`
 - `entries` は最大のコレクションで、多くの optional フィールドを持ちます —
   言語固有のフィールド (pinyin、hiragana...) は対応する `language` の場合のみ値を持ちます。
   英語・中国語・日本語以外は汎用 AI schema (`ipa` など) を使用し、未設定 field を前提にしてはいけません。
+- `_query_*` は Entry query 用の予約 namespace。API request / Content Type field として受け付けず、
+  server-side Entry writer が primary text と `card_type_ids` から毎回再計算する。新規・更新 writer を追加する場合も
+  `deriveEntryQueryMetadata` を通し、クライアント入力をそのまま保存しない。Partial update の writer は
+  ownership read、既存値との merge、metadata derivation、update を同一 Firestore transaction 内で行い、
+  transaction retry 時も最新 snapshot から再計算する。
 - `settings` はシングルトンではなくなりました — 3 種類の doc (`{uid}` / `global` / `default`)、Settings セクション参照。
 
 ---
@@ -478,7 +488,8 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 | Collection / doc | read | write |
 |---|---|---|
-| `entries`、`notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
+| `entries` | 所有者 | **deny** — query metadata と source field の整合性を保つためサーバー API のみ書き込み |
+| `notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
 | `review_events` | 所有者 | **deny** — サーバーのみ書き込み (Admin SDK) |
 | `line_link_codes` | **deny** | **deny** — サーバーのみアクセス (Admin SDK) |
 | `decks`/`categories`/`card_types`/`topics` | 所有者 **+ `__defaults__` は管理者も** | read と同じ |
@@ -491,6 +502,27 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 - **ルール内の管理者** = カスタムクレーム `request.auth.token.admin == true` (ルールは env を読めない
   → サーバー側の `ADMIN_EMAIL` チェックとは異なる)。`scripts/set-admin-claim.ts` で設定、再ログインが必要。
-- **Composite index**: Runtime の `user_content_types` query は `user_id` filter のみで、取得後に
-  in-memory sort するため新しい composite index は不要です。`firestore.indexes.json` には
-  `entries (user_id ASC, created_at DESC)` と旧 `content_types (is_active ASC, sort_order ASC)` index が残っています。
+- **Entry query metadata migration**: `npm run migrate:entry-query-fields` は既定で read-only dry-run。
+  Entry、`content_types`、`user_content_types` の `_query_*` collision を検出し、更新候補を表示する。
+  `--apply` は明示承認後のみ使用し、
+  guarded update 後の再 scan が 0 candidate / 0 collision / 0 failure の場合だけ
+  `settings/global.entry_query_schema_version = 1` と `entry_query_schema_ready_at` を設定する。
+  Marker がない間、duplicate lookup と Dashboard は legacy Entry を欠落させない projected fallback を使う。
+- **Composite indexes**: `firestore.indexes.json` は次の Entry query shape を定義する。
+    - `(user_id ASC, created_at DESC)` — Dashboard recent と History base page。
+    - `(user_id ASC, _query_duplicate_key ASC)` — marker 後の duplicate `in` lookup。
+    - `(user_id ASC, _query_card_count ASC)` — Dashboard の card count `sum()`。
+    - `(user_id ASC, status ASC[, created_at DESC])` — Dashboard synced count と History status filter。
+    - `(user_id ASC, form_type ASC[, status ASC], created_at DESC)` — History Content Type filter。
+    - `(user_id ASC, form_type ASC, language ASC[, status ASC][, created_at DESC])` —
+      Dashboard language count と History language filter。
+    - `(user_id ASC, category_id ASC[, status ASC], created_at DESC)` —
+      History category filter。
+    - `(user_id ASC, category_id ASC, form_type ASC[, status ASC], created_at DESC)` —
+      History category + Content Type filter。
+    - `(user_id ASC, category_id ASC, form_type ASC, language ASC[, status ASC], created_at DESC)` —
+      History category + Language Content Type filter。
+  Runtime の `user_content_types` query は `user_id` filter 後に in-memory sort するため専用 composite index は不要。
+  旧 `content_types (is_active ASC, sort_order ASC)` index は global default load 用に残す。
+- **Single-field index exemption**: 大きな media field `audio_url`、`audio_example_url`、`image_url` は
+  query / sort に使用しないため index を無効化する。API の list / Dashboard query もこれらを projection しない。

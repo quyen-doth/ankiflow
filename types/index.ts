@@ -117,6 +117,9 @@ export interface Entry {
   context_quote?: string;
 
   // Metadata
+  _query_schema_version?: number;
+  _query_duplicate_key?: string;
+  _query_card_count?: number;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
   status: 'draft' | 'reviewed' | 'synced';
@@ -380,6 +383,8 @@ export interface GlobalSettings {
   line_notifications_available?: boolean;
   line_schedule_hours?: number[];
   line_words_per_notification?: number;
+  entry_query_schema_version?: number;
+  entry_query_schema_ready_at?: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
 
