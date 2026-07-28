@@ -174,7 +174,10 @@ export interface CardTypeConfig {
   name: string; // 表示名
   description?: string;
   form_type: FormType;
+  /** 学習対象の言語。null はすべての言語に適用する。 */
   language?: LanguageCode | null;
+  /** AI 出力の言語。null はすべての出力言語に適用する。 */
+  output_language?: LanguageCode | null;
   is_default: boolean;
   is_active: boolean;
   sort_order: number;
