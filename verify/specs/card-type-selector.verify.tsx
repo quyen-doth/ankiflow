@@ -157,7 +157,7 @@ registerUnit<CardTypeSelectorProps>({
   id: 'CardTypeSelector',
   title: 'CardTypeSelector',
   description:
-    'Card Type を学習・出力言語 pair で filter し、動的 name、fallback、selection prune を検証する。',
+    'Card Type を学習・出力言語 pair で厳密に filter し、動的 name と selection prune を検証する。',
   kind: 'component',
   render: props => <CardTypeSelector {...props} />,
   propsSchema: z.object({
@@ -254,7 +254,7 @@ registerUnit<CardTypeSelectorProps>({
     },
     {
       id: 'fallback-defaults',
-      description: 'pair に一致しない場合は active な default Card Type だけを表示する。',
+      description: 'default でも pair に一致しない Card Type は表示しない。',
       props: { formType: 'Language', language: 'en', outputLanguage: 'de', languages: STUDY_LANGUAGES, selectedIds: [], onChange: noop },
       mocks: { firestore: FALLBACK_SEED },
       act: async ctx => {
@@ -368,13 +368,13 @@ registerUnit<CardTypeSelectorProps>({
       },
     },
     {
-      id: 'mismatch-falls-back-to-active-defaults',
-      description: 'pair 不一致時は inactive を除いた default だけを返す。',
+      id: 'mismatched-default-is-hidden',
+      description: 'pair 不一致の default は選択肢へ戻さない。',
       onlyFixtures: ['fallback-defaults'],
       check: ({ root }) => {
         const names = visibleNames(root)
         return (
-          JSON.stringify(names) === JSON.stringify(['Default fallback'])
+          names.length === 0
           || `表示: ${names.join(' | ')}`
         )
       },

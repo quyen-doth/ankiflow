@@ -1,4 +1,4 @@
-import type { StudyLanguage } from '@/types'
+import type { AiOutputLanguage, StudyLanguage } from '@/types'
 import { languageDisplayName } from '@/lib/studyLanguages'
 
 interface CardTypeNameContext {
@@ -9,6 +9,7 @@ interface CardTypeNameContext {
     output_language?: string | null;
   };
   languages: StudyLanguage[];
+  outputLanguages?: AiOutputLanguage[];
 }
 
 /**
@@ -32,7 +33,7 @@ export function renderCardTypeName(
     .replaceAll(
       '{output_language}',
       outputLanguage
-        ? languageDisplayName(outputLanguage, ctx.languages)
+        ? languageDisplayName(outputLanguage, ctx.outputLanguages ?? ctx.languages)
         : '{output_language}',
     )
 }

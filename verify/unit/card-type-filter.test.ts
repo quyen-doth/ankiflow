@@ -73,11 +73,11 @@ describe('filterCardTypesByScope', () => {
     })).toEqual([])
   })
 
-  it('一致対象がなければ有効なデフォルトだけを返す', () => {
+  it('default でも言語 pair が不一致なら返さない', () => {
     expect(filterCardTypesByScope(cardTypes.slice(1), {
       studyLanguage: 'de',
       outputLanguage: 'it',
-    }).map(cardType => cardType.id)).toEqual(['default'])
+    })).toEqual([])
   })
 
   it('デフォルトがなければ空配列を返す', () => {
@@ -87,7 +87,7 @@ describe('filterCardTypesByScope', () => {
     })).toEqual([])
   })
 
-  it('フォールバックでも無効な Card Type を除外する', () => {
+  it('無効な Card Type を除外する', () => {
     expect(filterCardTypesByScope([cardTypes[4]], {
       studyLanguage: 'de',
       outputLanguage: 'it',

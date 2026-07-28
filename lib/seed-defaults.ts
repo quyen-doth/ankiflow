@@ -29,6 +29,10 @@ import {
     parseContentTypeConfig,
     type ContentTypeSourceDocument,
 } from '@/lib/contentTypes';
+import {
+    DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+    DEFAULT_AI_OUTPUT_LANGUAGES,
+} from '@/lib/aiOutputLanguages';
 import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
 import { FormType, LanguageType } from '@/types';
 
@@ -315,6 +319,8 @@ export const DEFAULT_USER_PREFS = {
     auto_audio: true,
     auto_image: true,
     study_languages: DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language })),
+    ai_output_languages: DEFAULT_AI_OUTPUT_LANGUAGES.map(language => ({ ...language })),
+    ai_output_language: DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
 } as const;
 
 // ─── ユーザーごとの seeding ─────────────────────────────────────────────────────────

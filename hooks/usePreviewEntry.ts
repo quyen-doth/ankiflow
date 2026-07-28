@@ -53,9 +53,11 @@ export function usePreviewEntry(): PreviewEntryState {
   const { user, loading: authLoading } = useAuth()
   const {
     languages,
+    aiOutputLanguages,
     loading: languagesLoading,
   } = useStudyLanguages()
   const languagesRef = useRef(languages)
+  const outputLanguagesRef = useRef(aiOutputLanguages)
   const [entry, setEntry] = useState<Partial<Entry>>({})
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
   const [contentType, setContentType] = useState<UserContentType | null>(null)
@@ -65,7 +67,8 @@ export function usePreviewEntry(): PreviewEntryState {
 
   useEffect(() => {
     languagesRef.current = languages
-  }, [languages])
+    outputLanguagesRef.current = aiOutputLanguages
+  }, [aiOutputLanguages, languages])
 
   useEffect(() => {
     if (authLoading || languagesLoading || !user) return
@@ -139,6 +142,7 @@ export function usePreviewEntry(): PreviewEntryState {
             outputLanguage: pending.outputLanguage,
             cardType: ct,
             languages: languagesRef.current,
+            outputLanguages: outputLanguagesRef.current,
           }),
           description: ct.description,
           code: ct.code || ct.id,

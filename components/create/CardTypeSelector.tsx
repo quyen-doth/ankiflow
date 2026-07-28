@@ -13,6 +13,7 @@ import { renderCardTypeName } from '@/lib/cardTypeName'
 import { FormType } from '@/types'
 import type {
   CardTypeConfig,
+  AiOutputLanguage,
   LanguageCode,
   StudyLanguage,
 } from '@/types'
@@ -24,8 +25,10 @@ interface CardTypeSelectorProps {
   language?: LanguageCode | ''
   outputLanguage?: LanguageCode
   languages: StudyLanguage[]
+  outputLanguages?: AiOutputLanguage[]
   selectedIds: string[]
   onChange: (ids: string[]) => void
+  onLoadingChange?: (loading: boolean) => void
   label?: string
 }
 
@@ -40,8 +43,10 @@ export function CardTypeSelector({
   language,
   outputLanguage,
   languages,
+  outputLanguages,
   selectedIds,
   onChange,
+  onLoadingChange,
   label = 'Card types to generate',
 }: CardTypeSelectorProps) {
   const { user, loading: authLoading } = useAuth()
@@ -57,6 +62,10 @@ export function CardTypeSelector({
     | 'sort_order'
   >[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    onLoadingChange?.(loading)
+  }, [loading, onLoadingChange])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -161,6 +170,7 @@ export function CardTypeSelector({
                       outputLanguage,
                       cardType: ct,
                       languages,
+                      outputLanguages,
                     })}
                   </span>
                 </button>

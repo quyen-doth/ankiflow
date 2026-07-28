@@ -39,7 +39,7 @@ export function AiOutputProfilesEditor({
   onInitialize,
   onChange,
 }: AiOutputProfilesEditorProps) {
-  const { enabledLanguages, aiOutputLanguage } = useStudyLanguages()
+  const { enabledLanguages, defaultAiOutputLanguage } = useStudyLanguages()
   const [activeIndex, setActiveIndex] = useState(0)
   const [testSample, setTestSample] = useState('')
   const [testLanguage, setTestLanguage] = useState(enabledLanguages[0]?.code ?? 'en')
@@ -266,7 +266,7 @@ export function AiOutputProfilesEditor({
           profiles,
           sample: testSample,
           studyLanguage,
-          outputLanguage: aiOutputLanguage,
+          outputLanguage: defaultAiOutputLanguage,
         })),
       })
       const payload = await response.json().catch(() => null) as unknown

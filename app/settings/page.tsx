@@ -25,18 +25,21 @@ import { ResyncCards } from '@/components/settings/ResyncCards';
 import { LineNotificationSettings } from '@/components/settings/LineNotificationSettings';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
+import { AiOutputLanguageSettings } from '@/components/settings/AiOutputLanguageSettings';
 import { ContentTypeManager } from '@/components/admin/ContentTypeManager';
-import { LanguagePicker } from '@/components/ui/LanguagePicker';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
 import {
-    canonicalizeLanguageCode,
     mergeStudyLanguageEdits,
     normalizeStudyLanguages,
     validateStudyLanguages,
 } from '@/lib/studyLanguages';
+import {
+    normalizeAiOutputLanguagePreferences,
+    validateAiOutputLanguagePreferences,
+} from '@/lib/aiOutputLanguages';
 import { createPersonalSettingsSnapshot } from '@/lib/settings-form-state';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
@@ -166,14 +169,16 @@ export default function SettingsPage() {
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
                 const studyLanguages = normalizeStudyLanguages(prefs.study_languages);
-                const aiOutputLanguage = typeof prefs.ai_output_language === 'string'
-                    ? canonicalizeLanguageCode(prefs.ai_output_language) ?? 'vi'
-                    : 'vi';
+                const outputPreferences = normalizeAiOutputLanguagePreferences(
+                    prefs.ai_output_languages,
+                    prefs.ai_output_language,
+                );
                 baselineLanguageCodesRef.current = studyLanguages.map((language) => language.code);
                 const loadedSettings = {
                     ...prefs,
                     study_languages: studyLanguages,
-                    ai_output_language: aiOutputLanguage,
+                    ai_output_languages: outputPreferences.languages,
+                    ai_output_language: outputPreferences.defaultLanguage,
                 } as Settings;
                 setSettings(loadedSettings);
                 setSavedSnapshot(createPersonalSettingsSnapshot(loadedSettings));
@@ -269,6 +274,14 @@ export default function SettingsPage() {
             toast.error(languageErrors[0]);
             return;
         }
+        const outputLanguageErrors = validateAiOutputLanguagePreferences(
+            settings.ai_output_languages ?? [],
+            settings.ai_output_language ?? '',
+        );
+        if (outputLanguageErrors.length > 0) {
+            toast.error(outputLanguageErrors[0]);
+            return;
+        }
         setSaving(true);
         try {
             // 最新版を再読込し、このページを開いている間に別フロー (Create flow の
@@ -282,6 +295,10 @@ export default function SettingsPage() {
                 settings.study_languages ?? [],
                 serverLanguages,
             ));
+            const outputPreferences = normalizeAiOutputLanguagePreferences(
+                settings.ai_output_languages,
+                settings.ai_output_language,
+            );
 
             // 個人 preferences → settings/{uid} (初回 save で自動作成)。
             const prefsUpdate = {
@@ -292,7 +309,8 @@ export default function SettingsPage() {
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
                 study_languages: mergedLanguages,
-                ai_output_language: canonicalizeLanguageCode(settings.ai_output_language ?? '') ?? 'vi',
+                ai_output_languages: outputPreferences.languages,
+                ai_output_language: outputPreferences.defaultLanguage,
             };
             await setDoc(
                 doc(db, 'settings', user.uid),
@@ -303,6 +321,7 @@ export default function SettingsPage() {
             const savedSettings = {
                 ...settings,
                 study_languages: mergedLanguages,
+                ai_output_languages: outputPreferences.languages,
                 ai_output_language: prefsUpdate.ai_output_language,
             };
             setSettings(savedSettings);
@@ -402,6 +421,16 @@ export default function SettingsPage() {
                     />
                 </Card>
 
+                {/* Per-user AI output languages and explicit default. */}
+                <Card>
+                    <AiOutputLanguageSettings
+                        languages={settings.ai_output_languages ?? []}
+                        defaultLanguage={settings.ai_output_language ?? ''}
+                        onLanguagesChange={(languages) => updateField('ai_output_languages', languages)}
+                        onDefaultLanguageChange={(language) => updateField('ai_output_language', language)}
+                    />
+                </Card>
+
                 {/* Workspace-owned Create form configuration. */}
                 <ContentTypeManager origin="settings" />
 
@@ -458,18 +487,6 @@ export default function SettingsPage() {
                 <Card>
                     <SectionHeader icon={SlidersHorizontal} label="Preferences" tone="green" />
                     <div className="flex flex-col">
-                        <div className="pb-[15px] border-b border-[#f5f5f1]">
-                            <div className="mb-3">
-                                <p className="text-sm font-semibold text-ink">AI output language</p>
-                                <p className="text-[12.5px] text-slate-500 mt-0.5">
-                                    Meanings and translations on generated cards are written in this language.
-                                </p>
-                            </div>
-                            <LanguagePicker
-                                value={settings.ai_output_language ?? 'vi'}
-                                onChange={(language) => updateField('ai_output_language', language.code)}
-                            />
-                        </div>
                         {(
                             [
                                 {

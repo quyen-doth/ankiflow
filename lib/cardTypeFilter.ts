@@ -15,7 +15,7 @@ interface CardTypeFilterOptions {
 
 /**
  * Card Type を学習言語と出力言語の両方で絞り込む。
- * 対象がない場合は、有効なデフォルト Card Type をフォールバックとして返す。
+ * null scope は universal として扱うが、言語 pair と不一致の default は返さない。
  */
 export function filterCardTypesByScope<T extends CardTypeScopeLike>(
   cardTypes: T[],
@@ -26,11 +26,8 @@ export function filterCardTypesByScope<T extends CardTypeScopeLike>(
     matchesLanguageScope(cardType.language, options.studyLanguage)
     && matchesLanguageScope(cardType.output_language, options.outputLanguage)
   ))
-  const result = matchedCardTypes.length > 0
-    ? matchedCardTypes
-    : activeCardTypes.filter(cardType => cardType.is_default === true)
 
-  return [...result].sort(
+  return [...matchedCardTypes].sort(
     (left, right) => (left.sort_order || 0) - (right.sort_order || 0),
   )
 }

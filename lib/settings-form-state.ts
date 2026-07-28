@@ -1,4 +1,5 @@
-import { canonicalizeLanguageCode, normalizeStudyLanguages } from '@/lib/studyLanguages'
+import { normalizeAiOutputLanguagePreferences } from '@/lib/aiOutputLanguages'
+import { normalizeStudyLanguages } from '@/lib/studyLanguages'
 import type { Settings } from '@/types'
 
 export interface FeatureFlagsForm {
@@ -24,6 +25,11 @@ interface AdminSettingsForm {
 }
 
 export function createPersonalSettingsSnapshot(settings: Settings): string {
+  const outputPreferences = normalizeAiOutputLanguagePreferences(
+    settings.ai_output_languages,
+    settings.ai_output_language,
+  )
+
   return JSON.stringify({
     unsplash_enabled: Boolean(settings.unsplash_enabled),
     tts_enabled: Boolean(settings.tts_enabled),
@@ -37,7 +43,13 @@ export function createPersonalSettingsSnapshot(settings: Settings): string {
       enabled: language.enabled,
       sort_order: language.sort_order,
     })),
-    ai_output_language: canonicalizeLanguageCode(settings.ai_output_language ?? '') ?? 'vi',
+    ai_output_languages: outputPreferences.languages.map(language => ({
+      code: language.code,
+      display_name: language.display_name,
+      enabled: language.enabled,
+      sort_order: language.sort_order,
+    })),
+    ai_output_language: outputPreferences.defaultLanguage,
   })
 }
 

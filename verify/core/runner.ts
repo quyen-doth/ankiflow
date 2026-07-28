@@ -7,6 +7,11 @@ import { readContract } from './contract'
 import { verifyGlobals } from './globals'
 import { verifiersFor } from './registry'
 import { TEST_AUTH_USER } from './test-auth-user'
+import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages'
+import {
+  DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+  DEFAULT_AI_OUTPUT_LANGUAGES,
+} from '@/lib/aiOutputLanguages'
 import type {
   ActContext,
   Check,
@@ -158,20 +163,34 @@ export async function runFixture<P>(
           loading: fixture.mocks.auth.loading ?? false,
         }
       : { user: { ...TEST_AUTH_USER }, loading: false }
-    const renderedUnit = fixture.mocks?.studyLanguages
+    const studyLanguages = fixture.mocks?.studyLanguages
+      ?? DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language }))
+    const aiOutputLanguages = fixture.mocks?.aiOutputLanguages
+      ?? DEFAULT_AI_OUTPUT_LANGUAGES.map(language => ({ ...language }))
+    const defaultAiOutputLanguage = fixture.mocks?.defaultAiOutputLanguage
+      ?? aiOutputLanguages.find(language => language.enabled)?.code
+      ?? DEFAULT_AI_OUTPUT_LANGUAGE_CODE
+    const hasLanguageContextMock = Boolean(
+      fixture.mocks?.studyLanguages
+      || fixture.mocks?.aiOutputLanguages
+      || fixture.mocks?.defaultAiOutputLanguage,
+    )
+    const renderedUnit = hasLanguageContextMock
       ? createElement(
           StudyLanguageContext.Provider,
           {
             value: {
-              languages: fixture.mocks.studyLanguages,
-              enabledLanguages: fixture.mocks.studyLanguages.filter(language => language.enabled),
-              aiOutputLanguage: 'vi',
+              languages: studyLanguages,
+              enabledLanguages: studyLanguages.filter(language => language.enabled),
+              aiOutputLanguages,
+              enabledAiOutputLanguages: aiOutputLanguages.filter(language => language.enabled),
+              defaultAiOutputLanguage,
               loading: false,
               saveLanguages: async languages => languages,
               addOrEnableLanguage: async language => ({
                 ...language,
                 enabled: true,
-                sort_order: fixture.mocks?.studyLanguages?.length ?? 0,
+                sort_order: studyLanguages.length,
               }),
             },
           },

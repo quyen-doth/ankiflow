@@ -89,7 +89,13 @@ interface CardTypeManagerProps {
 
 export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
-  const { languages, enabledLanguages, aiOutputLanguage } = useStudyLanguages()
+  const {
+    languages,
+    enabledLanguages,
+    aiOutputLanguages,
+    enabledAiOutputLanguages,
+    defaultAiOutputLanguage,
+  } = useStudyLanguages()
   const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
@@ -126,10 +132,12 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
 
   const outputLanguageOptions = useMemo(() => {
     const codes = new Set<string>()
-    languages.forEach(language => (
+    aiOutputLanguages.forEach(language => (
       codes.add(canonicalizeLanguageCode(language.code) ?? language.code)
     ))
-    codes.add(canonicalizeLanguageCode(aiOutputLanguage) ?? aiOutputLanguage)
+    codes.add(
+      canonicalizeLanguageCode(defaultAiOutputLanguage) ?? defaultAiOutputLanguage,
+    )
     cardTypes.forEach(cardType => {
       if (cardType.output_language) {
         codes.add(
@@ -139,9 +147,9 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     })
     return Array.from(codes).map(code => ({
       value: code,
-      label: languageDisplayName(code, languages),
+      label: languageDisplayName(code, aiOutputLanguages),
     }))
-  }, [aiOutputLanguage, cardTypes, languages])
+  }, [aiOutputLanguages, defaultAiOutputLanguage, cardTypes])
 
   const selectableStudyLanguageOptions = useMemo(() => {
     const codes = new Set(
@@ -155,11 +163,13 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
 
   const selectableOutputLanguageOptions = useMemo(() => {
     const codes = new Set(
-      enabledLanguages.map(language => (
+      enabledAiOutputLanguages.map(language => (
         canonicalizeLanguageCode(language.code) ?? language.code
       )),
     )
-    codes.add(canonicalizeLanguageCode(aiOutputLanguage) ?? aiOutputLanguage)
+    codes.add(
+      canonicalizeLanguageCode(defaultAiOutputLanguage) ?? defaultAiOutputLanguage,
+    )
     if (draft.output_language !== NO_LANGUAGE) {
       codes.add(
         canonicalizeLanguageCode(draft.output_language) ?? draft.output_language,
@@ -167,9 +177,14 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     }
     return Array.from(codes).map(code => ({
       value: code,
-      label: languageDisplayName(code, languages),
+      label: languageDisplayName(code, aiOutputLanguages),
     }))
-  }, [aiOutputLanguage, draft.output_language, enabledLanguages, languages])
+  }, [
+    aiOutputLanguages,
+    defaultAiOutputLanguage,
+    draft.output_language,
+    enabledAiOutputLanguages,
+  ])
 
   const customFields = useMemo(() => resolveCardTemplateCustomFields(
     contentTypes,
@@ -299,6 +314,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       ),
     },
     languages,
+    outputLanguages: aiOutputLanguages,
   })
 
   // Validation: name & code は非空、Front/Back 各面に ≥ 1 field。
@@ -433,7 +449,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       header: 'Name',
       render: (_: unknown, row: CardTypeConfig) => (
         <span className="font-semibold text-ink">
-          {renderCardTypeName(row.name, { cardType: row, languages })}
+          {renderCardTypeName(row.name, {
+            cardType: row,
+            languages,
+            outputLanguages: aiOutputLanguages,
+          })}
         </span>
       ),
     },
@@ -455,7 +475,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       render: (_: unknown, row: CardTypeConfig) => (
         <span className="text-slate-600">
           {row.output_language
-            ? languageDisplayName(row.output_language, languages)
+            ? languageDisplayName(row.output_language, aiOutputLanguages)
             : '—'}
         </span>
       ),

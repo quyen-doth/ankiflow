@@ -6,7 +6,12 @@ import {
   DEFAULT_CATEGORIES,
   DEFAULT_CARD_TYPES,
   DEFAULT_DECKS,
+  DEFAULT_USER_PREFS,
 } from '@/lib/seed-defaults'
+import {
+  DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+  DEFAULT_AI_OUTPUT_LANGUAGES,
+} from '@/lib/aiOutputLanguages'
 import { DEFAULT_CONTENT_TYPES, userContentTypeId } from '@/lib/contentTypes'
 import {
   DEFAULTS_OWNER_ID,
@@ -85,6 +90,19 @@ describe('userScopedId', () => {
 })
 
 describe('seedUserDefaults — テンプレートがない場合 (hardcode から lazy-publish)', () => {
+  it('新規 user の AI output languages と明示 default を seed する', async () => {
+    const db = makeFakeAdminDb()
+
+    await seedUserDefaults(db, 'output-language-user')
+
+    expect(DEFAULT_USER_PREFS.ai_output_languages).toEqual(DEFAULT_AI_OUTPUT_LANGUAGES)
+    expect(DEFAULT_USER_PREFS.ai_output_language).toBe(DEFAULT_AI_OUTPUT_LANGUAGE_CODE)
+    expect(db._dump('settings').get('output-language-user')).toMatchObject({
+      ai_output_languages: DEFAULT_AI_OUTPUT_LANGUAGES,
+      ai_output_language: DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+    })
+  })
+
   it('default card type は output scope と動的な方向名を持つ', () => {
     expect(DEFAULT_CARD_TYPES.every((cardType) => cardType.output_language === null)).toBe(true)
     expect(DEFAULT_CARD_TYPES.find((cardType) => cardType.id === 'ct_word_meaning')?.name)

@@ -36,6 +36,16 @@ const SEED = {
   ],
 }
 
+const AI_OUTPUT_LANGUAGES = [
+  { code: 'vi', display_name: 'Vietnamese', enabled: true, sort_order: 0 },
+  { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 1 },
+]
+
+const INDEPENDENT_OUTPUT_LANGUAGES = [
+  { code: 'vi', display_name: 'Vietnamese', enabled: true, sort_order: 0 },
+  { code: 'ko', display_name: 'Korean explanations', enabled: true, sort_order: 1 },
+]
+
 const CUSTOM_CONTENT_TYPES = [
   {
     id: 'language-test-user',
@@ -149,7 +159,11 @@ registerUnit<CardTypeManagerFixtureProps>({
       id: 'act-open-create-modal',
       description: 'Act: Add card type を click → modal が開く。',
       props: {},
-      mocks: { firestore: SEED },
+      mocks: {
+        firestore: SEED,
+        aiOutputLanguages: INDEPENDENT_OUTPUT_LANGUAGES,
+        defaultAiOutputLanguage: 'vi',
+      },
       act: async ctx => {
         await ctx.wait(50)
         clickButtonByText(ctx.root, 'Add card type')
@@ -198,7 +212,11 @@ registerUnit<CardTypeManagerFixtureProps>({
       id: 'act-name-placeholders',
       description: 'Act: 言語 placeholder を挿入し、scope に応じた名前を preview する。',
       props: {},
-      mocks: { firestore: SEED },
+      mocks: {
+        firestore: SEED,
+        aiOutputLanguages: AI_OUTPUT_LANGUAGES,
+        defaultAiOutputLanguage: 'vi',
+      },
       act: async ctx => {
         await ctx.wait(50)
         clickButtonByText(ctx.root, 'Add card type')
@@ -546,6 +564,8 @@ registerUnit<CardTypeManagerFixtureProps>({
         )
         const values = Array.from(select?.options ?? []).map(option => option.value)
         if (!values.includes('vi')) return '現在の AI output language が option にない'
+        if (!values.includes('ko')) return 'AI output language list の Korean が option にない'
+        if (values.includes('en')) return 'Study Language の English が output option に混入している'
         const text = root.textContent ?? ''
         return text.includes('Leave as All unless the card type only makes sense')
           || 'Output language の hint が見つからない'

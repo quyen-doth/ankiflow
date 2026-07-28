@@ -61,9 +61,11 @@ export function usePreviewBatch(): PreviewBatchState {
   const { user, loading: authLoading } = useAuth()
   const {
     languages,
+    aiOutputLanguages,
     loading: languagesLoading,
   } = useStudyLanguages()
   const languagesRef = useRef(languages)
+  const outputLanguagesRef = useRef(aiOutputLanguages)
   const [entries, setEntries] = useState<Partial<Entry>[]>([])
   const [contentType, setContentType] = useState<UserContentType | null>(null)
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
@@ -74,7 +76,8 @@ export function usePreviewBatch(): PreviewBatchState {
 
   useEffect(() => {
     languagesRef.current = languages
-  }, [languages])
+    outputLanguagesRef.current = aiOutputLanguages
+  }, [aiOutputLanguages, languages])
 
   useEffect(() => {
     if (authLoading || languagesLoading || !user) return
@@ -151,6 +154,7 @@ export function usePreviewBatch(): PreviewBatchState {
             outputLanguage: pending.outputLanguage,
             cardType: ct,
             languages: languagesRef.current,
+            outputLanguages: outputLanguagesRef.current,
           }),
           description: ct.description,
           code: ct.code || ct.id,

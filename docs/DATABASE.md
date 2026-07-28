@@ -259,13 +259,19 @@ Sub-collection ではないため、field ごとの document ID や `content_typ
 | `is_session_persistent` | boolean | 作成成功後も次の入力用に値を保持するか |
 | `sort_order` | number | フォーム上のフィールド順序 |
 | `placeholder` | string? | Placeholder テキスト |
-| `data_source` | string? | 標準 control の source (`decks` / `categories` / `card_types` / `topics`) |
+| `data_source` | string? | 標準 control の source (`study_languages` / `output_languages` / `decks` / `categories` / `card_types` / `topics`) |
 | `options` | string[]? | Custom dropdown の static options |
 
 Built-in は `code` から既存の `FormType` / AI schema / generation strategy を維持し、`fields[]` は表示順、
 label、placeholder、required、session persistence を制御します。Language は `language` + `word`、IT は
 `term`、General は `title` が必須です。Custom Content Type は少なくとも 1 つの core input が必要です。
 未対応 type/control/data source や重複 `field_key` は保存時と render 前に明示的に拒否します。
+
+`data_source: 'output_languages'` は任意の `field_key` を Output Language control として解決します。
+この宣言を持つ Content Type だけが Create で一時切替を表示し、宣言がない Content Type は
+`settings/{uid}.ai_output_language` の default をそのまま使用します。Built-in / custom の `code` や
+`form_type` による runtime 分岐は行いません。`is_session_persistent` が `true` なら生成成功後も選択を保持し、
+`false` なら default に戻します。既存の user snapshot は global default の変更では自動更新されません。
 
 ---
 
@@ -397,13 +403,18 @@ v2.0 から、`settings` コレクションは権限と目的が異なる 3 種�
 | `allow_duplicate` | boolean | `false` |
 | `anki_connect_url` | string | `http://localhost:8765` |
 | `study_languages` | object[] | `[{ code, display_name, enabled, sort_order }]` — user ごとの BCP 47 学習言語。未設定時は `en`/`ja`/`zh` の legacy defaults |
-| `ai_output_language` | string | `'vi'` — AI 生成コンテンツの出力言語 (canonical BCP 47)。`StudyLanguageProvider` がリアルタイム読み込みし、client が `/api/generate` に送信 |
+| `ai_output_languages` | object[] | `[{ code, display_name, enabled, sort_order }]` — Study Language とは独立した BCP 47 出力言語一覧。表示名・有効状態・順序は user ごとに設定 |
+| `ai_output_language` | string | `'vi'` — 有効な `ai_output_languages` の中から明示的に選ぶ default。Create の Content Type に output control がある場合のみ一時上書きでき、client が実効値を `/api/generate` に送信 |
 | `pending_anki_note_deletions` | number[] | `[]` — Entry 削除時に Anki が offline/CORS 失敗だった note ID の retry queue。`POST /api/history/bulk-delete` が Admin SDK の `arrayUnion` で追加し、Sidebar Sync が client-side AnkiConnect で削除後に `arrayRemove` で処理済み ID のみ除去 |
 | `line_user_id` | string? | LINE webhook が連携時に保存する通知先 user ID。Client UI には値そのものを表示しない |
 | `line_notifications_enabled` | boolean | `false` — user ごとの自動通知 opt-in |
 | `line_timezone` | string | user の IANA timezone。未設定・不正値は cron で `UTC` にフォールバック |
 | `line_last_push_key` | string? | 最後に成功した自動通知のローカル日時/時 key。同一時間帯の重複送信防止 |
 | `line_last_test_at` | timestamp? | 手動テスト送信の 60 秒 cooldown を transaction で判定する server timestamp |
+
+Legacy document に `ai_output_languages` がない場合、読み取り時に `ai_output_language` を有効な 1 要素へ
+正規化します。両方がない場合は `vi` を使用します。保存時は default が有効な一覧に含まれることを検証するため、
+既存ユーザーへの migration は不要です。
 
 **`settings/global`** — グローバルフィーチャーフラグ (全ユーザー読み込み; `POST /api/admin/global-config` 経由で **管理者のみ書き込み**; `GlobalConfigProvider` 経由でクライアントがリアルタイム読み込み):
 
