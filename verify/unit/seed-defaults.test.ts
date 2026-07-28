@@ -85,6 +85,16 @@ describe('userScopedId', () => {
 })
 
 describe('seedUserDefaults — テンプレートがない場合 (hardcode から lazy-publish)', () => {
+  it('default card type は output scope と動的な方向名を持つ', () => {
+    expect(DEFAULT_CARD_TYPES.every((cardType) => cardType.output_language === null)).toBe(true)
+    expect(DEFAULT_CARD_TYPES.find((cardType) => cardType.id === 'ct_word_meaning')?.name)
+      .toBe('{study_language} → {output_language}')
+    expect(DEFAULT_CARD_TYPES.find((cardType) => cardType.id === 'ct_meaning_word')?.name)
+      .toBe('{output_language} → {study_language}')
+    expect(DEFAULT_CARD_TYPES.find((cardType) => cardType.id === 'ct_hira_kanji')?.name)
+      .toBe('Hiragana → Kanji')
+  })
+
   it('template を publish してから、その publish したてのテンプレートから user に seed', async () => {
     const db = makeFakeAdminDb()
 
@@ -103,6 +113,10 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
 
     // 検証用コメント。
     expect(catTemplates.size).toBe(DEFAULT_CATEGORIES.length * 2)
+
+    const cardTypes = db._dump('card_types')
+    expect(cardTypes.get('ct_word_meaning')?.output_language).toBeNull()
+    expect(cardTypes.get(userScopedId('ct_word_meaning', 'user1'))?.output_language).toBeNull()
   })
 
   it('decks 内の FK re-map: default_card_type_ids/default_category_id が正しく user のバージョンを指す', async () => {

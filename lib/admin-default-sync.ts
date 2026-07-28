@@ -82,6 +82,7 @@ const cardTypeSchema = z.object({
   description: z.string().optional().default(''),
   form_type: formTypeSchema,
   language: nullableLanguageSchema,
+  output_language: nullableLanguageSchema,
   is_default: z.boolean(),
   is_active: z.boolean(),
   sort_order: z.number().finite(),
@@ -447,8 +448,9 @@ function logicalIdentity(collection: AdminDefaultCollection, data: Record<string
       const code = normalizedString(data.code)
       const formType = normalizedString(data.form_type)
       const language = normalizedString(data.language)?.toLocaleLowerCase('en-US') ?? '*'
+      const outputLanguage = normalizedString(data.output_language)?.toLocaleLowerCase('en-US') ?? '*'
       return code && formType
-        ? `form_type:${formType}|language:${language}|code:${code.toLocaleLowerCase('en-US')}`
+        ? `form_type:${formType}|language:${language}|output_language:${outputLanguage}|code:${code.toLocaleLowerCase('en-US')}`
         : null
     }
     case 'decks': {
