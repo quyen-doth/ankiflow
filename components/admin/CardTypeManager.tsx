@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   collection, query, where, getDocs,
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, deleteField,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -24,6 +24,7 @@ import { verifyAttrs } from '@/verify/core/contract'
 import { FormType } from '@/types'
 import type { CardTypeConfig, CardTemplate, ContentType, LanguageCode } from '@/types'
 import { canonicalizeLanguageCode, languageDisplayName } from '@/lib/studyLanguages'
+import { renderCardTypeName } from '@/lib/cardTypeName'
 import { DEFAULT_TEMPLATES, getFieldLabel } from '@/lib/anki/renderCard'
 import { cardTemplateSchema, parseCustomFieldSource } from '@/lib/anki/cardFieldSource'
 import {
@@ -36,7 +37,10 @@ import { CardStructureEditor, CardPreview } from '@/components/admin/CardTemplat
 
 /** Slugify name → code (vd "Word → Meaning" → "word_to_meaning"). */
 function slugifyCode(name: string): string {
-  return name
+  const withoutPlaceholders = name.replace(/\{[^{}]+\}/g, ' ')
+  if (!/[a-z0-9]/i.test(withoutPlaceholders)) return ''
+
+  return withoutPlaceholders
     .toLowerCase()
     .replace(/→/g, ' to ')
     .replace(/[^a-z0-9]+/g, '_')
@@ -57,6 +61,7 @@ interface CardTypeDraft {
   description: string
   form_type: FormType
   language: LanguageCode | typeof NO_LANGUAGE
+  output_language: LanguageCode | typeof NO_LANGUAGE
   is_default: boolean
   is_active: boolean
   sort_order: number
@@ -69,6 +74,7 @@ const EMPTY_DRAFT: CardTypeDraft = {
   description: '',
   form_type: FormType.LANGUAGE,
   language: NO_LANGUAGE,
+  output_language: NO_LANGUAGE,
   is_default: false,
   is_active: true,
   sort_order: 0,
@@ -83,7 +89,7 @@ interface CardTypeManagerProps {
 
 export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps = {}) {
   const { user, loading: authLoading } = useAuth()
-  const { languages, enabledLanguages } = useStudyLanguages()
+  const { languages, enabledLanguages, aiOutputLanguage } = useStudyLanguages()
   const ownerId = ownerIdProp ?? user?.uid
   const [cardTypes, setCardTypes] = useState<CardTypeConfig[]>([])
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
@@ -104,22 +110,66 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
   const [search, setSearch] = useState('')
   const [filterFormType, setFilterFormType] = useState<FormType | ''>('')
   const [filterLanguage, setFilterLanguage] = useState<LanguageCode | ''>('')
+  const [filterOutputLanguage, setFilterOutputLanguage] = useState<LanguageCode | ''>('')
   const [filterStatus, setFilterStatus] = useState<'active' | 'inactive' | ''>('')
 
-  const languageOptions = useMemo(() => {
+  const studyLanguageOptions = useMemo(() => {
     const codes = new Set<string>()
-    languages.forEach(language => codes.add(language.code))
+    languages.forEach(language => (
+      codes.add(canonicalizeLanguageCode(language.code) ?? language.code)
+    ))
     cardTypes.forEach(cardType => {
       if (cardType.language) codes.add(canonicalizeLanguageCode(cardType.language) ?? cardType.language)
     })
     return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
   }, [cardTypes, languages])
 
-  const selectableLanguageOptions = useMemo(() => {
-    const codes = new Set(enabledLanguages.map(language => language.code))
+  const outputLanguageOptions = useMemo(() => {
+    const codes = new Set<string>()
+    languages.forEach(language => (
+      codes.add(canonicalizeLanguageCode(language.code) ?? language.code)
+    ))
+    codes.add(canonicalizeLanguageCode(aiOutputLanguage) ?? aiOutputLanguage)
+    cardTypes.forEach(cardType => {
+      if (cardType.output_language) {
+        codes.add(
+          canonicalizeLanguageCode(cardType.output_language) ?? cardType.output_language,
+        )
+      }
+    })
+    return Array.from(codes).map(code => ({
+      value: code,
+      label: languageDisplayName(code, languages),
+    }))
+  }, [aiOutputLanguage, cardTypes, languages])
+
+  const selectableStudyLanguageOptions = useMemo(() => {
+    const codes = new Set(
+      enabledLanguages.map(language => (
+        canonicalizeLanguageCode(language.code) ?? language.code
+      )),
+    )
     if (draft.language !== NO_LANGUAGE) codes.add(draft.language)
     return Array.from(codes).map(code => ({ value: code, label: languageDisplayName(code, languages) }))
   }, [draft.language, enabledLanguages, languages])
+
+  const selectableOutputLanguageOptions = useMemo(() => {
+    const codes = new Set(
+      enabledLanguages.map(language => (
+        canonicalizeLanguageCode(language.code) ?? language.code
+      )),
+    )
+    codes.add(canonicalizeLanguageCode(aiOutputLanguage) ?? aiOutputLanguage)
+    if (draft.output_language !== NO_LANGUAGE) {
+      codes.add(
+        canonicalizeLanguageCode(draft.output_language) ?? draft.output_language,
+      )
+    }
+    return Array.from(codes).map(code => ({
+      value: code,
+      label: languageDisplayName(code, languages),
+    }))
+  }, [aiOutputLanguage, draft.output_language, enabledLanguages, languages])
 
   const customFields = useMemo(() => resolveCardTemplateCustomFields(
     contentTypes,
@@ -197,7 +247,13 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
 
   const refresh = () => setRefreshKey(k => k + 1)
   const handleReorder = useSortableList<CardTypeConfig>('card_types', setCardTypes, refresh)
-  const canReorder = !search && !filterFormType && !filterLanguage && !filterStatus
+  const canReorder = (
+    !search
+    && !filterFormType
+    && !filterLanguage
+    && !filterOutputLanguage
+    && !filterStatus
+  )
 
   const filteredCardTypes = useMemo(() => {
     let result = cardTypes
@@ -206,10 +262,44 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       result = result.filter(ct => ct.name.toLowerCase().includes(q) || ct.code.toLowerCase().includes(q))
     }
     if (filterFormType) result = result.filter(ct => ct.form_type === filterFormType)
-    if (filterLanguage) result = result.filter(ct => ct.language === filterLanguage)
+    if (filterLanguage) {
+      const languageKey = canonicalizeLanguageCode(filterLanguage) ?? filterLanguage
+      result = result.filter(ct => (
+        !!ct.language
+        && (canonicalizeLanguageCode(ct.language) ?? ct.language) === languageKey
+      ))
+    }
+    if (filterOutputLanguage) {
+      const outputLanguageKey = (
+        canonicalizeLanguageCode(filterOutputLanguage) ?? filterOutputLanguage
+      )
+      result = result.filter(ct => (
+        !!ct.output_language
+        && (
+          canonicalizeLanguageCode(ct.output_language) ?? ct.output_language
+        ) === outputLanguageKey
+      ))
+    }
     if (filterStatus) result = result.filter(ct => (filterStatus === 'active') === ct.is_active)
     return result
-  }, [cardTypes, search, filterFormType, filterLanguage, filterStatus])
+  }, [
+    cardTypes,
+    search,
+    filterFormType,
+    filterLanguage,
+    filterOutputLanguage,
+    filterStatus,
+  ])
+
+  const renderedDraftName = renderCardTypeName(draft.name, {
+    cardType: {
+      language: draft.language === NO_LANGUAGE ? null : draft.language,
+      output_language: (
+        draft.output_language === NO_LANGUAGE ? null : draft.output_language
+      ),
+    },
+    languages,
+  })
 
   // Validation: name & code は非空、Front/Back 各面に ≥ 1 field。
   const errors = {
@@ -238,6 +328,7 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       description: cardType.description || '',
       form_type: cardType.form_type,
       language: cardType.language || NO_LANGUAGE,
+      output_language: cardType.output_language || NO_LANGUAGE,
       is_default: cardType.is_default,
       is_active: cardType.is_active,
       sort_order: cardType.sort_order,
@@ -271,6 +362,10 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
         name: draft.name,
         description: draft.description || '',
         form_type: draft.form_type,
+        language: draft.language === NO_LANGUAGE ? null : draft.language,
+        output_language: (
+          draft.output_language === NO_LANGUAGE ? null : draft.output_language
+        ),
         is_default: draft.is_default,
         is_active: draft.is_active,
         sort_order: draft.sort_order,
@@ -279,14 +374,12 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
       if (editing) {
         await updateDoc(doc(db, 'card_types', editing.id), {
           ...base,
-          language: draft.language === NO_LANGUAGE ? deleteField() : draft.language,
           updated_at: serverTimestamp(),
         })
       } else {
         await addDoc(collection(db, 'card_types'), {
           ...base,
           user_id: ownerId,
-          ...(draft.language !== NO_LANGUAGE && { language: draft.language }),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
         })
@@ -338,7 +431,11 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     {
       key: 'name',
       header: 'Name',
-      render: (_: unknown, row: CardTypeConfig) => <span className="font-semibold text-ink">{row.name}</span>,
+      render: (_: unknown, row: CardTypeConfig) => (
+        <span className="font-semibold text-ink">
+          {renderCardTypeName(row.name, { cardType: row, languages })}
+        </span>
+      ),
     },
     {
       key: 'form_type',
@@ -347,9 +444,20 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
     },
     {
       key: 'language',
-      header: 'Language',
+      header: 'Study Lang',
       render: (_: unknown, row: CardTypeConfig) => (
         <span className="text-slate-600">{row.language ? languageDisplayName(row.language, languages) : '—'}</span>
+      ),
+    },
+    {
+      key: 'output_language',
+      header: 'Output Lang',
+      render: (_: unknown, row: CardTypeConfig) => (
+        <span className="text-slate-600">
+          {row.output_language
+            ? languageDisplayName(row.output_language, languages)
+            : '—'}
+        </span>
       ),
     },
     {
@@ -397,8 +505,8 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative min-w-[240px] flex-1">
           <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/70" />
           <input
             type="search"
@@ -412,9 +520,13 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
           <option value="">All Types</option>
           {Object.values(FormType).map(ft => (<option key={ft} value={ft}>{FORM_TYPE_LABELS[ft]}</option>))}
         </Select>
-        <Select aria-label="Filter by language" value={filterLanguage} onChange={(e) => setFilterLanguage(e.target.value as LanguageCode | '')} className="!w-auto min-w-[130px]">
-          <option value="">All Languages</option>
-          {languageOptions.map(language => (<option key={language.value} value={language.value}>{language.label}</option>))}
+        <Select aria-label="Filter by study language" value={filterLanguage} onChange={(e) => setFilterLanguage(e.target.value as LanguageCode | '')} className="!w-auto min-w-[140px]">
+          <option value="">All Study Languages</option>
+          {studyLanguageOptions.map(language => (<option key={language.value} value={language.value}>{language.label}</option>))}
+        </Select>
+        <Select aria-label="Filter by output language" value={filterOutputLanguage} onChange={(e) => setFilterOutputLanguage(e.target.value as LanguageCode | '')} className="!w-auto min-w-[140px]">
+          <option value="">All Output Languages</option>
+          {outputLanguageOptions.map(language => (<option key={language.value} value={language.value}>{language.label}</option>))}
         </Select>
         <Select aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as 'active' | 'inactive' | '')} className="!w-auto min-w-[110px]">
           <option value="">All Status</option>
@@ -449,25 +561,53 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g. Word → Meaning"
               />
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-400">
+                Use placeholders to adapt this label to each language pair.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleNameChange(`${draft.name}{study_language}`)}
+                >
+                  Insert study language
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleNameChange(`${draft.name}{output_language}`)}
+                >
+                  Insert output language
+                </Button>
+              </div>
+              <p
+                aria-label="Card type name preview"
+                className="mt-2 text-[12px] text-slate-600"
+              >
+                Preview: <span className="font-semibold text-ink">{renderedDraftName || '—'}</span>
+              </p>
+            </FieldWrapper>
+
+            <FieldWrapper label="Form Type">
+              <SegmentedControl
+                aria-label="Form Type"
+                value={draft.form_type}
+                onChange={(v) => setDraft(d => ({ ...d, form_type: v }))}
+                options={Object.values(FormType).map(ft => ({ value: ft, label: FORM_TYPE_LABELS[ft] }))}
+              />
             </FieldWrapper>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldWrapper label="Form Type">
-                <SegmentedControl
-                  aria-label="Form Type"
-                  value={draft.form_type}
-                  onChange={(v) => setDraft(d => ({ ...d, form_type: v }))}
-                  options={Object.values(FormType).map(ft => ({ value: ft, label: FORM_TYPE_LABELS[ft] }))}
-                />
-              </FieldWrapper>
-              <FieldWrapper label="Language">
+              <FieldWrapper label="Study language">
                 <Select
-                  aria-label="Language"
+                  aria-label="Study language"
                   value={draft.language}
                   onChange={(event) => setDraft(d => ({ ...d, language: event.target.value as LanguageCode | typeof NO_LANGUAGE }))}
                 >
                   <option value={NO_LANGUAGE}>All</option>
-                  {selectableLanguageOptions.map(language => (
+                  {selectableStudyLanguageOptions.map(language => (
                     <option key={language.value} value={language.value}>{language.label}</option>
                   ))}
                 </Select>
@@ -476,6 +616,27 @@ export function CardTypeManager({ ownerId: ownerIdProp }: CardTypeManagerProps =
                     Language-specific output fields are only available when a language is selected. &apos;All&apos; shows Default fields only.
                   </p>
                 )}
+              </FieldWrapper>
+              <FieldWrapper label="Output language">
+                <Select
+                  aria-label="Output language"
+                  value={draft.output_language}
+                  onChange={(event) => setDraft(d => ({
+                    ...d,
+                    output_language: (
+                      event.target.value as LanguageCode | typeof NO_LANGUAGE
+                    ),
+                  }))}
+                >
+                  <option value={NO_LANGUAGE}>All</option>
+                  {selectableOutputLanguageOptions.map(language => (
+                    <option key={language.value} value={language.value}>{language.label}</option>
+                  ))}
+                </Select>
+                <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-400">
+                  Leave as All unless the card type only makes sense for one output language
+                  (e.g. templates using Hán Việt).
+                </p>
               </FieldWrapper>
             </div>
 
