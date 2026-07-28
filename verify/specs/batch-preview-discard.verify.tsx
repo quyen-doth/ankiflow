@@ -23,9 +23,11 @@ const FIRESTORE_SEED = {
     {
       id: CARD_TYPE_ID,
       code: 'title_to_content',
-      name: 'Title → Content',
+      name: '{study_language} → {output_language}',
       description: 'Review the content from its title',
       form_type: FormType.GENERAL,
+      language: 'en',
+      output_language: 'ja',
       template: {
         front: ['word'],
         back: ['meaning'],
@@ -33,6 +35,22 @@ const FIRESTORE_SEED = {
       is_default: true,
       is_active: true,
       sort_order: 1,
+    },
+    {
+      id: 'ct-general-vi',
+      code: 'title_to_content_vi',
+      name: 'Vietnamese output only',
+      description: 'Must not appear for Japanese output',
+      form_type: FormType.GENERAL,
+      language: 'en',
+      output_language: 'vi',
+      template: {
+        front: ['word'],
+        back: ['meaning'],
+      },
+      is_default: false,
+      is_active: true,
+      sort_order: 2,
     },
   ],
   user_content_types: [
@@ -64,6 +82,8 @@ function pendingBatch(firstContent: string): string {
       { title: 'Gamma', content: 'Gamma content', audio_url: 'data:audio/mp3;base64,Rw==' },
     ],
     formType: FormType.GENERAL,
+    language: 'en',
+    outputLanguage: 'ja',
     deckId: DECK_ID,
     cardTypeIds: [CARD_TYPE_ID],
     tags: [],
@@ -195,6 +215,19 @@ registerUnit<Record<string, never>>({
       check: ({ root }) => (
         validationFlow.bannerWasVisible && root.querySelector('[role="alert"]') === null
       ) || `before=${validationFlow.bannerWasVisible}, after=${root.querySelector('[role="alert"]') !== null}`,
+    },
+    {
+      id: 'batch-uses-captured-language-pair',
+      description: 'Batch Preview は pending の pair で Card Type を絞り、動的 name を表示する。',
+      onlyFixtures: ['discard-first-card', 'discard-nonactive-card'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        if (!text.includes('English → Japanese')) {
+          return '動的 Card Type 名が表示されていません'
+        }
+        return !text.includes('Vietnamese output only')
+          || 'output language 不一致の Card Type が表示されています'
+      },
     },
   ],
 })

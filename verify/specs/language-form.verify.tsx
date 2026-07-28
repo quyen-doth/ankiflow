@@ -44,7 +44,30 @@ const SESSION_JA = JSON.stringify({
   tags: ['vocab'],
 })
 
-const FIRESTORE_SEED = { decks: [], categories: [], card_types: [] }
+const FIRESTORE_SEED = {
+  decks: [],
+  categories: [],
+  card_types: [
+    {
+      id: 'ct-en',
+      form_type: FormType.LANGUAGE,
+      language: 'en',
+      output_language: null,
+      name: 'English card',
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      id: 'ct-ja',
+      form_type: FormType.LANGUAGE,
+      language: 'ja',
+      output_language: null,
+      name: 'Japanese card',
+      is_active: true,
+      sort_order: 2,
+    },
+  ],
+}
 const DETECT_FR = {
   detections: [{ index: 0, code: 'fr', display_name: 'French', confidence: 0.91 }],
 }

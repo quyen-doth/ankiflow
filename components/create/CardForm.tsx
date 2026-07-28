@@ -920,6 +920,8 @@ export function CardFormContent({
                     <CardTypeSelector
                         formType={blueprint.formType}
                         language={language}
+                        outputLanguage={aiOutputLanguage}
+                        languages={languages}
                         selectedIds={cardTypes}
                         onChange={(v) => {
                             clearFieldError(fieldKey);
