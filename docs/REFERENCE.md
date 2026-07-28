@@ -192,7 +192,8 @@ master data だけを `create` する。引数なしでは読み取りと差分�
 行わない。`--apply` は古い template の削除を含むため、必ず dry-run の全 path をレビューし、
 Firestore の書き込み・削除について明示的な承認を得てから 1 回だけ実行する。既存 template がある
 collection を空にする差分は `--apply` だけでは拒否され、意図的な場合に限り `--allow-empty` も指定する。
-Card type の論理キーは `form_type + language + code` で、同じ code を持つ別言語の card type を混同しない。
+Card type の論理キーは `form_type + language + output_language + code` で、同じ code を持つ別の
+学習・出力言語ペアの card type を混同しない。
 既存 user への backfill は document ごとの create とし、計画後に同じ document が作成された競合だけを
 skip して他の user の create を継続する。既存 user document の update/delete は行わない。
 

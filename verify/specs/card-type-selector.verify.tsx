@@ -1,10 +1,13 @@
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { z } from 'zod'
 import { CardTypeSelector } from '@/components/create/CardTypeSelector'
+import { filterCardTypesByScope } from '@/lib/cardTypeFilter'
+import { renderCardTypeName } from '@/lib/cardTypeName'
+import { verifyAttrs } from '@/verify/core/contract'
 import { registerUnit } from '@/verify/core/registry'
 import { fn } from '@/verify/core/schema-helpers'
 import { FormType, LanguageType } from '@/types'
-import type { StudyLanguage } from '@/types'
+import type { LanguageCode, StudyLanguage } from '@/types'
 
 type CardTypeSelectorProps = ComponentProps<typeof CardTypeSelector>
 
@@ -37,6 +40,38 @@ const FALLBACK_SEED = {
   ],
 }
 
+const LANGUAGE_PAIR_FLOW_SEED = {
+  card_types: [
+    {
+      id: 'ct-zh-vi',
+      name: '{output_language} → {study_language}',
+      form_type: FormType.LANGUAGE,
+      language: LanguageType.CHINESE,
+      output_language: 'vi',
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      id: 'ct-zh-ja',
+      name: '{output_language} → {study_language}',
+      form_type: FormType.LANGUAGE,
+      language: LanguageType.CHINESE,
+      output_language: LanguageType.JAPANESE,
+      is_active: true,
+      sort_order: 2,
+    },
+    {
+      id: 'ct-pair-all',
+      name: 'Listening',
+      form_type: FormType.LANGUAGE,
+      language: LanguageType.CHINESE,
+      output_language: null,
+      is_active: true,
+      sort_order: 3,
+    },
+  ],
+}
+
 // onChange 用 spy — act 内で reset
 const changeSpy = { count: 0, lastValue: null as string[] | null }
 const recordChange = (ids: string[]) => {
@@ -65,6 +100,57 @@ function clickLinkByText(root: HTMLElement, text: string): void {
 
 function visibleNames(root: HTMLElement): string[] {
   return chipButtons(root).map(b => b.querySelector('span')?.textContent?.trim() ?? '')
+}
+
+function flowVisibleNames(root: HTMLElement): string[] {
+  return Array.from(root.querySelectorAll('[data-pair-card-type]'))
+    .map(element => element.textContent?.trim() ?? '')
+}
+
+function CardTypeLanguagePairFlow() {
+  const [outputLanguage, setOutputLanguage] = useState<LanguageCode>('vi')
+  const cardTypes = filterCardTypesByScope(LANGUAGE_PAIR_FLOW_SEED.card_types, {
+    studyLanguage: LanguageType.CHINESE,
+    outputLanguage,
+  })
+
+  return (
+    <div {...verifyAttrs({
+      unit: 'CardTypeLanguagePairFlow',
+      outputLanguage,
+      count: cardTypes.length,
+    })}>
+      <fieldset className="mb-4">
+        <legend>AI output language</legend>
+        <button
+          type="button"
+          aria-pressed={outputLanguage === 'vi'}
+          onClick={() => setOutputLanguage('vi')}
+        >
+          Vietnamese
+        </button>
+        <button
+          type="button"
+          aria-pressed={outputLanguage === LanguageType.JAPANESE}
+          onClick={() => setOutputLanguage(LanguageType.JAPANESE)}
+        >
+          Japanese
+        </button>
+      </fieldset>
+      <div aria-label="Create card types">
+        {cardTypes.map(cardType => (
+          <button key={cardType.id} type="button" data-pair-card-type>
+            {renderCardTypeName(cardType.name, {
+              studyLanguage: LanguageType.CHINESE,
+              outputLanguage,
+              cardType,
+              languages: STUDY_LANGUAGES,
+            })}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 registerUnit<CardTypeSelectorProps>({
@@ -312,6 +398,71 @@ registerUnit<CardTypeSelectorProps>({
         changeSpy.count === 1
         && JSON.stringify(changeSpy.lastValue) === JSON.stringify(['ct-en'])
       ) || `count=${changeSpy.count}, lastValue=${JSON.stringify(changeSpy.lastValue)}`,
+    },
+  ],
+})
+
+registerUnit<Record<string, never>>({
+  id: 'CardTypeLanguagePairFlow',
+  title: 'CardTypeLanguagePairFlow',
+  description: 'production の pair filter/name helper で Settings 変更後の Create 表示を検証する。',
+  kind: 'feature',
+  render: () => <CardTypeLanguagePairFlow />,
+  propsSchema: z.object({}),
+  fixtures: [
+    {
+      id: 'initial-vietnamese',
+      probe: true,
+      description: 'Vietnamese output と Chinese study language の pair を初期表示する。',
+      props: {},
+      act: async ctx => {
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'switches-to-japanese',
+      description: 'AI output language を Japanese に切り替えて表示対象を更新する。',
+      props: {},
+      act: async ctx => {
+        await ctx.wait(50)
+        const button = Array.from(ctx.root.querySelectorAll('button')).find(
+          item => item.textContent?.trim() === 'Japanese' && !item.querySelector('svg'),
+        )
+        if (!button) throw new Error('Japanese output button が見つかりません')
+        button.click()
+        await ctx.wait(50)
+      },
+    },
+    {
+      id: 'e2e-settings-to-create',
+      description: 'Playwright が AI output language の切り替えと Card Type filter を操作する。',
+      props: {},
+    },
+  ],
+  invariants: [
+    {
+      id: 'initial-pair',
+      description: '初期状態は Vietnamese → Chinese と共通 Card Type だけを表示する。',
+      onlyFixtures: ['initial-vietnamese'],
+      check: ({ root }) => {
+        const names = flowVisibleNames(root)
+        return (
+          JSON.stringify(names) === JSON.stringify(['Vietnamese → Chinese', 'Listening'])
+          || `表示: ${names.join(' | ')}`
+        )
+      },
+    },
+    {
+      id: 'updated-pair',
+      description: '切り替え後は Japanese → Chinese と共通 Card Type だけを表示する。',
+      onlyFixtures: ['switches-to-japanese'],
+      check: ({ root }) => {
+        const names = flowVisibleNames(root)
+        return (
+          JSON.stringify(names) === JSON.stringify(['Japanese → Chinese', 'Listening'])
+          || `表示: ${names.join(' | ')}`
+        )
+      },
     },
   ],
 })

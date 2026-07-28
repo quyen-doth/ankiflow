@@ -123,11 +123,12 @@ Anki カードの種類を定義 (例: Word→Meaning、Meaning→Word、Cloze..
 |---|---|---|
 | `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
 | `user_id` | string | Firebase Auth UID (または `__defaults__`) |
-| `code` | string | 識別コード。同じ form type でも言語ごとの重複を許可する。default backfill の論理同一性は `form_type + language + code` (DB 制約による unique は未強制) |
-| `name` | string | 表示名 |
+| `code` | string | 識別コード。同じ form type でも言語ペアごとの重複を許可する。default backfill の論理同一性は `form_type + language + output_language + code` (DB 制約による unique は未強制) |
+| `name` | string | 表示名。`{study_language}` / `{output_language}` placeholder を利用可能 |
 | `description` | string | 説明 |
 | `form_type` | string | どの form type に属するか |
-| `language` | string | 適用する canonical BCP 47 code (nullable = 全言語) |
+| `language` | string | 適用する学習言語の canonical BCP 47 code (nullable = 全学習言語) |
+| `output_language` | string | 適用する AI 出力言語の canonical BCP 47 code (nullable = 全出力言語) |
 | `is_default` | boolean | デフォルトで選択されるか |
 | `is_active` | boolean | — |
 | `sort_order` | number | 表示順序 |
