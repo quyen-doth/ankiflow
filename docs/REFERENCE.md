@@ -161,6 +161,9 @@ npm run migrate:ai-output-profiles      # built-in global/user profile update �
 npm run migrate:ai-output-profiles -- --apply  # 明示承認済みで、field 未設定 document だけを update
 npm run migrate:content-type-english    # 既知の旧ベトナム語 built-in metadata update を dry-run
 npm run migrate:content-type-english -- --apply  # レビュー済みの exact-match update だけを適用
+npm run migrate:output-language-controls  # 既存 Content Type の不足 output control を dry-run
+npm run migrate:output-language-controls -- --uid <uid>  # 1 user の snapshot だけを確認
+npm run migrate:output-language-controls -- --uid <uid> --apply  # 承認済み update を適用
 npm run user:create -- <email>          # 公開 signup を開かず内部アカウントを対話形式で作成 + seed
 npx tsx scripts/set-admin-claim.ts <email>       # 管理者クレームを設定 (その後再ログイン)
 npx tsx scripts/migrate-user-data.ts <uid> [--dry-run]  # 古いシングルユーザーデータを 1 つのアカウントに割り当て
@@ -192,6 +195,15 @@ custom Content Type、General document を変更しません。必ず dry-run ou
 `description`、`fields[].label`、`fields[].placeholder` だけを英語へ更新します。Custom Content Type、任意の
 customization、ID、code、ownership、AI output profile は変更せず、document の作成・削除も行いません。
 必ず dry-run output をレビューし、Firestore update の明示承認を得てから適用してください。
+
+`migrate:output-language-controls` は global `content_types` と source-linked `user_content_types` を比較し、
+`data_source: 'output_languages'` の system control だけを merge-only で補います。対象は Content Type の
+code/form type ではなく、global/default の field 宣言から決定します。既存 control、source link のない custom
+Content Type、同名 field の customization は上書きしません。引数なしは全 user の read-only dry-run、
+`--uid <uid>` は user snapshot の読み取りを 1 user に限定します。`--apply` は transaction 内で fields と
+source link を再確認してから update するため、必ず dry-run の全 path/conflict をレビューし、Firestore update の
+明示承認を得てから実行してください。この script は feature rollout 用の one-time migration であり、ユーザーが
+後から control を削除した後に再実行しません。
 
 `sync-admin-defaults.ts` は one-time migration。`ADMIN_EMAIL` の `/admin` "My workspace" を
 `__defaults__` の正確な snapshot に置き換え、既存 user には ID または論理キーで不足している

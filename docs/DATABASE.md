@@ -272,6 +272,9 @@ label、placeholder、required、session persistence を制御します。Langua
 `settings/{uid}.ai_output_language` の default をそのまま使用します。Built-in / custom の `code` や
 `form_type` による runtime 分岐は行いません。`is_session_persistent` が `true` なら生成成功後も選択を保持し、
 `false` なら default に戻します。既存の user snapshot は global default の変更では自動更新されません。
+Feature 導入前の source-linked snapshot には、one-time の
+`npm run migrate:output-language-controls` を dry-run してから明示承認後に `--apply` します。
+Migration は source の `data_source` 宣言から対象を決め、既存 field/custom Content Type を上書きしません。
 
 ---
 
