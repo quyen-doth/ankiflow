@@ -33,6 +33,7 @@ const languageContentType = {
       data_source: null,
     },
     inputField('word', 'Word'),
+    inputField('phon_the', 'Input traditional form'),
   ],
   ai_output_profiles: [
     profile('default', [
@@ -43,8 +44,18 @@ const languageContentType = {
       { key: 'word', type: 'string', instruction: 'Word' },
       { key: 'pinyin', type: 'string', instruction: 'Pinyin' },
       { key: 'meaning_vi', type: 'string', instruction: 'Meaning' },
-      { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
-      { key: 'related_words', type: 'string_array', instruction: 'Related words' },
+      {
+        key: 'phon_the',
+        type: 'string',
+        label: 'Profile traditional form',
+        instruction: 'Traditional form',
+      },
+      {
+        key: 'related_words',
+        type: 'string_array',
+        label: 'Related vocabulary',
+        instruction: 'Related words',
+      },
     ]),
     profile('ja', [
       { key: 'word', type: 'string', instruction: 'Word' },
@@ -67,14 +78,14 @@ describe('resolveCardTemplateCustomFields', () => {
       {
         key: 'phon_the',
         source: 'custom:phon_the',
-        label: 'Phon the',
-        sampleValue: 'Sample Phon the',
+        label: 'Input traditional form',
+        sampleValue: 'Sample Input traditional form',
       },
       {
         key: 'related_words',
         source: 'custom:related_words',
-        label: 'Related words',
-        sampleValue: ['Sample Related words 1', 'Sample Related words 2'],
+        label: 'Related vocabulary',
+        sampleValue: ['Sample Related vocabulary 1', 'Sample Related vocabulary 2'],
       },
     ])
   })

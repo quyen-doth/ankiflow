@@ -200,7 +200,9 @@ export function FlashcardReviewLayout({
 }: FlashcardReviewLayoutProps) {
   const reading = entry.hiragana || entry.pinyin || entry.ipa || ''
   const languageSubtag = entry.language ? primaryLanguageSubtag(entry.language) : null
-  const showHanViet = languageSubtag === 'zh' || languageSubtag === 'ja'
+  const outputLanguageSubtag = primaryLanguageSubtag(entry.output_language ?? 'vi')
+  const showHanViet = (languageSubtag === 'zh' || languageSubtag === 'ja')
+    && outputLanguageSubtag === 'vi'
 
   return (
     <>
@@ -258,7 +260,7 @@ export function FlashcardReviewLayout({
                   />
                 </div>
                 {showHanViet && (
-                  <div className="mt-1.5">
+                  <div className="mt-1.5" data-testid="han-viet-field">
                     <EditableField
                       value={entry.han_viet || ''}
                       onSave={(v) => updateField('han_viet', v)}

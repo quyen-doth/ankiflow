@@ -46,6 +46,7 @@ describe('fieldPresets', () => {
 
     expect(traditional).toMatchObject({
       type: 'string',
+      label: 'Traditional form',
       profiles: ['zh'],
     })
     expect(traditional?.instruction).toContain(
@@ -64,6 +65,7 @@ describe('fieldPresets', () => {
       const field: AiOutputField = {
         key: preset.key,
         type: preset.type,
+        label: preset.label,
         instruction: preset.instruction,
         ...(preset.include_when !== undefined ? { include_when: preset.include_when } : {}),
         ...(preset.max_items !== undefined ? { max_items: preset.max_items } : {}),
