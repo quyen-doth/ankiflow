@@ -4,7 +4,7 @@ test('Card preview は custom field source の値を裏面に表示する', asyn
   await page.goto('/verify/CardPreview/custom-field?chrome=0')
 
   const preview = page.locator('[data-verify-unit="CardPreview"]')
-  const iframe = page.locator('iframe[title="Card preview"]')
+  const iframe = page.locator('iframe[title="Card back preview"]')
   await expect(preview).toHaveAttribute('data-verify-flipped', 'true')
   await expect(iframe).toHaveAttribute('srcdoc', /class="custom-field custom-phon_the"/)
   await expect(iframe).toHaveAttribute('srcdoc', /喫飯/)
@@ -13,7 +13,7 @@ test('Card preview は custom field source の値を裏面に表示する', asyn
 test('Card preview は custom string array の改行を保持する', async ({ page }) => {
   await page.goto('/verify/CardPreview/custom-array-field?chrome=0')
 
-  const field = page.frameLocator('iframe[title="Card preview"]').locator('.custom-field')
+  const field = page.frameLocator('iframe[title="Card back preview"]').locator('.custom-field')
   await expect(field).toHaveText('formal\nwritten')
   await expect(field).toHaveCSS('white-space', 'pre-line')
 })
@@ -23,7 +23,7 @@ test('Card preview は例文 audio を専用 chip として表示する', async 
 
   const preview = page.locator('[data-verify-unit="CardPreview"]')
   await expect(preview).toHaveAttribute('data-verify-flipped', 'true')
-  await expect(page.locator('iframe[title="Card preview"]'))
+  await expect(page.locator('iframe[title="Card back preview"]'))
     .toHaveAttribute('srcdoc', /🔊 Example audio/)
 })
 

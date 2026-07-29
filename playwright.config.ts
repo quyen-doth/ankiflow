@@ -3,6 +3,13 @@ import { defineConfig, devices } from '@playwright/test'
 
 loadEnv({ quiet: true })
 
+const host = process.env.PLAYWRIGHT_HOST === 'localhost' ? 'localhost' : '127.0.0.1'
+const requestedPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? '', 10)
+const port = Number.isInteger(requestedPort) && requestedPort >= 1 && requestedPort <= 65_535
+  ? String(requestedPort)
+  : '3000'
+const baseURL = `http://${host}:${port}`
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -11,12 +18,12 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev -- --hostname 127.0.0.1',
-    url: 'http://127.0.0.1:3000/verify',
+    command: `npm run dev -- --hostname ${host} --port ${port}`,
+    url: `${baseURL}/verify`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

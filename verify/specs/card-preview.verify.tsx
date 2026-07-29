@@ -23,6 +23,40 @@ const CARD_TYPES: CardPreviewProps['cardTypes'] = [
 ]
 const SELECTED = ['ct_wm', 'ct_mw']
 
+const HEIGHT_ENTRY: CardPreviewProps['entry'] = {
+  word: 'Compact',
+  meaning_vi: 'A detailed explanation that intentionally spans several lines in the preview card. '.repeat(8),
+  example_sentence: 'This example sentence provides enough context to make the reverse side visibly taller. '.repeat(4),
+  example_translation: 'The translated example also occupies multiple lines in the card preview. '.repeat(3),
+  collocations: [
+    'compact design',
+    'compact layout',
+    'compact representation',
+    'compact storage',
+    'compact format',
+    'compact component',
+  ],
+}
+
+const HEIGHT_CARD_TYPES: CardPreviewProps['cardTypes'] = [
+  {
+    id: 'ct_short',
+    name: 'Short card',
+    template: {
+      front: ['word'],
+      back: ['meaning', 'example', 'translation', 'collocations'],
+    },
+  },
+  {
+    id: 'ct_detailed',
+    name: 'Detailed card',
+    template: {
+      front: ['meaning', 'example', 'translation', 'collocations'],
+      back: ['word'],
+    },
+  },
+]
+
 function faceSrcdoc(root: HTMLElement, face: 'front' | 'back'): string {
   return root
     .querySelector(`[data-card-face="${face}"] iframe`)
@@ -118,6 +152,32 @@ registerUnit<CardPreviewProps>({
       },
       act: async ctx => {
         await ctx.click('[title="Click to flip"]')
+      },
+    },
+    {
+      id: 'height-dynamics',
+      description: '表裏と card type の内容量が異なる場合も、各面を独立して表示する。',
+      props: {
+        entry: HEIGHT_ENTRY,
+        cardTypes: HEIGHT_CARD_TYPES,
+        selectedCardTypeIds: ['ct_short', 'ct_detailed'],
+      },
+    },
+    {
+      id: 'late-image',
+      description: '読み込み後に画像サイズが変わる card back を表示する。',
+      props: {
+        entry: {
+          word: 'Image',
+          meaning_vi: 'An image that loads after the initial card measurement.',
+          image_url: '/globe.svg',
+        },
+        cardTypes: [{
+          id: 'ct_image',
+          name: 'Image card',
+          template: { front: ['word'], back: ['meaning', 'image'] },
+        }],
+        selectedCardTypeIds: ['ct_image'],
       },
     },
     {
