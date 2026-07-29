@@ -516,7 +516,7 @@ export function AiOutputProfilesEditor({
                     placeholder="Generated from key"
                     onChange={(event) => {
                       const nextField = { ...field }
-                      if (event.target.value) {
+                      if (event.target.value.trim()) {
                         nextField.label = event.target.value
                       } else {
                         delete nextField.label

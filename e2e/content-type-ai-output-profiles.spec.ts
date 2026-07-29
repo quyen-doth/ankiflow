@@ -52,9 +52,10 @@ test('AI output editor は text-only 境界と profile preset を表示して fi
   await picker.selectOption('preset:phon_the')
 
   await expect(page.getByRole('textbox', { name: /AI output key/ }).last()).toHaveValue('phon_the')
-  await expect(page.getByRole('textbox', { name: /AI output label/ }).last()).toHaveValue(
-    'Traditional form',
-  )
+  const presetLabel = page.getByRole('textbox', { name: /AI output label/ }).last()
+  await expect(presetLabel).toHaveValue('Traditional form')
+  await presetLabel.fill('   ')
+  await expect(presetLabel).toHaveValue('')
   await expect(page.getByRole('textbox', { name: /AI output instruction/ }).last()).toHaveValue(
     /Return an empty string if identical to the simplified form\./,
   )
