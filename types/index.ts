@@ -47,6 +47,14 @@ export interface StudyLanguage {
   sort_order: number
 }
 
+/** user 個人の preferences (`settings/{uid}`) 内の AI 出力言語 1 件。 */
+export interface AiOutputLanguage {
+  code: LanguageCode
+  display_name: string
+  enabled: boolean
+  sort_order: number
+}
+
 // ─── Collection: entries ──────────────────────────────
 
 /**
@@ -117,6 +125,9 @@ export interface Entry {
   context_quote?: string;
 
   // Metadata
+  _query_schema_version?: number;
+  _query_duplicate_key?: string;
+  _query_card_count?: number;
   created_at: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
   status: 'draft' | 'reviewed' | 'synced';
@@ -171,7 +182,10 @@ export interface CardTypeConfig {
   name: string; // 表示名
   description?: string;
   form_type: FormType;
+  /** 学習対象の言語。null はすべての言語に適用する。 */
   language?: LanguageCode | null;
+  /** AI 出力の言語。null はすべての出力言語に適用する。 */
+  output_language?: LanguageCode | null;
   is_default: boolean;
   is_active: boolean;
   sort_order: number;
@@ -360,8 +374,10 @@ export interface Settings {
   line_last_test_at?: FirestoreTimestamp;
   /** user 個人の学習言語一覧; field が無い場合 → legacy defaults を使用。 */
   study_languages?: StudyLanguage[];
-  /** AI 出力に使用する canonical BCP 47 言語。未設定時は `vi`。 */
-  ai_output_language?: string;
+  /** user 個人の有効化可能な AI 出力言語一覧。未設定時は legacy default から導出する。 */
+  ai_output_languages?: AiOutputLanguage[];
+  /** AI 出力に使用する既定の canonical BCP 47 言語。未設定時は `vi`。 */
+  ai_output_language?: LanguageCode;
   /** 次回の browser-side Sync で削除する Anki note ID の retry queue。 */
   pending_anki_note_deletions?: number[];
   updated_at: FirestoreTimestamp;
@@ -380,6 +396,8 @@ export interface GlobalSettings {
   line_notifications_available?: boolean;
   line_schedule_hours?: number[];
   line_words_per_notification?: number;
+  entry_query_schema_version?: number;
+  entry_query_schema_ready_at?: FirestoreTimestamp;
   updated_at: FirestoreTimestamp;
 }
 

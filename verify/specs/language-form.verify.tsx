@@ -26,20 +26,64 @@ const SESSION = JSON.stringify({
   tags: ['vocab'],
 })
 
-const FIRESTORE_SEED = { decks: [], categories: [], card_types: [] }
-const DETECT_EN = {
-  detections: [{ index: 0, code: 'en', display_name: 'English', confidence: 0.98 }],
-}
-const DETECT_JA = {
-  detections: [{ index: 0, code: 'ja', display_name: 'Japanese', confidence: 0.99 }],
+// 学習言語が未選択の session — detect が値を埋める経路だけがこれを使う。
+const SESSION_NO_LANGUAGE = JSON.stringify({
+  language: '',
+  deckId: 'd-en',
+  categoryId: 'c-life',
+  cardTypeIds: ['ct-en'],
+  tags: ['vocab'],
+})
+
+// 学習言語が日本語の session — 漢字入力で AI 呼び出しが不要になる経路の検証用。
+const SESSION_JA = JSON.stringify({
+  language: 'ja',
+  deckId: 'd-ja',
+  categoryId: 'c-life',
+  cardTypeIds: ['ct-ja'],
+  tags: ['vocab'],
+})
+
+const FIRESTORE_SEED = {
+  decks: [],
+  categories: [],
+  card_types: [
+    {
+      id: 'ct-en',
+      form_type: FormType.LANGUAGE,
+      language: 'en',
+      output_language: null,
+      name: 'English card',
+      is_active: true,
+      sort_order: 1,
+    },
+    {
+      id: 'ct-ja',
+      form_type: FormType.LANGUAGE,
+      language: 'ja',
+      output_language: null,
+      name: 'Japanese card',
+      is_active: true,
+      sort_order: 2,
+    },
+  ],
 }
 const DETECT_FR = {
   detections: [{ index: 0, code: 'fr', display_name: 'French', confidence: 0.91 }],
 }
-const DETECT_MIXED = {
-  detections: [
-    { index: 0, code: 'en', display_name: 'English', confidence: 0.98 },
-    { index: 1, code: 'ja', display_name: 'Japanese', confidence: 0.99 },
+
+// 入力がすでに学習言語 → 変換なし。
+const RESOLVE_UNCHANGED = {
+  resolutions: [{ index: 0, resolved_term: 'serendipity', source_language: 'en', was_translated: false }],
+}
+// 入力が別言語 → 学習言語 (英語) の語へ変換。
+const RESOLVE_TRANSLATED = {
+  resolutions: [{ index: 0, resolved_term: 'cat', source_language: 'ja', was_translated: true }],
+}
+const RESOLVE_MIXED_BATCH = {
+  resolutions: [
+    { index: 0, resolved_term: 'cat', source_language: 'en', was_translated: false },
+    { index: 1, resolved_term: 'cat', source_language: 'ja', was_translated: true },
   ],
 }
 
@@ -70,6 +114,11 @@ function submitForm(root: HTMLElement): void {
 function loadPending(): PendingEntry | null {
   const raw = localStorage.getItem('ankiflow_pending_result')
   return raw ? (JSON.parse(raw) as PendingEntry) : null
+}
+
+function loadPendingBatch(): { language?: string | null; items: unknown[] } | null {
+  const raw = localStorage.getItem('ankiflow_pending_batch')
+  return raw ? (JSON.parse(raw) as { language?: string | null; items: unknown[] }) : null
 }
 
 registerUnit<LanguageFormProps>({
@@ -111,7 +160,7 @@ registerUnit<LanguageFormProps>({
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
-          { match: '/api/languages/detect', response: { status: 200, json: DETECT_EN } },
+          { match: '/api/languages/resolve-terms', response: { status: 200, json: RESOLVE_UNCHANGED } },
           { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
         ],
       },
@@ -133,7 +182,7 @@ registerUnit<LanguageFormProps>({
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
-          { match: '/api/languages/detect', response: { status: 200, json: DETECT_EN } },
+          { match: '/api/languages/resolve-terms', response: { status: 200, json: RESOLVE_UNCHANGED } },
           {
             match: '/api/generate',
             response: { status: 500, json: { error: 'Gemini quota exceeded' } },
@@ -148,21 +197,44 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'act-detection-overrides-session',
-      description: '検証ケース。',
+      id: 'act-selected-language-wins',
+      description:
+        '選択済みの学習言語 (en) は入力の言語で上書きされず、入力側が英語へ変換される。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
+        // detect を mock しない = 呼ばれたら unmatched URL で失敗する (呼ばれないことの検証)。
         fetch: [
-          { match: '/api/languages/detect', response: { status: 200, json: DETECT_JA } },
+          { match: '/api/languages/resolve-terms', response: { status: 200, json: RESOLVE_TRANSLATED } },
           { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
         ],
       },
       act: async ctx => {
         await ctx.wait(50)
         await ctx.type('input[aria-label="Vocabulary item"]', '猫')
+        submitForm(ctx.root)
+        await ctx.wait(1100)
+      },
+    },
+    {
+      id: 'act-script-compatible-skips-ai',
+      description:
+        '漢字だけの語 + 学習言語 ja → detect も resolve も呼ばず、そのまま生成する (冪等性 の回帰)。',
+      props: {},
+      mocks: {
+        firestore: FIRESTORE_SEED,
+        localStorage: { ankiflow_session_form_language: SESSION_JA },
+        pathname: '/create',
+        // detect / resolve は意図的に mock しない — 呼ばれたら失敗する。
+        fetch: [
+          { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
+        ],
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        await ctx.type('input[aria-label="Vocabulary item"]', '冪等性')
         submitForm(ctx.root)
         await ctx.wait(1100)
       },
@@ -189,11 +261,11 @@ registerUnit<LanguageFormProps>({
     {
       id: 'probe-unconfigured-language',
       probe: true,
-      description: '検証ケース。',
+      description: '学習言語が未選択のときだけ detect が走り、未設定言語は user 確認を求める。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
-        localStorage: { ankiflow_session_form_language: SESSION },
+        localStorage: { ankiflow_session_form_language: SESSION_NO_LANGUAGE },
         pathname: '/create',
         fetch: [
           { match: '/api/languages/detect', response: { status: 200, json: DETECT_FR } },
@@ -207,15 +279,15 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'act-detection-error-uses-manual',
-      description: '検証ケース。',
+      id: 'act-resolution-error-uses-input',
+      description: 'term 変換が失敗しても生成は止めず、入力そのままと選択済み言語で続行する。',
       props: {},
       mocks: {
         firestore: FIRESTORE_SEED,
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
-          { match: '/api/languages/detect', response: { status: 503, json: { error: 'Detector unavailable' } } },
+          { match: '/api/languages/resolve-terms', response: { status: 503, json: { error: 'Resolver unavailable' } } },
           { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
         ],
       },
@@ -227,16 +299,16 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'probe-mixed-language-batch',
-      probe: true,
-      description: '検証ケース。',
+      id: 'act-mixed-batch-converges',
+      description: '言語が混ざった batch も学習言語へ揃えられ、ブロックされない。',
       props: { batchMode: true },
       mocks: {
         firestore: FIRESTORE_SEED,
         localStorage: { ankiflow_session_form_language: SESSION },
         pathname: '/create',
         fetch: [
-          { match: '/api/languages/detect', response: { status: 200, json: DETECT_MIXED } },
+          { match: '/api/languages/resolve-terms', response: { status: 200, json: RESOLVE_MIXED_BATCH } },
+          { match: '/api/generate', response: { status: 200, json: { content: GENERATED } } },
         ],
       },
       act: async ctx => {
@@ -249,7 +321,7 @@ registerUnit<LanguageFormProps>({
         await ctx.wait(16)
         await ctx.type('input[aria-label="Vocabulary item 2"]', '猫')
         submitForm(ctx.root)
-        await ctx.wait(100)
+        await ctx.wait(1100)
       },
     },
   ],
@@ -313,15 +385,31 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'detected-language-overrides-session',
-      description: '検証ケース。',
-      onlyFixtures: ['act-detection-overrides-session'],
+      id: 'selected-language-wins-over-input',
+      description:
+        '選択済みの学習言語が正 — 入力が別言語でも language は変わらず、deck/cardType も維持される。',
+      onlyFixtures: ['act-selected-language-wins'],
       check: () => {
         const pending = loadPending()
         if (!pending) return '対象がありません'
+        if (pending.language !== 'en') return `language=${pending.language}`
+        // 言語が変わらない = config reset も起きない。
+        if (pending.deckId !== 'd-en') return `deckId=${pending.deckId}`
+        return JSON.stringify(pending.cardTypeIds) === JSON.stringify(['ct-en'])
+          || `cardTypeIds=${JSON.stringify(pending.cardTypeIds)}`
+      },
+    },
+    {
+      id: 'script-compatible-input-skips-ai-calls',
+      description:
+        '漢字だけの語 + 学習言語 ja は AI を呼ばずに生成へ進む (detect/resolve が呼ばれると mock が失敗する)。',
+      onlyFixtures: ['act-script-compatible-skips-ai'],
+      check: ({ contract }) => {
+        if (contract.error === 'true') return 'AI 呼び出しが発生しています'
+        const pending = loadPending()
+        if (!pending) return '対象がありません'
         if (pending.language !== 'ja') return `language=${pending.language}`
-        if (pending.deckId !== '') return `deckId=${pending.deckId}`
-        return pending.cardTypeIds.length === 0 || `cardTypeIds=${JSON.stringify(pending.cardTypeIds)}`
+        return pending.deckId === 'd-ja' || `deckId=${pending.deckId}`
       },
     },
     {
@@ -345,9 +433,9 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'detection-error-uses-explicit-selection',
-      description: '検証ケース。',
-      onlyFixtures: ['act-detection-error-uses-manual'],
+      id: 'resolution-error-does-not-block-generation',
+      description: 'term 変換の失敗は生成をブロックせず、選択済み言語と設定を維持する。',
+      onlyFixtures: ['act-resolution-error-uses-input'],
       check: () => {
         const pending = loadPending()
         if (!pending) return '対象がありません'
@@ -358,15 +446,15 @@ registerUnit<LanguageFormProps>({
       },
     },
     {
-      id: 'mixed-batch-is-blocked',
-      description: '検証ケース。',
-      onlyFixtures: ['probe-mixed-language-batch'],
-      check: ({ root, contract }) => {
-        const text = root.textContent ?? ''
-        if (contract.error !== 'true') return `contract.error=${contract.error}`
-        if (!text.includes('#1 “cat” → English (en)')) return text
-        if (!text.includes('#2 “猫” → Japanese (ja)')) return text
-        return loadPending() === null || 'mixed batch で pending が作成されています'
+      id: 'mixed-batch-converges-to-study-language',
+      description: '言語が混ざった batch もブロックされず、学習言語で pending batch を作る。',
+      onlyFixtures: ['act-mixed-batch-converges'],
+      check: ({ contract }) => {
+        if (contract.error === 'true') return 'mixed batch がブロックされています'
+        const batch = loadPendingBatch()
+        if (!batch) return '対象がありません'
+        if (batch.language !== 'en') return `language=${batch.language}`
+        return batch.items.length === 2 || `items=${batch.items.length}`
       },
     },
   ],

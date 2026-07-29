@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withAuth } from '@/lib/auth-guard'
+import {
+  deriveEntryQueryMetadata,
+  findReservedEntryQueryFields,
+  reservedEntryQueryFieldsError,
+} from '@/lib/entries/queryMetadata'
 
 const saveSchema = z.object({
   entryData: z.record(z.string(), z.unknown()),
@@ -19,16 +24,27 @@ export const POST = withAuth(async (request, _ctx, uid) => {
       )
     }
     const { entryData, anki_note_ids, status } = parsed.data
+    const reservedFields = findReservedEntryQueryFields(entryData)
+    if (reservedFields.length > 0) {
+      return NextResponse.json(
+        { error: reservedEntryQueryFieldsError(reservedFields) },
+        { status: 400 },
+      )
+    }
 
     const db = getAdminDb()
 
-    const newEntry = {
+    const baseEntry = {
       ...entryData,
       user_id: uid,
       status: status ?? 'reviewed',
       anki_note_ids: anki_note_ids ?? [],
       created_at: new Date(),
       updated_at: new Date(),
+    }
+    const newEntry = {
+      ...baseEntry,
+      ...deriveEntryQueryMetadata(baseEntry),
     }
 
     const docRef = await db.collection('entries').add(newEntry)

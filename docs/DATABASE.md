@@ -79,6 +79,9 @@
 | `source_url` / `source_title` | string | 連携元の参照 URL / タイトル — 同上、nullable |
 | `context_quote` | string | 連携元の引用テキスト (≤200 文字) — 同上、nullable |
 | `output_language` | string | AI が生成したコンテンツ (meaning_vi/example_translation...) の言語 — canonical BCP 47。未設定 = legacy `vi`。フィールド名 `_vi` は Anki テンプレート互換のため legacy 名のまま |
+| `_query_schema_version` | number | Server-managed query metadata version。現行値は `1` |
+| `_query_duplicate_key` | string | `word` → `term` → `title` の最初の non-empty 値を trim + lowercase した重複検索 key |
+| `_query_card_count` | number | 空でない `card_type_ids` の件数。Dashboard の `sum()` と History summary に使用 |
 | `created_at` | timestamp | 作成日時 |
 | `updated_at` | timestamp | 更新日時 |
 | `status` | string | ステータス: 下の enum 参照 |
@@ -120,11 +123,12 @@ Anki カードの種類を定義 (例: Word→Meaning、Meaning→Word、Cloze..
 |---|---|---|
 | `id` | string (PK) | Document ID (seed 時 `{defaultId}__{uid}`) |
 | `user_id` | string | Firebase Auth UID (または `__defaults__`) |
-| `code` | string | 識別コード。同じ form type でも言語ごとの重複を許可する。default backfill の論理同一性は `form_type + language + code` (DB 制約による unique は未強制) |
-| `name` | string | 表示名 |
+| `code` | string | 識別コード。同じ form type でも言語ペアごとの重複を許可する。default backfill の論理同一性は `form_type + language + output_language + code` (DB 制約による unique は未強制) |
+| `name` | string | 表示名。`{study_language}` / `{output_language}` placeholder を利用可能 |
 | `description` | string | 説明 |
 | `form_type` | string | どの form type に属するか |
-| `language` | string | 適用する canonical BCP 47 code (nullable = 全言語) |
+| `language` | string | 適用する学習言語の canonical BCP 47 code (nullable = 全学習言語) |
+| `output_language` | string | 適用する AI 出力言語の canonical BCP 47 code (nullable = 全出力言語) |
 | `is_default` | boolean | デフォルトで選択されるか |
 | `is_active` | boolean | — |
 | `sort_order` | number | 表示順序 |
@@ -255,13 +259,22 @@ Sub-collection ではないため、field ごとの document ID や `content_typ
 | `is_session_persistent` | boolean | 作成成功後も次の入力用に値を保持するか |
 | `sort_order` | number | フォーム上のフィールド順序 |
 | `placeholder` | string? | Placeholder テキスト |
-| `data_source` | string? | 標準 control の source (`decks` / `categories` / `card_types` / `topics`) |
+| `data_source` | string? | 標準 control の source (`study_languages` / `output_languages` / `decks` / `categories` / `card_types` / `topics`) |
 | `options` | string[]? | Custom dropdown の static options |
 
 Built-in は `code` から既存の `FormType` / AI schema / generation strategy を維持し、`fields[]` は表示順、
 label、placeholder、required、session persistence を制御します。Language は `language` + `word`、IT は
 `term`、General は `title` が必須です。Custom Content Type は少なくとも 1 つの core input が必要です。
 未対応 type/control/data source や重複 `field_key` は保存時と render 前に明示的に拒否します。
+
+`data_source: 'output_languages'` は任意の `field_key` を Output Language control として解決します。
+この宣言を持つ Content Type だけが Create で一時切替を表示し、宣言がない Content Type は
+`settings/{uid}.ai_output_language` の default をそのまま使用します。Built-in / custom の `code` や
+`form_type` による runtime 分岐は行いません。`is_session_persistent` が `true` なら生成成功後も選択を保持し、
+`false` なら default に戻します。既存の user snapshot は global default の変更では自動更新されません。
+Feature 導入前の source-linked snapshot には、one-time の
+`npm run migrate:output-language-controls` を dry-run してから明示承認後に `--apply` します。
+Migration は source の `data_source` 宣言から対象を決め、既存 field/custom Content Type を上書きしません。
 
 ---
 
@@ -393,13 +406,18 @@ v2.0 から、`settings` コレクションは権限と目的が異なる 3 種�
 | `allow_duplicate` | boolean | `false` |
 | `anki_connect_url` | string | `http://localhost:8765` |
 | `study_languages` | object[] | `[{ code, display_name, enabled, sort_order }]` — user ごとの BCP 47 学習言語。未設定時は `en`/`ja`/`zh` の legacy defaults |
-| `ai_output_language` | string | `'vi'` — AI 生成コンテンツの出力言語 (canonical BCP 47)。`StudyLanguageProvider` がリアルタイム読み込みし、client が `/api/generate` に送信 |
+| `ai_output_languages` | object[] | `[{ code, display_name, enabled, sort_order }]` — Study Language とは独立した BCP 47 出力言語一覧。表示名・有効状態・順序は user ごとに設定 |
+| `ai_output_language` | string | `'vi'` — 有効な `ai_output_languages` の中から明示的に選ぶ default。Create の Content Type に output control がある場合のみ一時上書きでき、client が実効値を `/api/generate` に送信 |
 | `pending_anki_note_deletions` | number[] | `[]` — Entry 削除時に Anki が offline/CORS 失敗だった note ID の retry queue。`POST /api/history/bulk-delete` が Admin SDK の `arrayUnion` で追加し、Sidebar Sync が client-side AnkiConnect で削除後に `arrayRemove` で処理済み ID のみ除去 |
 | `line_user_id` | string? | LINE webhook が連携時に保存する通知先 user ID。Client UI には値そのものを表示しない |
 | `line_notifications_enabled` | boolean | `false` — user ごとの自動通知 opt-in |
 | `line_timezone` | string | user の IANA timezone。未設定・不正値は cron で `UTC` にフォールバック |
 | `line_last_push_key` | string? | 最後に成功した自動通知のローカル日時/時 key。同一時間帯の重複送信防止 |
 | `line_last_test_at` | timestamp? | 手動テスト送信の 60 秒 cooldown を transaction で判定する server timestamp |
+
+Legacy document に `ai_output_languages` がない場合、読み取り時に `ai_output_language` を有効な 1 要素へ
+正規化します。両方がない場合は `vi` を使用します。保存時は default が有効な一覧に含まれることを検証するため、
+既存ユーザーへの migration は不要です。
 
 **`settings/global`** — グローバルフィーチャーフラグ (全ユーザー読み込み; `POST /api/admin/global-config` 経由で **管理者のみ書き込み**; `GlobalConfigProvider` 経由でクライアントがリアルタイム読み込み):
 
@@ -412,6 +430,8 @@ v2.0 から、`settings` コレクションは権限と目的が異なる 3 種�
 | `line_notifications_available` | boolean | `true` | グローバル gate: オフ → 連携コード発行・手動送信・cron 配信を停止 |
 | `line_schedule_hours` | number[] | `[]` | 全 user 共通の配信時刻 (0〜23、各 user の `line_timezone` で評価) |
 | `line_words_per_notification` | number | `5` | 1 通あたりの単語数 (1〜10) |
+| `entry_query_schema_version` | number? | — | 全 Entry の query metadata backfill が検証済みであることを示す marker。現行値は `1` |
+| `entry_query_schema_ready_at` | timestamp? | — | Marker を有効化したサーバー時刻 |
 
 **`settings/default`** — アプリ所有者の legacy SECRETS (**管理者のみ読み書き** — ルールが非管理者をブロック):
 
@@ -467,6 +487,11 @@ Source file: `docs/database-diagram.txt`
 - `entries` は最大のコレクションで、多くの optional フィールドを持ちます —
   言語固有のフィールド (pinyin、hiragana...) は対応する `language` の場合のみ値を持ちます。
   英語・中国語・日本語以外は汎用 AI schema (`ipa` など) を使用し、未設定 field を前提にしてはいけません。
+- `_query_*` は Entry query 用の予約 namespace。API request / Content Type field として受け付けず、
+  server-side Entry writer が primary text と `card_type_ids` から毎回再計算する。新規・更新 writer を追加する場合も
+  `deriveEntryQueryMetadata` を通し、クライアント入力をそのまま保存しない。Partial update の writer は
+  ownership read、既存値との merge、metadata derivation、update を同一 Firestore transaction 内で行い、
+  transaction retry 時も最新 snapshot から再計算する。
 - `settings` はシングルトンではなくなりました — 3 種類の doc (`{uid}` / `global` / `default`)、Settings セクション参照。
 
 ---
@@ -478,7 +503,8 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 | Collection / doc | read | write |
 |---|---|---|
-| `entries`、`notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
+| `entries` | 所有者 | **deny** — query metadata と source field の整合性を保つためサーバー API のみ書き込み |
+| `notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
 | `review_events` | 所有者 | **deny** — サーバーのみ書き込み (Admin SDK) |
 | `line_link_codes` | **deny** | **deny** — サーバーのみアクセス (Admin SDK) |
 | `decks`/`categories`/`card_types`/`topics` | 所有者 **+ `__defaults__` は管理者も** | read と同じ |
@@ -491,6 +517,27 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 - **ルール内の管理者** = カスタムクレーム `request.auth.token.admin == true` (ルールは env を読めない
   → サーバー側の `ADMIN_EMAIL` チェックとは異なる)。`scripts/set-admin-claim.ts` で設定、再ログインが必要。
-- **Composite index**: Runtime の `user_content_types` query は `user_id` filter のみで、取得後に
-  in-memory sort するため新しい composite index は不要です。`firestore.indexes.json` には
-  `entries (user_id ASC, created_at DESC)` と旧 `content_types (is_active ASC, sort_order ASC)` index が残っています。
+- **Entry query metadata migration**: `npm run migrate:entry-query-fields` は既定で read-only dry-run。
+  Entry、`content_types`、`user_content_types` の `_query_*` collision を検出し、更新候補を表示する。
+  `--apply` は明示承認後のみ使用し、
+  guarded update 後の再 scan が 0 candidate / 0 collision / 0 failure の場合だけ
+  `settings/global.entry_query_schema_version = 1` と `entry_query_schema_ready_at` を設定する。
+  Marker がない間、duplicate lookup と Dashboard は legacy Entry を欠落させない projected fallback を使う。
+- **Composite indexes**: `firestore.indexes.json` は次の Entry query shape を定義する。
+    - `(user_id ASC, created_at DESC)` — Dashboard recent と History base page。
+    - `(user_id ASC, _query_duplicate_key ASC)` — marker 後の duplicate `in` lookup。
+    - `(user_id ASC, _query_card_count ASC)` — Dashboard の card count `sum()`。
+    - `(user_id ASC, status ASC[, created_at DESC])` — Dashboard synced count と History status filter。
+    - `(user_id ASC, form_type ASC[, status ASC], created_at DESC)` — History Content Type filter。
+    - `(user_id ASC, form_type ASC, language ASC[, status ASC][, created_at DESC])` —
+      Dashboard language count と History language filter。
+    - `(user_id ASC, category_id ASC[, status ASC], created_at DESC)` —
+      History category filter。
+    - `(user_id ASC, category_id ASC, form_type ASC[, status ASC], created_at DESC)` —
+      History category + Content Type filter。
+    - `(user_id ASC, category_id ASC, form_type ASC, language ASC[, status ASC], created_at DESC)` —
+      History category + Language Content Type filter。
+  Runtime の `user_content_types` query は `user_id` filter 後に in-memory sort するため専用 composite index は不要。
+  旧 `content_types (is_active ASC, sort_order ASC)` index は global default load 用に残す。
+- **Single-field index exemption**: 大きな media field `audio_url`、`audio_example_url`、`image_url` は
+  query / sort に使用しないため index を無効化する。API の list / Dashboard query もこれらを projection しない。

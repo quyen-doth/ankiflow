@@ -1,61 +1,42 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { withAuth } from '@/lib/auth-guard'
-import { normalizeTerm } from '@/lib/entries/duplicate'
+import { DUPLICATE_LOOKUP_BATCH_LIMIT } from '@/lib/entries/duplicate'
+import { lookupEntryDuplicates } from '@/lib/entries/duplicateLookup'
 
-interface DuplicateEntry {
-  id: string
-  word: string
-  anki_deck: string
-  status: string
-  created_at: string | null
-}
+const targetSchema = z.string().trim().min(1)
+const bodySchema = z.object({
+  word: targetSchema.optional(),
+  words: z.array(targetSchema).max(DUPLICATE_LOOKUP_BATCH_LIMIT).optional(),
+})
 
 export const POST = withAuth(async (request, _ctx, uid) => {
   try {
-    const body = await request.json()
-    const { word, words } = body as { word?: string; words?: string[] }
+    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})))
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request body', issues: parsed.error.issues },
+        { status: 400 },
+      )
+    }
+    const { word, words } = parsed.data
 
     // チェック対象の単語一覧: `words` (batch) を優先し、`word` (single) に fallback。
-    const targets: string[] = Array.isArray(words) ? words : word ? [word] : []
+    const targets = words ?? (word ? [word] : [])
     if (targets.length === 0) {
       return NextResponse.json({ error: 'Missing word' }, { status: 400 })
     }
 
-    const db = getAdminDb()
-
-    // グローバルチェック: user の全 entries を走査し、deck/言語では絞らない。
-    const snapshot = await db.collection('entries')
-      .where('user_id', '==', uid)
-      .get()
-
-    const allEntries = snapshot.docs.map(doc => {
-      const data = doc.data()
-      return {
-        normalized: normalizeTerm(data.word || data.term || data.title || ''),
-        entry: {
-          id: doc.id,
-          word: data.word || data.term || data.title,
-          anki_deck: data.anki_deck,
-          status: data.status,
-          created_at: data.created_at?.toDate?.()?.toISOString() || null,
-        } as DuplicateEntry,
-      }
-    })
-
-    const matchFor = (w: string): DuplicateEntry[] => {
-      const wl = normalizeTerm(w)
-      return allEntries.filter(e => e.normalized === wl).map(e => e.entry)
-    }
+    const results = await lookupEntryDuplicates(getAdminDb(), uid, targets)
 
     // Batch: 単語ごとの結果配列を返す。
-    if (Array.isArray(words)) {
-      const results = words.map(w => ({ word: w, duplicates: matchFor(w) }))
+    if (words !== undefined) {
       return NextResponse.json({ results })
     }
 
     // Single: 後方互換。
-    const duplicates = matchFor(targets[0])
+    const duplicates = results[0]?.duplicates ?? []
     return NextResponse.json({
       isDuplicate: duplicates.length > 0,
       duplicates,

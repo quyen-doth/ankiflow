@@ -85,6 +85,25 @@ describe('Content Type constants', () => {
   })
 })
 
+describe('Content Type reserved Entry fields', () => {
+  it('system query prefix を field_key として保存できない', () => {
+    const result = validateContentTypeConfig(validConfig({
+      fields: [{
+        ...validConfig().fields[0],
+        field_key: '_query_custom',
+      }],
+    }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toContainEqual({
+        path: 'fields.0.field_key',
+        message: 'Field key uses a reserved application prefix',
+      })
+    }
+  })
+})
+
 describe('default global Content Types', () => {
   it('既存 seed と同じ built-in IDs、codes、mode、field keys を保持する', () => {
     expect(DEFAULT_CONTENT_TYPES.map(contentType => ({
@@ -97,13 +116,31 @@ describe('default global Content Types', () => {
         id: FormType.LANGUAGE,
         code: 'language',
         mode: 'batch',
-        fields: ['language', 'anki_deck', 'category_id', 'tags', 'word', 'note', 'card_type_ids'],
+        fields: [
+          'language',
+          'output_language',
+          'anki_deck',
+          'category_id',
+          'tags',
+          'word',
+          'note',
+          'card_type_ids',
+        ],
       },
       {
         id: FormType.IT,
         code: 'it',
         mode: 'single',
-        fields: ['anki_deck', 'topic_ids', 'difficulty', 'term', 'definition', 'keywords', 'card_type_ids'],
+        fields: [
+          'output_language',
+          'anki_deck',
+          'topic_ids',
+          'difficulty',
+          'term',
+          'definition',
+          'keywords',
+          'card_type_ids',
+        ],
       },
       {
         id: FormType.GENERAL,
@@ -136,7 +173,8 @@ describe('default global Content Types', () => {
         name: 'Language',
         description: 'English, Chinese, and Japanese vocabulary',
         fields: [
-          { key: 'language', label: 'Language', placeholder: null },
+          { key: 'language', label: 'Study language', placeholder: null },
+          { key: 'output_language', label: 'AI output language', placeholder: null },
           { key: 'anki_deck', label: 'Anki Deck', placeholder: null },
           { key: 'category_id', label: 'Category', placeholder: null },
           { key: 'tags', label: 'Tags', placeholder: 'Add a tag...' },
@@ -150,6 +188,7 @@ describe('default global Content Types', () => {
         name: 'IT Vocabulary',
         description: 'Programming and technology terms',
         fields: [
+          { key: 'output_language', label: 'AI output language', placeholder: null },
           { key: 'anki_deck', label: 'Anki Deck', placeholder: null },
           { key: 'topic_ids', label: 'Topics', placeholder: null },
           { key: 'difficulty', label: 'Difficulty', placeholder: null },

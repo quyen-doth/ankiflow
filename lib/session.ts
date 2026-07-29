@@ -5,7 +5,7 @@ export interface SessionState {
   language?: string
   /** Ephemeral display name for AI prompts; intentionally not persisted in SESSION_KEYS. */
   languageName?: string
-  /** AI 出力言語。SESSION_KEYS には含めず、ユーザー設定から毎回注入する。 */
+  /** Content Type が control を持つ場合の一時 AI 出力言語。 */
   outputLanguage?: string
   /** AI 出力言語の表示名。prompt 用の一時データとしてのみ使用する。 */
   outputLanguageName?: string
@@ -23,7 +23,15 @@ export interface SessionState {
 type SessionKey = keyof SessionState
 
 export const SESSION_CONFIG_KEYS = [
-  'categoryId', 'language', 'deckId', 'cardTypeIds', 'topicIds', 'topicNames', 'difficulty', 'tags',
+  'categoryId',
+  'language',
+  'outputLanguage',
+  'deckId',
+  'cardTypeIds',
+  'topicIds',
+  'topicNames',
+  'difficulty',
+  'tags',
 ] as const satisfies readonly SessionKey[]
 
 export type SessionConfigKey = (typeof SESSION_CONFIG_KEYS)[number]

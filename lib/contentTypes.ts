@@ -5,6 +5,7 @@ import {
 } from '@/lib/constants'
 import { resolveBuiltinAiOutputProfiles } from '@/lib/ai-agent/builtinOutputProfiles'
 import { aiOutputProfilesSchema, cloneAiOutputProfiles } from '@/lib/ai-agent/outputProfiles'
+import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
 import { FormType } from '@/types'
 import type { ContentType, UserContentType } from '@/types'
 
@@ -69,7 +70,13 @@ const fieldTypeSchema = z.enum([
 ])
 
 export const formFieldConfigSchema = z.object({
-  field_key: z.string().trim().min(1, 'Field key is required'),
+  field_key: z.string()
+    .trim()
+    .min(1, 'Field key is required')
+    .refine(
+      key => !isReservedEntryQueryField(key),
+      'Field key uses a reserved application prefix',
+    ),
   label: z.string().trim().min(1, 'Field label is required'),
   type: fieldTypeSchema,
   is_required: z.boolean(),
@@ -264,13 +271,14 @@ export const DEFAULT_CONTENT_TYPES: ContentTypeSeedDefinition[] = [
     is_active: true,
     ai_output_profiles: resolveBuiltinAiOutputProfiles(FormType.LANGUAGE)!,
     fields: [
-      { field_key: 'language', label: 'Language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: null, placeholder: null },
-      { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 2, data_source: 'decks', placeholder: null },
-      { field_key: 'category_id', label: 'Category', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 3, data_source: 'categories', placeholder: null },
-      { field_key: 'tags', label: 'Tags', type: 'tags', is_required: false, is_session_persistent: true, sort_order: 4, data_source: null, placeholder: 'Add a tag...' },
-      { field_key: 'word', label: 'Vocabulary item', type: 'text', is_required: true, is_session_persistent: false, sort_order: 5, data_source: null, placeholder: 'Enter a word...' },
-      { field_key: 'note', label: 'Note', type: 'text', is_required: false, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'Personal note (optional)' },
-      { field_key: 'card_type_ids', label: 'Card types', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 7, data_source: 'card_types', placeholder: null },
+      { field_key: 'language', label: 'Study language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'study_languages', placeholder: null },
+      { field_key: 'output_language', label: 'AI output language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 2, data_source: 'output_languages', placeholder: null },
+      { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 3, data_source: 'decks', placeholder: null },
+      { field_key: 'category_id', label: 'Category', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 4, data_source: 'categories', placeholder: null },
+      { field_key: 'tags', label: 'Tags', type: 'tags', is_required: false, is_session_persistent: true, sort_order: 5, data_source: null, placeholder: 'Add a tag...' },
+      { field_key: 'word', label: 'Vocabulary item', type: 'text', is_required: true, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'Enter a word...' },
+      { field_key: 'note', label: 'Note', type: 'text', is_required: false, is_session_persistent: false, sort_order: 7, data_source: null, placeholder: 'Personal note (optional)' },
+      { field_key: 'card_type_ids', label: 'Card types', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 8, data_source: 'card_types', placeholder: null },
     ],
   },
   {
@@ -284,13 +292,14 @@ export const DEFAULT_CONTENT_TYPES: ContentTypeSeedDefinition[] = [
     is_active: true,
     ai_output_profiles: resolveBuiltinAiOutputProfiles(FormType.IT)!,
     fields: [
-      { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'decks', placeholder: null },
-      { field_key: 'topic_ids', label: 'Topics', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 2, data_source: 'topics', placeholder: null },
-      { field_key: 'difficulty', label: 'Difficulty', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 3, data_source: null, placeholder: null },
-      { field_key: 'term', label: 'Term', type: 'text', is_required: true, is_session_persistent: false, sort_order: 4, data_source: null, placeholder: 'e.g. REST API, Docker...' },
-      { field_key: 'definition', label: 'Short definition', type: 'text', is_required: true, is_session_persistent: false, sort_order: 5, data_source: null, placeholder: 'A brief description...' },
-      { field_key: 'keywords', label: 'Keywords', type: 'tags', is_required: false, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'Add a related keyword...' },
-      { field_key: 'card_type_ids', label: 'Card types', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 7, data_source: 'card_types', placeholder: null },
+      { field_key: 'output_language', label: 'AI output language', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 1, data_source: 'output_languages', placeholder: null },
+      { field_key: 'anki_deck', label: 'Anki Deck', type: 'dropdown', is_required: true, is_session_persistent: true, sort_order: 2, data_source: 'decks', placeholder: null },
+      { field_key: 'topic_ids', label: 'Topics', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 3, data_source: 'topics', placeholder: null },
+      { field_key: 'difficulty', label: 'Difficulty', type: 'dropdown', is_required: false, is_session_persistent: true, sort_order: 4, data_source: null, placeholder: null },
+      { field_key: 'term', label: 'Term', type: 'text', is_required: true, is_session_persistent: false, sort_order: 5, data_source: null, placeholder: 'e.g. REST API, Docker...' },
+      { field_key: 'definition', label: 'Short definition', type: 'text', is_required: true, is_session_persistent: false, sort_order: 6, data_source: null, placeholder: 'A brief description...' },
+      { field_key: 'keywords', label: 'Keywords', type: 'tags', is_required: false, is_session_persistent: false, sort_order: 7, data_source: null, placeholder: 'Add a related keyword...' },
+      { field_key: 'card_type_ids', label: 'Card types', type: 'checkbox_group', is_required: false, is_session_persistent: true, sort_order: 8, data_source: 'card_types', placeholder: null },
     ],
   },
   {

@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useStudyLanguages } from '@/components/providers/StudyLanguageProvider'
 import { loadPendingEntry, clearPendingEntry } from '@/lib/pendingEntry'
 import { findEntryContentType } from '@/lib/entryCustomFields'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
-import { matchesLanguageScope } from '@/lib/studyLanguages'
+import { filterCardTypesByScope } from '@/lib/cardTypeFilter'
+import { renderCardTypeName } from '@/lib/cardTypeName'
 import { normalizeEntryAliases } from '@/lib/entryAliases'
 import type { PendingEntry } from '@/lib/pendingEntry'
 import { FormType } from '@/types'
@@ -49,6 +51,13 @@ export function mapPendingEntryToPreview(
 
 export function usePreviewEntry(): PreviewEntryState {
   const { user, loading: authLoading } = useAuth()
+  const {
+    languages,
+    aiOutputLanguages,
+    loading: languagesLoading,
+  } = useStudyLanguages()
+  const languagesRef = useRef(languages)
+  const outputLanguagesRef = useRef(aiOutputLanguages)
   const [entry, setEntry] = useState<Partial<Entry>>({})
   const [cardTypes, setCardTypes] = useState<CardTypeItem[]>([])
   const [contentType, setContentType] = useState<UserContentType | null>(null)
@@ -57,7 +66,12 @@ export function usePreviewEntry(): PreviewEntryState {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (authLoading || !user) return
+    languagesRef.current = languages
+    outputLanguagesRef.current = aiOutputLanguages
+  }, [aiOutputLanguages, languages])
+
+  useEffect(() => {
+    if (authLoading || languagesLoading || !user) return
     const uid = user.uid
     async function init() {
       setIsLoading(true)
@@ -104,21 +118,32 @@ export function usePreviewEntry(): PreviewEntryState {
           code?: string
           sort_order?: number
           is_active?: boolean
+          is_default?: boolean
           language?: string | null
+          output_language?: string | null
           template?: CardTypeConfig['template']
         }
 
-        const fetchedCardTypes: FetchedCardType[] = snapshot.docs
-          .map(doc => ({ id: doc.id, ...(doc.data() as Omit<FetchedCardType, 'id'>) }))
-          .filter(ct => {
-            if (ct.is_active === false) return false
-            return matchesLanguageScope(ct.language, pending.language)
-          })
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        const fetchedCardTypes = filterCardTypesByScope<FetchedCardType>(
+          snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...(doc.data() as Omit<FetchedCardType, 'id'>),
+          })),
+          {
+            studyLanguage: pending.language,
+            outputLanguage: pending.outputLanguage,
+          },
+        )
 
         setCardTypes(fetchedCardTypes.map(ct => ({
           id: ct.id,
-          name: ct.name,
+          name: renderCardTypeName(ct.name, {
+            studyLanguage: pending.language,
+            outputLanguage: pending.outputLanguage,
+            cardType: ct,
+            languages: languagesRef.current,
+            outputLanguages: outputLanguagesRef.current,
+          }),
           description: ct.description,
           code: ct.code || ct.id,
           template: ct.template,
@@ -138,7 +163,7 @@ export function usePreviewEntry(): PreviewEntryState {
     }
 
     init()
-  }, [user, authLoading])
+  }, [user, authLoading, languagesLoading])
 
   return {
     entry,

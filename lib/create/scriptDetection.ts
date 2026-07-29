@@ -65,3 +65,29 @@ export function detectByScript(
     confidence: 1,
   }))
 }
+
+/**
+ * 学習言語の文字体系と term の文字体系が確実に一致する場合のみ true。
+ * true なら AI での term 解決を丸ごと省略できる。
+ *
+ * Latin 文字の学習言語では常に false — "chó" と "dog" はどちらも Latin だが、
+ * 学習言語が英語なら前者は翻訳が必要。文字体系だけでは判断できない。
+ * 漢字のみの語は日本語・中国語のどちらでもありうるため、その両方で true にする
+ * (どちらを選ぶかは user が選んだ学習言語が決める)。
+ */
+export function isScriptCompatibleWithTarget(term: string, targetCode: string): boolean {
+  const item = term.trim()
+  if (!item) return false
+
+  const target = primarySubtag(targetCode)
+  if (!target) return false
+
+  const rule = SCRIPT_RULES.find(candidate => candidate.pattern.test(item))
+  if (rule) return rule.code === target
+
+  if (HAS_HAN.test(item) && HAN_ONLY.test(item)) {
+    return target === 'ja' || target === 'zh'
+  }
+
+  return false
+}

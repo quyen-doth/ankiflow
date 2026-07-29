@@ -70,13 +70,14 @@ Browser UI ─┬→ AnkiConnect (ユーザーの localhost:8765 — 直接呼�
 ### データフロー: 作成 → プレビュー
 
 1. `app/create/page.tsx` が `user_content_types` を `where('user_id', '==', uid)` で読み込み、`code` から built-in/custom routing を解決
-2. `lib/create/formBlueprint.ts` が選択した document の `fields[]` から表示順、label、required、session persistence、標準 control を構築し、API generation strategy の payload に workspace `content_type_id` を含める
-3. ユーザーが共通 `CardForm` に入力。Primary は `word` / `term` または custom primary、追加 field は `dynamicFields` に含める
-4. 送信時、`POST /api/generate` が `user_content_types/{content_type_id}` の owner/routing/profile を server-side で検証し、`ai_output_profiles` から英語 prompt + Zod tool schema を構築して Claude で enrich (General の local strategy を除く)。Profile 未設定 document/request は built-in/generic profile を materialize して同じ engine を使用
-5. Provider は model output を schema 検証し、primary を input から復元、legacy alias (`word_type_vi` / `definition_vi`) を補完する
-6. `lib/pendingEntry.ts` 経由で `localStorage` に結果を保存 (`ankiflow_pending_result`)
-7. ブラウザが `app/preview/page.tsx` にリダイレクトし、pending entry を読み込み。Application/session metadata を AI content より後に merge してから pending をクリア
-8. ユーザーがカードを編集、画像/音声を選択、その後:
+2. `StudyLanguageProvider` が `settings/{uid}` から Study Language 一覧と、独立した AI Output Language 一覧 + 明示 default をリアルタイムで読み込む。Legacy settings は読み取り境界で default 1 件へ正規化する
+3. `lib/create/formBlueprint.ts` が選択した document の `fields[]` から表示順、label、required、session persistence、標準 control を構築し、API generation strategy の payload に workspace `content_type_id` を含める。`data_source: 'output_languages'` を宣言した任意の built-in/custom Content Type だけが一時切替を表示し、宣言がない場合は Settings default を使用する
+4. ユーザーが共通 `CardForm` に入力。Primary は `word` / `term` または custom primary、追加 field は `dynamicFields` に含める。Card Type は `language` と実効 `output_language` の両方が一致するものだけを表示し、各 scope が `null` の Card Type は universal として残す。不一致の default Card Type へはフォールバックしない
+5. 送信時、実効 Output Language を single/batch payload と pending data に固定する。`POST /api/generate` は `user_content_types/{content_type_id}` の owner/routing/profile を server-side で検証し、`ai_output_profiles` から英語 prompt + Zod tool schema を構築して Claude で enrich (General の local strategy を除く)。Profile 未設定 document/request は built-in/generic profile を materialize して同じ engine を使用
+6. Provider は model output を schema 検証し、primary を input から復元、legacy alias (`word_type_vi` / `definition_vi`) を補完する
+7. `lib/pendingEntry.ts` / `lib/pendingBatch.ts` 経由で `localStorage` に結果を保存 (`ankiflow_pending_result` / `ankiflow_pending_batch`)。Preview が構築する `entries.output_language` はこの実効値を引き継ぐ
+8. ブラウザが single/batch preview にリダイレクトし、pending data を読み込み。Application/session metadata を AI content より後に merge してから pending をクリア
+9. ユーザーがカードを編集、画像/音声を選択、その後:
     - **エクスポート (Anki が開いている):** ブラウザが `createNotesForEntry` を呼び出し (メディア保存 + ノート構築 + デック作成 + AnkiConnect 経由でノート追加) → `POST /api/entries/save` with `status: 'synced'` + note ids
     - **保存 (Anki が閉じている — deferred):** `POST /api/entries/save` with status `reviewed`; sidebar の Sync ボタン経由で後で同期 (`GET /api/entries/sync` → ブラウザがノート作成 → `POST /api/entries/sync`)
 
@@ -85,6 +86,7 @@ Browser UI ─┬→ AnkiConnect (ユーザーの localhost:8765 — 直接呼�
 `lib/session.ts` は Content Type の runtime `form_type` / `code` をキーとして `localStorage` にフォーム状態を保存します。
 `fields[].is_session_persistent` が `true` の core/config field は生成成功後も保持し、`false` の field は reset します。
 Form 定義から削除された hidden field は generate payload に含めません。入力途中の nonpersistent core field は draft cache が復元します。
+Output Language control も同じ規則に従い、nonpersistent の一時選択は生成成功後に Settings default へ戻ります。
 
 ### Content Type の scope と lifecycle
 
@@ -102,6 +104,11 @@ Form 定義から削除された hidden field は generate payload に含めま�
   Language は study language subtag と一致する profile (`en` / `zh` / `ja`) を優先し、それ以外は `default`。
   Primary field は全 profile で必須、reserved application metadata key は不可。既存 global/user built-in の
   profile backfill は別の merge-only migration を使用する。
+- Output languages: `settings/{uid}.ai_output_languages` は Study Language から独立し、
+  `ai_output_language` が有効な一覧内の explicit default。Content Type の output selector は
+  `fields[].data_source = 'output_languages'` だけで有効化し、runtime は Content Type の code/form type を
+  hardcode しない。Card Type Manager の output scope もこの一覧を使用する。Global default を変更しても
+  既存 `user_content_types` snapshot は自動更新されない。
 - Routing: コピー先 document ID ではなく `code` を使用。Built-in alias (`language` / `it` / `general`) は
   `FormType` enum に解決し、custom code は lowercase snake_case のまま使用する。`code` は作成後に変更不可。
   同じ route に解決される競合 documents だけを非表示にして警告し、競合していない types は利用を継続する。
@@ -154,6 +161,9 @@ npm run migrate:ai-output-profiles      # built-in global/user profile update �
 npm run migrate:ai-output-profiles -- --apply  # 明示承認済みで、field 未設定 document だけを update
 npm run migrate:content-type-english    # 既知の旧ベトナム語 built-in metadata update を dry-run
 npm run migrate:content-type-english -- --apply  # レビュー済みの exact-match update だけを適用
+npm run migrate:output-language-controls  # 既存 Content Type の不足 output control を dry-run
+npm run migrate:output-language-controls -- --uid <uid>  # 1 user の snapshot だけを確認
+npm run migrate:output-language-controls -- --uid <uid> --apply  # 承認済み update を適用
 npm run user:create -- <email>          # 公開 signup を開かず内部アカウントを対話形式で作成 + seed
 npx tsx scripts/set-admin-claim.ts <email>       # 管理者クレームを設定 (その後再ログイン)
 npx tsx scripts/migrate-user-data.ts <uid> [--dry-run]  # 古いシングルユーザーデータを 1 つのアカウントに割り当て
@@ -186,13 +196,23 @@ custom Content Type、General document を変更しません。必ず dry-run ou
 customization、ID、code、ownership、AI output profile は変更せず、document の作成・削除も行いません。
 必ず dry-run output をレビューし、Firestore update の明示承認を得てから適用してください。
 
+`migrate:output-language-controls` は global `content_types` と source-linked `user_content_types` を比較し、
+`data_source: 'output_languages'` の system control だけを merge-only で補います。対象は Content Type の
+code/form type ではなく、global/default の field 宣言から決定します。既存 control、source link のない custom
+Content Type、同名 field の customization は上書きしません。引数なしは全 user の read-only dry-run、
+`--uid <uid>` は user snapshot の読み取りを 1 user に限定します。`--apply` は transaction 内で fields と
+source link を再確認してから update するため、必ず dry-run の全 path/conflict をレビューし、Firestore update の
+明示承認を得てから実行してください。この script は feature rollout 用の one-time migration であり、ユーザーが
+後から control を削除した後に再実行しません。
+
 `sync-admin-defaults.ts` は one-time migration。`ADMIN_EMAIL` の `/admin` "My workspace" を
 `__defaults__` の正確な snapshot に置き換え、既存 user には ID または論理キーで不足している
 master data だけを `create` する。引数なしでは読み取りと差分表示のみで、Firestore への書き込みは
 行わない。`--apply` は古い template の削除を含むため、必ず dry-run の全 path をレビューし、
 Firestore の書き込み・削除について明示的な承認を得てから 1 回だけ実行する。既存 template がある
 collection を空にする差分は `--apply` だけでは拒否され、意図的な場合に限り `--allow-empty` も指定する。
-Card type の論理キーは `form_type + language + code` で、同じ code を持つ別言語の card type を混同しない。
+Card type の論理キーは `form_type + language + output_language + code` で、同じ code を持つ別の
+学習・出力言語ペアの card type を混同しない。
 既存 user への backfill は document ごとの create とし、計画後に同じ document が作成された競合だけを
 skip して他の user の create を継続する。既存 user document の update/delete は行わない。
 

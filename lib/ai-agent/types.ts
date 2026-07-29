@@ -39,6 +39,20 @@ export interface LanguageDetection {
   confidence: number
 }
 
+export interface ResolveTermsInput {
+  items: string[]
+  /** 学習言語 — 入力の言語ではなく、こちらが正 (authoritative)。 */
+  targetLanguage: LanguageDetectionCandidate
+}
+
+export interface TermResolution {
+  index: number
+  /** targetLanguage における語。翻訳が不要なら入力そのもの。 */
+  resolved_term: string
+  source_language: LanguageCode
+  was_translated: boolean
+}
+
 export interface SuggestInstructionInput {
   fieldKey: string
   type: 'string' | 'string_array'
@@ -53,5 +67,6 @@ export interface SuggestInstructionInput {
 export interface IAIAgentProvider {
   generateCard(input: GenerateCardInput): Promise<Record<string, unknown>>
   detectLanguages(input: DetectLanguagesInput): Promise<LanguageDetection[]>
+  resolveTerms(input: ResolveTermsInput): Promise<TermResolution[]>
   suggestInstruction(input: SuggestInstructionInput): Promise<string>
 }

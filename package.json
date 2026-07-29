@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "migrate:ai-output-profiles": "tsx scripts/migrate-ai-output-profiles.ts",
     "migrate:content-type-english": "tsx scripts/migrate-content-type-english.ts",
+    "migrate:output-language-controls": "tsx scripts/backfill-output-language-controls.ts",
     "migrate:user-content-types": "tsx scripts/migrate-user-content-types.ts",
+    "migrate:entry-query-fields": "tsx scripts/backfill-entry-query-fields.ts",
     "user:create": "tsx scripts/create-user.ts",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },

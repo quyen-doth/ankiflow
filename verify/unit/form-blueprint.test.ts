@@ -149,7 +149,7 @@ describe('getBlueprintForContentType', () => {
     expect(bp.configBlocks.map(block => block.kind)).toEqual(['language'])
   })
 
-  it('language + deck 隣接 → 同じ row にまとめ、span-2 control は full width のまま', () => {
+  it('study/output language は data source から同じ row にまとめる', () => {
     const bp = getBlueprintForContentType(makeCt({
       id: FormType.LANGUAGE,
       code: 'language',
@@ -158,10 +158,12 @@ describe('getBlueprintForContentType', () => {
 
     const [first, ...rest] = bp.configBlocks
     expect(first.kind).toBe('row')
-    // row 内は language → deck の 2 カラム
-    expect(first.kind === 'row' && first.blocks.map(leaf => leaf.kind)).toEqual(['language', 'deck'])
+    expect(first.kind === 'row' && first.blocks.map(leaf => leaf.kind)).toEqual([
+      'language',
+      'outputLanguage',
+    ])
     // 残りは full width の block
-    expect(rest.map(block => block.kind)).toEqual(['category', 'tags', 'cardTypes'])
+    expect(rest.map(block => block.kind)).toEqual(['deck', 'category', 'tags', 'cardTypes'])
   })
 
   it('span-1 control が 3 つ連続 → 2 つで 1 row、余りは full width', () => {
@@ -186,25 +188,60 @@ describe('getBlueprintForContentType', () => {
       fields: defaultFields(FormType.IT),
     }))
 
-    // deck は単独の span-1 → row にならない
-    expect(bp.configBlocks.map(block => block.kind)).toEqual(['deck', 'topic', 'difficulty', 'keywords', 'cardTypes'])
+    expect(bp.configBlocks.map(block => block.kind)).toEqual([
+      'row',
+      'topic',
+      'difficulty',
+      'keywords',
+      'cardTypes',
+    ])
   })
 
-  it('標準 control alias を fields[] の順序で mapping する', () => {
+  it('system data source を field key や Content Type code に依存せず mapping する', () => {
     const bp = getBlueprintForContentType(makeCt({
       id: 'custom',
       code: 'custom_type',
       fields: [
-        field({ field_key: 'decks', label: 'Deck', type: 'dropdown', data_source: 'decks', sort_order: 0 }),
-        field({ field_key: 'categories', label: 'Category', type: 'dropdown', data_source: 'categories', sort_order: 1 }),
-        field({ field_key: 'card_types', label: 'Card Types', type: 'checkbox_group', data_source: 'card_types', sort_order: 2 }),
-        field({ field_key: 'topics', label: 'Topics', type: 'checkbox_group', data_source: 'topics', sort_order: 3 }),
-        field({ field_key: 'prompt', label: 'Prompt', is_required: true, sort_order: 4 }),
+        field({
+          field_key: 'preferred_explanation_locale',
+          label: 'Explanation language',
+          type: 'dropdown',
+          data_source: 'output_languages',
+          sort_order: 0,
+        }),
+        field({ field_key: 'destination', label: 'Deck', type: 'dropdown', data_source: 'decks', sort_order: 1 }),
+        field({ field_key: 'classification', label: 'Category', type: 'dropdown', data_source: 'categories', sort_order: 2 }),
+        field({ field_key: 'templates', label: 'Card Types', type: 'checkbox_group', data_source: 'card_types', sort_order: 3 }),
+        field({ field_key: 'subjects', label: 'Topics', type: 'checkbox_group', data_source: 'topics', sort_order: 4 }),
+        field({ field_key: 'prompt', label: 'Prompt', is_required: true, sort_order: 5 }),
       ],
     }))
 
-    expect(bp.configBlocks.map(block => block.kind)).toEqual(['deck', 'category', 'cardTypes', 'topic'])
+    expect(bp.configBlocks.map(block => block.kind)).toEqual([
+      'row',
+      'category',
+      'cardTypes',
+      'topic',
+    ])
+    const first = bp.configBlocks[0]
+    expect(first.kind === 'row' && first.blocks.map(block => block.kind)).toEqual([
+      'outputLanguage',
+      'deck',
+    ])
     expect(bp.coreFields.map(core => core.key)).toEqual(['prompt'])
+  })
+
+  it('built-in default も output language control の有無を fields[] だけで決める', () => {
+    const sources = Object.fromEntries(DEFAULT_CONTENT_TYPES.map(contentType => [
+      contentType.code,
+      contentType.fields
+        .map(config => config.data_source)
+        .filter(Boolean),
+    ]))
+
+    expect(sources.language).toContain('output_languages')
+    expect(sources.it).toContain('output_languages')
+    expect(sources.general).not.toContain('output_languages')
   })
 
   it('custom dropdown の static options を blueprint に渡す', () => {
@@ -231,6 +268,17 @@ describe('getBlueprintForContentType', () => {
 })
 
 describe('Content Type blueprint invariants', () => {
+  it('schema を bypass した stored config でも system query prefix を拒否する', () => {
+    const result = validateContentTypeBlueprint({
+      code: 'custom_type',
+      name: 'Custom',
+      fields: [field({ field_key: '_query_custom', is_required: true })],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('reserved application prefix')
+  })
+
   it.each([
     ['language', [field({ field_key: 'word', is_required: true })], 'language'],
     ['it', [field({ field_key: 'definition' })], 'term'],
@@ -267,6 +315,24 @@ describe('Content Type blueprint invariants', () => {
 
     expect(!unsupportedType.success && unsupportedType.error).toContain('not supported as a core input')
     expect(!unsupportedSource.success && unsupportedSource.error).toContain('data source "unknown_collection"')
+  })
+
+  it('system data source と互換性がない field type を拒否する', () => {
+    const result = validateContentTypeBlueprint({
+      code: 'custom_type',
+      name: 'Custom',
+      fields: [
+        field({
+          field_key: 'explanation_locale',
+          type: 'text',
+          data_source: 'output_languages',
+        }),
+      ],
+    })
+
+    expect(!result.success && result.error).toContain(
+      'type "text" is not supported for this configuration control',
+    )
   })
 })
 

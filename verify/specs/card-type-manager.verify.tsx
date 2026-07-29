@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { CardTypeManager } from '@/components/admin/CardTypeManager'
 import { registerUnit } from '@/verify/core/registry'
+import { DEFAULTS_OWNER_ID } from '@/lib/constants'
 import { FormType, LanguageType } from '@/types'
 import {
   clickButtonByText,
@@ -15,9 +16,10 @@ const SEED = {
     {
       id: 'ct-wm',
       code: 'word_meaning',
-      name: 'Word → Meaning',
+      name: '{study_language} → {output_language}',
       form_type: FormType.LANGUAGE,
-      language: LanguageType.ENGLISH,
+      language: 'EN',
+      output_language: 'JA',
       is_default: true,
       sort_order: 1,
       is_active: true,
@@ -33,6 +35,16 @@ const SEED = {
     },
   ],
 }
+
+const AI_OUTPUT_LANGUAGES = [
+  { code: 'vi', display_name: 'Vietnamese', enabled: true, sort_order: 0 },
+  { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 1 },
+]
+
+const INDEPENDENT_OUTPUT_LANGUAGES = [
+  { code: 'vi', display_name: 'Vietnamese', enabled: true, sort_order: 0 },
+  { code: 'ko', display_name: 'Korean explanations', enabled: true, sort_order: 1 },
+]
 
 const CUSTOM_CONTENT_TYPES = [
   {
@@ -98,13 +110,32 @@ const CUSTOM_CONTENT_TYPES = [
   },
 ]
 
-registerUnit<Record<string, never>>({
+const CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE = CUSTOM_CONTENT_TYPES.map(contentType => (
+  contentType.id === 'language-test-user'
+    ? {
+        ...contentType,
+        ai_output_profiles: contentType.ai_output_profiles?.map(profile => (
+          profile.profile === 'zh'
+            ? { ...profile, inherit: true as const, exclude: ['default_note'] }
+            : profile
+        )),
+      }
+    : contentType
+))
+
+interface CardTypeManagerFixtureProps {
+  ownerId?: string
+}
+
+registerUnit<CardTypeManagerFixtureProps>({
   id: 'CardTypeManager',
   title: 'CardTypeManager',
   description: '検証ケース。',
   kind: 'component',
-  render: () => <CardTypeManager />,
-  propsSchema: z.object({}),
+  render: props => <CardTypeManager {...props} />,
+  propsSchema: z.object({
+    ownerId: z.string().optional(),
+  }),
   fixtures: [
     {
       id: 'loaded',
@@ -128,7 +159,11 @@ registerUnit<Record<string, never>>({
       id: 'act-open-create-modal',
       description: 'Act: Add card type を click → modal が開く。',
       props: {},
-      mocks: { firestore: SEED },
+      mocks: {
+        firestore: SEED,
+        aiOutputLanguages: INDEPENDENT_OUTPUT_LANGUAGES,
+        defaultAiOutputLanguage: 'vi',
+      },
       act: async ctx => {
         await ctx.wait(50)
         clickButtonByText(ctx.root, 'Add card type')
@@ -137,7 +172,7 @@ registerUnit<Record<string, never>>({
     },
     {
       id: 'act-create',
-      description: '検証ケース。',
+      description: 'All scope の新規 Card Type は両言語を null で保存する。',
       props: {},
       mocks: { firestore: SEED },
       act: async ctx => {
@@ -147,6 +182,69 @@ registerUnit<Record<string, never>>({
         setFieldValue(ctx.root, 'Name', 'Cloze')
         clickButtonByText(ctx.root, 'Save')
         await ctx.wait(80)
+      },
+    },
+    {
+      id: 'act-filter-language-pair',
+      description: 'Act: 大文字小文字を正規化して学習言語と出力言語を絞り込む。',
+      props: {},
+      mocks: { firestore: SEED },
+      act: async ctx => {
+        await ctx.wait(50)
+        const studyLanguage = ctx.root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Filter by study language"]',
+        )
+        if (!studyLanguage) throw new Error('学習言語 filter が見つからない')
+        studyLanguage.value = LanguageType.ENGLISH
+        studyLanguage.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+
+        const outputLanguage = ctx.root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Filter by output language"]',
+        )
+        if (!outputLanguage) throw new Error('出力言語 filter が見つからない')
+        outputLanguage.value = LanguageType.JAPANESE
+        outputLanguage.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-name-placeholders',
+      description: 'Act: 言語 placeholder を挿入し、scope に応じた名前を preview する。',
+      props: {},
+      mocks: {
+        firestore: SEED,
+        aiOutputLanguages: AI_OUTPUT_LANGUAGES,
+        defaultAiOutputLanguage: 'vi',
+      },
+      act: async ctx => {
+        await ctx.wait(50)
+        clickButtonByText(ctx.root, 'Add card type')
+        await ctx.wait(0)
+
+        const studyLanguage = ctx.root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Study language"]',
+        )
+        const outputLanguage = ctx.root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Output language"]',
+        )
+        if (!studyLanguage || !outputLanguage) {
+          throw new Error('Card Type の言語 select が見つからない')
+        }
+        studyLanguage.value = LanguageType.ENGLISH
+        studyLanguage.dispatchEvent(new Event('change', { bubbles: true }))
+        outputLanguage.value = LanguageType.JAPANESE
+        outputLanguage.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+
+        clickButtonByText(ctx.root, 'Insert study language')
+        await ctx.wait(0)
+        setFieldValue(ctx.root, 'Name', '{study_language} → ')
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Insert output language')
+        await ctx.wait(0)
+        clickButtonByText(ctx.root, 'Advanced')
+        await ctx.wait(0)
       },
     },
     {
@@ -233,10 +331,67 @@ registerUnit<Record<string, never>>({
         edit.click()
         await ctx.wait(0)
 
-        const language = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Language"]')
+        const language = ctx.root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Study language"]',
+        )
         if (!language) throw new Error('Language select が見つからない')
         language.value = '__none__'
         language.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-excluded-template-field',
+      description: 'Act: selected profile が除外した custom field の理由と編集 link を表示する。',
+      props: {},
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-zh-excluded',
+            name: 'Chinese excluded field',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:default_note'],
+            },
+          }],
+          user_content_types: CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Chinese excluded field"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
+        await ctx.wait(0)
+      },
+    },
+    {
+      id: 'act-defaults-excluded-template-field',
+      description: 'Act: defaults scope の Content Type 編集 link は scope query を保持する。',
+      props: { ownerId: DEFAULTS_OWNER_ID },
+      mocks: {
+        firestore: {
+          card_types: [{
+            ...SEED.card_types[0],
+            id: 'ct-defaults-excluded',
+            user_id: DEFAULTS_OWNER_ID,
+            name: 'Defaults excluded field',
+            language: LanguageType.CHINESE,
+            template: {
+              front: ['word'],
+              back: ['meaning', 'custom:default_note'],
+            },
+          }],
+          content_types: CONTENT_TYPES_WITH_EXCLUDED_DEFAULT_NOTE,
+        },
+      },
+      act: async ctx => {
+        await ctx.wait(80)
+        const edit = ctx.root.querySelector<HTMLButtonElement>('[aria-label="Edit card type Defaults excluded field"]')
+        if (!edit) throw new Error('編集 button が見つからない')
+        edit.click()
         await ctx.wait(0)
       },
     },
@@ -323,6 +478,18 @@ registerUnit<Record<string, never>>({
         (root.textContent ?? '').includes('Default') || '表示が見つかりません',
     },
     {
+      id: 'table-renders-language-pair',
+      description: '一覧に両言語列と scope で解決した動的 Card Type 名を表示する。',
+      onlyFixtures: ['loaded'],
+      check: ({ root }) => {
+        const text = root.textContent ?? ''
+        if (!text.includes('Study Lang')) return 'Study Lang 列が見つからない'
+        if (!text.includes('Output Lang')) return 'Output Lang 列が見つからない'
+        return text.includes('English → Japanese')
+          || '動的 Card Type 名が表示されない'
+      },
+    },
+    {
       id: 'empty-message',
       description: '検証ケース。',
       onlyFixtures: ['empty'],
@@ -349,7 +516,59 @@ registerUnit<Record<string, never>>({
         if (!created) return '要素が見つかりません'
         if (created.name !== 'Cloze') return `name=${created.name}`
         if (created.form_type !== FormType.LANGUAGE) return `form_type=${created.form_type}`
+        if (created.language !== null) return `language=${created.language}`
+        if (created.output_language !== null) {
+          return `output_language=${created.output_language}`
+        }
         return !modalOpen(root) || 'Save 後も modal が開いたままです'
+      },
+    },
+    {
+      id: 'language-pair-filter-is-canonical',
+      description: 'canonical 化した学習・出力言語 filter の両方に一致する行だけを表示する。',
+      onlyFixtures: ['act-filter-language-pair'],
+      check: ({ root }) => {
+        if (tableRows(root) !== 1) return `tableRows=${tableRows(root)}, expected=1`
+        return (root.textContent ?? '').includes('English → Japanese')
+          || '対象 Card Type が見つからない'
+      },
+    },
+    {
+      id: 'placeholder-controls-render-preview-without-junk-code',
+      description: 'placeholder button、動的 preview、空の自動 code を確認する。',
+      onlyFixtures: ['act-name-placeholders'],
+      check: ({ root }) => {
+        const name = root.querySelector<HTMLInputElement>('input[placeholder="e.g. Word → Meaning"]')
+        if (name?.value !== '{study_language} → {output_language}') {
+          return `name="${name?.value}"`
+        }
+        const preview = root.querySelector<HTMLElement>(
+          '[aria-label="Card type name preview"]',
+        )
+        if (!preview?.textContent?.includes('English → Japanese')) {
+          return `preview="${preview?.textContent}"`
+        }
+        const codeLabel = Array.from(root.querySelectorAll('label'))
+          .find(label => label.textContent?.trim() === 'Code')
+        const code = codeLabel?.parentElement?.querySelector<HTMLInputElement>('input')
+        return code?.value === '' || `code="${code?.value}"`
+      },
+    },
+    {
+      id: 'output-language-editor-offers-current-setting',
+      description: '出力言語 editor は現在の AI output language と説明を表示する。',
+      onlyFixtures: ['act-open-create-modal'],
+      check: ({ root }) => {
+        const select = root.querySelector<HTMLSelectElement>(
+          'select[aria-label="Output language"]',
+        )
+        const values = Array.from(select?.options ?? []).map(option => option.value)
+        if (!values.includes('vi')) return '現在の AI output language が option にない'
+        if (!values.includes('ko')) return 'AI output language list の Korean が option にない'
+        if (values.includes('en')) return 'Study Language の English が output option に混入している'
+        const text = root.textContent ?? ''
+        return text.includes('Leave as All unless the card type only makes sense')
+          || 'Output language の hint が見つからない'
       },
     },
     {
@@ -405,8 +624,16 @@ registerUnit<Record<string, never>>({
       check: ({ root }) => {
         const alert = root.querySelector<HTMLElement>('[role="alert"]')
         const alertText = alert?.textContent ?? ''
-        if (!alertText.includes('Unavailable for the current selection: Phon the.')) {
+        if (!alertText.includes(
+          '"Phon the" is not defined for the Default profile — add it to Default.',
+        )) {
           return `alert="${alertText}"`
+        }
+        const link = alert?.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Phon the"]',
+        )
+        if (link?.getAttribute('href') !== '/admin/content-types/language-test-user') {
+          return `href="${link?.getAttribute('href')}"`
         }
         if (!root.querySelector('[aria-label="Remove Phon the"]')) {
           return 'custom:phon_the was removed from the template'
@@ -417,6 +644,38 @@ registerUnit<Record<string, never>>({
         if (!values.includes('custom:default_note')) return 'Default field is missing for All'
         const unavailable = ['custom:phon_the', 'custom:related_words'].filter(value => values.includes(value))
         return unavailable.length === 0 || `language-specific options=${unavailable.join(',')}`
+      },
+    },
+    {
+      id: 'excluded-warning-is-actionable',
+      description: 'exclude 理由、matched profile、対象 Content Type link を表示する',
+      onlyFixtures: ['act-excluded-template-field'],
+      check: ({ root }) => {
+        const alert = root.querySelector<HTMLElement>('[role="alert"]')
+        const alertText = alert?.textContent ?? ''
+        if (!alertText.includes(
+          '"Default note" is excluded in the Chinese profile — restore it in Content Type settings.',
+        )) {
+          return `alert="${alertText}"`
+        }
+        const link = alert?.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Default note"]',
+        )
+        return link?.getAttribute('href') === '/admin/content-types/language-test-user'
+          || `href="${link?.getAttribute('href')}"`
+      },
+    },
+    {
+      id: 'defaults-warning-keeps-global-scope',
+      description: 'defaults warning の link は global Content Type editor を開く',
+      onlyFixtures: ['act-defaults-excluded-template-field'],
+      check: ({ root }) => {
+        const link = root.querySelector<HTMLAnchorElement>(
+          'a[aria-label="Edit Content Type for Default note"]',
+        )
+        return link?.getAttribute('href')
+          === '/admin/content-types/language-test-user?scope=global-defaults'
+          || `href="${link?.getAttribute('href')}"`
       },
     },
     {

@@ -13,7 +13,8 @@ export const CardTypePostSchema = z.object({
   form_type: formTypeEnum,
   description: z.string().optional(),
   sort_order: z.number().int().optional(),
-  language: z.string().optional(),
+  language: z.string().nullable().optional(),
+  output_language: z.string().nullable().optional(),
   is_active: z.boolean().optional(),
 })
 

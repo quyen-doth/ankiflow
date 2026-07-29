@@ -52,6 +52,7 @@ function validSnapshot(): AdminWorkspaceSnapshot {
           description: 'Customized description',
           form_type: FormType.GENERAL,
           language: null,
+          output_language: null,
           is_default: true,
           is_active: false,
           sort_order: 3,
@@ -506,6 +507,7 @@ describe('existing-user backfill', () => {
         code: 'admin_primary',
         form_type: FormType.GENERAL,
         language: null,
+        output_language: null,
       },
     })
     existing.topics.push({
@@ -585,6 +587,65 @@ describe('existing-user backfill', () => {
       'decks/deck_zh_hsk1__user-a',
     ])
     expect(plan.creates.at(-1)?.data.default_card_type_ids).toEqual(['ct_pinyin_char__user-a'])
+  })
+
+  it('同じ study scope/code の card type を output scope で区別し、deck FK を誤 remap しない', () => {
+    const templates: DefaultTemplateSnapshot = {
+      categories: [],
+      topics: [],
+      card_types: [
+        {
+          id: 'ct_zh_vi',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            code: 'word_to_meaning',
+            form_type: FormType.LANGUAGE,
+            language: LanguageType.CHINESE,
+            output_language: 'vi',
+          },
+        },
+        {
+          id: 'ct_zh_ja',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            code: 'word_to_meaning',
+            form_type: FormType.LANGUAGE,
+            language: LanguageType.CHINESE,
+            output_language: LanguageType.JAPANESE,
+          },
+        },
+      ],
+      decks: [
+        {
+          id: 'deck_zh_vi',
+          data: {
+            user_id: DEFAULTS_OWNER_ID,
+            anki_deck_name: 'Language::Chinese::Vietnamese',
+            default_card_type_ids: ['ct_zh_vi'],
+            default_category_id: null,
+          },
+        },
+      ],
+    }
+    const existing = emptySnapshot()
+    existing.card_types.push({
+      id: 'ct_zh_ja__user-a',
+      data: {
+        user_id: 'user-a',
+        code: 'word_to_meaning',
+        form_type: FormType.LANGUAGE,
+        language: LanguageType.CHINESE,
+        output_language: LanguageType.JAPANESE,
+      },
+    })
+
+    const plan = buildUserBackfillPlanFromExisting(templates, ['user-a'], existing)
+
+    expect(plan.creates.map((operation) => `${operation.collection}/${operation.id}`)).toEqual([
+      'card_types/ct_zh_vi__user-a',
+      'decks/deck_zh_vi__user-a',
+    ])
+    expect(plan.creates.at(-1)?.data.default_card_type_ids).toEqual(['ct_zh_vi__user-a'])
   })
 
   it('create-only writer で user data を追加し、set/delete は使わない', async () => {

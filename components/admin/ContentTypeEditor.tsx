@@ -17,6 +17,10 @@ import {
   validateContentTypeBlueprint,
 } from '@/lib/create/formBlueprint'
 import {
+  getSystemDataSourceDefinition,
+  SYSTEM_DATA_SOURCE_DEFINITIONS,
+} from '@/lib/create/configDataSources'
+import {
   cloneStoredContentTypeAiProfiles,
   materializeContentTypeAiProfiles,
 } from '@/lib/ai-agent/contentTypeProfiles'
@@ -188,6 +192,22 @@ export function ContentTypeEditor({
 
   const updateField = <K extends keyof FormFieldConfig>(index: number, key: K, value: FormFieldConfig[K]) => {
     setFields(prev => prev.map((f, i) => i === index ? { ...f, [key]: value } : f))
+  }
+
+  const updateFieldDataSource = (index: number, value: string) => {
+    const definition = getSystemDataSourceDefinition(value)
+    setFields(prev => prev.map((field, fieldIndex) => {
+      if (fieldIndex !== index) return field
+      if (!definition) return { ...field, data_source: null }
+      return {
+        ...field,
+        data_source: definition.value,
+        type: definition.types[0],
+        field_key: field.field_key.trim() || definition.suggestedFieldKey,
+        label: field.label.trim() || definition.suggestedFieldLabel,
+        options: [],
+      }
+    }))
   }
 
   const addField = () => {
@@ -362,7 +382,9 @@ export function ContentTypeEditor({
             )
           })}
         </div>
-        <p className="text-[12px] text-slate-400 mt-1.5">Pre-selected when this content type is opened in Create (user can still switch).</p>
+        <p className="text-secondary text-slate-400 mt-1.5">
+          Default for Create; users can switch per entry.
+        </p>
       </FieldWrapper>
     </>
   )
@@ -371,7 +393,7 @@ export function ContentTypeEditor({
     <>
       {/* Fields */}
       <div className="flex items-center justify-between mt-2">
-        <h3 className="text-body font-semibold text-slate-600">Fields</h3>
+        <h3 className="text-section-heading text-ink">Fields</h3>
         <Button variant="ghost" size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={addField}>
           Add Field
         </Button>
@@ -380,7 +402,7 @@ export function ContentTypeEditor({
       {fields.map((field, index) => (
         <div key={index} className="rounded-card border border-border/40 p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-overline text-slate-600">
+            <span className="font-mono text-[12px] font-medium text-slate-600">
               {field.field_key || `field_${index}`}
             </span>
             <Button
@@ -393,7 +415,7 @@ export function ContentTypeEditor({
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <FieldWrapper label="Field Key">
               <Input
                 aria-label={`Field key ${index}`}
@@ -421,6 +443,20 @@ export function ContentTypeEditor({
                 ))}
               </Select>
             </FieldWrapper>
+            <FieldWrapper label="Data Source">
+              <Select
+                aria-label={`Data source for field ${index}`}
+                value={field.data_source ?? ''}
+                onChange={(e) => updateFieldDataSource(index, e.target.value)}
+              >
+                <option value="">Static / none</option>
+                {SYSTEM_DATA_SOURCE_DEFINITIONS.map(definition => (
+                  <option key={definition.value} value={definition.value}>
+                    {definition.label}
+                  </option>
+                ))}
+              </Select>
+            </FieldWrapper>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FieldWrapper label="Placeholder">
@@ -439,7 +475,7 @@ export function ContentTypeEditor({
               />
             </FieldWrapper>
           </div>
-          {field.type === 'dropdown' && (
+          {field.type === 'dropdown' && !field.data_source && (
             <FieldWrapper label="Options">
               <Input
                 aria-label={`Options for field ${index}`}
@@ -471,7 +507,7 @@ export function ContentTypeEditor({
       ))}
 
       {fields.length === 0 && (
-        <p className="text-sm text-slate-600 text-center py-4">
+        <p className="text-body text-slate-600 text-center py-4">
           No fields yet. Click &quot;Add Field&quot; to define form fields.
         </p>
       )}

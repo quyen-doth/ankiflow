@@ -23,8 +23,44 @@ const CARD_TYPES: CardPreviewProps['cardTypes'] = [
 ]
 const SELECTED = ['ct_wm', 'ct_mw']
 
-function srcdoc(root: HTMLElement): string {
-  return root.querySelector('iframe')?.getAttribute('srcdoc') ?? ''
+const HEIGHT_ENTRY: CardPreviewProps['entry'] = {
+  word: 'Compact',
+  meaning_vi: 'A detailed explanation that intentionally spans several lines in the preview card. '.repeat(8),
+  example_sentence: 'This example sentence provides enough context to make the reverse side visibly taller. '.repeat(4),
+  example_translation: 'The translated example also occupies multiple lines in the card preview. '.repeat(3),
+  collocations: [
+    'compact design',
+    'compact layout',
+    'compact representation',
+    'compact storage',
+    'compact format',
+    'compact component',
+  ],
+}
+
+const HEIGHT_CARD_TYPES: CardPreviewProps['cardTypes'] = [
+  {
+    id: 'ct_short',
+    name: 'Short card',
+    template: {
+      front: ['word'],
+      back: ['meaning', 'example', 'translation', 'collocations'],
+    },
+  },
+  {
+    id: 'ct_detailed',
+    name: 'Detailed card',
+    template: {
+      front: ['meaning', 'example', 'translation', 'collocations'],
+      back: ['word'],
+    },
+  },
+]
+
+function faceSrcdoc(root: HTMLElement, face: 'front' | 'back'): string {
+  return root
+    .querySelector(`[data-card-face="${face}"] iframe`)
+    ?.getAttribute('srcdoc') ?? ''
 }
 
 function clickTab(root: HTMLElement, label: string): void {
@@ -119,6 +155,32 @@ registerUnit<CardPreviewProps>({
       },
     },
     {
+      id: 'height-dynamics',
+      description: '表裏と card type の内容量が異なる場合も、各面を独立して表示する。',
+      props: {
+        entry: HEIGHT_ENTRY,
+        cardTypes: HEIGHT_CARD_TYPES,
+        selectedCardTypeIds: ['ct_short', 'ct_detailed'],
+      },
+    },
+    {
+      id: 'late-image',
+      description: '読み込み後に画像サイズが変わる card back を表示する。',
+      props: {
+        entry: {
+          word: 'Image',
+          meaning_vi: 'An image that loads after the initial card measurement.',
+          image_url: '/globe.svg',
+        },
+        cardTypes: [{
+          id: 'ct_image',
+          name: 'Image card',
+          template: { front: ['word'], back: ['meaning', 'image'] },
+        }],
+        selectedCardTypeIds: ['ct_image'],
+      },
+    },
+    {
       id: 'probe-minimal-entry',
       probe: true,
       description: 'Probe (gotcha optional fields): 空 entry — iframe は "No fields" を表示し、"undefined" を漏らさない。',
@@ -132,7 +194,9 @@ registerUnit<CardPreviewProps>({
       check: ({ root }) => {
         const control = root.querySelector('[title="Click to flip"]')
         if (!(control instanceof HTMLButtonElement)) return 'flip control が button ではありません'
-        if (!control.parentElement?.querySelector('iframe')) return 'flip control が CardIframe を覆っていません'
+        if (control.parentElement?.querySelectorAll('iframe').length !== 2) {
+          return 'flip control が 2 面の CardIframe を覆っていません'
+        }
         return (
           control.classList.contains('absolute') && control.classList.contains('inset-0')
         ) || 'flip control が iframe 全体を覆っていません'
@@ -158,7 +222,7 @@ registerUnit<CardPreviewProps>({
       onlyFixtures: ['language-entry'],
       check: ({ root, contract }) => {
         if (contract.tab !== 'ct_wm') return `contract.tab="${contract.tab}"`
-        const html = srcdoc(root)
+        const html = faceSrcdoc(root, 'front')
         if (!html.includes('食べる')) return '表示が見つかりません'
         if (!html.includes('class="han-viet"')) return '表示が見つかりません'
         return html.includes('たべる') || '表示が見つかりません'
@@ -172,9 +236,14 @@ registerUnit<CardPreviewProps>({
         if (contract.flipped !== 'true') return `contract.flipped="${contract.flipped}"`
         const control = root.querySelector('[title="Click to flip"]')
         if (control?.getAttribute('aria-pressed') !== 'true') return 'flip control が back state を反映していません'
-        const html = srcdoc(root)
-        if (!html.includes('id="answer"')) return '表示が見つかりません'
-        return html.includes('食べる') || '表示が見つかりません'
+        const frontFace = root.querySelector('[data-card-face="front"]')
+        const backFace = root.querySelector('[data-card-face="back"]')
+        if (frontFace?.getAttribute('aria-hidden') !== 'true') return 'front face が accessibility tree に残っています'
+        if (backFace?.getAttribute('aria-hidden') !== 'false') return 'back face が非表示のままです'
+        const html = faceSrcdoc(root, 'back')
+        if (html.includes('id="answer"')) return 'back face に Anki answer separator が残っています'
+        if (html.includes('class="han-viet"')) return 'back face に front 専用 field が残っています'
+        return html.includes('食べる') || 'back が meaning を表示していません'
       },
     },
     {
@@ -184,7 +253,7 @@ registerUnit<CardPreviewProps>({
       check: ({ root, contract }) => {
         if (contract.tab !== 'ct_mw') return `contract.tab="${contract.tab}"`
         if (contract.flipped !== 'false') return `contract.flipped="${contract.flipped}"`
-        return srcdoc(root).includes('食べる') || 'front が meaning を表示していません'
+        return faceSrcdoc(root, 'front').includes('食べる') || 'front が meaning を表示していません'
       },
     },
     {
@@ -192,7 +261,7 @@ registerUnit<CardPreviewProps>({
       description: '空 entry: iframe は "No fields" を表示し、"undefined" を漏らさない',
       onlyFixtures: ['probe-minimal-entry'],
       check: ({ root }) => {
-        const html = srcdoc(root)
+        const html = faceSrcdoc(root, 'front')
         if (!html.includes('No fields')) return 'placeholder が見つかりません "No fields"'
         return !html.includes('undefined') || '"undefined" が srcdoc に漏れています'
       },
@@ -202,7 +271,7 @@ registerUnit<CardPreviewProps>({
       description: 'custom field の class/value が preview HTML に含まれる',
       onlyFixtures: ['custom-field'],
       check: ({ root }) => {
-        const html = srcdoc(root)
+        const html = faceSrcdoc(root, 'back')
         if (!html.includes('class="custom-field custom-phon_the"')) return 'custom field class がない'
         return html.includes('喫飯') || 'custom field value がない'
       },
@@ -212,7 +281,7 @@ registerUnit<CardPreviewProps>({
       description: 'custom string_array の newline と shared card CSS の pre-line を保持する',
       onlyFixtures: ['custom-array-field'],
       check: ({ root }) => {
-        const html = srcdoc(root)
+        const html = faceSrcdoc(root, 'back')
         if (!html.includes('formal\nwritten')) return 'array item の newline がない'
         return html.includes('white-space: pre-line') || 'custom field の pre-line CSS がない'
       },
@@ -222,8 +291,8 @@ registerUnit<CardPreviewProps>({
       description: '例文 audio は通常音声と異なる label の chip を表示する',
       onlyFixtures: ['example-audio'],
       check: ({ root }) => {
-        const html = srcdoc(root)
-        if (!html.includes('id="answer"')) return 'back side が表示されていません'
+        const html = faceSrcdoc(root, 'back')
+        if (html.includes('id="answer"')) return 'back face に Anki answer separator が残っています'
         return html.includes('🔊 Example audio') || 'Example audio chip がありません'
       },
     },

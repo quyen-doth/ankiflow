@@ -11,12 +11,19 @@ import {
   normalizeStudyLanguages,
   validateStudyLanguages,
 } from '@/lib/studyLanguages'
-import type { StudyLanguage } from '@/types'
+import {
+  DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+  DEFAULT_AI_OUTPUT_LANGUAGES,
+  normalizeAiOutputLanguagePreferences,
+} from '@/lib/aiOutputLanguages'
+import type { AiOutputLanguage, StudyLanguage } from '@/types'
 
-interface StudyLanguageContextValue {
+export interface StudyLanguageContextValue {
   languages: StudyLanguage[]
   enabledLanguages: StudyLanguage[]
-  aiOutputLanguage: string
+  aiOutputLanguages: AiOutputLanguage[]
+  enabledAiOutputLanguages: AiOutputLanguage[]
+  defaultAiOutputLanguage: string
   loading: boolean
   saveLanguages: (languages: StudyLanguage[]) => Promise<StudyLanguage[]>
   addOrEnableLanguage: (
@@ -25,11 +32,14 @@ interface StudyLanguageContextValue {
 }
 
 const DEFAULT_LANGUAGES = DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language }))
+const DEFAULT_OUTPUT_LANGUAGES = DEFAULT_AI_OUTPUT_LANGUAGES.map(language => ({ ...language }))
 
-const StudyLanguageContext = createContext<StudyLanguageContextValue>({
+export const StudyLanguageContext = createContext<StudyLanguageContextValue>({
   languages: DEFAULT_LANGUAGES,
   enabledLanguages: DEFAULT_LANGUAGES,
-  aiOutputLanguage: 'vi',
+  aiOutputLanguages: DEFAULT_OUTPUT_LANGUAGES,
+  enabledAiOutputLanguages: DEFAULT_OUTPUT_LANGUAGES,
+  defaultAiOutputLanguage: DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
   loading: false,
   saveLanguages: async () => {
     throw new Error('StudyLanguageProvider is not mounted')
@@ -42,7 +52,12 @@ const StudyLanguageContext = createContext<StudyLanguageContextValue>({
 export function StudyLanguageProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, loading: authLoading } = useAuth()
   const [languages, setLanguages] = useState<StudyLanguage[]>(DEFAULT_LANGUAGES)
-  const [aiOutputLanguage, setAiOutputLanguage] = useState('vi')
+  const [aiOutputLanguages, setAiOutputLanguages] = useState<AiOutputLanguage[]>(
+    DEFAULT_OUTPUT_LANGUAGES,
+  )
+  const [defaultAiOutputLanguage, setDefaultAiOutputLanguage] = useState(
+    DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+  )
   const [loadedUid, setLoadedUid] = useState<string | null>(null)
 
   useEffect(() => {
@@ -51,18 +66,20 @@ export function StudyLanguageProvider({ children }: Readonly<{ children: React.R
       doc(db, 'settings', user.uid),
       snapshot => {
         const data = snapshot.exists() ? snapshot.data() : undefined
-        setLanguages(normalizeStudyLanguages(data?.study_languages))
-        setAiOutputLanguage(
-          typeof data?.ai_output_language === 'string'
-            ? canonicalizeLanguageCode(data.ai_output_language) ?? 'vi'
-            : 'vi',
+        const outputPreferences = normalizeAiOutputLanguagePreferences(
+          data?.ai_output_languages,
+          data?.ai_output_language,
         )
+        setLanguages(normalizeStudyLanguages(data?.study_languages))
+        setAiOutputLanguages(outputPreferences.languages)
+        setDefaultAiOutputLanguage(outputPreferences.defaultLanguage)
         setLoadedUid(user.uid)
       },
       error => {
         console.error('Error loading study languages:', error)
         setLanguages(DEFAULT_LANGUAGES.map(language => ({ ...language })))
-        setAiOutputLanguage('vi')
+        setAiOutputLanguages(DEFAULT_OUTPUT_LANGUAGES.map(language => ({ ...language })))
+        setDefaultAiOutputLanguage(DEFAULT_AI_OUTPUT_LANGUAGE_CODE)
         setLoadedUid(user.uid)
       },
     )
@@ -71,7 +88,12 @@ export function StudyLanguageProvider({ children }: Readonly<{ children: React.R
   const effectiveLanguages = !user || loadedUid !== user.uid
     ? DEFAULT_LANGUAGES
     : languages
-  const effectiveAiOutputLanguage = !user || loadedUid !== user.uid ? 'vi' : aiOutputLanguage
+  const effectiveAiOutputLanguages = !user || loadedUid !== user.uid
+    ? DEFAULT_OUTPUT_LANGUAGES
+    : aiOutputLanguages
+  const effectiveDefaultAiOutputLanguage = !user || loadedUid !== user.uid
+    ? DEFAULT_AI_OUTPUT_LANGUAGE_CODE
+    : defaultAiOutputLanguage
   const loading = authLoading || (!!user && loadedUid !== user.uid)
 
   const saveLanguages = useCallback(async (nextLanguages: StudyLanguage[]): Promise<StudyLanguage[]> => {
@@ -109,11 +131,20 @@ export function StudyLanguageProvider({ children }: Readonly<{ children: React.R
   const value = useMemo<StudyLanguageContextValue>(() => ({
     languages: effectiveLanguages,
     enabledLanguages: effectiveLanguages.filter(language => language.enabled),
-    aiOutputLanguage: effectiveAiOutputLanguage,
+    aiOutputLanguages: effectiveAiOutputLanguages,
+    enabledAiOutputLanguages: effectiveAiOutputLanguages.filter(language => language.enabled),
+    defaultAiOutputLanguage: effectiveDefaultAiOutputLanguage,
     loading,
     saveLanguages,
     addOrEnableLanguage,
-  }), [effectiveLanguages, effectiveAiOutputLanguage, loading, saveLanguages, addOrEnableLanguage])
+  }), [
+    effectiveLanguages,
+    effectiveAiOutputLanguages,
+    effectiveDefaultAiOutputLanguage,
+    loading,
+    saveLanguages,
+    addOrEnableLanguage,
+  ])
 
   return <StudyLanguageContext.Provider value={value}>{children}</StudyLanguageContext.Provider>
 }

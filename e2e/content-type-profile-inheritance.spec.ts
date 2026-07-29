@@ -3,8 +3,7 @@ import { expect, test } from '@playwright/test'
 test('言語 profile は Default field を継承し、Exclude/Restore で切り替えられる', async ({ page }) => {
   await page.goto('/verify/AiOutputProfilesEditor/e2e-editor-flow?chrome=0')
 
-  const profileSelect = page.getByRole('combobox', { name: 'AI output profile' })
-  await profileSelect.selectOption({ label: 'Chinese' })
+  await page.getByRole('radio', { name: 'Chinese', exact: true }).click()
 
   // legacy builtin zh は normalize 済みで ipa だけを exclude している。
   const inherited = page.getByText('Inherited from Default')
