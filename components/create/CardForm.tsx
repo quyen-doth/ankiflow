@@ -51,6 +51,7 @@ interface PendingLanguageAction {
 
 const SESSION_KEYS_BY_CONTROL: Partial<Record<ConfigLeaf["kind"], readonly SessionConfigKey[]>> = {
     language: ["language"],
+    outputLanguage: ["outputLanguage"],
     deck: ["deckId"],
     category: ["categoryId"],
     tags: ["tags"],
@@ -124,7 +125,9 @@ export function CardFormContent({
     const {
         languages,
         enabledLanguages,
-        aiOutputLanguage,
+        aiOutputLanguages,
+        enabledAiOutputLanguages,
+        defaultAiOutputLanguage,
         loading: languagesLoading,
         addOrEnableLanguage,
     } = useStudyLanguages();
@@ -146,6 +149,7 @@ export function CardFormContent({
     const [showBatchDuplicate, setShowBatchDuplicate] = useState(false);
     const [detectingLanguage, setDetectingLanguage] = useState(false);
     const [topicsLoading, setTopicsLoading] = useState(configKinds.has("topic"));
+    const [cardTypesLoading, setCardTypesLoading] = useState(configKinds.has("cardTypes"));
     const [pendingLanguageAction, setPendingLanguageAction] = useState<PendingLanguageAction | null>(null);
     const [savingDetectedLanguage, setSavingDetectedLanguage] = useState(false);
     const activeSubmitLanguage = useRef<LanguageCode | null>(null);
@@ -231,6 +235,13 @@ export function CardFormContent({
     const storedLanguage = session?.language || "";
     const language = enabledLanguages.some(item => item.code === storedLanguage) ? storedLanguage : "";
     const metaLanguage: LanguageCode | null = isLanguageFlow && language ? language : null;
+    const storedOutputLanguage = canonicalizeLanguageCode(session?.outputLanguage || "");
+    const configuredOutputLanguage = configKinds.has("outputLanguage")
+        ? enabledAiOutputLanguages.find(item => (
+            canonicalizeLanguageCode(item.code) === storedOutputLanguage
+        ))
+        : undefined;
+    const outputLanguage = configuredOutputLanguage?.code ?? defaultAiOutputLanguage;
     const deckId = session?.deckId || "";
     const category = session?.categoryId || "";
     const tags = session?.tags || [];
@@ -249,6 +260,7 @@ export function CardFormContent({
             case "language":
                 // Language flow は submit 後に detector が入力から値を確定する。
                 return !!language || (isLanguageFlow && (batchMode ? batchValidItems.length > 0 : !!primaryValue.trim()));
+            case "outputLanguage": return !!outputLanguage;
             case "deck": return !!deckId;
             case "category": return !!category;
             case "tags": return tags.length > 0;
@@ -280,13 +292,26 @@ export function CardFormContent({
 
     useEffect(() => {
         if (batchMode) {
-            onValidityChange?.(requiredFieldsValid && !detectingLanguage && !topicsLoading);
+            onValidityChange?.(
+                requiredFieldsValid && !detectingLanguage && !topicsLoading && !cardTypesLoading,
+            );
             onBatchCountChange?.(batchValidItems.length);
         } else {
-            onValidityChange?.(requiredFieldsValid && !detectingLanguage && !topicsLoading);
+            onValidityChange?.(
+                requiredFieldsValid && !detectingLanguage && !topicsLoading && !cardTypesLoading,
+            );
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [requiredFieldsValid, batchMode, batchItems, detectingLanguage, topicsLoading, onValidityChange, onBatchCountChange]);
+    }, [
+        requiredFieldsValid,
+        batchMode,
+        batchItems,
+        detectingLanguage,
+        topicsLoading,
+        cardTypesLoading,
+        onValidityChange,
+        onBatchCountChange,
+    ]);
 
     const handleTopicChange = useCallback((selection: TopicSelection) => {
         updateSession({ topicIds: selection.ids, topicNames: selection.names });
@@ -297,9 +322,15 @@ export function CardFormContent({
         return languages.find(item => canonicalizeLanguageCode(item.code) === canonicalizeLanguageCode(code))?.display_name;
     };
 
+    const outputLanguageNameFor = (code: LanguageCode): string => (
+        aiOutputLanguages.find(item => (
+            canonicalizeLanguageCode(item.code) === canonicalizeLanguageCode(code)
+        ))?.display_name ?? inferLanguageDisplayName(code)
+    );
+
     const buildEffectiveSession = (submissionLanguage: LanguageCode | null): SessionState => ({
-        outputLanguage: aiOutputLanguage,
-        outputLanguageName: inferLanguageDisplayName(aiOutputLanguage),
+        outputLanguage,
+        outputLanguageName: outputLanguageNameFor(outputLanguage),
         ...(configKinds.has("language") ? {
             language: submissionLanguage ?? session?.language,
             languageName: languageNameFor(submissionLanguage),
@@ -398,7 +429,7 @@ export function CardFormContent({
                 generatedContent,
                 formType: blueprint.formType,
                 language: submissionLanguage,
-                outputLanguage: aiOutputLanguage,
+                outputLanguage,
                 deckId: configKinds.has("deck") && !languageConfigReset.current ? deckId : "",
                 categoryId: configKinds.has("category") ? category : "",
                 cardTypeIds: configKinds.has("cardTypes") && !languageConfigReset.current ? cardTypes : [],
@@ -473,7 +504,7 @@ export function CardFormContent({
                 items: succeeded.map((r) => r.content as Record<string, unknown>),
                 formType: blueprint.formType,
                 language: submissionLanguage,
-                outputLanguage: aiOutputLanguage,
+                outputLanguage,
                 deckId: configKinds.has("deck") && !languageConfigReset.current ? deckId : "",
                 categoryId: configKinds.has("category") ? category : "",
                 cardTypeIds: configKinds.has("cardTypes") && !languageConfigReset.current ? cardTypes : [],
@@ -692,7 +723,7 @@ export function CardFormContent({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (detectingLanguage || topicsLoading) return;
+        if (detectingLanguage || topicsLoading || cardTypesLoading) return;
 
         const validationErrors = collectRequiredFieldErrors(batchMode);
         setFieldErrors(validationErrors);
@@ -871,6 +902,19 @@ export function CardFormContent({
                         onClear={() => updateSession({ language: "", deckId: "", cardTypeIds: [] })}
                     />
                 );
+            case "outputLanguage":
+                return (
+                    <LanguageSelector
+                        value={outputLanguage}
+                        languages={aiOutputLanguages}
+                        label={leaf.label || "AI output language"}
+                        placeholder={leaf.placeholder || "Select output language..."}
+                        onChange={(value) => {
+                            clearFieldError(fieldKey);
+                            updateSession({ outputLanguage: value });
+                        }}
+                    />
+                );
             case "deck":
                 return (
                     <DeckCreatableField
@@ -920,7 +964,11 @@ export function CardFormContent({
                     <CardTypeSelector
                         formType={blueprint.formType}
                         language={language}
+                        outputLanguage={outputLanguage}
+                        languages={languages}
+                        outputLanguages={aiOutputLanguages}
                         selectedIds={cardTypes}
+                        onLoadingChange={setCardTypesLoading}
                         onChange={(v) => {
                             clearFieldError(fieldKey);
                             updateSession({ cardTypeIds: v });

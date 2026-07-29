@@ -29,7 +29,21 @@ const SESSION = JSON.stringify({
   tags: ['jlpt-n5'],
 })
 
-const FIRESTORE_SEED = { decks: [], categories: [], card_types: [] }
+const FIRESTORE_SEED = {
+  decks: [],
+  categories: [],
+  card_types: [
+    {
+      id: 'ct-ja-word',
+      form_type: FormType.LANGUAGE,
+      language: LanguageType.JAPANESE,
+      output_language: null,
+      name: 'Japanese word',
+      is_active: true,
+      sort_order: 1,
+    },
+  ],
+}
 const DETECT_JA = {
   detections: [{ index: 0, code: 'ja', display_name: 'Japanese', confidence: 0.99 }],
 }

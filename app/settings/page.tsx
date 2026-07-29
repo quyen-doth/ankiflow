@@ -25,18 +25,14 @@ import { ResyncCards } from '@/components/settings/ResyncCards';
 import { LineNotificationSettings } from '@/components/settings/LineNotificationSettings';
 import { SectionHeader, IntegrationCard } from '@/components/settings/SettingsPrimitives';
 import { StudyLanguageSettings } from '@/components/settings/StudyLanguageSettings';
+import { AiOutputLanguageSettings } from '@/components/settings/AiOutputLanguageSettings';
 import { ContentTypeManager } from '@/components/admin/ContentTypeManager';
-import { LanguagePicker } from '@/components/ui/LanguagePicker';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
-import {
-    canonicalizeLanguageCode,
-    mergeStudyLanguageEdits,
-    normalizeStudyLanguages,
-    validateStudyLanguages,
-} from '@/lib/studyLanguages';
+import { mergeStudyLanguageEdits, normalizeStudyLanguages, validateStudyLanguages } from '@/lib/studyLanguages';
+import { normalizeAiOutputLanguagePreferences, validateAiOutputLanguagePreferences } from '@/lib/aiOutputLanguages';
 import { createPersonalSettingsSnapshot } from '@/lib/settings-form-state';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
@@ -63,8 +59,8 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
 
     // デプロイ版 (loopback 以外の origin) では browser の Local Network Access が
     // public→localhost をブロックする → CORS を直しても届かないため別途案内する。
-    const isDeployedOrigin = typeof window !== 'undefined'
-        && !['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const isDeployedOrigin =
+        typeof window !== 'undefined' && !['localhost', '127.0.0.1'].includes(window.location.hostname);
 
     const snippet = `{\n  "webCorsOriginList": ["http://localhost", "${origin}"]\n}`;
 
@@ -121,11 +117,13 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
             {isDeployedOrigin && (
                 <div className="mt-3 p-2.5 rounded-[8px] bg-white border border-[#eceae4]">
                     <p className="text-[11.5px] text-slate-600 leading-relaxed">
-                        <span className="font-bold text-[#b87514]">Still blocked after allowing CORS?</span>{' '}
-                        Modern browsers (Chrome &quot;Local Network Access&quot;) block a deployed site from reaching{' '}
+                        <span className="font-bold text-[#b87514]">Still blocked after allowing CORS?</span> Modern
+                        browsers (Chrome &quot;Local Network Access&quot;) block a deployed site from reaching{' '}
                         <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">localhost</code>. When
                         prompted, allow local network access for this site — or run AnkiFlow at{' '}
-                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">http://localhost:3000</code>{' '}
+                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">
+                            http://localhost:3000
+                        </code>{' '}
                         to sync with Anki.
                     </p>
                 </div>
@@ -166,14 +164,16 @@ export default function SettingsPage() {
                 const userSnap = await getDoc(doc(db, 'settings', uid));
                 const prefs = (userSnap.exists() ? userSnap.data() : {}) as Partial<Settings>;
                 const studyLanguages = normalizeStudyLanguages(prefs.study_languages);
-                const aiOutputLanguage = typeof prefs.ai_output_language === 'string'
-                    ? canonicalizeLanguageCode(prefs.ai_output_language) ?? 'vi'
-                    : 'vi';
+                const outputPreferences = normalizeAiOutputLanguagePreferences(
+                    prefs.ai_output_languages,
+                    prefs.ai_output_language,
+                );
                 baselineLanguageCodesRef.current = studyLanguages.map((language) => language.code);
                 const loadedSettings = {
                     ...prefs,
                     study_languages: studyLanguages,
-                    ai_output_language: aiOutputLanguage,
+                    ai_output_languages: outputPreferences.languages,
+                    ai_output_language: outputPreferences.defaultLanguage,
                 } as Settings;
                 setSettings(loadedSettings);
                 setSavedSnapshot(createPersonalSettingsSnapshot(loadedSettings));
@@ -269,6 +269,14 @@ export default function SettingsPage() {
             toast.error(languageErrors[0]);
             return;
         }
+        const outputLanguageErrors = validateAiOutputLanguagePreferences(
+            settings.ai_output_languages ?? [],
+            settings.ai_output_language ?? '',
+        );
+        if (outputLanguageErrors.length > 0) {
+            toast.error(outputLanguageErrors[0]);
+            return;
+        }
         setSaving(true);
         try {
             // 最新版を再読込し、このページを開いている間に別フロー (Create flow の
@@ -277,11 +285,17 @@ export default function SettingsPage() {
             const serverLanguages = normalizeStudyLanguages(
                 freshSnap.exists() ? freshSnap.data()?.study_languages : undefined,
             );
-            const mergedLanguages = normalizeStudyLanguages(mergeStudyLanguageEdits(
-                baselineLanguageCodesRef.current,
-                settings.study_languages ?? [],
-                serverLanguages,
-            ));
+            const mergedLanguages = normalizeStudyLanguages(
+                mergeStudyLanguageEdits(
+                    baselineLanguageCodesRef.current,
+                    settings.study_languages ?? [],
+                    serverLanguages,
+                ),
+            );
+            const outputPreferences = normalizeAiOutputLanguagePreferences(
+                settings.ai_output_languages,
+                settings.ai_output_language,
+            );
 
             // 個人 preferences → settings/{uid} (初回 save で自動作成)。
             const prefsUpdate = {
@@ -292,7 +306,8 @@ export default function SettingsPage() {
                 allow_duplicate: settings.allow_duplicate,
                 anki_connect_url: settings.anki_connect_url,
                 study_languages: mergedLanguages,
-                ai_output_language: canonicalizeLanguageCode(settings.ai_output_language ?? '') ?? 'vi',
+                ai_output_languages: outputPreferences.languages,
+                ai_output_language: outputPreferences.defaultLanguage,
             };
             await setDoc(
                 doc(db, 'settings', user.uid),
@@ -303,6 +318,7 @@ export default function SettingsPage() {
             const savedSettings = {
                 ...settings,
                 study_languages: mergedLanguages,
+                ai_output_languages: outputPreferences.languages,
                 ai_output_language: prefsUpdate.ai_output_language,
             };
             setSettings(savedSettings);
@@ -368,30 +384,14 @@ export default function SettingsPage() {
             />
 
             <div className="max-w-3xl mx-auto w-full pb-12 flex flex-col gap-8">
-                {/* SRS Sync */}
+                {/* Per-user AI output languages and explicit default. */}
                 <Card>
-                    <SectionHeader icon={RefreshCw} label="SRS Data Sync" tone="green" />
-                    <p className="text-sm text-slate-600 mb-4">
-                        Sync spaced repetition data from Anki Desktop to Firestore. Requires Anki Desktop to be open.
-                    </p>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
-                        disabled={syncingSRS || !ankiConnected}
-                        onClick={handleSyncSrs}
-                    >
-                        {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
-                    </Button>
-                    {!ankiConnected && (
-                        <p className="text-xs text-slate-400 mt-2">Anki Desktop must be running to sync.</p>
-                    )}
-                </Card>
-
-                {/* Re-sync card layout */}
-                <Card>
-                    <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
-                    <ResyncCards ankiConnected={ankiConnected} />
+                    <AiOutputLanguageSettings
+                        languages={settings.ai_output_languages ?? []}
+                        defaultLanguage={settings.ai_output_language ?? ''}
+                        onLanguagesChange={(languages) => updateField('ai_output_languages', languages)}
+                        onDefaultLanguageChange={(language) => updateField('ai_output_language', language)}
+                    />
                 </Card>
 
                 {/* Per-user study languages */}
@@ -432,7 +432,9 @@ export default function SettingsPage() {
                             description={
                                 !globalConfig.tts_available
                                     ? 'Disabled by administrator'
-                                    : settings.tts_enabled ? 'Audio generation enabled' : 'Audio generation disabled'
+                                    : settings.tts_enabled
+                                      ? 'Audio generation enabled'
+                                      : 'Audio generation disabled'
                             }
                             icon={Volume2}
                             tone="green"
@@ -444,7 +446,9 @@ export default function SettingsPage() {
                             description={
                                 !globalConfig.unsplash_available
                                     ? 'Disabled by administrator'
-                                    : settings.unsplash_enabled ? 'Image search enabled' : 'Image search disabled'
+                                    : settings.unsplash_enabled
+                                      ? 'Image search enabled'
+                                      : 'Image search disabled'
                             }
                             icon={ImageIcon}
                             tone="green"
@@ -454,22 +458,36 @@ export default function SettingsPage() {
                     </div>
                 </Card>
 
+                {/* SRS Sync */}
+                <Card>
+                    <SectionHeader icon={RefreshCw} label="SRS Data Sync" tone="green" />
+                    <p className="text-sm text-slate-600 mb-4">
+                        Sync spaced repetition data from Anki Desktop to Firestore. Requires Anki Desktop to be open.
+                    </p>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
+                        disabled={syncingSRS || !ankiConnected}
+                        onClick={handleSyncSrs}
+                    >
+                        {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
+                    </Button>
+                    {!ankiConnected && (
+                        <p className="text-xs text-slate-400 mt-2">Anki Desktop must be running to sync.</p>
+                    )}
+                </Card>
+
+                {/* Re-sync card layout */}
+                <Card>
+                    <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
+                    <ResyncCards ankiConnected={ankiConnected} />
+                </Card>
+
                 {/* Preferences */}
                 <Card>
                     <SectionHeader icon={SlidersHorizontal} label="Preferences" tone="green" />
                     <div className="flex flex-col">
-                        <div className="pb-[15px] border-b border-[#f5f5f1]">
-                            <div className="mb-3">
-                                <p className="text-sm font-semibold text-ink">AI output language</p>
-                                <p className="text-[12.5px] text-slate-500 mt-0.5">
-                                    Meanings and translations on generated cards are written in this language.
-                                </p>
-                            </div>
-                            <LanguagePicker
-                                value={settings.ai_output_language ?? 'vi'}
-                                onChange={(language) => updateField('ai_output_language', language.code)}
-                            />
-                        </div>
                         {(
                             [
                                 {

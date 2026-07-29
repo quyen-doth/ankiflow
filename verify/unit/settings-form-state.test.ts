@@ -21,6 +21,10 @@ function personalSettings(overrides: Partial<Settings> = {}): Settings {
       { code: 'en', display_name: 'English', enabled: true, sort_order: 0 },
       { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 1 },
     ],
+    ai_output_languages: [
+      { code: 'vi', display_name: 'Vietnamese', enabled: true, sort_order: 0 },
+      { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 1 },
+    ],
     ai_output_language: 'vi',
     updated_at: null as unknown as Settings['updated_at'],
     ...overrides,
@@ -95,6 +99,28 @@ describe('settings form snapshots', () => {
     })
 
     expect(createPersonalSettingsSnapshot(reordered))
+      .not.toBe(createPersonalSettingsSnapshot(original))
+  })
+
+  it('AI output language の default 変更を検出する', () => {
+    const original = personalSettings()
+    const changed = personalSettings({ ai_output_language: 'ja' })
+
+    expect(createPersonalSettingsSnapshot(changed))
+      .not.toBe(createPersonalSettingsSnapshot(original))
+  })
+
+  it('AI output language list の有効状態と並び順変更を検出する', () => {
+    const original = personalSettings()
+    const changed = personalSettings({
+      ai_output_languages: [
+        { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 0 },
+        { code: 'vi', display_name: 'Vietnamese', enabled: false, sort_order: 1 },
+      ],
+      ai_output_language: 'ja',
+    })
+
+    expect(createPersonalSettingsSnapshot(changed))
       .not.toBe(createPersonalSettingsSnapshot(original))
   })
 

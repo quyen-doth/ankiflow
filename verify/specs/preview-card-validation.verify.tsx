@@ -47,13 +47,26 @@ const FIRESTORE_SEED = {
     {
       id: CARD_TYPE_ID,
       code: VIETNAMESE_CHINESE_CARD_TYPE.code,
-      name: VIETNAMESE_CHINESE_CARD_TYPE.name,
+      name: '{study_language} → {output_language}',
       description: 'Recall the Chinese form from its Vietnamese meaning',
       form_type: FormType.LANGUAGE,
       language: 'zh',
+      output_language: 'vi',
       template: VIETNAMESE_CHINESE_CARD_TYPE.template,
       is_active: true,
       sort_order: 1,
+    },
+    {
+      id: 'ct-ja-zh',
+      code: 'japanese_to_chinese',
+      name: 'Japanese output only',
+      description: 'Must not appear for Vietnamese output',
+      form_type: FormType.LANGUAGE,
+      language: 'zh',
+      output_language: 'ja',
+      template: VIETNAMESE_CHINESE_CARD_TYPE.template,
+      is_active: true,
+      sort_order: 2,
     },
   ],
   user_content_types: [
@@ -284,6 +297,13 @@ registerUnit<Record<string, never>>({
       onlyFixtures: ['ordinary-user-custom-field'],
       check: ({ root }) => {
         if (root.querySelector('[role="alert"]')) return 'validation banner が表示されました'
+        const text = root.textContent ?? ''
+        if (!text.includes('Chinese (Taiwan) → Vietnamese')) {
+          return `pending の言語 pair で動的 Card Type 名が表示されていません: ${text.slice(0, 500)}`
+        }
+        if (text.includes('Japanese output only')) {
+          return 'output language 不一致の Card Type が表示されています'
+        }
         return hasConfirmationModal(root) || '確認 modal が表示されていません'
       },
     },
@@ -295,7 +315,7 @@ registerUnit<Record<string, never>>({
         const text = root.textContent ?? ''
         if (hasConfirmationModal(root)) return '確認 modal が開きました'
         return (
-          text.includes('Vietnamese → Chinese: Back has no content')
+          text.includes('Chinese → Vietnamese: Back has no content')
           || `validation error=${text.slice(0, 300)}`
         )
       },

@@ -29,6 +29,10 @@ import {
     parseContentTypeConfig,
     type ContentTypeSourceDocument,
 } from '@/lib/contentTypes';
+import {
+    DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
+    DEFAULT_AI_OUTPUT_LANGUAGES,
+} from '@/lib/aiOutputLanguages';
 import { DEFAULT_STUDY_LANGUAGES } from '@/lib/studyLanguages';
 import { FormType, LanguageType } from '@/types';
 
@@ -64,9 +68,10 @@ export const DEFAULT_CARD_TYPES = [
     {
         id: 'ct_word_meaning',
         code: 'word_to_meaning',
-        name: 'Word → Meaning',
+        name: '{study_language} → {output_language}',
         form_type: 'form_language',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 1,
         template: T.word_to_meaning,
@@ -74,9 +79,10 @@ export const DEFAULT_CARD_TYPES = [
     {
         id: 'ct_meaning_word',
         code: 'meaning_to_word',
-        name: 'Meaning → Word',
+        name: '{output_language} → {study_language}',
         form_type: 'form_language',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 2,
         template: T.meaning_to_word,
@@ -87,6 +93,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Audio → Word',
         form_type: 'form_language',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 3,
         template: T.audio_to_word,
@@ -97,6 +104,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Image → Word',
         form_type: 'form_language',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 4,
         template: T.image_to_word,
@@ -107,6 +115,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Fill in the Blank',
         form_type: 'form_language',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 5,
         template: T.fill_in_blank,
@@ -117,6 +126,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Pinyin → Character',
         form_type: 'form_language',
         language: 'zh',
+        output_language: null,
         is_default: false,
         sort_order: 6,
         template: T.reading_to_word,
@@ -127,6 +137,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Character → Pinyin',
         form_type: 'form_language',
         language: 'zh',
+        output_language: null,
         is_default: false,
         sort_order: 7,
         template: T.word_to_reading,
@@ -137,6 +148,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Hiragana → Kanji',
         form_type: 'form_language',
         language: 'ja',
+        output_language: null,
         is_default: false,
         sort_order: 6,
         template: T.reading_to_word,
@@ -147,6 +159,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Kanji → Hiragana',
         form_type: 'form_language',
         language: 'ja',
+        output_language: null,
         is_default: false,
         sort_order: 7,
         template: T.word_to_reading,
@@ -157,6 +170,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Concept → Definition',
         form_type: 'form_it',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 1,
         template: T.concept_to_def,
@@ -167,6 +181,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Definition → Concept',
         form_type: 'form_it',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 2,
         template: T.def_to_concept,
@@ -177,6 +192,7 @@ export const DEFAULT_CARD_TYPES = [
         name: 'Front → Back',
         form_type: 'form_general',
         language: null,
+        output_language: null,
         is_default: true,
         sort_order: 1,
         template: T.front_to_back,
@@ -303,6 +319,8 @@ export const DEFAULT_USER_PREFS = {
     auto_audio: true,
     auto_image: true,
     study_languages: DEFAULT_STUDY_LANGUAGES.map(language => ({ ...language })),
+    ai_output_languages: DEFAULT_AI_OUTPUT_LANGUAGES.map(language => ({ ...language })),
+    ai_output_language: DEFAULT_AI_OUTPUT_LANGUAGE_CODE,
 } as const;
 
 // ─── ユーザーごとの seeding ─────────────────────────────────────────────────────────
@@ -439,6 +457,7 @@ function hardcodedTemplateSnapshot(): UserDefaultTemplateSnapshot {
                 description: '',
                 form_type: cardType.form_type,
                 language: cardType.language,
+                output_language: cardType.output_language,
                 is_default: cardType.is_default,
                 is_active: true,
                 sort_order: cardType.sort_order,

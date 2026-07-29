@@ -60,6 +60,7 @@ describe('lib/session', () => {
     saveSession(FormType.LANGUAGE, {
       categoryId: 'c1',
       language: 'english',
+      outputLanguage: 'ja',
       deckId: 'd1',
       cardTypeIds: ['ct1'],
       tags: ['hsk1'],
@@ -70,6 +71,7 @@ describe('lib/session', () => {
     expect(preserved).toEqual({
       categoryId: 'c1',
       language: 'english',
+      outputLanguage: 'ja',
       deckId: 'd1',
       cardTypeIds: ['ct1'],
       tags: ['hsk1'],
@@ -94,6 +96,7 @@ describe('lib/session', () => {
   it('Content Type の persistent config/field だけを保持する', () => {
     saveSession('custom_type', {
       deckId: 'deck-1',
+      outputLanguage: 'ja',
       tags: ['temporary'],
       difficulty: 'advanced',
       fieldValues: {
@@ -103,10 +106,11 @@ describe('lib/session', () => {
     })
 
     expect(resetContentFields('custom_type', {
-      sessionKeys: ['deckId', 'difficulty'],
+      sessionKeys: ['deckId', 'outputLanguage', 'difficulty'],
       fieldKeys: ['audience'],
     })).toEqual({
       deckId: 'deck-1',
+      outputLanguage: 'ja',
       difficulty: 'advanced',
       fieldValues: { audience: 'Beginner' },
     })

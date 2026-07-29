@@ -14,7 +14,9 @@ import { useToast } from '@/components/ui/Toast'
 import { validateCardEntry, formatValidationMessage } from '@/lib/cardValidation'
 import { ArrowLeft, Check } from 'lucide-react'
 import type { Entry, CardTemplate } from '@/types'
-import { languageDisplayName, matchesLanguageScope } from '@/lib/studyLanguages'
+import { languageDisplayName } from '@/lib/studyLanguages'
+import { filterCardTypesByScope } from '@/lib/cardTypeFilter'
+import { renderCardTypeName } from '@/lib/cardTypeName'
 import { findEntryContentType, resolveCustomFields } from '@/lib/entryCustomFields'
 import { buildHistoryEntryUpdates } from '@/lib/historyEntryUpdates'
 import { loadUserContentTypes } from '@/lib/userContentTypes'
@@ -34,7 +36,7 @@ export default function HistoryDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { languages } = useStudyLanguages()
+  const { languages, loading: languagesLoading } = useStudyLanguages()
   const id = params.id as string
 
   const [entry, setEntry] = useState<Partial<Entry>>({})
@@ -51,7 +53,7 @@ export default function HistoryDetailPage() {
   const toast = useToast()
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || languagesLoading) return
     async function load() {
       if (!id) return
       try {
@@ -79,12 +81,41 @@ export default function HistoryDetailPage() {
             loadUserContentTypes(user!.uid),
           ])
           setContentType(findEntryContentType(contentTypes, data.form_type) ?? null)
-          type Fetched = { id: string; name: string; description?: string; code?: string; sort_order?: number; is_active?: boolean; language?: string | null; template?: CardTemplate }
-          const fetched: Fetched[] = ctSnap.docs
-            .map(d => ({ id: d.id, ...(d.data() as Omit<Fetched, 'id'>) }))
-            .filter(ct => ct.is_active !== false && matchesLanguageScope(ct.language, data.language))
-            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          setCardTypes(fetched.map(ct => ({ id: ct.id, name: ct.name, description: ct.description, code: ct.code, template: ct.template })))
+          type Fetched = {
+            id: string
+            name: string
+            description?: string
+            code?: string
+            sort_order?: number
+            is_active?: boolean
+            is_default?: boolean
+            language?: string | null
+            output_language?: string | null
+            template?: CardTemplate
+          }
+          const outputLanguage = data.output_language ?? 'vi'
+          const fetched = filterCardTypesByScope<Fetched>(
+            ctSnap.docs.map(d => ({
+              id: d.id,
+              ...(d.data() as Omit<Fetched, 'id'>),
+            })),
+            {
+              studyLanguage: data.language,
+              outputLanguage,
+            },
+          )
+          setCardTypes(fetched.map(ct => ({
+            id: ct.id,
+            name: renderCardTypeName(ct.name, {
+              studyLanguage: data.language,
+              outputLanguage,
+              cardType: ct,
+              languages,
+            }),
+            description: ct.description,
+            code: ct.code,
+            template: ct.template,
+          })))
           const preset = data.card_type_ids?.length
             ? data.card_type_ids
             : fetched.map(ct => ct.id)
@@ -100,7 +131,7 @@ export default function HistoryDetailPage() {
       }
     }
     load()
-  }, [id, user, authLoading])
+  }, [id, user, authLoading, languages, languagesLoading])
 
   const handleDeckChange = useCallback(async (deckId: string) => {
     setSelectedDeckId(deckId)

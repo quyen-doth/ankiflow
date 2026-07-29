@@ -1,6 +1,7 @@
 import { FormType } from '@/types'
 import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
 import { resolveContentTypeFormType } from '@/lib/contentTypes'
+import { getSystemDataSourceDefinition } from '@/lib/create/configDataSources'
 import type { ContentType, FormFieldConfig } from '@/types'
 import type { SessionState } from '@/lib/session'
 
@@ -32,6 +33,7 @@ export type ConfigBlock =
 
 export type ConfigLeaf = ConfigFieldMeta & (
   | { kind: 'language'; span?: number }
+  | { kind: 'outputLanguage'; span?: number }
   | { kind: 'deck'; filterByLanguage?: boolean; span?: number }
   | { kind: 'category'; span?: number }
   | { kind: 'tags'; span?: number }
@@ -61,6 +63,7 @@ export interface CardFormBlueprint {
 /** Configuration 列の 2 カラムグリッドにおける各 control の希望幅。 */
 const CONTROL_SPAN: Record<ConfigLeaf['kind'], 1 | 2> = {
   language: 1,
+  outputLanguage: 1,
   deck: 1,
   difficulty: 1,
   category: 2,
@@ -266,22 +269,22 @@ const FIELD_TYPE_MAP: Partial<Record<FormFieldConfig['type'], CoreField['type']>
 interface ControlDefinition {
   kind: ConfigLeaf['kind']
   types: FormFieldConfig['type'][]
-  dataSources: string[]
 }
 
+// data_source がない既存 document の後方互換用。新規設定は system data source を優先する。
 const CONTROL_FIELDS: Readonly<Record<string, ControlDefinition>> = {
-  language: { kind: 'language', types: ['dropdown'], dataSources: [] },
-  anki_deck: { kind: 'deck', types: ['dropdown'], dataSources: ['decks'] },
-  decks: { kind: 'deck', types: ['dropdown'], dataSources: ['decks'] },
-  category_id: { kind: 'category', types: ['dropdown'], dataSources: ['categories'] },
-  categories: { kind: 'category', types: ['dropdown'], dataSources: ['categories'] },
-  tags: { kind: 'tags', types: ['tags'], dataSources: [] },
-  card_type_ids: { kind: 'cardTypes', types: ['checkbox_group'], dataSources: ['card_types'] },
-  card_types: { kind: 'cardTypes', types: ['checkbox_group'], dataSources: ['card_types'] },
-  topic_ids: { kind: 'topic', types: ['checkbox_group'], dataSources: ['topics'] },
-  topics: { kind: 'topic', types: ['checkbox_group'], dataSources: ['topics'] },
-  difficulty: { kind: 'difficulty', types: ['dropdown'], dataSources: [] },
-  keywords: { kind: 'keywords', types: ['tags', 'text'], dataSources: [] },
+  language: { kind: 'language', types: ['dropdown'] },
+  anki_deck: { kind: 'deck', types: ['dropdown'] },
+  decks: { kind: 'deck', types: ['dropdown'] },
+  category_id: { kind: 'category', types: ['dropdown'] },
+  categories: { kind: 'category', types: ['dropdown'] },
+  tags: { kind: 'tags', types: ['tags'] },
+  card_type_ids: { kind: 'cardTypes', types: ['checkbox_group'] },
+  card_types: { kind: 'cardTypes', types: ['checkbox_group'] },
+  topic_ids: { kind: 'topic', types: ['checkbox_group'] },
+  topics: { kind: 'topic', types: ['checkbox_group'] },
+  difficulty: { kind: 'difficulty', types: ['dropdown'] },
+  keywords: { kind: 'keywords', types: ['tags', 'text'] },
 }
 
 const BUILTIN_PRIMARY_FIELDS: Readonly<Partial<Record<FormType, string>>> = {
@@ -319,8 +322,14 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
     if (seenKeys.has(normalizedKey)) throw fieldError(field, 'field key must be unique.')
     seenKeys.add(normalizedKey)
 
-    const control = CONTROL_FIELDS[normalizedKey]
     const dataSource = field.data_source?.trim() || ''
+    const sourceDefinition = getSystemDataSourceDefinition(dataSource)
+    if (dataSource && !sourceDefinition) {
+      throw fieldError(field, `data source "${dataSource}" is not supported.`)
+    }
+    const control = sourceDefinition
+      ? { kind: sourceDefinition.kind, types: sourceDefinition.types }
+      : CONTROL_FIELDS[normalizedKey]
     if (control) {
       if (seenControls.has(control.kind)) {
         throw fieldError(field, `duplicates the "${control.kind}" configuration control.`)
@@ -328,9 +337,6 @@ function buildBlueprintLayout(source: ContentTypeBlueprintSource): BlueprintLayo
       seenControls.add(control.kind)
       if (!control.types.includes(field.type)) {
         throw fieldError(field, `type "${field.type}" is not supported for this configuration control.`)
-      }
-      if (dataSource && !control.dataSources.includes(dataSource)) {
-        throw fieldError(field, `data source "${dataSource}" is not supported for this configuration control.`)
       }
       configLeaves.push({
         kind: control.kind,
