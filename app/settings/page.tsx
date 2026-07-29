@@ -31,15 +31,8 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useGlobalConfig } from '@/components/providers/GlobalConfigProvider';
 import { cn } from '@/lib/utils';
 import { getAnkiClientFromSettings, resetAnkiClientCache } from '@/lib/flashcard-service/client';
-import {
-    mergeStudyLanguageEdits,
-    normalizeStudyLanguages,
-    validateStudyLanguages,
-} from '@/lib/studyLanguages';
-import {
-    normalizeAiOutputLanguagePreferences,
-    validateAiOutputLanguagePreferences,
-} from '@/lib/aiOutputLanguages';
+import { mergeStudyLanguageEdits, normalizeStudyLanguages, validateStudyLanguages } from '@/lib/studyLanguages';
+import { normalizeAiOutputLanguagePreferences, validateAiOutputLanguagePreferences } from '@/lib/aiOutputLanguages';
 import { createPersonalSettingsSnapshot } from '@/lib/settings-form-state';
 import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard';
 import type { Settings } from '@/types';
@@ -66,8 +59,8 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
 
     // デプロイ版 (loopback 以外の origin) では browser の Local Network Access が
     // public→localhost をブロックする → CORS を直しても届かないため別途案内する。
-    const isDeployedOrigin = typeof window !== 'undefined'
-        && !['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const isDeployedOrigin =
+        typeof window !== 'undefined' && !['localhost', '127.0.0.1'].includes(window.location.hostname);
 
     const snippet = `{\n  "webCorsOriginList": ["http://localhost", "${origin}"]\n}`;
 
@@ -124,11 +117,13 @@ function AnkiCorsHelp({ onRecheck }: { onRecheck: () => Promise<boolean> }) {
             {isDeployedOrigin && (
                 <div className="mt-3 p-2.5 rounded-[8px] bg-white border border-[#eceae4]">
                     <p className="text-[11.5px] text-slate-600 leading-relaxed">
-                        <span className="font-bold text-[#b87514]">Still blocked after allowing CORS?</span>{' '}
-                        Modern browsers (Chrome &quot;Local Network Access&quot;) block a deployed site from reaching{' '}
+                        <span className="font-bold text-[#b87514]">Still blocked after allowing CORS?</span> Modern
+                        browsers (Chrome &quot;Local Network Access&quot;) block a deployed site from reaching{' '}
                         <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">localhost</code>. When
                         prompted, allow local network access for this site — or run AnkiFlow at{' '}
-                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">http://localhost:3000</code>{' '}
+                        <code className="px-1 py-0.5 rounded bg-[#f3ecdd] font-mono text-[11px]">
+                            http://localhost:3000
+                        </code>{' '}
                         to sync with Anki.
                     </p>
                 </div>
@@ -290,11 +285,13 @@ export default function SettingsPage() {
             const serverLanguages = normalizeStudyLanguages(
                 freshSnap.exists() ? freshSnap.data()?.study_languages : undefined,
             );
-            const mergedLanguages = normalizeStudyLanguages(mergeStudyLanguageEdits(
-                baselineLanguageCodesRef.current,
-                settings.study_languages ?? [],
-                serverLanguages,
-            ));
+            const mergedLanguages = normalizeStudyLanguages(
+                mergeStudyLanguageEdits(
+                    baselineLanguageCodesRef.current,
+                    settings.study_languages ?? [],
+                    serverLanguages,
+                ),
+            );
             const outputPreferences = normalizeAiOutputLanguagePreferences(
                 settings.ai_output_languages,
                 settings.ai_output_language,
@@ -387,40 +384,6 @@ export default function SettingsPage() {
             />
 
             <div className="max-w-3xl mx-auto w-full pb-12 flex flex-col gap-8">
-                {/* SRS Sync */}
-                <Card>
-                    <SectionHeader icon={RefreshCw} label="SRS Data Sync" tone="green" />
-                    <p className="text-sm text-slate-600 mb-4">
-                        Sync spaced repetition data from Anki Desktop to Firestore. Requires Anki Desktop to be open.
-                    </p>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
-                        disabled={syncingSRS || !ankiConnected}
-                        onClick={handleSyncSrs}
-                    >
-                        {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
-                    </Button>
-                    {!ankiConnected && (
-                        <p className="text-xs text-slate-400 mt-2">Anki Desktop must be running to sync.</p>
-                    )}
-                </Card>
-
-                {/* Re-sync card layout */}
-                <Card>
-                    <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
-                    <ResyncCards ankiConnected={ankiConnected} />
-                </Card>
-
-                {/* Per-user study languages */}
-                <Card>
-                    <StudyLanguageSettings
-                        languages={settings.study_languages ?? []}
-                        onChange={(languages) => updateField('study_languages', languages)}
-                    />
-                </Card>
-
                 {/* Per-user AI output languages and explicit default. */}
                 <Card>
                     <AiOutputLanguageSettings
@@ -428,6 +391,14 @@ export default function SettingsPage() {
                         defaultLanguage={settings.ai_output_language ?? ''}
                         onLanguagesChange={(languages) => updateField('ai_output_languages', languages)}
                         onDefaultLanguageChange={(language) => updateField('ai_output_language', language)}
+                    />
+                </Card>
+
+                {/* Per-user study languages */}
+                <Card>
+                    <StudyLanguageSettings
+                        languages={settings.study_languages ?? []}
+                        onChange={(languages) => updateField('study_languages', languages)}
                     />
                 </Card>
 
@@ -461,7 +432,9 @@ export default function SettingsPage() {
                             description={
                                 !globalConfig.tts_available
                                     ? 'Disabled by administrator'
-                                    : settings.tts_enabled ? 'Audio generation enabled' : 'Audio generation disabled'
+                                    : settings.tts_enabled
+                                      ? 'Audio generation enabled'
+                                      : 'Audio generation disabled'
                             }
                             icon={Volume2}
                             tone="green"
@@ -473,7 +446,9 @@ export default function SettingsPage() {
                             description={
                                 !globalConfig.unsplash_available
                                     ? 'Disabled by administrator'
-                                    : settings.unsplash_enabled ? 'Image search enabled' : 'Image search disabled'
+                                    : settings.unsplash_enabled
+                                      ? 'Image search enabled'
+                                      : 'Image search disabled'
                             }
                             icon={ImageIcon}
                             tone="green"
@@ -481,6 +456,32 @@ export default function SettingsPage() {
                             checking={false}
                         />
                     </div>
+                </Card>
+
+                {/* SRS Sync */}
+                <Card>
+                    <SectionHeader icon={RefreshCw} label="SRS Data Sync" tone="green" />
+                    <p className="text-sm text-slate-600 mb-4">
+                        Sync spaced repetition data from Anki Desktop to Firestore. Requires Anki Desktop to be open.
+                    </p>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<RefreshCw className={cn('w-4 h-4', syncingSRS && 'animate-spin')} />}
+                        disabled={syncingSRS || !ankiConnected}
+                        onClick={handleSyncSrs}
+                    >
+                        {syncingSRS ? 'Syncing...' : 'Sync SRS from Anki'}
+                    </Button>
+                    {!ankiConnected && (
+                        <p className="text-xs text-slate-400 mt-2">Anki Desktop must be running to sync.</p>
+                    )}
+                </Card>
+
+                {/* Re-sync card layout */}
+                <Card>
+                    <SectionHeader icon={RefreshCw} label="Update Card Layout" tone="amber" />
+                    <ResyncCards ankiConnected={ankiConnected} />
                 </Card>
 
                 {/* Preferences */}
