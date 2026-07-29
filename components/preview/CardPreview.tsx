@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { DUR, EASE } from '@/lib/motion'
+import { EASE } from '@/lib/motion'
 import { Play, Square, RotateCw } from 'lucide-react'
 import { verifyAttrs } from '@/verify/core/contract'
 import { renderSide, DEFAULT_TEMPLATES } from '@/lib/anki/renderCard'
@@ -47,6 +47,9 @@ const FACE_STYLE: CSSProperties = {
   WebkitBackfaceVisibility: 'hidden',
   pointerEvents: 'none',
 }
+
+// カードの内容を追いやすいよう、共通の slow motion より少し長くする。
+const CARD_FLIP_DURATION = 0.4
 
 /**
  * 選択した card type の template どおりの Anki カード preview (renderSide + CSS を export と共用)。
@@ -200,7 +203,7 @@ function CardFlipStage({
   const stageHeight = Math.max(frontHeight, backHeight)
   const transition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: DUR.slow, ease: EASE }
+    : { duration: CARD_FLIP_DURATION, ease: EASE }
 
   return (
     <motion.div
