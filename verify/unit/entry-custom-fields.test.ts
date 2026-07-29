@@ -142,6 +142,53 @@ describe('resolveCustomFields', () => {
       { key: 'default_note', label: 'Default note', value: '' },
     ])
   })
+
+  it('output_vi field は Vietnamese output と legacy entry だけに表示する', () => {
+    const conditionalContentType: ContentType = {
+      ...contentType,
+      ai_output_profiles: contentType.ai_output_profiles?.map(profile => (
+        profile.profile === 'zh'
+          ? {
+              ...profile,
+              fields: [
+                ...profile.fields,
+                {
+                  key: 'vietnamese_note',
+                  type: 'string' as const,
+                  instruction: 'Vietnamese-only note',
+                  include_when: 'output_vi' as const,
+                },
+              ],
+            }
+          : profile
+      )),
+    }
+    const baseEntry = {
+      language: 'zh',
+      vietnamese_note: 'Ghi chú cũ',
+    } as Partial<Entry> & Record<string, unknown>
+
+    expect(resolveCustomFields(
+      { ...baseEntry, output_language: 'ja' },
+      conditionalContentType,
+    ).map(field => field.key)).not.toContain('vietnamese_note')
+    expect(resolveCustomFields(
+      { ...baseEntry, output_language: 'vi' },
+      conditionalContentType,
+    )).toContainEqual({
+      key: 'vietnamese_note',
+      label: 'Vietnamese note',
+      value: 'Ghi chú cũ',
+    })
+    expect(resolveCustomFields(
+      baseEntry,
+      conditionalContentType,
+    )).toContainEqual({
+      key: 'vietnamese_note',
+      label: 'Vietnamese note',
+      value: 'Ghi chú cũ',
+    })
+  })
 })
 
 describe('findEntryContentType', () => {

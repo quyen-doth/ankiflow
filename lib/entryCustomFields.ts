@@ -1,6 +1,7 @@
 import { materializeContentTypeAiProfiles } from '@/lib/ai-agent/contentTypeProfiles'
 import {
   AI_OUTPUT_FIELD_KEY_PATTERN,
+  filterFieldsByOutputLanguage,
   RESERVED_AI_OUTPUT_KEYS,
   resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
@@ -75,10 +76,18 @@ export function resolveCustomFields(
     try {
       const materialized = materializeContentTypeAiProfiles(contentType)
       if (materialized.profiles.length > 0) {
-        const profileFields = resolveEffectiveProfileFields(
+        const resolvedProfileFields = resolveEffectiveProfileFields(
           materialized.profiles,
           entry.language ? primaryLanguageSubtag(entry.language) : null,
         )
+        const profileFields = filterFieldsByOutputLanguage(
+          resolvedProfileFields,
+          entry.output_language,
+        )
+        const visibleKeys = new Set(profileFields.map(field => field.key))
+        for (const profileField of resolvedProfileFields) {
+          if (!visibleKeys.has(profileField.key)) seen.add(profileField.key)
+        }
         for (const profileField of profileFields) {
           if (!isAdditionalFieldKey(profileField.key) || seen.has(profileField.key)) continue
           const storedValue = entryData[profileField.key]

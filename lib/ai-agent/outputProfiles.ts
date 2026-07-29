@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { isReservedEntryQueryField } from '@/lib/entries/queryMetadata'
+import { primaryLanguageSubtag } from '@/lib/studyLanguages'
 import type { AiOutputField, AiOutputProfile } from '@/types'
 
 export const AI_OUTPUT_FIELD_KEY_PATTERN = /^[a-z][a-z0-9_]{0,39}$/
@@ -227,6 +228,17 @@ export function resolveEffectiveProfileFields(
   primaryStudyLanguage: string | null,
 ): AiOutputField[] {
   return effectiveProfileFields(normalizeAiOutputProfiles(profiles), primaryStudyLanguage)
+}
+
+/** `output_vi` field は output language の primary subtag が `vi` の場合だけ残す。 */
+export function filterFieldsByOutputLanguage<
+  T extends { include_when?: 'always' | 'output_vi' },
+>(
+  fields: readonly T[],
+  outputLanguageCode: string | null | undefined,
+): T[] {
+  const outputPrimary = primaryLanguageSubtag(outputLanguageCode ?? 'vi')
+  return fields.filter(field => field.include_when !== 'output_vi' || outputPrimary === 'vi')
 }
 
 /** Parse + normalize + clone を行い、Firestore/client object を engine 内で変更しない。 */
