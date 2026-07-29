@@ -29,11 +29,13 @@ export function findEntryContentType<T extends ContentType>(
   ))
 }
 
-function fieldLabel(contentType: ContentType | undefined, key: string): string {
-  const labels = Object.fromEntries(
-    contentType?.fields.map(field => [field.field_key, field.label]) ?? [],
-  )
-  return getFieldLabel(`custom:${key}`, labels)
+function fieldLabel(
+  contentType: ContentType | undefined,
+  key: string,
+  profileLabel?: string,
+): string {
+  const inputLabel = contentType?.fields.find(field => field.field_key === key)?.label.trim()
+  return inputLabel || profileLabel?.trim() || getFieldLabel(`custom:${key}`)
 }
 
 function isAdditionalFieldKey(key: string): boolean {
@@ -93,7 +95,7 @@ export function resolveCustomFields(
           const storedValue = entryData[profileField.key]
           fields.push({
             key: profileField.key,
-            label: fieldLabel(contentType, profileField.key),
+            label: fieldLabel(contentType, profileField.key, profileField.label),
             value: coerceStoredCustomValue(storedValue, profileField.type),
           })
           seen.add(profileField.key)

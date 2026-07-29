@@ -40,8 +40,18 @@ const contentType = {
       fields: [
         { key: 'word', type: 'string', instruction: 'Word' },
         { key: 'pinyin', type: 'string', instruction: 'Pinyin' },
-        { key: 'phon_the', type: 'string', instruction: 'Traditional form' },
-        { key: 'related_words', type: 'string_array', instruction: 'Related words' },
+        {
+          key: 'phon_the',
+          type: 'string',
+          label: 'Profile traditional form',
+          instruction: 'Traditional form',
+        },
+        {
+          key: 'related_words',
+          type: 'string_array',
+          label: 'Related vocabulary',
+          instruction: 'Related words',
+        },
       ],
     },
   ],
@@ -61,7 +71,7 @@ describe('resolveCustomFields', () => {
 
     expect(fields).toEqual([
       { key: 'phon_the', label: 'Traditional form', value: '喫飯' },
-      { key: 'related_words', label: 'Related words', value: ['用餐', '吃東西'] },
+      { key: 'related_words', label: 'Related vocabulary', value: ['用餐', '吃東西'] },
     ])
   })
 
@@ -111,7 +121,7 @@ describe('resolveCustomFields', () => {
 
     expect(fields).toEqual([
       { key: 'phon_the', label: 'Traditional form', value: ['喫飯'] },
-      { key: 'related_words', label: 'Related words', value: '用餐\n吃東西' },
+      { key: 'related_words', label: 'Related vocabulary', value: '用餐\n吃東西' },
     ])
     expect(updates).toMatchObject({
       phon_the: ['喫飯'],
@@ -122,7 +132,7 @@ describe('resolveCustomFields', () => {
   it('profile にある未生成 field も編集用の空値として返す', () => {
     expect(resolveCustomFields({ language: 'zh' }, contentType)).toEqual([
       { key: 'phon_the', label: 'Traditional form', value: '' },
-      { key: 'related_words', label: 'Related words', value: [] },
+      { key: 'related_words', label: 'Related vocabulary', value: [] },
     ])
   })
 
@@ -138,7 +148,7 @@ describe('resolveCustomFields', () => {
 
     expect(resolveCustomFields({ language: 'zh' }, inheritedContentType)).toEqual([
       { key: 'phon_the', label: 'Traditional form', value: '' },
-      { key: 'related_words', label: 'Related words', value: [] },
+      { key: 'related_words', label: 'Related vocabulary', value: [] },
       { key: 'default_note', label: 'Default note', value: '' },
     ])
   })

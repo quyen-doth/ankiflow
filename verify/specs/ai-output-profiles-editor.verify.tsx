@@ -367,7 +367,7 @@ registerUnit<EditorHarnessProps>({
     },
     {
       id: 'suggested-field-is-prefilled',
-      description: 'Preset は key/type/instruction を入力済みにし、追加済み option を除外する',
+      description: 'Preset は key/label/type/instruction を入力済みにし、追加済み option を除外する',
       onlyFixtures: ['act-add-suggested-field'],
       check: ({ root }) => {
         const keys = Array.from(
@@ -377,10 +377,14 @@ registerUnit<EditorHarnessProps>({
         if (fieldIndex < 0) return 'phon_the field が追加されていない'
 
         const type = root.querySelector<HTMLSelectElement>(`select[aria-label="AI output type ${fieldIndex}"]`)
+        const label = root.querySelector<HTMLInputElement>(
+          `input[aria-label="AI output label ${fieldIndex}"]`,
+        )
         const instruction = root.querySelector<HTMLTextAreaElement>(
           `textarea[aria-label="AI output instruction ${fieldIndex}"]`,
         )
         if (type?.value !== 'string') return `type="${type?.value}"`
+        if (label?.value !== 'Traditional form') return `label="${label?.value}"`
         if (!instruction?.value.includes('Return an empty string if identical to the simplified form.')) {
           return `instruction="${instruction?.value}"`
         }

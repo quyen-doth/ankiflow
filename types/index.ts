@@ -231,6 +231,8 @@ export interface DeckConfig {
 export interface AiOutputField {
   key: string;
   type: 'string' | 'string_array';
+  /** Preview / History / Card Type editor に表示する任意の label。 */
+  label?: string;
   /** `{output_language}` / `{study_language}` を解決して tool schema の説明に使用する。 */
   instruction: string;
   /** `output_vi` は出力言語の primary subtag が `vi` の場合だけ field を含める。 */

@@ -49,6 +49,7 @@ export const aiOutputFieldSchema = z.object({
     .refine(key => !isReservedEntryQueryField(key), 'AI output key uses a reserved application prefix')
     .refine(key => !RESERVED_AI_OUTPUT_KEYS.has(key), 'AI output key is reserved by the application'),
   type: z.enum(['string', 'string_array']),
+  label: z.string().trim().min(1).max(60).optional(),
   instruction: z.string().trim().min(1).max(300),
   include_when: z.enum(['always', 'output_vi']).optional(),
   max_items: z.number().int().min(1).max(20).optional(),
@@ -165,6 +166,7 @@ function cloneAiOutputField(field: AiOutputField): AiOutputField {
   return {
     key: field.key,
     type: field.type,
+    ...(field.label !== undefined ? { label: field.label } : {}),
     instruction: field.instruction,
     ...(field.include_when !== undefined ? { include_when: field.include_when } : {}),
     ...(field.max_items !== undefined ? { max_items: field.max_items } : {}),

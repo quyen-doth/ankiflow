@@ -141,6 +141,7 @@ export function AiOutputProfilesEditor({
     appendOutputField({
       key: preset.key,
       type: preset.type,
+      label: preset.label,
       instruction: preset.instruction,
       ...(preset.include_when !== undefined ? { include_when: preset.include_when } : {}),
       ...(preset.max_items !== undefined ? { max_items: preset.max_items } : {}),
@@ -495,7 +496,7 @@ export function AiOutputProfilesEditor({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <FieldWrapper label="Output key">
                   <Input
                     aria-label={`AI output key ${fieldIndex}`}
@@ -504,6 +505,23 @@ export function AiOutputProfilesEditor({
                     onChange={(event) => {
                       dismissInstructionSuggestion()
                       updateField(fieldIndex, { ...field, key: event.target.value })
+                    }}
+                  />
+                </FieldWrapper>
+                <FieldWrapper label="Label">
+                  <Input
+                    aria-label={`AI output label ${fieldIndex}`}
+                    value={field.label ?? ''}
+                    maxLength={60}
+                    placeholder="Generated from key"
+                    onChange={(event) => {
+                      const nextField = { ...field }
+                      if (event.target.value) {
+                        nextField.label = event.target.value
+                      } else {
+                        delete nextField.label
+                      }
+                      updateField(fieldIndex, nextField)
                     }}
                   />
                 </FieldWrapper>

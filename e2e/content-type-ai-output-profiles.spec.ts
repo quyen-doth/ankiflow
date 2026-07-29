@@ -13,6 +13,7 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await page.getByRole('textbox', { name: 'AI output instruction 0' }).fill('Chinese identity from workspace')
   await page.getByRole('combobox', { name: 'Add AI output field' }).selectOption('custom')
   await page.getByRole('textbox', { name: /AI output key/ }).last().fill('memory_hook')
+  await page.getByRole('textbox', { name: /AI output label/ }).last().fill('Memory hook')
   await page.getByRole('textbox', { name: /AI output instruction/ }).last().fill('Short memory hook')
   await page.getByRole('button', { name: 'Move AI output memory_hook up' }).click()
   await page.getByRole('button', { name: 'Save Profile Draft' }).click()
@@ -22,6 +23,9 @@ test('Content Type editor は profile ごとの AI output instruction を保存�
   await page.getByRole('radio', { name: 'Chinese', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'AI output instruction 0' }))
     .toHaveValue('Chinese identity from workspace')
+  await expect.poll(async () => page.locator('input[aria-label^="AI output label"]').evaluateAll(
+    inputs => inputs.map(input => (input as HTMLInputElement).value),
+  )).toContain('Memory hook')
   await expect(page.getByRole('button', { name: 'Remove AI output memory_hook' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Remove AI output memory_hook' }).click()
@@ -48,6 +52,9 @@ test('AI output editor は text-only 境界と profile preset を表示して fi
   await picker.selectOption('preset:phon_the')
 
   await expect(page.getByRole('textbox', { name: /AI output key/ }).last()).toHaveValue('phon_the')
+  await expect(page.getByRole('textbox', { name: /AI output label/ }).last()).toHaveValue(
+    'Traditional form',
+  )
   await expect(page.getByRole('textbox', { name: /AI output instruction/ }).last()).toHaveValue(
     /Return an empty string if identical to the simplified form\./,
   )

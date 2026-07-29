@@ -37,19 +37,31 @@ describe('AI output profile serialization', () => {
       fields: [{
         key: 'word',
         type: 'string',
+        label: 'Primary value',
         instruction: 'Primary value',
         include_when: undefined,
         max_items: undefined,
+      }, {
+        key: 'supporting_note',
+        type: 'string',
+        label: undefined,
+        instruction: 'Supporting note',
       }],
     }]
 
-    const clonedField = cloneAiOutputProfiles(profiles)[0].fields[0]
-    const parsedField = parseAiOutputProfiles(profiles, 'word')[0].fields[0]
+    const clonedFields = cloneAiOutputProfiles(profiles)[0].fields
+    const parsedFields = parseAiOutputProfiles(profiles, 'word')[0].fields
+    const clonedField = clonedFields[0]
+    const parsedField = parsedFields[0]
 
+    expect(clonedField.label).toBe('Primary value')
+    expect(parsedField.label).toBe('Primary value')
     expect(Object.prototype.hasOwnProperty.call(clonedField, 'include_when')).toBe(false)
     expect(Object.prototype.hasOwnProperty.call(clonedField, 'max_items')).toBe(false)
     expect(Object.prototype.hasOwnProperty.call(parsedField, 'include_when')).toBe(false)
     expect(Object.prototype.hasOwnProperty.call(parsedField, 'max_items')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(clonedFields[1], 'label')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsedFields[1], 'label')).toBe(false)
   })
 })
 
@@ -154,7 +166,12 @@ describe('materializeContentTypeAiProfiles', () => {
         fields: [
           { key: 'word', type: 'string' as const, instruction: 'Default word' },
           { key: 'meaning_vi', type: 'string' as const, instruction: 'Default meaning' },
-          { key: 'phon_the', type: 'string' as const, instruction: 'Default traditional form' },
+          {
+            key: 'phon_the',
+            type: 'string' as const,
+            label: 'Traditional form',
+            instruction: 'Default traditional form',
+          },
         ],
       },
       {
@@ -167,7 +184,12 @@ describe('materializeContentTypeAiProfiles', () => {
 
     expect(resolveEffectiveProfileFields(profiles, 'zh')).toEqual([
       { key: 'word', type: 'string', instruction: 'Chinese word' },
-      { key: 'phon_the', type: 'string', instruction: 'Default traditional form' },
+      {
+        key: 'phon_the',
+        type: 'string',
+        label: 'Traditional form',
+        instruction: 'Default traditional form',
+      },
     ])
   })
 

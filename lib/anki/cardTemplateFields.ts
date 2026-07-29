@@ -78,16 +78,16 @@ export function resolveCardTemplateCustomFields(
       materialized.profiles,
       language ? primaryLanguageSubtag(language) : null,
     )
-    const fieldLabels = Object.fromEntries(
-      contentType.fields.map(field => [field.field_key, field.label]),
-    )
     const seen = new Set<string>()
 
     return fields.flatMap(field => {
       if (isBuiltinRenderedOutputKey(field.key) || seen.has(field.key)) return []
       seen.add(field.key)
       const source = `custom:${field.key}` as const
-      const label = getFieldLabel(source, fieldLabels)
+      const inputLabel = contentType.fields
+        .find(inputField => inputField.field_key === field.key)
+        ?.label.trim()
+      const label = inputLabel || field.label?.trim() || getFieldLabel(source)
       return [{
         key: field.key,
         source,
