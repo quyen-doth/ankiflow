@@ -44,6 +44,7 @@ interface CardIframeProps {
   html: string
   title?: string
   onHeightChange?: (height: number) => void
+  ariaHidden?: boolean
 }
 
 interface CardDocumentView {
@@ -84,6 +85,7 @@ export function CardIframe({
   html,
   title = 'Card preview',
   onHeightChange,
+  ariaHidden = false,
 }: CardIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(200)
@@ -146,6 +148,8 @@ export function CardIframe({
       style={{ width: '100%', height: `${height}px`, minHeight: `${MIN_IFRAME_HEIGHT}px`, border: 'none', display: 'block' }}
       title={title}
       sandbox="allow-same-origin"
+      aria-hidden={ariaHidden || undefined}
+      tabIndex={ariaHidden ? -1 : undefined}
     />
   )
 }
