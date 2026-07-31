@@ -69,7 +69,7 @@ gh pr create --base develop --title "feat: エクスポート履歴画面を追�
 
 ### 繰り上げの判定
 
-判定は、リリース対象コミット (`main...develop`) の Conventional Commits の type から機械的に導出する。判定を人が行うことはない。
+判定は、リリース対象コミット (`main...develop`) の Conventional Commits の type から機械的に導出する。判定を人が行うことはない。繰り上げの基点となる「前回リリースのバージョン」は、`main` の `package.json` と `main` から到達できる最新タグのうち、大きいほうを採用する。
 
 | リリース対象に含まれるコミット | 繰り上げ |
 | --- | --- |
@@ -78,16 +78,20 @@ gh pr create --base develop --title "feat: エクスポート履歴画面を追�
 
 現在は `0.x` であり、SemVer 第 4 項のとおり公開 API の安定性を約束していない。したがって破壊的変更も MINOR として扱うが、その場合は `CHANGELOG.md` に「破壊的変更」の見出しを設けて明記すること。
 
-**`1.0.0` への移行条件**: 公開サインアップを有効化 (`SIGNUP_ENABLED=true`) し、外部の利用者を受け入れた時点とする。
+**`1.0.0` への移行条件**: 実際の利用を通じてデータモデル (コンテンツタイプ、カードタイプ、AI 出力プロファイル、および Anki ノートタイプのフィールド構成) が安定し、移行スクリプトを要する変更が発生しなくなったと判断した時点とする。利用者数や公開サインアップの有無は判断材料としない。それらは事業上の節目であり、互換性の事象ではないためである。
+
+`1.0.0` へ移行する際は、本ガイドに「公開 API の定義」を追記し、互換性を保証する対象を明示すること。定義のない `1.0.0` は意味を持たない。
 
 ### リリースの流れ
 
 ```
 develop へ push
    └─▶ release-pr.yml
-         ├─ scripts/prepare-release.mjs が次バージョンを算出
-         ├─ package.json を更新し、CHANGELOG の [Unreleased] を確定版へ昇格
-         ├─ 上記を develop へコミット (chore: リリース vX.Y.Z の準備)
+         ├─ scripts/prepare-release.mjs
+         │    ├─ 前回の準備を取り消す (準備済み節を [Unreleased] へ戻す)
+         │    ├─ main...develop の全コミットからバージョンを再算出
+         │    └─ package.json / package-lock.json / CHANGELOG を書き換える
+         ├─ 差分があれば develop へコミット (chore: リリース vX.Y.Z の準備)
          └─ Release PR を作成 / 更新 (タイトル: release: vX.Y.Z)
                 └─▶ Release PR をマージ
                       └─▶ release-tag.yml
@@ -95,12 +99,25 @@ develop へ push
                             └─ CHANGELOG の該当節を本文に GitHub Release を作成
 ```
 
-`prepare-release.mjs` は冪等である。作業ブランチのバージョンが既に `main` より先行している場合、二重に繰り上げることはない。
+### Release PR が未マージのまま develop が進んだ場合
+
+`prepare-release.mjs` は冪等であるだけでなく、**再入可能**である。Release PR を開いたまま `develop` に新しいコミットがマージされた場合、次の実行で以下が起こる。
+
+1. 前回準備した節 (`## [X.Y.Z]`) の内容を `[Unreleased]` へ戻し、`package.json` を前回リリースのバージョンへ戻す
+2. `main...develop` の**全コミット**を対象にバージョンを算出し直す
+3. 算出したバージョンで改めて準備する
+
+したがって、`fix` だけの状態で `v0.13.2` として準備されたあとに `feat` がマージされれば、バージョンは自動的に `v0.14.0` へ繰り上がり、CHANGELOG の記載も同じ節へ統合される。**バージョンは常に、そのリリースに含まれる全コミットを反映する。**
+
+なお、算出の基点は常に `main` 側の情報であり、既に繰り上げ済みの `develop` の `package.json` を基点にすることはない。基点を作業ブランチに置くと、上記の再算出ができなくなるためである。
+
+自身が生成したコミット (`chore: リリース vX.Y.Z の準備`) は、バージョン判定の対象から除外される。
 
 ### 開発者が行うこと
 
 - 利用者に影響のある変更を加えた場合、`CHANGELOG.md` の `[Unreleased]` に追記する。追加は「追加」、変更は「変更」、修正は「修正」の見出しに分類する。
-- `package.json` の `version` を手で編集してはならない。ワークフローが管理する。
+- `[Unreleased]` には見出し (`### `) と箇条書きのみを記載する。スクリプトが節を統合する際に整形するため、コードブロックや表は保持されない。
+- `package.json` および `package-lock.json` の `version` を手で編集してはならない。ワークフローが管理する。
 - 文書・テスト・CI 設定のみの変更は `CHANGELOG.md` に記載しない。
 
 ### 前提条件
