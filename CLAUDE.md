@@ -14,7 +14,7 @@ The app code lives in the clone root `ankiflow/` (Next.js App Router: `app/`, `c
 
 **Admin:** a single app owner. Identified two independent ways that must both be set: server-side by `ADMIN_EMAIL` env (session cookie email match, e.g. `/api/admin/*`), and in Firestore rules by the custom claim `admin:true` (rules cannot read env). `NEXT_PUBLIC_ADMIN_EMAIL` gates admin-only UI. Admin controls global feature flags (`settings/global`: TTS/Unsplash/AI availability) and editable new-user defaults (`__defaults__` master-data templates plus global `content_types`).
 
-For directory structure, data flow, env variables, and git conventions, see **`docs/REFERENCE.md`**.
+For directory structure, data flow, env variables, and git conventions, see **`docs/02-design/ARCHITECTURE.md`**.
 
 ## Language Policy
 
@@ -43,7 +43,7 @@ npm run verify        # Runtime verification matrix + unit tests (vitest + jsdom
 npm run verify:watch  # Verification in watch mode
 ```
 
-Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how to write specs.
+Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICATION.md` for how to write specs.
 
 ## Tech Stack
 
@@ -104,19 +104,20 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 `docs/` is the source of truth — read before making changes. `docs/README.md` is the document index:
 
-| File                   | Read when                                                 |
-| ---------------------- | --------------------------------------------------------- |
-| `docs/README.md`       | Locating a document, or adding/renaming one (index + conventions) |
-| `docs/PRD.md`          | Starting a new feature                                    |
-| `docs/API.md`          | Writing or calling any API route                          |
-| `docs/DATABASE.md`     | Writing Firestore queries or adding fields                |
-| `docs/DESIGN.md`       | Creating or modifying UI                                  |
-| `docs/VERIFICATION.md` | Writing or modifying verification specs (`verify/`)       |
-| `docs/REFERENCE.md`    | Directory structure, data flow, env vars, git conventions |
+| File | Read when |
+| --- | --- |
+| `docs/README.md` | Locating a document, or adding one (index + reading order) |
+| `docs/01-requirements/REQUIREMENTS.md` | Starting a new feature |
+| `docs/02-design/ARCHITECTURE.md` | Directory structure, data flow, env vars |
+| `docs/02-design/API.md` | Writing or calling any API route |
+| `docs/02-design/DATABASE.md` | Writing Firestore queries or adding fields |
+| `docs/02-design/DESIGN.md` | Creating or modifying UI |
+| `docs/03-development/VERIFICATION.md` | Writing or modifying verification specs (`verify/`) |
+| `docs/CONTRIBUTING.md` | Branching, commits, PRs, versioning and releases |
 
 ## Gotchas
 
-- **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/REFERENCE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
+- **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/02-design/ARCHITECTURE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
 - **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`, etc. only exist when `language` matches. Never assume these fields have values.
 - **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Built-in routes must use the `FormType` enum; copied Content Type document IDs are never routing values. Resolve built-ins from `user_content_types.code`; custom Content Types use their validated code. Mismatches cause silent wrong behavior.
 - **No JOIN in Firestore** — related documents must be fetched with `Promise.all()`, never sequentially in a loop.
@@ -138,8 +139,8 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
   shared utilities, and related types
 - Read the corresponding `docs/` file(s) listed in the Docs table above
   before touching any code — not after
-- If the task involves Firestore, read `docs/DATABASE.md` first;
-  if it involves API routes, read `docs/API.md` first
+- If the task involves Firestore, read `docs/02-design/DATABASE.md` first;
+  if it involves API routes, read `docs/02-design/API.md` first
 - Trace the full execution path end-to-end (e.g. UI → API route → service →
   Firestore) to understand how data flows through the affected area
 - Do not begin planning until the current behavior is fully understood
@@ -150,7 +151,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Write a clear, numbered execution plan
 - Include: files to change, why, and expected outcome
 - If the task touches Firestore schema or API routes, re-read
-  `docs/DATABASE.md` or `docs/API.md`
+  `docs/02-design/DATABASE.md` or `docs/02-design/API.md`
 
 **Step 3 — Request Approval**
 
@@ -173,7 +174,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 **Step 5 — Write Tests**
 
 - Write Vitest unit tests for any modified logic in `verify/`
-- Follow the spec format defined in `docs/VERIFICATION.md`
+- Follow the spec format defined in `docs/03-development/VERIFICATION.md`
 - Run: `npm run verify` — all tests must pass before continuing
 
 **Step 6a — Run E2E Tests**
@@ -189,9 +190,9 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 **Step 7 — Update Docs**
 
-- Update `docs/API.md` if any API route was added, removed, or modified
-- Update `docs/DATABASE.md` if any Firestore schema or query pattern changed
-- Do NOT modify `docs/PRD.md` without explicit user instruction
+- Update `docs/02-design/API.md` if any API route was added, removed, or modified
+- Update `docs/02-design/DATABASE.md` if any Firestore schema or query pattern changed
+- Do NOT modify `docs/01-requirements/REQUIREMENTS.md` without explicit user instruction
 - Cross-reference the Docs table above if unsure which files apply
 
 **Step 8 — Report**

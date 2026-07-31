@@ -159,7 +159,7 @@ npm run build         # 本番ビルド
 - 開発時のみアクセスできる検証ダッシュボード `/verify`（本番ビルドでは 404）
 - GitHub Actions CI はすべての PR と `main` / `develop` への push で ESLint・`tsc --noEmit`・Vitest を実行
 - ローカル Git hooks は `commit-msg` で Conventional Commits 形式・日本語件名・AI co-author 禁止を検証し、`pre-commit` / `pre-push` で `main` / `develop` への直接操作を防止
-- 詳細は [`docs/VERIFICATION.md`](docs/VERIFICATION.md) を参照
+- 詳細は [`docs/03-development/VERIFICATION.md`](docs/03-development/VERIFICATION.md) を参照
 
 ## ディレクトリ構成
 

@@ -11,14 +11,14 @@ description: >
 # Skill: Database
 
 ## Goal
-All Firestore-related code must match the schema in `docs/DATABASE.md`
+All Firestore-related code must match the schema in `docs/02-design/DATABASE.md`
 — correct field names, correct types, correct enum values, and the per-user isolation rule.
 
 ---
 
 ## Step 1 — Required context
 
-Read `docs/DATABASE.md` before:
+Read `docs/02-design/DATABASE.md` before:
 - Writing any Firestore query
 - Creating or modifying a TypeScript interface/type for data
 - Adding a new field to a collection
@@ -120,7 +120,7 @@ Impact:
 - firestore.rules unchanged / needs update
 ```
 
-5. Wait for user confirmation → update `docs/DATABASE.md`
+5. Wait for user confirmation → update `docs/02-design/DATABASE.md`
 
 ---
 
@@ -128,7 +128,7 @@ Impact:
 
 - Do **NOT** hardcode strings for `form_type` and `status` — use the enums/types in `types/index.ts`
 - Do **NOT** write any per-user query without the `user_id` filter
-- Do **NOT** add a field to a Firestore document without updating `docs/DATABASE.md`
+- Do **NOT** add a field to a Firestore document without updating `docs/02-design/DATABASE.md`
 - Do **NOT** delete a field before confirming it is no longer used
 - **MUST** use `Promise.all()` for batch fetches — never call Firestore in a loop
 - Language-specific fields (`pinyin`, `hiragana`, `ipa`...) are optional — never assume they exist

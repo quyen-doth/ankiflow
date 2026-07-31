@@ -12,7 +12,7 @@ description: >
 Shared by Claude Code and Codex (Codex: this file is referenced from `AGENTS.md`).
 The built-in generic reviewers don't know this project's rules — this checklist is
 the ankiflow-specific layer. Read the relevant `docs/` file before judging an area
-(`docs/API.md`, `docs/DATABASE.md`, `docs/DESIGN.md`, `docs/CONTRIBUTING.md`).
+(`docs/02-design/API.md`, `docs/02-design/DATABASE.md`, `docs/02-design/DESIGN.md`, `docs/CONTRIBUTING.md`).
 
 ---
 
@@ -47,7 +47,7 @@ diff hunk alone.
 - [ ] **API conventions**: hand-rolled `NextResponse.json` instead of `apiSuccess`/`apiError`/`catchError`; missing `parseBody` + zod schema; wrong auth layer (`withAuth` vs `ADMIN_EMAIL` check vs `verifyStaticToken`) — see the `api` skill
 - [ ] **SDK mixing**: Firebase Admin SDK and client SDK in the same module
 - [ ] **UI conventions**: default exports; hardcoded colors/px instead of `@theme` tokens; new font-size token not registered in `lib/utils.ts` classGroups; UI text not in English; `'use client'` added without need
-- [ ] **Docs sync**: API/schema/design change without a proposal to update `docs/API.md` / `docs/DATABASE.md` / `docs/DESIGN.md`
+- [ ] **Docs sync**: API/schema/design change without a proposal to update `docs/02-design/API.md` / `docs/02-design/DATABASE.md` / `docs/02-design/DESIGN.md`
 - [ ] **Git hygiene** (Mode B): commit messages violate `docs/CONTRIBUTING.md` format; AI co-author/footer present
 
 ### Layer 2: correctness

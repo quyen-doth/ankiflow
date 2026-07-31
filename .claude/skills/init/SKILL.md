@@ -18,10 +18,10 @@ read the right docs before creating files, never guess the architecture.
 ## Step 1 — Required context
 
 Before creating any file, read:
-1. `docs/PRD.md` — understand scope and business logic
-2. `docs/DESIGN.md` — if the feature has UI
-3. `docs/API.md` — if the feature adds a new API endpoint
-4. `docs/DATABASE.md` — if the feature touches Firestore
+1. `docs/01-requirements/REQUIREMENTS.md` — understand scope and business logic
+2. `docs/02-design/DESIGN.md` — if the feature has UI
+3. `docs/02-design/API.md` — if the feature adds a new API endpoint
+4. `docs/02-design/DATABASE.md` — if the feature touches Firestore
 
 ---
 
@@ -92,6 +92,6 @@ New files:
 
 ## Hard rules
 
-- Do **NOT** create files before reading `docs/PRD.md`
+- Do **NOT** create files before reading `docs/01-requirements/REQUIREMENTS.md`
 - Do **NOT** create more than the current step requires
 - **MUST** ask if the feature name or scope is unclear

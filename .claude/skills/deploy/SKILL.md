@@ -48,7 +48,7 @@ PRE-DEPLOY CHECKLIST
     → npm run verify
 
 [ ] API endpoints work correctly
-    → See docs/API.md, test the critical endpoints
+    → See docs/02-design/API.md, test the critical endpoints
 
 [ ] No blocking TODO/FIXME
     → Search: grep -r "TODO\|FIXME" app/ --include="*.ts" --include="*.tsx"
