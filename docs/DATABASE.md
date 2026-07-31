@@ -292,6 +292,7 @@ study language と一致する profile を優先し、存在しない場合は `
 | `fields` | object[] | output field 宣言。`default` は 1 件以上、言語 profile は 0 件でも可 (全継承) |
 | `fields[].key` | string | lowercase snake_case、profile 内で unique。application metadata の reserved key は不可 |
 | `fields[].type` | string | `string` / `string_array` |
+| `fields[].label` | string? | 1〜60 文字。Preview / History / Card Type editor の表示名候補。input form の label、この値、field key から生成した名前の順で使用 |
 | `fields[].instruction` | string | 1〜300 文字。`{output_language}` / `{study_language}` placeholder を使用可能 |
 | `fields[].include_when` | string? | `always` (default) / `output_vi` |
 | `fields[].max_items` | number? | `string_array` のみ、1〜20。未指定時は engine default 10 |

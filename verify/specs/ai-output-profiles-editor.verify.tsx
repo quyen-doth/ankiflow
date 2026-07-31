@@ -177,6 +177,28 @@ registerUnit<EditorHarnessProps>({
       },
     },
     {
+      id: 'act-clear-label-with-whitespace',
+      description: '空白だけの label は未設定へ正規化する。',
+      props: {},
+      act: async ctx => {
+        clickProfile(ctx.root, 'Chinese')
+        await ctx.wait(0)
+
+        const picker = ctx.root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
+        if (!picker) throw new Error('AI output field picker が見つからない')
+        picker.value = 'preset:phon_the'
+        picker.dispatchEvent(new Event('change', { bubbles: true }))
+        await ctx.wait(0)
+
+        const keys = Array.from(
+          ctx.root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]'),
+        )
+        const fieldIndex = keys.findIndex(input => input.value === 'phon_the')
+        if (fieldIndex < 0) throw new Error('phon_the field が追加されていない')
+        await ctx.type(`input[aria-label="AI output label ${fieldIndex}"]`, '   ')
+      },
+    },
+    {
       id: 'default-language-profiles',
       description: 'Language editor starts with Default/English/Chinese/Japanese profiles.',
       props: {},
@@ -367,7 +389,7 @@ registerUnit<EditorHarnessProps>({
     },
     {
       id: 'suggested-field-is-prefilled',
-      description: 'Preset は key/type/instruction を入力済みにし、追加済み option を除外する',
+      description: 'Preset は key/label/type/instruction を入力済みにし、追加済み option を除外する',
       onlyFixtures: ['act-add-suggested-field'],
       check: ({ root }) => {
         const keys = Array.from(
@@ -377,10 +399,14 @@ registerUnit<EditorHarnessProps>({
         if (fieldIndex < 0) return 'phon_the field が追加されていない'
 
         const type = root.querySelector<HTMLSelectElement>(`select[aria-label="AI output type ${fieldIndex}"]`)
+        const label = root.querySelector<HTMLInputElement>(
+          `input[aria-label="AI output label ${fieldIndex}"]`,
+        )
         const instruction = root.querySelector<HTMLTextAreaElement>(
           `textarea[aria-label="AI output instruction ${fieldIndex}"]`,
         )
         if (type?.value !== 'string') return `type="${type?.value}"`
+        if (label?.value !== 'Traditional form') return `label="${label?.value}"`
         if (!instruction?.value.includes('Return an empty string if identical to the simplified form.')) {
           return `instruction="${instruction?.value}"`
         }
@@ -408,6 +434,22 @@ registerUnit<EditorHarnessProps>({
         if (types[last]?.value !== 'string') return `type="${types[last]?.value}"`
         const picker = root.querySelector<HTMLSelectElement>('select[aria-label="Add AI output field"]')
         return picker?.value === '' || `picker sentinel="${picker?.value}"`
+      },
+    },
+    {
+      id: 'whitespace-label-is-cleared',
+      description: '空白だけの label は保存を妨げない空値として表示する',
+      onlyFixtures: ['act-clear-label-with-whitespace'],
+      check: ({ root }) => {
+        const keys = Array.from(
+          root.querySelectorAll<HTMLInputElement>('input[aria-label^="AI output key"]'),
+        )
+        const fieldIndex = keys.findIndex(input => input.value === 'phon_the')
+        if (fieldIndex < 0) return 'phon_the field が追加されていない'
+        const label = root.querySelector<HTMLInputElement>(
+          `input[aria-label="AI output label ${fieldIndex}"]`,
+        )
+        return label?.value === '' || `label="${label?.value}"`
       },
     },
     {

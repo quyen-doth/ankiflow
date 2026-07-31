@@ -4,6 +4,7 @@ import { getLanguageProfile } from '@/lib/ai-agent/languageProfiles'
 import { resolveCompatibleBuiltinArrayInstruction } from '@/lib/ai-agent/builtinOutputProfiles'
 import {
   DEFAULT_AI_ARRAY_MAX_ITEMS,
+  filterFieldsByOutputLanguage,
   parseAiOutputProfiles,
   resolveEffectiveProfileFields,
 } from '@/lib/ai-agent/outputProfiles'
@@ -48,17 +49,6 @@ function resolveTemplate(
 
 function singleLine(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
-}
-
-function activeFields(
-  profiles: AiOutputProfile[],
-  primaryStudyLanguage: string | null,
-  outputLanguageCode: string,
-) {
-  const outputPrimary = primaryLanguageSubtag(outputLanguageCode)
-  return resolveEffectiveProfileFields(profiles, primaryStudyLanguage).filter(outputField => (
-    outputField.include_when !== 'output_vi' || outputPrimary === 'vi'
-  ))
 }
 
 function buildSystemPrompt(args: BuildEngineCardSpecArgs, primaryStudyLanguage: string | null): string {
@@ -123,7 +113,10 @@ export function buildEngineCardSpec(args: BuildEngineCardSpecArgs): CardSpec {
     throw new Error(`Invalid BCP 47 study language code: ${studyLanguage.code}`)
   }
 
-  const fields = activeFields(profiles, primaryStudyLanguage, outputLanguage.code)
+  const fields = filterFieldsByOutputLanguage(
+    resolveEffectiveProfileFields(profiles, primaryStudyLanguage),
+    outputLanguage.code,
+  )
   if (!fields.some(outputField => outputField.key === definition.primary_field_key)) {
     throw new Error(`Active AI output profile must include primary field "${definition.primary_field_key}"`)
   }
