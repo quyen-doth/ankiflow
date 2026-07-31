@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-IDX-001 |
-| 版数 | 1.0 |
+| 版数 | 1.1 |
 | 作成日 | 2026-07-31 |
 | 最終更新日 | 2026-07-31 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -24,7 +24,7 @@
 
 | 文書ID | 文書名 | ファイル | ステータス |
 | --- | --- | --- | --- |
-| AF-REQ-001 | 要件定義書 | [PRD.md](PRD.md) | 改訂中 |
+| AF-REQ-001 | 要件定義書 | [01-requirements/REQUIREMENTS.md](01-requirements/REQUIREMENTS.md) | 改訂中 |
 | AF-NFR-001 | 非機能要件書 | — | 作成予定 |
 | AF-RDM-001 | ロードマップ | — | 作成予定 |
 
@@ -32,12 +32,12 @@
 
 | 文書ID | 文書名 | ファイル | ステータス |
 | --- | --- | --- | --- |
-| AF-ARC-001 | アーキテクチャ設計書 | [REFERENCE.md](REFERENCE.md) | 改訂中 |
+| AF-ARC-001 | アーキテクチャ設計書 | [02-design/ARCHITECTURE.md](02-design/ARCHITECTURE.md) | 改訂中 |
 | AF-SEC-001 | セキュリティ設計書 | — | 作成予定 |
 | AF-SCR-001 | 画面設計書 | — | 作成予定 |
-| AF-DB-001 | データベース設計書 | [DATABASE.md](DATABASE.md) | 運用中 |
-| AF-API-001 | API 設計書 | [API.md](API.md) | 運用中 |
-| AF-UI-001 | デザインシステム | [DESIGN.md](DESIGN.md) | 運用中 |
+| AF-DB-001 | データベース設計書 | [02-design/DATABASE.md](02-design/DATABASE.md) | 運用中 |
+| AF-API-001 | API 設計書 | [02-design/API.md](02-design/API.md) | 運用中 |
+| AF-UI-001 | デザインシステム | [02-design/DESIGN.md](02-design/DESIGN.md) | 運用中 |
 | AF-CRD-001 | カードテンプレート仕様書 | — | 作成予定 |
 | AF-PRM-001 | AI プロンプト仕様書 | — | 作成予定 |
 
@@ -48,7 +48,7 @@
 | AF-SET-001 | 環境構築手順書 | — | 作成予定 |
 | AF-DEV-001 | 開発規約 | [CONTRIBUTING.md](CONTRIBUTING.md) | 運用中 |
 | AF-TST-001 | テスト計画書 | — | 作成予定 |
-| AF-VER-001 | ランタイム検証仕様書 | [VERIFICATION.md](VERIFICATION.md) | 運用中 |
+| AF-VER-001 | ランタイム検証仕様書 | [03-development/VERIFICATION.md](03-development/VERIFICATION.md) | 運用中 |
 
 ### 2.4 運用
 
@@ -147,4 +147,5 @@
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.1 | 2026-07-31 | 文書体系の再編に伴い、各文書の配置とファイル名を更新 | hong-quyen |
 | 1.0 | 2026-07-31 | 初版作成。文書体系、読む順序、識別子の読み方を定義 | hong-quyen |
