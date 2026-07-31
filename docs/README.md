@@ -75,6 +75,8 @@
 | 文書ID | 文書名 | ファイル | ステータス |
 | --- | --- | --- | --- |
 | AF-IDX-001 | 文書一覧（本書） | README.md | 運用中 |
+| AF-CHG-001 | 変更履歴 | [../CHANGELOG.md](../CHANGELOG.md) | 運用中 |
+| AF-SEC-002 | セキュリティポリシー | [../SECURITY.md](../SECURITY.md) | 運用中 |
 | AF-GLS-001 | 用語集 | — | 作成予定 |
 | AF-ADR-nnnn | アーキテクチャ決定記録 | — | 作成予定 |
 
