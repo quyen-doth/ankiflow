@@ -11,7 +11,7 @@ Core workflow: `Sign in -> Enter vocabulary -> AI enriches content -> Preview/ed
 
 Supported built-in content types: Language vocab (English, Chinese, Japanese), IT vocabulary, and General knowledge. Form layouts are data-driven and customizable per user; the admin maintains only the defaults copied to new accounts.
 
-The app code lives in `ankiflow/`. The `anki_flow_design/` directory contains static HTML design mockups only.
+The app code lives in the clone root `ankiflow/` (Next.js App Router: `app/`, `components/`, `hooks/`, `lib/`, `types/`, `verify/`, `e2e/`, `scripts/`). Every path below is written relative to that root.
 
 **Admin:** a single app owner. Identified two independent ways that must both be set: server-side by `ADMIN_EMAIL` env (session cookie email match, e.g. `/api/admin/*`), and in Firestore rules by the custom claim `admin:true` (rules cannot read env). `NEXT_PUBLIC_ADMIN_EMAIL` gates admin-only UI. Admin controls global feature flags (`settings/global`: TTS/Unsplash/AI availability) and editable new-user defaults (`__defaults__` master-data templates plus global `content_types`).
 
@@ -33,7 +33,7 @@ Agent files are English, but chat output to the user is always Vietnamese.
 
 ## Commands
 
-All commands run from `ankiflow/`:
+All commands run from the repository root:
 
 ```bash
 npm run dev           # Start dev server at localhost:3000
@@ -103,10 +103,11 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 ## Docs
 
-`ankiflow/docs/` is the source of truth — read before making changes:
+`docs/` is the source of truth — read before making changes. `docs/README.md` is the document index:
 
 | File                   | Read when                                           |
 | ---------------------- | --------------------------------------------------- |
+| `docs/README.md`       | Locating a document, or adding/renaming one (index + conventions) |
 | `docs/PRD.md`          | Starting a new feature                              |
 | `docs/API.md`          | Writing or calling any API route                    |
 | `docs/DATABASE.md`     | Writing Firestore queries or adding fields          |
