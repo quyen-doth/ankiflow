@@ -4,14 +4,14 @@
 
 ## 基本方針
 
-- **`develop`** = 日常の作業のベースブランチ(デフォルトブランチ)
-- **`main`** = リリース専用。`release-pr.yml` が生成する Release PR のマージでのみ更新する
-- `develop` / `main` への**直接コミット・直接プッシュは禁止**(git hooks でブロック)
+- `develop` = 日常の作業のベースブランチ(デフォルトブランチ)
+- `main` = リリース専用。`release-pr.yml` が生成する Release PR のマージでのみ更新する
+- `develop` / `main` への直接コミット・直接プッシュは禁止(git hooks でブロック)
 
 ## ブランチ運用
 
 1. 必ず `develop` から作成する
-2. **作成前に必ず `git pull` を実行**して最新化する:
+2. 作成前に必ず `git pull` を実行して最新化する:
 
    ```bash
    git checkout develop
@@ -19,7 +19,7 @@
    git checkout -b feat/add-export-history
    ```
 
-3. 命名規則: `<type>/<slug>` — slug は**英語の kebab-case**
+3. 命名規則: `<type>/<slug>` — slug は英語の kebab-case
 
    | プレフィックス | 用途 |
    | --- | --- |
@@ -32,7 +32,7 @@
 
 ## コミット規約
 
-[Conventional Commits](https://www.conventionalcommits.org/) 形式。**type は英語、要約は日本語**で書く。
+[Conventional Commits](https://www.conventionalcommits.org/) 形式。type は英語、要約は日本語で書く。
 
 ```
 <type>(<scope>)?: 日本語の要約(72文字以内)
@@ -46,7 +46,7 @@
 
 ## AI エージェントに関する規則
 
-- Claude Code / Codex などの AI エージェントは、**自分自身をコントリビューターとして追加してはならない**
+- Claude Code / Codex などの AI エージェントは、自分自身をコントリビューターとして追加してはならない
   - コミットメッセージに `Co-Authored-By: Claude ...` / `Co-Authored-By: Codex ...` 等のトレーラーを付けない
   - コミットメッセージ・PR 本文に「🤖 Generated with Claude Code」等のフッターを付けない
 - 作者はユーザー本人のみ。この規則は commit-msg フックと CI の両方でブロックされる
@@ -54,9 +54,9 @@
 ## PR 規約
 
 - タイトル: コミットと同じ形式(`type: 日本語の要約`)
-- base ブランチ: **`develop`**(リリース PR のみ `main`)
+- base ブランチ: `develop`(リリース PR のみ `main`)
 - 本文: `.github/PULL_REQUEST_TEMPLATE.md` に従う
-- マージ方法: **merge commit**(現行運用を踏襲)
+- マージ方法: merge commit(現行運用を踏襲)
 
 ```bash
 git push -u origin feat/add-export-history
@@ -73,12 +73,12 @@ gh pr create --base develop --title "feat: エクスポート履歴画面を追�
 
 | リリース対象に含まれるコミット | 繰り上げ |
 | --- | --- |
-| `feat:` / `feat!:` / 本文に `BREAKING CHANGE` | **MINOR** (0.x の間) / **MAJOR** (1.0.0 以降) |
-| 上記以外の type (`fix` `refactor` `perf` `chore` `docs` `test` `style` `ci` `build` `revert`) | **PATCH** |
+| `feat:` / `feat!:` / 本文に `BREAKING CHANGE` | MINOR (0.x の間) / MAJOR (1.0.0 以降) |
+| 上記以外の type (`fix` `refactor` `perf` `chore` `docs` `test` `style` `ci` `build` `revert`) | PATCH |
 
 現在は `0.x` であり、SemVer 第 4 項のとおり公開 API の安定性を約束していない。したがって破壊的変更も MINOR として扱うが、その場合は `CHANGELOG.md` に「破壊的変更」の見出しを設けて明記すること。
 
-**`1.0.0` への移行条件**: 実際の利用を通じてデータモデル (コンテンツタイプ、カードタイプ、AI 出力プロファイル、および Anki ノートタイプのフィールド構成) が安定し、移行スクリプトを要する変更が発生しなくなったと判断した時点とする。利用者数や公開サインアップの有無は判断材料としない。それらは事業上の節目であり、互換性の事象ではないためである。
+`1.0.0` への移行条件: 実際の利用を通じてデータモデル (コンテンツタイプ、カードタイプ、AI 出力プロファイル、および Anki ノートタイプのフィールド構成) が安定し、移行スクリプトを要する変更が発生しなくなったと判断した時点とする。利用者数や公開サインアップの有無は判断材料としない。それらは事業上の節目であり、互換性の事象ではないためである。
 
 `1.0.0` へ移行する際は、本ガイドに「公開 API の定義」を追記し、互換性を保証する対象を明示すること。定義のない `1.0.0` は意味を持たない。
 
@@ -101,13 +101,13 @@ develop へ push
 
 ### Release PR が未マージのまま develop が進んだ場合
 
-`prepare-release.mjs` は冪等であるだけでなく、**再入可能**である。Release PR を開いたまま `develop` に新しいコミットがマージされた場合、次の実行で以下が起こる。
+`prepare-release.mjs` は冪等であるだけでなく、再入可能である。Release PR を開いたまま `develop` に新しいコミットがマージされた場合、次の実行で以下が起こる。
 
 1. 前回準備した節 (`## [X.Y.Z]`) の内容を `[Unreleased]` へ戻し、`package.json` を前回リリースのバージョンへ戻す
-2. `main...develop` の**全コミット**を対象にバージョンを算出し直す
+2. `main...develop` の全コミットを対象にバージョンを算出し直す
 3. 算出したバージョンで改めて準備する
 
-したがって、`fix` だけの状態で `v0.13.2` として準備されたあとに `feat` がマージされれば、バージョンは自動的に `v0.14.0` へ繰り上がり、CHANGELOG の記載も同じ節へ統合される。**バージョンは常に、そのリリースに含まれる全コミットを反映する。**
+したがって、`fix` だけの状態で `v0.13.2` として準備されたあとに `feat` がマージされれば、バージョンは自動的に `v0.14.0` へ繰り上がり、CHANGELOG の記載も同じ節へ統合される。バージョンは常に、そのリリースに含まれる全コミットを反映する。
 
 なお、算出の基点は常に `main` 側の情報であり、既に繰り上げ済みの `develop` の `package.json` を基点にすることはない。基点を作業ブランチに置くと、上記の再算出ができなくなるためである。
 
