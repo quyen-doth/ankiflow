@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -29,6 +30,7 @@ const SCANNED_DIRECTORIES = [
   'types',
   'verify',
   'e2e',
+  '.githooks',
   '.github',
 ] as const
 
@@ -36,6 +38,9 @@ const SCANNED_ROOT_FILES = [
   'middleware.ts',
   'next.config.ts',
   'playwright.config.ts',
+  'vercel.json',
+  'vitest.config.ts',
+  'tsconfig.json',
   'eslint.config.mjs',
   'postcss.config.mjs',
   'package.json',
@@ -44,6 +49,19 @@ const SCANNED_ROOT_FILES = [
   'firestore.indexes.json',
   '.env.example',
 ] as const
+
+const EXCLUDED_TOP_LEVEL_PATHS = {
+  '.claude': 'Agent-only instructions and configuration; stale legacy guidance is assigned to Phase 5.',
+  '.codex': 'Agent-only configuration and hooks, outside the application runtime.',
+  '.gitignore': 'Git metadata; it cannot consume runtime environment values or invoke a sender.',
+  'AGENTS.md': 'Agent guidance excluded by D4; Phase 5 owns its legacy collection wording.',
+  'CLAUDE.md': 'Agent guidance excluded by D4; Phase 5 owns its legacy collection wording.',
+  'LICENSE': 'Legal text only, with no executable or configuration behavior.',
+  'README.md': 'Team documentation with a known legacy env mention deferred to Phase 5.',
+  'docs': 'Team documentation excluded by D3 and assigned to Phase 5.',
+  'public': 'Static public assets only; no server-side environment or workflow execution.',
+  'package-lock.json': 'Generated dependency lock data, not executable application configuration.',
+} as const satisfies Record<string, string>
 
 interface SourceHit {
   file: string
@@ -63,6 +81,27 @@ function allFiles(directory: string): string[] {
 
 function repoPath(path: string): string {
   return relative(REPO_ROOT, path).split(sep).join('/')
+}
+
+function trackedTopLevelPaths(): string[] {
+  const trackedFiles = execFileSync('git', ['ls-files', '-z'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  }).split('\0').filter(Boolean)
+
+  return [...new Set(trackedFiles.map((file) => file.split('/')[0]))].sort()
+}
+
+function assertTrackedPathPartition(): void {
+  const scanned = [...SCANNED_DIRECTORIES, ...SCANNED_ROOT_FILES].sort()
+  const excluded = Object.keys(EXCLUDED_TOP_LEVEL_PATHS).sort()
+  const excludedSet = new Set(excluded)
+
+  expect(scanned.filter((path) => excludedSet.has(path))).toEqual([])
+  for (const reason of Object.values(EXCLUDED_TOP_LEVEL_PATHS)) {
+    expect(reason.trim().length).toBeGreaterThan(0)
+  }
+  expect(trackedTopLevelPaths()).toEqual([...scanned, ...excluded].sort())
 }
 
 function scannedLiveFiles(): string[] {
@@ -126,6 +165,10 @@ describe('Legacy LINE sender regression guards', () => {
     for (const path of RETIRED_PATHS) {
       expect(existsSync(join(REPO_ROOT, path)), path).toBe(false)
     }
+  })
+
+  it('Guard 2: every tracked top-level path is scanned or explicitly excluded', () => {
+    assertTrackedPathPartition()
   })
 
   it('Guard 2: retired raw env tokens have no live code or config consumer', () => {
