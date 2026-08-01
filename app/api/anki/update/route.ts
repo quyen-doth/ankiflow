@@ -73,7 +73,7 @@ export const PUT = withAuth(async (request, _ctx, uid) => {
 
     let cardTypes: CardTypeItem[] = []
     if (noteIds.length > 0) {
-      cardTypes = await fetchCardTypesByIds(db, entry.card_type_ids || [])
+      cardTypes = await fetchCardTypesByIds(db, uid, entry.card_type_ids || [])
     }
 
     return NextResponse.json({ success: true, entry, cardTypes, noteIds })

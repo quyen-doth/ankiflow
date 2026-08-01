@@ -28,7 +28,7 @@ export const GET = withAuth(async (_request, _ctx, uid) => {
     id: d.id,
     ...(d.data() as Partial<Entry> & { card_type_ids?: string[] }),
   }))
-  const cardTypes = await fetchCardTypesByIds(db, entries.flatMap((e) => e.card_type_ids || []))
+  const cardTypes = await fetchCardTypesByIds(db, uid, entries.flatMap((e) => e.card_type_ids || []))
   const ctById = new Map(cardTypes.map((ct) => [ct.id, ct]))
 
   const jobs = entries.map((entry) => {
