@@ -13,8 +13,8 @@
  * ⚠️ SAU KHI CHẠY: admin phải ĐĂNG XUẤT + ĐĂNG NHẬP LẠI để ID token mới mang claim.
  */
 
-import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env' })
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
+loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES })
 
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'

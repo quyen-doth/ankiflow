@@ -13,8 +13,7 @@
  * receiving explicit approval for Firestore writes/deletes.
  */
 
-import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env' })
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
 
 import { cert, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
@@ -101,6 +100,7 @@ async function main(): Promise<void> {
     return
   }
 
+  loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES })
   const projectId = requiredEnv('FIREBASE_ADMIN_PROJECT_ID')
   const clientEmail = requiredEnv('FIREBASE_ADMIN_CLIENT_EMAIL')
   const privateKey = requiredEnv('FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n')
