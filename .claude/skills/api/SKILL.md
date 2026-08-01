@@ -79,7 +79,7 @@ DELETE /api/[resource]?id=...   ← delete/deactivate (id via query param)
 
 ---
 
-## Step 4 — Boilerplate (matches the real pattern, e.g. `app/api/admin/categories/route.ts`)
+## Step 4 — Boilerplate (follows the UID-scoped pattern used by `app/api/dashboard/route.ts`)
 
 ```typescript
 // app/api/[resource]/route.ts
