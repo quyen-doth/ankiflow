@@ -137,7 +137,7 @@ GitHub Actions がすべての PR と `main` / `develop` への push で ESLint�
 
 ```bash
 npm install
-cp .env.example .env.local     # 各種 API キーを設定
+cp .env.example .env           # 各種 API キーを設定
 npm run seed                   # 初期データを投入
 firebase deploy --only firestore:rules,firestore:indexes
 npm run user:create -- <email> # 利用者を作成

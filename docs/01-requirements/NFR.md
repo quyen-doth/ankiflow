@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-NFR-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-08-01 |
 | 最終更新日 | 2026-08-01 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -98,7 +98,7 @@ Claude API、Google Cloud TTS、Unsplash は管理者が費用を負担する。
 | サービス | 無料枠 | 想定使用量 | 費用 |
 | --- | --- | --- | --- |
 | Firebase Firestore | 1 GB、読み取り 5 万件/日、書き込み 2 万件/日 | 前提のデータ量の範囲内 | 無料 |
-| Firebase Authentication | メール/パスワード認証は無制限 | 招待制、10 名未満 | 無料 |
+| Firebase Authentication | 登録アカウント数の上限なし (Identity Platform へ移行した場合は月間アクティブ利用者数に応じた課金が生じる) | 招待制、10 名未満 | 無料 |
 | Claude API (`claude-haiku-4-5`) | なし (従量課金) | カード 1 枚あたり 1 リクエスト | **従量課金** |
 | Google Cloud TTS | 100 万文字/月 (WaveNet) | カード 1 枚あたり数百文字 | 無料 |
 | Unsplash API | 50 リクエスト/時 (Demo 区分) | カード 1 枚あたり 1 リクエスト | 無料 |
@@ -156,5 +156,6 @@ Claude API、Google Cloud TTS、Unsplash は管理者が費用を負担する。
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-01 | Firebase Authentication の無料枠の記述を、登録アカウント数の上限と課金条件を区別する形へ訂正 | hong-quyen |
 | 1.1 | 2026-08-01 | 性能および運用コストの実測について、効果測定計画書・報告書への参照を追加 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/PRD.md` 第 14 章および第 15 章を引き継ぎ、性能・可用性・セキュリティ・保守性の各要件を追加した | hong-quyen |

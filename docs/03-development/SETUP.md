@@ -47,7 +47,9 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 
 ## 4. 環境変数
 
-リポジトリ直下の `.env.example` を雛形として `.env.local` を作成し、値を設定する。`.env.local` および実際の値はリポジトリへコミットしてはならない。
+リポジトリ直下の `.env.example` を雛形として `.env` を作成し、値を設定する。`.env` および実際の値はリポジトリへコミットしてはならない。
+
+**ファイル名は `.env` とすること。** Next.js は `.env.local` も読み取るが、`scripts/` 以下の CLI スクリプト (`npm run seed`、`npm run user:create`、`scripts/set-admin-claim.ts` など) は `.env` のみを読み込む。`.env.local` に置いた場合、アプリケーションは動作するがスクリプトが資格情報を見つけられない。
 
 以下の各表は、実装が実際に参照している変数を網羅したものである。`.env.example` との差異を認めた場合は実装を正とし、`.env.example` と本書の双方を更新すること。
 
@@ -121,6 +123,8 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 | `GOOGLE_TTS_API_KEY` | サービスアカウント方式へ移行した |
 | `LINE_USER_ID`、`SRS_PUSH_TARGET_UID` | 通知先を `settings/{uid}.line_user_id` から解決する方式へ移行した。これらを参照する旧スクリプトは利用者分離を満たさないため実行してはならない |
 
+> 2026-08-01 時点で、リポジトリの `.env.example` には `ANKI_CONNECT_URL` と `API_SECRET` の記載が残っている。実装はいずれも参照していないため、複製後に削除してよい。`.env.example` 側の整理は別途行う。
+
 ## 5. 構築手順
 
 ### 5.1 依存関係の導入
@@ -135,7 +139,7 @@ npm install
 
 ### 5.2 環境変数の設定
 
-`.env.example` を `.env.local` へ複製し、第 4 章に従って値を設定する。
+`.env.example` を `.env` へ複製し、第 4 章に従って値を設定する。
 
 ### 5.3 Firestore の準備
 
@@ -158,11 +162,13 @@ npm run seed
 
 ### 5.5 利用者の作成
 
-公開サインアップは既定で無効である。開発用の利用者は次のコマンドで作成する。
+公開サインアップは既定で無効である。開発用の利用者は次のコマンドで作成する。**メールアドレスの指定は必須である。** 省略した場合、スクリプトは使用方法を表示して異常終了する。
 
 ```bash
-npm run user:create
+npm run user:create -- <email>
 ```
+
+パスワードは対話形式で入力する。
 
 ### 5.6 開発サーバーの起動
 
@@ -215,7 +221,7 @@ npm run dev
 | `npm run verify:watch` | 検証を監視モードで実行する |
 | `npm run test:e2e` | Playwright による E2E テストを実行する |
 | `npm run seed` | 初期データを投入する |
-| `npm run user:create` | 利用者を作成する |
+| `npm run user:create -- <email>` | 利用者を作成する。メールアドレスは必須である |
 | `npm run migrate:*` | データ移行スクリプト群。いずれも dry-run が既定であり、`--apply` で適用する |
 
 移行スクリプトは既存データを変更する。適用前に必ず dry-run で差分を確認し、明示的な承認を得ること。
