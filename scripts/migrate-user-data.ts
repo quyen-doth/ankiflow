@@ -7,8 +7,8 @@
  *   npx tsx scripts/migrate-user-data.ts <UID> --dry-run   (chỉ đếm, không ghi)
  *
  * Việc thực hiện:
- * 1. 6 collections (entries, categories, card_types, topics, decks,
- *    notification_triggers): mọi doc có user_id == 'local-user' HOẶC THIẾU
+ * 1. 5 collections (entries, categories, card_types, topics, decks):
+ *    mọi doc có user_id == 'local-user' HOẶC THIẾU
  *    user_id → set user_id = <UID>. (Doc ID giữ nguyên — entries đang tham
  *    chiếu card_type_ids theo ID cũ nên KHÔNG được đổi ID.)
  * 2. settings/{UID}: nếu chưa có → tạo từ settings/default, STRIP system
@@ -25,7 +25,7 @@ import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 
 const LEGACY_USER_ID = 'local-user'
-const COLLECTIONS = ['entries', 'categories', 'card_types', 'topics', 'decks', 'notification_triggers']
+const COLLECTIONS = ['entries', 'categories', 'card_types', 'topics', 'decks']
 const STRIP_FROM_USER_SETTINGS = [
   'ai_model',
   'web_search_enabled',
