@@ -1,16 +1,26 @@
-# データベース構造 — AnkiFlow
+# データベース設計書 — AnkiFlow
+
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-DB-001 |
+| 版数 | 1.1 |
+| 作成日 | 2026-04-29 |
+| 最終更新日 | 2026-07-31 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 運用中 |
+| 関連文書 | AF-ARC-001、AF-API-001、AF-CRD-001 |
 
 > **データベース:** Google Firestore (NoSQL、ドキュメントベース)
 > **バージョン:** v2.0 (マルチユーザー — Firebase Auth)
-> **注記:** 関係は論理的参照 — SQL のようなハードな外部キーではありません。
+> **注記:** 関係は論理的参照であり、SQL のようなハードな外部キーではない。
 
 ## マルチユーザーモデル (v2.0)
 
-- **ユーザーごとのコレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`notification_triggers`、`user_content_types`): 各ドキュメントは **`user_id`** フィールド = Firebase Auth UID を持っています。すべてのクエリ (クライアント + サーバー) は `where('user_id', '==', uid)` でフィルタ。Firestore Security Rules (`firestore.rules`) は DB レイヤーでのクロスアクセスをブロック。
-- **`content_types` はグローバルな新規ユーザー用 source**: `user_id` を持たず、管理者だけが編集します。新規アカウント作成時に `user_content_types` へ snapshot としてコピーされ、既存ユーザーへ自動同期されません。
-- **`user_content_types` は runtime source**: Create / Resync はこの collection だけを UID で query します。ルーティングには document ID ではなく `code` を使用し、built-in code は `FormType` enum (`form_language` / `form_it` / `form_general`) に解決します。
+- **ユーザーごとのコレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`notification_triggers`、`user_content_types`): 各ドキュメントは Firebase Auth UID を値とする **`user_id`** フィールドを持つ。すべてのクエリ (クライアント・サーバーとも) は `where('user_id', '==', uid)` でフィルタする。Firestore Security Rules (`firestore.rules`) が DB レイヤーでクロスアクセスを遮断する。
+- **`content_types` はグローバルな新規ユーザー用 source**: `user_id` を持たず、管理者のみが編集できる。新規アカウント作成時に `user_content_types` へ snapshot としてコピーされるが、既存ユーザーへ自動同期されることはない。
+- **`user_content_types` は runtime source**: Create / Resync はこの collection のみを UID で query する。ルーティングには document ID ではなく `code` を用い、built-in code は `FormType` enum (`form_language` / `form_it` / `form_general`) に解決される。
 - **マスターデータ ID スキーム**: 新しいユーザーに seed を行うとき、ID = `{defaultId}__{uid}` (例 `cat_daily__abc123`) — デッキ内の FK は同じ規則による文字列連結で再マップ。`lib/seed-defaults.ts` を参照。
-- **テンプレート `__defaults__`**: `user_id == '__defaults__'` のマスターデータドキュメントは、管理者が `/admin` ("新規ユーザーのデフォルト") 経由で編集するテンプレート; `seedUserDefaults` は新しいユーザーのためにそれらをクローン。実際の UID ではありません。
+- **テンプレート `__defaults__`**: `user_id == '__defaults__'` のマスターデータドキュメントは、管理者が `/admin` ("新規ユーザーのデフォルト") 経由で編集するテンプレート; `seedUserDefaults` が新規ユーザーのためにそれらをクローンする。実際の UID ではない。
 
 ---
 
@@ -136,16 +146,16 @@ Anki カードの種類を定義 (例: Word→Meaning、Meaning→Word、Cloze..
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-Template source は capability 境界を持ちます。`custom:<key>` は `entries[key]` の
-`string` / `string[]` を表示する text-only block です。TTS、画像、cloze のように runtime
+Template source は capability 境界を持つ。`custom:<key>` は `entries[key]` の
+`string` / `string[]` を表示する text-only block である。TTS、画像、cloze のように runtime
 処理が必要な field は system-owned built-in source (`audio` / `audio_example` / `image` /
-`example_blank` など) として追加し、任意の `custom:` key へ capability を付与しません。
+`example_blank` など) として追加するものとし、任意の `custom:` key へ capability を付与することはない。
 
 ---
 
 ### `topics` — IT トピック
 
-IT ボキャブラリー専用。Entries は複数のトピックに属することができます。
+IT ボキャブラリー専用。Entries は複数のトピックに属することができる。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -186,10 +196,10 @@ form type と Anki デックのマッピング。各デックのデフォルト�
 ### `content_types` — 新規ユーザー用フォーム設定 (**SHARED source**)
 
 管理者が `/admin` の「New-user defaults」で編集する global source。新規アカウント作成時に
-`seedUserDefaults` が各 document を `user_content_types` へ snapshot としてコピーします。
-既存ユーザーの snapshot は global default の変更後も更新されません。3 つの built-in document ID
-(`form_language` / `form_it` / `form_general`) は Firestore Rules、admin API、UI のすべてで削除禁止です。
-Custom global default の document ID は routing に使用せず、`code` が routing key になります。
+`seedUserDefaults` が各 document を `user_content_types` へ snapshot としてコピーする。
+既存ユーザーの snapshot は、global default の変更後も更新されない。3 つの built-in document ID
+(`form_language` / `form_it` / `form_general`) は Firestore Rules、admin API、UI のすべてで削除を禁止している。
+Custom global default の document ID は routing に使用せず、`code` が routing key となる。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -212,9 +222,9 @@ Custom global default の document ID は routing に使用せず、`code` が r
 
 各ユーザーが Settings または `/admin` の「My workspace」で管理するフォーム設定。Create / Resync は
 必ず `where('user_id', '==', uid)` を付けてこの collection だけを読み、`content_types` への runtime fallback は
-行いません。Global source からコピーした document は ID `{sourceId}__{uid}` と
-`source_content_type_id` を持ちます。ユーザーが直接作成した document は Firestore の自動 ID を使用し、
-`source_content_type_id` はありません。
+行わない。Global source からコピーした document は ID `{sourceId}__{uid}` と
+`source_content_type_id` を持つ。ユーザーが直接作成した document は Firestore の自動 ID を使用し、
+`source_content_type_id` を持たない。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -233,22 +243,22 @@ Custom global default の document ID は routing に使用せず、`code` が r
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-Snapshot は **create-only** です。Signup seed の再実行や既存ユーザー migration は deterministic ID と
-同一 workspace の `code` を確認し、不足分だけを作成します。既存 document の update/delete は行わず、
-ユーザーの customization を保持します。同じ runtime route に解決される code が複数ある場合、競合した
-documents だけを Create / Resync から除外して警告し、競合していない Content Types は継続利用できます。
+Snapshot は **create-only** である。Signup seed の再実行や既存ユーザー migration は deterministic ID と
+同一 workspace の `code` を確認し、不足分のみを作成する。既存 document の update/delete は行わず、
+ユーザーの customization を保持する。同じ runtime route に解決される code が複数ある場合は、競合した
+documents のみを Create / Resync から除外して警告し、競合していない Content Types は継続して利用できる。
 
 一回限りの `migrate:content-type-english` はこの snapshot 非同期原則の例外で、global/user built-in に残る
-既知の旧ベトナム語 default と完全一致する表示 metadata だけを英語へ更新します。Dry-run が既定で、apply は
-transaction 内で再確認します。Custom Content Type と一致しない customization は更新せず、create/delete、
-document ID、`code`、`user_id`、`source_content_type_id`、`ai_output_profiles` には触れません。
+既知の旧ベトナム語 default と完全一致する表示 metadata のみを英語へ更新する。Dry-run を既定とし、apply は
+transaction 内で再確認する。Custom Content Type と一致しない customization は更新せず、create/delete、
+document ID、`code`、`user_id`、`source_content_type_id`、`ai_output_profiles` には触れない。
 
 ---
 
 ### `fields[]` — Embedded フィールド設定
 
-`content_types` と `user_content_types` の各 document に直接埋め込む配列です。
-Sub-collection ではないため、field ごとの document ID や `content_type_id` は持ちません。
+`content_types` と `user_content_types` の各 document に直接埋め込む配列である。
+Sub-collection ではないため、field ごとの document ID や `content_type_id` は持たない。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -263,26 +273,26 @@ Sub-collection ではないため、field ごとの document ID や `content_typ
 | `options` | string[]? | Custom dropdown の static options |
 
 Built-in は `code` から既存の `FormType` / AI schema / generation strategy を維持し、`fields[]` は表示順、
-label、placeholder、required、session persistence を制御します。Language は `language` + `word`、IT は
-`term`、General は `title` が必須です。Custom Content Type は少なくとも 1 つの core input が必要です。
-未対応 type/control/data source や重複 `field_key` は保存時と render 前に明示的に拒否します。
+label、placeholder、required、session persistence を制御する。Language は `language` + `word`、IT は
+`term`、General は `title` を必須とする。Custom Content Type には少なくとも 1 つの core input が必要である。
+未対応の type/control/data source、および重複した `field_key` は、保存時と render 前に明示的に拒否する。
 
-`data_source: 'output_languages'` は任意の `field_key` を Output Language control として解決します。
+`data_source: 'output_languages'` は任意の `field_key` を Output Language control として解決する。
 この宣言を持つ Content Type だけが Create で一時切替を表示し、宣言がない Content Type は
-`settings/{uid}.ai_output_language` の default をそのまま使用します。Built-in / custom の `code` や
-`form_type` による runtime 分岐は行いません。`is_session_persistent` が `true` なら生成成功後も選択を保持し、
-`false` なら default に戻します。既存の user snapshot は global default の変更では自動更新されません。
+`settings/{uid}.ai_output_language` の default をそのまま使用する。Built-in / custom の `code` や
+`form_type` による runtime 分岐は行わない。`is_session_persistent` が `true` の場合は生成成功後も選択を保持し、
+`false` の場合は default に戻す。既存の user snapshot は、global default の変更によって自動更新されることはない。
 Feature 導入前の source-linked snapshot には、one-time の
-`npm run migrate:output-language-controls` を dry-run してから明示承認後に `--apply` します。
-Migration は source の `data_source` 宣言から対象を決め、既存 field/custom Content Type を上書きしません。
+`npm run migrate:output-language-controls` を dry-run したうえで、明示承認を得てから `--apply` する。
+Migration は source の `data_source` 宣言から対象を決定し、既存 field および custom Content Type を上書きしない。
 
 ---
 
 ### `ai_output_profiles[]` — Embedded AI output schema
 
 `content_types` / `user_content_types` に直接埋め込み、AI が生成する field と instruction を Content Type ごとに
-定義します。`profile` は `default` または primary BCP 47 subtag (`en` / `zh` / `ja` など)。Generate 時は
-study language と一致する profile を優先し、存在しない場合は `default` を使用します。
+定義する。`profile` は `default` または primary BCP 47 subtag (`en` / `zh` / `ja` など)。Generate 時は
+study language と一致する profile を優先し、存在しない場合は `default` を使用する。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -297,14 +307,14 @@ study language と一致する profile を優先し、存在しない場合は `
 | `fields[].include_when` | string? | `always` (default) / `output_vi` |
 | `fields[].max_items` | number? | `string_array` のみ、1〜20。未指定時は engine default 10 |
 
-AI output profile でユーザーが追加できる field type は `string` / `string_array` のみです。
+AI output profile においてユーザーが追加できる field type は、`string` / `string_array` のみである。
 Content Type editor の Suggested fields は、この同じ schema を事前入力する code-owned preset
-catalog であり、preset ID や capability metadata を Firestore へ追加保存しません。Audio、画像、
-cloze は AI output custom field ではなく system field type で扱います。
+catalog であり、preset ID や capability metadata を Firestore へ追加保存することはない。Audio、画像、
+cloze は AI output custom field ではなく system field type として扱う。
 
 #### 継承モデル (2026-07-20 以降)
 
-言語 profile は `default` を **置き換えず継承** します。実効 field は:
+言語 profile は `default` を **置き換えるのではなく継承** する。実効 field は次のとおりである:
 
 ```
 effective(lang) = [...lang.fields, ...default.fields.filter(f ∉ lang.keys && f ∉ lang.exclude)]
@@ -324,15 +334,15 @@ effective(lang) = [...lang.fields, ...default.fields.filter(f ∉ lang.keys && f
   や inline test 生成もこの helper を経由すること — 手書きの `{ profile, fields }` map は metadata を落とす。
 
 すべての profile は Content Type の primary field (`word` / `term` / custom primary) を **実効 field** として
-含める必要があります (継承でも可)。primary を `exclude` することはできません。Engine は tool schema を
-`additionalProperties:false` で生成し、primary value は model output ではなく request input から復元します。
+含める必要がある (継承によるものでもよい)。primary を `exclude` することはできない。Engine は tool schema を
+`additionalProperties:false` で生成し、primary value は model output ではなく request input から復元する。
 Built-in Language は `default` / `en` / `zh` / `ja`、IT は `default` を seed。
-General は AI API を使用しないため profile を持ちません。
+General は AI API を使用しないため、profile を持たない。
 
 Profile がない document は editor と runtime の両方で built-in または generic fallback を materialize し、
-editor の Save 時に保存します。Generate は保存前でも同じ data-driven engine を使用します。既存 built-in の backfill は
-`npm run migrate:ai-output-profiles` (dry-run) で確認し、明示承認後だけ `--apply` を使用します。この migration は
-field 未設定 document だけを transaction で update し、既存 customization を上書きしません。
+editor の Save 時に保存する。Generate は保存前であっても同じ data-driven engine を使用する。既存 built-in の backfill は
+`npm run migrate:ai-output-profiles` (dry-run) で確認し、明示承認を得た場合に限り `--apply` を使用する。この migration は
+field 未設定の document のみを transaction で update し、既存 customization を上書きしない。
 
 ---
 
@@ -374,7 +384,7 @@ catch-all deny で禁止し、Admin SDK を使う API ルートだけがアク�
 
 `review_state` へのすべての変更履歴 — Anki の revlog に相当。**サーバーのみ書き込み**
 (Admin SDK: `line-webhook` + `sync-srs`); クライアントは自分の分のみ読み取り。
-FSRS/統計/独立 SRS の基盤 — このログがなければ最新のスナップショットのみが残り、履歴は永久に失われます。
+FSRS/統計/独立 SRS の基盤 — このログがなければ最新のスナップショットのみが残り、履歴は永久に失われる。
 
 | Field | Type | 説明 |
 |---|---|---|
@@ -396,7 +406,7 @@ FSRS/統計/独立 SRS の基盤 — このログがなければ最新のスナ�
 
 ### `settings` — 3 種類のドキュメント (シングルトンではなくなりました)
 
-v2.0 から、`settings` コレクションは権限と目的が異なる 3 種類の doc を含みます:
+v2.0 から、`settings` コレクションは、権限と目的が異なる 3 種類の doc を含む:
 
 **`settings/{uid}`** — 各ユーザーの preferences (ユーザーが自分のドキュメントを読み書き):
 
@@ -417,8 +427,8 @@ v2.0 から、`settings` コレクションは権限と目的が異なる 3 種�
 | `line_last_test_at` | timestamp? | 手動テスト送信の 60 秒 cooldown を transaction で判定する server timestamp |
 
 Legacy document に `ai_output_languages` がない場合、読み取り時に `ai_output_language` を有効な 1 要素へ
-正規化します。両方がない場合は `vi` を使用します。保存時は default が有効な一覧に含まれることを検証するため、
-既存ユーザーへの migration は不要です。
+正規化する。両方が存在しない場合は `vi` を使用する。保存時に default が有効な一覧に含まれることを検証するため、
+既存ユーザーへの migration は不要である。
 
 **`settings/global`** — グローバルフィーチャーフラグ (全ユーザー読み込み; `POST /api/admin/global-config` 経由で **管理者のみ書き込み**; `GlobalConfigProvider` 経由でクライアントがリアルタイム読み込み):
 
@@ -463,8 +473,8 @@ decks ──(default_card_type_ids)──► card_types [many-to-many]
 content_types ──(signup / create-only migration snapshot)──► user_content_types
 ```
 
-> **Firestore の注記:** JOIN はありません。関係を解決する必要がある場合、
-> ID で参照ドキュメントを手動 fetch するか、`Promise.all()` でバッチ fetch する必要があります。
+> **Firestore の注記:** JOIN は存在しない。関係を解決する必要がある場合は、
+> ID で参照ドキュメントを手動 fetch するか、`Promise.all()` でバッチ fetch しなければならない。
 
 ---
 
@@ -478,16 +488,16 @@ Source file: `docs/database-diagram.txt`
 ## 設計ノート
 
 - `form_type` は複数のコレクションに登場 — これは主要なルーティングフィールドで、
-  どの UI フォームが表示され、どのデータが読み込まれるかを決定します。
+  どの UI フォームが表示され、どのデータが読み込まれるかを決定する。
   **Enum values:**
   | Value | 説明 |
   |---|---|
   | `form_general` | 一般語彙 |
   | `form_it` | IT / テクノロジー語彙 |
   | `form_language` | 言語語彙 (user の `study_languages` で任意の BCP 47 言語を設定) |
-- `entries` は最大のコレクションで、多くの optional フィールドを持ちます —
-  言語固有のフィールド (pinyin、hiragana...) は対応する `language` の場合のみ値を持ちます。
-  英語・中国語・日本語以外は汎用 AI schema (`ipa` など) を使用し、未設定 field を前提にしてはいけません。
+- `entries` は最大のコレクションであり、多くの optional フィールドを持つ。
+  言語固有のフィールド (pinyin、hiragana など) は、対応する `language` の場合にのみ値を持つ。
+  英語・中国語・日本語以外は汎用 AI schema (`ipa` など) を使用するため、未設定の field があることを前提としなければならない。
 - `_query_*` は Entry query 用の予約 namespace。API request / Content Type field として受け付けず、
   server-side Entry writer が primary text と `card_type_ids` から毎回再計算する。新規・更新 writer を追加する場合も
   `deriveEntryQueryMetadata` を通し、クライアント入力をそのまま保存しない。Partial update の writer は
@@ -500,7 +510,7 @@ Source file: `docs/database-diagram.txt`
 ## Security Rules (`firestore.rules`)
 
 Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証をバイパス) するため、rules が
-最終的な権限レイヤーです。Admin SDK (サーバールート) は rules をバイパス。
+最終的な権限レイヤーである。Admin SDK (サーバールート) は rules をバイパスする。
 
 | Collection / doc | read | write |
 |---|---|---|
@@ -542,3 +552,10 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
   旧 `content_types (is_active ASC, sort_order ASC)` index は global default load 用に残す。
 - **Single-field index exemption**: 大きな media field `audio_url`、`audio_example_url`、`image_url` は
   query / sort に使用しないため index を無効化する。API の list / Dashboard query もこれらを projection しない。
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.1 | 2026-07-31 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更 | hong-quyen |
+| 1.0 | 2026-04-29 | 初版作成 | hong-quyen |

@@ -1,4 +1,14 @@
-# コントリビューションガイド
+# 開発規約 — AnkiFlow
+
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-DEV-001 |
+| 版数 | 1.1 |
+| 作成日 | 2026-07-10 |
+| 最終更新日 | 2026-07-31 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 運用中 |
+| 関連文書 | AF-IDX-001、AF-OPS-001 |
 
 本リポジトリの Git 運用ルール。人間・AI エージェント (Claude Code / Codex) 共通のルールであり、`.githooks/`(ローカル)と `.github/workflows/pr-lint.yml`(CI)で強制される。
 
@@ -139,3 +149,10 @@ develop へ push
 ```bash
 npm install   # prepare スクリプトが git config core.hooksPath .githooks を実行
 ```
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.1 | 2026-07-31 | 文書管理情報と改訂履歴を追加。バージョニング規則の章を追加 | hong-quyen |
+| 1.0 | 2026-07-10 | 初版作成 | hong-quyen |

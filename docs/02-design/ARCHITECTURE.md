@@ -1,6 +1,18 @@
-# REFERENCE.md
+# アーキテクチャ設計書 — AnkiFlow
 
-詳細な参照ドキュメント — Claude Code は具体的な情報が必要な場合このファイルを読み込みます。CLAUDE.md のように常に context に保つ必要はありません。
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-ARC-001 |
+| 版数 | 1.1 |
+| 作成日 | 2026-06-21 |
+| 最終更新日 | 2026-07-31 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 改訂中 |
+| 関連文書 | AF-REQ-001、AF-DB-001、AF-API-001、AF-SET-001 |
+
+本書は、AnkiFlow のシステム構成を定義する。対象は、リクエストの経路、処理の実行主体、外部サービスとの接続、ディレクトリ構成、および環境変数である。
+
+> 注記: 本書は前身である `docs/REFERENCE.md` を文書体系の再編に伴って改称したものであり、章構成は再編前のままである。要件定義書からの移管分を含めた全面改訂を予定している。現時点の記述内容そのものは実装と一致している。
 
 ## アーキテクチャ
 
@@ -218,10 +230,17 @@ skip して他の user の create を継続する。既存 user document の upd
 
 ## Git 規約
 
-**詳細は [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照(単一の情報源)。** 要点:
+**詳細は [`CONTRIBUTING.md`](../CONTRIBUTING.md) を参照(単一の情報源)。** 要点:
 
 - ブランチは必ず `develop` から作成(作成前に `git pull` 必須)。命名: `feat/`・`fix/`・`docs/`・`refactor/`・`chore/`・`test/` + 英語 kebab-case slug
 - `develop` / `main` への直接コミット・プッシュ禁止(`.githooks/` でブロック)
 - コミット: Conventional Commits — type は英語、要約は日本語。例: `feat: エクスポート履歴画面を追加`
 - AI エージェントは Co-Authored-By / "Generated with" フッターを付けない
 - PR: base = `develop`、タイトルはコミットと同形式、`.github/PULL_REQUEST_TEMPLATE.md` に従う
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.1 | 2026-07-31 | 文書体系の再編に伴い、`docs/REFERENCE.md` から改称のうえ `docs/02-design/` へ移動し、文書管理情報と改訂履歴を追加 | hong-quyen |
+| 1.0 | 2026-06-21 | 初版作成 (`docs/REFERENCE.md`) | hong-quyen |
