@@ -3,244 +3,277 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-ARC-001 |
-| 版数 | 1.1 |
+| 版数 | 2.0 |
 | 作成日 | 2026-06-21 |
 | 最終更新日 | 2026-07-31 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
-| ステータス | 改訂中 |
-| 関連文書 | AF-REQ-001、AF-DB-001、AF-API-001、AF-SET-001 |
+| ステータス | 運用中 |
+| 関連文書 | AF-REQ-001、AF-NFR-001、AF-SEC-001、AF-DB-001、AF-API-001、AF-SCR-001、AF-SET-001 |
 
-本書は、AnkiFlow のシステム構成を定義する。対象は、リクエストの経路、処理の実行主体、外部サービスとの接続、ディレクトリ構成、および環境変数である。
+## 1. 本書の位置づけ
 
-> 注記: 本書は前身である `docs/REFERENCE.md` を文書体系の再編に伴って改称したものであり、章構成は再編前のままである。要件定義書からの移管分を含めた全面改訂を予定している。現時点の記述内容そのものは実装と一致している。
+本書は、AnkiFlow のシステム構成を定義する。対象は、全体構成、処理の実行主体とその境界、ディレクトリ構成、主要なデータの流れ、および設定データの生存期間である。
 
-## アーキテクチャ
+本書は「どこで何が動くか」を扱う。個別の仕様は各設計書に委ねる。
 
-### リクエストフロー
+| 主題 | 参照先 |
+| --- | --- |
+| 認証・認可の設計 | AF-SEC-001 |
+| データ構造 | AF-DB-001 |
+| API の仕様 | AF-API-001 |
+| 画面の一覧と遷移 | AF-SCR-001 |
+| 環境変数と構築手順 | AF-SET-001 |
+| 運用手順とスクリプトの実行 | AF-OPS-001 |
+| Git 運用 | AF-DEV-001 |
 
-```
-Browser UI ─┬→ AnkiConnect (ユーザーの localhost:8765 — 直接呼び出し、CORS 必須)
-            └→ Next.js API Routes → 外部サービス
-                                     ├── Firestore (Admin SDK)
-                                     ├── Claude API (Anthropic)
-                                     ├── Google TTS
-                                     └── Unsplash
-```
+## 2. 全体構成
 
-> **AnkiConnect はクライアント側で実行 (2026-07-04 以降):** サーバーは AnkiConnect を呼び出さない (Vercel 上ではサーバーの localhost がユーザーのマシンではない)。すべての Anki コマンドは `lib/flashcard-service/client.ts` (ファクトリ + `settings.anki_connect_url` から URL を解決) と `client-ops.ts` (ensureModel、deck ops、createNotesForEntry、regenerateNotesForEntry) を経由します。パターン: サーバーがデータ返却 → ブラウザが Anki を操作 → ブラウザが結果を POST で返す。
+### 2.1 技術構成
 
-### AnkiConnect CORS セットアップ (必須)
+| 層 | 採用技術 |
+| --- | --- |
+| フレームワーク | Next.js 16 (App Router)、React 19、TypeScript (strict) |
+| スタイル | Tailwind CSS v4 |
+| データベース | Firebase Firestore |
+| 認証 | Firebase Authentication |
+| AI | Claude API (`claude-haiku-4-5`) |
+| 音声合成 | Google Cloud Text-to-Speech |
+| 画像 | Unsplash API |
+| Anki 連携 | AnkiConnect (利用者端末) |
+| 通知 | LINE Messaging API |
+| 検証 | Vitest、独自の検証フレームワーク、Playwright |
 
-ブラウザが `localhost:8765` を呼び出すのは、デフォルトでは AnkiConnect が CORS をブロックしています (origin `http://localhost` のみを許可)。ユーザーは 1 回設定する必要があります:
+### 2.2 構成図
 
-1. Anki Desktop → **Tools → Add-ons → AnkiConnect → Config**
-2. アプリの origin を `webCorsOriginList` に追加:
-    ```json
-    {
-        "webCorsOriginList": ["http://localhost", "http://localhost:3000", "https://<your-app>.vercel.app"]
-    }
-    ```
-3. **Anki を再起動。**
+```mermaid
+graph TD
+    subgraph client["利用者端末"]
+        B[ブラウザ]
+        A[Anki Desktop<br/>AnkiConnect :8765]
+    end
 
-注意:
+    subgraph server["Vercel"]
+        M[middleware.ts]
+        R[API ルート]
+    end
 
-- CORS が不足 → ブラウザが `TypeError: Failed to fetch` を報告 ("Anki が閉じている" と区別できない — ブラウザは CORS 詳細を JS に隠す)。Settings ページは Anki がオフラインの場合のガイダンス callout があります。
-- **Safari** は HTTPS ページから `http://localhost` へのリクエストをブロック → デプロイメント版は Chrome/Edge/Firefox を使用。
-- **Local Network Access (LNA) / Private Network Access:** Chrome 等の最新ブラウザは、公開オリジン (デプロイ版 `https://…`) から `localhost` への通信をブロックする (`Permission was denied ... loopback address space`)。`webCorsOriginList` を直しても届かず、`TypeError: Failed to fetch` は「Anki 未起動」と区別できない。`isLocalNetworkBlockedContext()` / `ankiConnectionErrorMessage()` (`lib/flashcard-service/client.ts`) が page origin が loopback かどうかで状況を判定し、export/sync/resync/deck の各 toast と Settings の callout で正しい案内 (サイトへ LNA 許可、または `http://localhost:3000` から利用) を出す。ブラウザ仕様のためアプリ側では回避不可。
+    subgraph ext["外部サービス"]
+        FS[(Firestore)]
+        CL[Claude API]
+        TTS[Google Cloud TTS]
+        UN[Unsplash]
+        LN[LINE Messaging API]
+    end
 
-### 主なディレクトリ
-
-| パス                     | 目的                                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `app/api/`              | API ルート — すべてのサーバーロジックがここにあります                                      |
-| `app/(auth)/`           | ログイン / サインアップページ (サイドバーなしレイアウト)                                    |
-| `middleware.ts`         | ルート保護 — `__session` クッキーの存在をチェック                                           |
-| `firestore.rules`       | Firestore Security Rules (ユーザーごとの分離; Firebase CLI 経由でデプロイ)                  |
-| `app/dashboard/`        | ダッシュボード — 統計概要、最近のエントリ、クイックアクション                               |
-| `app/create/`           | カード作成ページ (フォーム選択 + 入力)                                                      |
-| `app/preview/`          | 生成されたカードのプレビュー、編集、Anki へのエクスポート                                   |
-| `app/history/`          | 作成されたエントリの履歴ログ                                                                |
-| `app/history/[id]/`     | 履歴詳細 — 完全なエントリ表示、再作成/削除                                                 |
-| `app/settings/`         | 個人設定 (すべてのユーザー) — SRS 同期、カードレイアウト、統合ステータス、設定トグル → `settings/{uid}` |
-| `app/settings/admin/`   | アプリ全体の設定 (管理者のみ) — フィーチャー可用性、AI モデル、LINE 通知 gate/schedule → `settings/global` |
-| `app/admin/`            | 管理画面 — カテゴリ、カードタイプ、トピック、デック、コンテンツタイプの CRUD                 |
-| `components/create/`    | `user_content_types.fields[]` から構築する共通 Create フォームと設定 control                  |
-| `components/preview/`   | カードプレビュー + 編集コンポーネント                                                      |
-| `components/history/`   | 履歴テーブル、単語詳細カード                                                                |
-| `components/admin/`     | リソースごとの管理マネージャーコンポーネント (CategoryManager など)                          |
-| `components/layout/`    | ナビゲーションサイドバー、ページヘッダー                                                    |
-| `components/ui/`        | 共有 UI プリミティブ (Button、Modal、Card、DataTable など)                                  |
-| `lib/`                  | 共有ユーティリティ: firebase、auth、contentTypes、userContentTypes、seed-defaults、session など |
-| `lib/ai-agent/`         | Claude AI エージェント — data-driven prompt engine、output profiles、Zod tool schema、provider |
-| `lib/flashcard-service/` | クライアント側 AnkiConnect (client.ts + client-ops.ts) — ブラウザ → localhost:8765           |
-| `components/providers/` | React contexts: AuthProvider、GlobalConfigProvider、MotionProvider                         |
-| `scripts/`              | seed、user/content-type migration、AI output profile backfill、admin claim                     |
-| `types/index.ts`        | すべての TypeScript 型と enum                                                               |
-| `verify/`               | ランタイム検証フレームワーク (specs、verifiers、harness — `docs/03-development/VERIFICATION.md` 参照)      |
-| `docs/`                 | 信頼できるドキュメント                                                                      |
-
-### データフロー: 作成 → プレビュー
-
-1. `app/create/page.tsx` が `user_content_types` を `where('user_id', '==', uid)` で読み込み、`code` から built-in/custom routing を解決
-2. `StudyLanguageProvider` が `settings/{uid}` から Study Language 一覧と、独立した AI Output Language 一覧 + 明示 default をリアルタイムで読み込む。Legacy settings は読み取り境界で default 1 件へ正規化する
-3. `lib/create/formBlueprint.ts` が選択した document の `fields[]` から表示順、label、required、session persistence、標準 control を構築し、API generation strategy の payload に workspace `content_type_id` を含める。`data_source: 'output_languages'` を宣言した任意の built-in/custom Content Type だけが一時切替を表示し、宣言がない場合は Settings default を使用する
-4. ユーザーが共通 `CardForm` に入力。Primary は `word` / `term` または custom primary、追加 field は `dynamicFields` に含める。Card Type は `language` と実効 `output_language` の両方が一致するものだけを表示し、各 scope が `null` の Card Type は universal として残す。不一致の default Card Type へはフォールバックしない
-5. 送信時、実効 Output Language を single/batch payload と pending data に固定する。`POST /api/generate` は `user_content_types/{content_type_id}` の owner/routing/profile を server-side で検証し、`ai_output_profiles` から英語 prompt + Zod tool schema を構築して Claude で enrich (General の local strategy を除く)。Profile 未設定 document/request は built-in/generic profile を materialize して同じ engine を使用
-6. Provider は model output を schema 検証し、primary を input から復元、legacy alias (`word_type_vi` / `definition_vi`) を補完する
-7. `lib/pendingEntry.ts` / `lib/pendingBatch.ts` 経由で `localStorage` に結果を保存 (`ankiflow_pending_result` / `ankiflow_pending_batch`)。Preview が構築する `entries.output_language` はこの実効値を引き継ぐ
-8. ブラウザが single/batch preview にリダイレクトし、pending data を読み込み。Application/session metadata を AI content より後に merge してから pending をクリア
-9. ユーザーがカードを編集、画像/音声を選択、その後:
-    - **エクスポート (Anki が開いている):** ブラウザが `createNotesForEntry` を呼び出し (メディア保存 + ノート構築 + デック作成 + AnkiConnect 経由でノート追加) → `POST /api/entries/save` with `status: 'synced'` + note ids
-    - **保存 (Anki が閉じている — deferred):** `POST /api/entries/save` with status `reviewed`; sidebar の Sync ボタン経由で後で同期 (`GET /api/entries/sync` → ブラウザがノート作成 → `POST /api/entries/sync`)
-
-### セッション永続化
-
-`lib/session.ts` は Content Type の runtime `form_type` / `code` をキーとして `localStorage` にフォーム状態を保存します。
-`fields[].is_session_persistent` が `true` の core/config field は生成成功後も保持し、`false` の field は reset します。
-Form 定義から削除された hidden field は generate payload に含めません。入力途中の nonpersistent core field は draft cache が復元します。
-Output Language control も同じ規則に従い、nonpersistent の一時選択は生成成功後に Settings default へ戻ります。
-
-### Content Type の scope と lifecycle
-
-- `content_types`: 管理者が `/admin` の「New-user defaults」で編集する global source。3 built-in ID
-  (`form_language` / `form_it` / `form_general`) は削除禁止。
-- `user_content_types`: Create / Resync が使用する per-user runtime collection。すべての query に
-  `where('user_id', '==', uid)` が必要。Settings または `/admin` の「My workspace」でユーザー自身が CRUD する。
-- Signup: `seedUserDefaults` が global source を `{sourceId}__{uid}` へ create-only snapshot。後から global を
-  編集しても既存ユーザーは変わらない。
-- Existing user migration: `migrate:user-content-types` が deterministic ID と workspace `code` を確認し、
-  不足分だけを作成。既存 document の update/delete は行わない。
-- Legacy English migration: `migrate:content-type-english` は global/user built-in の既知の旧ベトナム語
-  default と完全一致する metadata だけを英語へ置換する。任意の customization と custom Content Type は保持する。
-- AI output profiles: `ai_output_profiles[]` が AI の field/schema/instruction を workspace ごとに定義する。
-  Language は study language subtag と一致する profile (`en` / `zh` / `ja`) を優先し、それ以外は `default`。
-  Primary field は全 profile で必須、reserved application metadata key は不可。既存 global/user built-in の
-  profile backfill は別の merge-only migration を使用する。
-- Output languages: `settings/{uid}.ai_output_languages` は Study Language から独立し、
-  `ai_output_language` が有効な一覧内の explicit default。Content Type の output selector は
-  `fields[].data_source = 'output_languages'` だけで有効化し、runtime は Content Type の code/form type を
-  hardcode しない。Card Type Manager の output scope もこの一覧を使用する。Global default を変更しても
-  既存 `user_content_types` snapshot は自動更新されない。
-- Routing: コピー先 document ID ではなく `code` を使用。Built-in alias (`language` / `it` / `general`) は
-  `FormType` enum に解決し、custom code は lowercase snake_case のまま使用する。`code` は作成後に変更不可。
-  同じ route に解決される競合 documents だけを非表示にして警告し、競合していない types は利用を継続する。
-  History の filter option と entry 比較も同じ canonical routing key を使用し、short alias と `form_*` を重複表示しない。
-
-## 環境変数
-
-`.env.example` を `.env` にコピー:
-
-| 変数                                              | ソース                                                                              |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `FIREBASE_ADMIN_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY` | GCP サービスアカウント                                                               |
-| `NEXT_PUBLIC_FIREBASE_*`                         | Firebase Console → Project Settings                                                   |
-| `ANTHROPIC_API_KEY`                              | Anthropic Console (Claude API)                                                        |
-| `GOOGLE_TTS_CREDENTIALS_JSON`                    | GCP サービスアカウント JSON の**中身** (minify 1 行)。serverless (Vercel) では必須 — ファイルが存在しないためパスは使えない |
-| `GOOGLE_APPLICATION_CREDENTIALS`                 | GCP サービスアカウント key file への**パス** (ローカル開発用の代替。JSON 版が優先) |
-| `UNSPLASH_ACCESS_KEY`                            | Unsplash Developers                                                                   |
-| `LINE_CHANNEL_ACCESS_TOKEN`                      | LINE Messaging API の push/reply token                                              |
-| `LINE_CHANNEL_SECRET`                            | LINE webhook の署名検証                                                             |
-| `NEXT_PUBLIC_LINE_ADD_FRIEND_URL`                | LINE 公式アカウント追加 URL (公開値、Settings UI)                                   |
-| `NEXT_PUBLIC_LINE_BOT_ID`                        | LINE 公式アカウントの Basic/Premium ID (`@...`)。Settings の mobile chat deep link と code prefill に使用する公開・任意値 |
-| `CRON_SECRET`                                    | `/api/cron/srs-push` の bearer 認証。GitHub Actions secret にも同じ値を設定         |
-| `ADMIN_EMAIL`                                    | サーバー側管理者チェック (`/api/admin/global-config`、`/api/admin/content-types` mutation、signup claim) |
-| `NEXT_PUBLIC_ADMIN_EMAIL`                        | クライアント側管理者 UI ゲート (表示のみ — セキュリティではない)                    |
-| `SIGNUP_ENABLED`                                 | 公開 signup gate。明示的な `true` のみ有効; 未設定・`false`・不正値は無効           |
-
-> GitHub Actions の `SRS LINE Push` workflow には repository secrets `APP_URL` と `CRON_SECRET` が必要。
-> 現行アプリ/cron は `LINE_USER_ID` と `SRS_PUSH_TARGET_UID` を使用せず、通知先を `settings/{uid}.line_user_id` から解決する。`LINE_USER_ID` を参照する legacy 手動 script/workflow はクロスユーザー分離を満たさないため実行しない。
-> `ANKI_CONNECT_URL` と `API_SECRET`/`x-api-secret` も削除済み。AnkiConnect URL はユーザーごと (`settings/{uid}.anki_connect_url`、フォールバック `http://localhost:8765`); 認証は Firebase セッションクッキーに移行。
-
-公開 signup を切り替えるには server/deployment の `SIGNUP_ENABLED` を変更して restart/redeploy する。
-コード変更は不要。
-
-## 認証 (Firebase Auth — マルチユーザー)
-
-- **セッションクッキー `__session`** (httpOnly): ログイン時に Firebase ID トークン → クッキーに変換 `POST /api/auth/session` 経由; ログアウト `DELETE` (取り消し + クリア)。
-- **公開サインアップ gate**: server-only の `SIGNUP_ENABLED` を使用。無効時は login の作成リンクを非表示、`/signup` に停止メッセージを表示し、API は Firebase 呼び出し前に 403。既存ユーザーのログインは継続。
-- **ミドルウェア** (`middleware.ts`): クッキー存在チェック → ページを `/login` にリダイレクト、`/api/*` → 401 JSON。検証しない (Edge)。除外: `/api/auth/*`、`/api/notifications/line-webhook`、`/verify`、static。
-- **API レイヤー** (`lib/auth-guard.ts`): `withAuth(handler(req, ctx, uid))` はクッキーを検証して UID を返す。すべてのルートデータはラップ。管理者ルートは `email === ADMIN_EMAIL` チェックを追加。
-- **Firestore Security Rules** (`firestore.rules`): Client SDK はユーザーのドキュメントのみアクセス可。`user_content_types` は owner の read/create/update/delete のみで、update による `user_id` / `code` 変更を拒否。`content_types` は signed-in read + admin write、3 built-in ID は admin でも delete 不可。管理者 = カスタムクレーム `admin:true` (`scripts/set-admin-claim.ts`、再ログイン必須)。デプロイ: `firebase deploy --only firestore:rules,firestore:indexes`.
-
-## スクリプト
-
-```bash
-npm run seed                            # content_types + settings/global + settings/default
-npm run seed -- --defaults              # テンプレート __defaults__ をパブリッシュ (オプション — サインアップ時に自動遅延パブリッシュ)
-npm run migrate:user-content-types      # existing Auth users への create-only migration を dry-run
-npm run migrate:user-content-types -- --apply  # レビュー済みの不足 snapshot だけを作成
-npm run migrate:ai-output-profiles      # built-in global/user profile update を dry-run
-npm run migrate:ai-output-profiles -- --apply  # 明示承認済みで、field 未設定 document だけを update
-npm run migrate:content-type-english    # 既知の旧ベトナム語 built-in metadata update を dry-run
-npm run migrate:content-type-english -- --apply  # レビュー済みの exact-match update だけを適用
-npm run migrate:output-language-controls  # 既存 Content Type の不足 output control を dry-run
-npm run migrate:output-language-controls -- --uid <uid>  # 1 user の snapshot だけを確認
-npm run migrate:output-language-controls -- --uid <uid> --apply  # 承認済み update を適用
-npm run user:create -- <email>          # 公開 signup を開かず内部アカウントを対話形式で作成 + seed
-npx tsx scripts/set-admin-claim.ts <email>       # 管理者クレームを設定 (その後再ログイン)
-npx tsx scripts/migrate-user-data.ts <uid> [--dry-run]  # 古いシングルユーザーデータを 1 つのアカウントに割り当て
-npx tsx scripts/sync-admin-defaults.ts            # 管理者 workspace → __defaults__ + 既存 user の不足分を dry-run
-npx tsx scripts/sync-admin-defaults.ts --apply    # レビュー済みの template 差分・user create を適用
-npx tsx scripts/sync-admin-defaults.ts --apply --allow-empty  # template collection の空化を明示的に許可
+    B -->|HTTP 直接呼び出し| A
+    B --> M --> R
+    B -.Client SDK.-> FS
+    R -->|Admin SDK| FS
+    R --> CL
+    R --> TTS
+    R --> UN
+    R --> LN
+    GH[GitHub Actions<br/>定期実行] --> R
+    LN -->|Webhook| R
 ```
 
-`user:create` は TTY 上で password と確認を非表示入力し、実行確認後に Firebase Auth user を作成して
-`seedUserDefaults` を適用する。email が `ADMIN_EMAIL` と一致する場合は `admin:true` claim も設定する。
-`SIGNUP_ENABLED` の値には依存しない。claim または seed が失敗した場合、作成済み UID と復旧コマンドを
-表示して非ゼロ終了し、user を自動削除しない。
+Firestore へは 2 つの経路が存在する。ブラウザからの Client SDK による直接アクセスと、API ルートからの Admin SDK によるアクセスである。前者は Security Rules の適用を受け、後者は受けない。この差は本システムの安全性を左右するため、詳細をセキュリティ設計書 (AF-SEC-001) に定める。
 
-`migrate:user-content-types` は全 Firebase Auth user と global `content_types` を読み、各 workspace の
-`user_content_types` を UID の `in` query でまとめて取得します。引数なしは read-only dry-run で、
-作成予定 path と ID/code による skip 件数だけを表示します。`--apply` は BulkWriter `create()` のみを使い、
-既存 document を update/delete しません。必ず dry-run output をレビューし、Firestore 書き込みの明示的な
-承認を得てから `--apply` を実行してください。Apply 後は再度 dry-run し、create candidate が 0 であることを確認します。
+## 3. 実行主体の境界
 
-`migrate:ai-output-profiles` は global/user の built-in Language/IT documents だけを `code in` query で読み、
-`ai_output_profiles` field が存在しない document を update candidate として表示します。引数なしは read-only
-dry-run です。`--apply` は transaction 内で field absence を再確認してから merge-only update し、既存 profile、
-custom Content Type、General document を変更しません。必ず dry-run output をレビューし、Firestore update の
-明示承認を得てから実行してください。Apply 後は自動再読込で candidate が 0 か確認します。
+処理をどこで実行するかは、本システムにおいて最も重要な設計判断である。
 
-`migrate:content-type-english` は global/user の 3 built-in documents を short alias と `form_*` alias の
-`code in` query で読みます。引数なしは read-only dry-run で、document path と変更対象 field を表示します。
-`--apply` は transaction 内で document を再読込し、既知の旧ベトナム語 default と完全一致する `name`、
-`description`、`fields[].label`、`fields[].placeholder` だけを英語へ更新します。Custom Content Type、任意の
-customization、ID、code、ownership、AI output profile は変更せず、document の作成・削除も行いません。
-必ず dry-run output をレビューし、Firestore update の明示承認を得てから適用してください。
+| 処理 | 実行主体 | 理由 |
+| --- | --- | --- |
+| AnkiConnect の呼び出し | **ブラウザ** | Anki は利用者の端末で動作する。サーバーの `localhost` は利用者の端末ではない |
+| 外部 AI・音声・画像 API の呼び出し | サーバー | 資格情報をクライアントへ配布しないため |
+| Firestore への書き込み | 原則サーバー | 所有者の設定と派生項目の整合を保つため |
+| Firestore の読み取り | 双方 | 画面の応答性のため、クライアントからも直接読む |
+| 認証状態の検証 | サーバー | Admin SDK が Edge Runtime で動作しないため、API ルートで行う |
 
-`migrate:output-language-controls` は global `content_types` と source-linked `user_content_types` を比較し、
-`data_source: 'output_languages'` の system control だけを merge-only で補います。対象は Content Type の
-code/form type ではなく、global/default の field 宣言から決定します。既存 control、source link のない custom
-Content Type、同名 field の customization は上書きしません。引数なしは全 user の read-only dry-run、
-`--uid <uid>` は user snapshot の読み取りを 1 user に限定します。`--apply` は transaction 内で fields と
-source link を再確認してから update するため、必ず dry-run の全 path/conflict をレビューし、Firestore update の
-明示承認を得てから実行してください。この script は feature rollout 用の one-time migration であり、ユーザーが
-後から control を削除した後に再実行しません。
+### 3.1 AnkiConnect がクライアント側である帰結
 
-`sync-admin-defaults.ts` は one-time migration。`ADMIN_EMAIL` の `/admin` "My workspace" を
-`__defaults__` の正確な snapshot に置き換え、既存 user には ID または論理キーで不足している
-master data だけを `create` する。引数なしでは読み取りと差分表示のみで、Firestore への書き込みは
-行わない。`--apply` は古い template の削除を含むため、必ず dry-run の全 path をレビューし、
-Firestore の書き込み・削除について明示的な承認を得てから 1 回だけ実行する。既存 template がある
-collection を空にする差分は `--apply` だけでは拒否され、意図的な場合に限り `--allow-empty` も指定する。
-Card type の論理キーは `form_type + language + output_language + code` で、同じ code を持つ別の
-学習・出力言語ペアの card type を混同しない。
-既存 user への backfill は document ごとの create とし、計画後に同じ document が作成された競合だけを
-skip して他の user の create を継続する。既存 user document の update/delete は行わない。
+**サーバーは AnkiConnect を呼び出さない。** これは制約ではなく前提である。Vercel 上のサーバーにとって `localhost` は自分自身であり、利用者の Anki には到達し得ない。
 
-## Git 規約
+したがって、Anki を伴う処理は次の形を取る。
 
-**詳細は [`CONTRIBUTING.md`](../CONTRIBUTING.md) を参照(単一の情報源)。** 要点:
+```
+サーバーがデータを返す
+   → ブラウザが AnkiConnect を操作する
+       → ブラウザが結果をサーバーへ送り返す
+           → サーバーが Firestore を更新する
+```
 
-- ブランチは必ず `develop` から作成(作成前に `git pull` 必須)。命名: `feat/`・`fix/`・`docs/`・`refactor/`・`chore/`・`test/` + 英語 kebab-case slug
-- `develop` / `main` への直接コミット・プッシュ禁止(`.githooks/` でブロック)
-- コミット: Conventional Commits — type は英語、要約は日本語。例: `feat: エクスポート履歴画面を追加`
-- AI エージェントは Co-Authored-By / "Generated with" フッターを付けない
-- PR: base = `develop`、タイトルはコミットと同形式、`.github/PULL_REQUEST_TEMPLATE.md` に従う
+実装は `lib/flashcard-service/client.ts` (接続先の解決) と `lib/flashcard-service/client-ops.ts` (ノートタイプの用意、デッキ操作、ノートの作成と再生成) に集約する。
+
+この形を崩し、サーバーから Anki を呼ぼうとしてはならない。ローカル環境では偶然動作するが、本番では必ず失敗する。
+
+### 3.2 AnkiConnect の接続に関する制約
+
+ブラウザから `localhost:8765` を呼ぶには、AnkiConnect 側で呼び出し元のオリジンを許可する必要がある。設定手順は環境構築手順書 (AF-SET-001) 第 6 章に定める。
+
+接続に失敗した場合、ブラウザは `TypeError: Failed to fetch` を返す。この応答は次の 3 つの状況を区別できない。ブラウザが詳細を JavaScript へ開示しないためである。
+
+| 状況 | 回避の可否 |
+| --- | --- |
+| Anki Desktop が起動していない | 利用者が起動する |
+| オリジンが許可されていない | 利用者が設定する |
+| ブラウザのローカルネットワークアクセス制限 | **回避不能** |
+
+3 つ目は、公開されたオリジンから `localhost` への通信をブラウザが遮断する仕組みによる。許可設定を正しても到達しない。アプリケーション側の修正では解決できない。
+
+`lib/flashcard-service/client.ts` の `isLocalNetworkBlockedContext()` および `ankiConnectionErrorMessage()` が、ページのオリジンが loopback であるかによって状況を推定し、案内文を出し分ける。区別できない以上、推定に基づいて**両方の可能性を示す**方針を採る。
+
+Safari は HTTPS のページから `localhost` への接続を許可しない。Anki 連携には使用できない。
+
+## 4. ディレクトリ構成
+
+| パス | 目的 |
+| --- | --- |
+| `app/api/` | API ルート。サーバー側の処理はすべてここに置く |
+| `app/(auth)/` | ログインおよびサインアップ。サイドバーを持たない専用レイアウト |
+| `app/dashboard/` | ダッシュボード |
+| `app/create/` | カード作成 |
+| `app/preview/` | プレビューと編集、Anki への登録 |
+| `app/history/` | 作成履歴の一覧と詳細 |
+| `app/settings/` | 個人設定。書き込み先は `settings/{uid}` |
+| `app/settings/admin/` | 全体設定 (管理者)。書き込み先は `settings/global` |
+| `app/admin/` | マスターデータの管理 |
+| `components/create/` | コンテンツタイプ定義から構築する共通フォームと各種選択部品 |
+| `components/preview/` | プレビューと編集の部品 |
+| `components/history/` | 履歴の表と詳細表示 |
+| `components/admin/` | 資源ごとの管理部品 |
+| `components/layout/` | サイドバーとページヘッダー |
+| `components/ui/` | 共有の基本部品 |
+| `components/providers/` | React のコンテキスト |
+| `lib/` | 共有処理 |
+| `lib/ai-agent/` | AI 連携。プロンプト構築、出力プロファイル、スキーマ、プロバイダ |
+| `lib/flashcard-service/` | クライアント側の AnkiConnect 連携 |
+| `lib/srs/` | 復習期日の算出と優先順位付け |
+| `types/index.ts` | 型と列挙型の定義 |
+| `scripts/` | 初期投入、移行、権限付与などの運用スクリプト |
+| `verify/` | 検証フレームワークと検証仕様 |
+| `e2e/` | Playwright による E2E 試験 |
+| `middleware.ts` | 経路の保護 (第 1 層) |
+| `firestore.rules` | Security Rules |
+| `firestore.indexes.json` | 複合インデックスの宣言 |
+| `docs/` | 設計文書 |
+
+## 5. データの流れ
+
+### 5.1 カード作成からプレビューまで
+
+| # | 処理 |
+| --- | --- |
+| 1 | 作成画面が `user_content_types` を所有者で絞り込んで読み、`code` から経路を解決する |
+| 2 | 設定の提供部品が `settings/{uid}` から学習言語の一覧と、独立した出力言語の一覧および既定値を読む |
+| 3 | `lib/create/formBlueprint.ts` が選択中の定義の `fields[]` から、表示順、ラベル、必須、永続化の可否、および標準の入力部品を構築する |
+| 4 | 利用者が共通フォームへ入力する。カードタイプは学習言語と実効出力言語の双方に一致するもののみを表示する。いずれの範囲も未指定のカードタイプは汎用として残す |
+| 5 | 送信時に実効出力言語を確定する。`POST /api/generate` が定義の所有者・経路・出力プロファイルをサーバー側で検証し、プロファイルから指示とスキーマを構築して AI を呼ぶ |
+| 6 | AI の応答をスキーマで検証し、主項目を入力値で復元し、旧名称の項目を補完する |
+| 7 | 結果を `localStorage` へ保存する |
+| 8 | プレビュー画面へ遷移して結果を読み込み、画面や操作に由来する情報を AI の生成内容より後に統合したうえで一時保存を消す |
+| 9 | 利用者が内容を確認・編集し、登録または保存する |
+
+第 9 段階の分岐を次に示す。
+
+| 状況 | 処理 |
+| --- | --- |
+| Anki が起動している | ブラウザがメディア保存、ノート構築、デッキ作成、ノート追加を行い、結果を `status: 'synced'` としてサーバーへ送る |
+| Anki が起動していない | `status: 'reviewed'` として保存する。後からサイドバーの同期操作でまとめて登録する |
+
+第 5 段階でサーバー側の検証を行う点が重要である。クライアントが送る定義をそのまま信頼しない。ただし、コンテンツタイプ編集画面における試験生成のみは、未保存の定義を明示的に受け付ける専用の経路を持つ。この経路でも認証は通常どおり必要であり、受け取った定義は保存しない。
+
+### 5.2 復習通知
+
+| # | 処理 |
+| --- | --- |
+| 1 | 利用者が LINE アカウントを連携する |
+| 2 | 定期実行が `GET /api/cron/srs-push` を共有シークレット付きで呼ぶ |
+| 3 | 通知が有効な利用者を対象に、復習期日を算出して対象を選定する |
+| 4 | 利用者ごとのタイムゾーンで配信時刻に該当するかを判定する |
+| 5 | 該当する利用者へ配信し、送信済みの記録を更新する |
+
+実行が欠落した場合に備え、直前の時間帯も対象とする補完を行う。同一利用者の同一時刻に対する再送は記録によって抑止する。したがって通知は最大で 1 時間程度遅れて届き得る。
+
+## 6. 設定データの生存期間
+
+コンテンツタイプは 2 つのコレクションに分かれる。この分離は本システムの挙動を理解するうえで欠かせない。
+
+| コレクション | 位置づけ | 編集者 |
+| --- | --- | --- |
+| `content_types` | 新規利用者へ複製されるグローバルの複製元 | 管理者のみ |
+| `user_content_types` | 実行時に参照する利用者ごとの複製 | 各利用者 |
+
+### 6.1 複製の規則
+
+| # | 規則 |
+| --- | --- |
+| 1 | サインアップ時にグローバルの複製元から利用者のワークスペースへ複製する |
+| 2 | 複製は**作成のみ**を行う。既存の複製を更新しない |
+| 3 | したがって、**グローバルの既定を変更しても既存利用者には反映されない** |
+| 4 | 既存利用者への追加は移行スクリプトで行い、不足分のみを作成する |
+
+規則 3 は意図した設計である。利用者が自分の設定を変更したあとに、管理者の変更で上書きされることを避けるためである。
+
+### 6.2 ルーティング
+
+実行時の経路は、ドキュメント ID ではなく `code` で解決する。複製先のドキュメント ID は複製元と異なるため、ID を経路に用いることができないためである。
+
+| 種別 | 解決方法 |
+| --- | --- |
+| 組み込み | `code` を `FormType` 列挙型 (`form_language` / `form_it` / `form_general`) へ解決する |
+| 独自定義 | 検証済みの `code` をそのまま用いる |
+
+`code` は作成後に変更できない。画面上の制御に加え、Security Rules でも変更を拒否する。
+
+同じ経路へ解決される定義が複数存在する場合、**衝突している定義のみ**を作成および再同期の対象から除外して警告する。衝突していない定義は引き続き利用できる。すべてを止めない方針である。
+
+組み込みの 3 件はいかなる場合も削除できない。削除すると新規利用者の初期データが欠落する。
+
+## 7. 入力状態の保持
+
+`lib/session.ts` が、コンテンツタイプの実行時の経路を鍵として入力状態を `localStorage` に保持する。
+
+| 対象 | 挙動 |
+| --- | --- |
+| 永続化を宣言した項目 | 生成の成功後も保持する |
+| 宣言していない項目 | 生成の成功後に初期化する |
+| 定義から削除された項目 | 生成時の送信内容に含めない |
+| 入力途中の非永続項目 | 下書きの保持機構が復元する |
+| 出力言語の一時的な切り替え | 生成の成功後に個人設定の既定へ戻す |
+
+保持状態はコンテンツタイプごとに独立する。切り替えた場合は切り替え先の状態を読み込む。
+
+## 8. 設計上の判断
+
+本システムの構成を特徴づける判断を示す。背景の詳細はアーキテクチャ決定記録 (AF-ADR-nnnn) に記録する予定である。
+
+| # | 判断 | 理由 |
+| --- | --- | --- |
+| 1 | 出題スケジューリングを自作せず Anki に委ねる | 実績のある実装が存在し、作成の手間の解消に注力するため |
+| 2 | AnkiConnect の呼び出しをクライアント側で行う | サーバーから利用者端末の Anki へ到達できないため |
+| 3 | 認証に httpOnly のセッションクッキーを用いる | ブラウザの JavaScript から読み取れないようにするため |
+| 4 | 認証を 3 層に分ける | 各層の実行環境上の制約が異なり、単層では担保できないため |
+| 5 | 管理者判定を 2 系統で維持する | Security Rules が環境変数を読めないため |
+| 6 | フォームを定義から構築する | 扱う知識の種類ごとに画面を作らないため |
+| 7 | グローバルの既定を既存利用者へ自動反映しない | 利用者の設定を保護するため |
+
+## 9. 既知の制約
+
+| # | 制約 | 影響 |
+| --- | --- | --- |
+| 1 | Firestore に JOIN が存在しない | 関連データは一括取得で解決する。ループ内での逐次取得は行わない |
+| 2 | 複合条件にはインデックスの事前宣言を要する | 条件を増やす際は `firestore.indexes.json` の更新が必要である |
+| 3 | Admin SDK は Security Rules をバイパスする | サーバー側の絞り込み漏れは分離の破綻に直結する |
+| 4 | Admin SDK は Edge Runtime で動作しない | ミドルウェアで署名を検証できない |
+| 5 | 検証用の属性は本番ビルドで出力されない | 本番環境では検証を実行できない |
+| 6 | ブラウザのローカルネットワークアクセス制限 | 公開環境からの Anki 連携が成立しない場合がある |
 
 ## 改訂履歴
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 2.0 | 2026-07-31 | アーキテクチャ設計書として全面改訂。認証は AF-SEC-001、環境変数は AF-SET-001、スクリプト手順は AF-OPS-001、Git 規約は AF-DEV-001 へ移管し、本書は構成・実行境界・データフロー・設定の生存期間に絞った | hong-quyen |
 | 1.1 | 2026-07-31 | 文書体系の再編に伴い、`docs/REFERENCE.md` から改称のうえ `docs/02-design/` へ移動し、文書管理情報と改訂履歴を追加 | hong-quyen |
 | 1.0 | 2026-06-21 | 初版作成 (`docs/REFERENCE.md`) | hong-quyen |

@@ -22,14 +22,14 @@
 
 | ソフトウェア | 条件 |
 | --- | --- |
-| Node.js | `package.json` の依存関係を満たすバージョン。Next.js 16 および React 19 が動作すること |
+| Node.js | CI (`.github/workflows/ci.yml`) は Node.js 20 で検証している。ローカルもこれに合わせることを推奨する |
 | npm | Node.js に同梱のもの |
 | Git | リポジトリの取得およびフックの設定に用いる |
 | Anki Desktop | Anki 連携を確認する場合に必要である |
 | AnkiConnect アドオン | Anki Desktop に導入すること |
 | ブラウザ | Chrome、Edge、または Firefox。Safari は Anki 連携に使用できない |
 
-<!-- TODO(user): 動作を確認済みの Node.js のバージョンを記載すること。`.nvmrc` や `engines` フィールドで固定する方針であれば、その旨も併記する。 -->
+<!-- TODO(user): CI は Node.js 20、`.github/workflows/notify.yml` のみ Node.js 24 を指定しており、両者が食い違っている。統一したうえで `.nvmrc` または `engines` フィールドで固定するかを判断すること。 -->
 
 ## 3. 外部サービスの準備
 
@@ -47,7 +47,9 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 
 ## 4. 環境変数
 
-`.env.local` に設定する。値はリポジトリへコミットしてはならない。
+リポジトリ直下の `.env.example` を雛形として `.env.local` を作成し、値を設定する。`.env.local` および実際の値はリポジトリへコミットしてはならない。
+
+以下の各表は、実装が実際に参照している変数を網羅したものである。`.env.example` との差異を認めた場合は実装を正とし、`.env.example` と本書の双方を更新すること。
 
 ### 4.1 Firebase (サーバー — Admin SDK)
 
@@ -98,6 +100,7 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 | `LINE_CHANNEL_ACCESS_TOKEN` | Messaging API のアクセストークン |
 | `LINE_CHANNEL_SECRET` | Webhook の署名検証に用いるシークレット |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL` | 公式アカウントの友だち追加 URL。公開値である |
+| `NEXT_PUBLIC_LINE_BOT_ID` | 公式アカウントの Basic / Premium ID (`@` で始まる)。設定画面の deep link と連携コードの事前入力に用いる。公開値かつ任意である |
 
 ### 4.6 外部連携および定期実行 (任意)
 
@@ -132,7 +135,7 @@ npm install
 
 ### 5.2 環境変数の設定
 
-第 4 章に従い `.env.local` を作成する。
+`.env.example` を `.env.local` へ複製し、第 4 章に従って値を設定する。
 
 ### 5.3 Firestore の準備
 

@@ -107,12 +107,22 @@ Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICAT
 | File | Read when |
 | --- | --- |
 | `docs/README.md` | Locating a document, or adding one (index + reading order) |
-| `docs/01-requirements/REQUIREMENTS.md` | Starting a new feature |
-| `docs/02-design/ARCHITECTURE.md` | Directory structure, data flow, env vars |
+| `docs/GLOSSARY.md` | A term in the docs or code is unfamiliar |
+| `docs/01-requirements/REQUIREMENTS.md` | Starting a new feature (functional requirements, FR-IDs) |
+| `docs/01-requirements/NFR.md` | Performance, availability, cost, or maintainability constraints |
+| `docs/01-requirements/ROADMAP.md` | What is planned, what is out of scope, `1.0.0` criteria |
+| `docs/02-design/ARCHITECTURE.md` | Directory structure, execution boundaries, data flow |
+| `docs/02-design/SECURITY.md` | Auth, authorization, Firestore rules, admin detection |
+| `docs/02-design/SCREENS.md` | Adding/removing a screen, changing navigation (SC-IDs) |
 | `docs/02-design/API.md` | Writing or calling any API route |
 | `docs/02-design/DATABASE.md` | Writing Firestore queries or adding fields |
 | `docs/02-design/DESIGN.md` | Creating or modifying UI |
+| `docs/02-design/CARD_TEMPLATES.md` | Changing what an exported Anki card contains |
+| `docs/02-design/AI_PROMPTS.md` | Changing AI generation behaviour or output profiles |
+| `docs/03-development/SETUP.md` | Env vars, local setup, AnkiConnect CORS, npm scripts |
+| `docs/03-development/TEST_PLAN.md` | Test scope, FR-ID to TC-ID traceability |
 | `docs/03-development/VERIFICATION.md` | Writing or modifying verification specs (`verify/`) |
+| `docs/04-operations/OPERATIONS.md` | Release, deploy, migrations, incident handling, rollback |
 | `docs/CONTRIBUTING.md` | Branching, commits, PRs, versioning and releases |
 
 ## Gotchas

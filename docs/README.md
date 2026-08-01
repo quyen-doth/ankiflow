@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-IDX-001 |
-| 版数 | 1.4 |
+| 版数 | 1.5 |
 | 作成日 | 2026-07-31 |
 | 最終更新日 | 2026-07-31 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -32,8 +32,8 @@
 
 | 文書ID | 文書名 | ファイル | ステータス |
 | --- | --- | --- | --- |
-| AF-ARC-001 | アーキテクチャ設計書 | [02-design/ARCHITECTURE.md](02-design/ARCHITECTURE.md) | 改訂中 |
-| AF-SEC-001 | セキュリティ設計書 | — | 作成予定 |
+| AF-ARC-001 | アーキテクチャ設計書 | [02-design/ARCHITECTURE.md](02-design/ARCHITECTURE.md) | 運用中 |
+| AF-SEC-001 | セキュリティ設計書 | [02-design/SECURITY.md](02-design/SECURITY.md) | 運用中 |
 | AF-SCR-001 | 画面設計書 | [02-design/SCREENS.md](02-design/SCREENS.md) | 運用中 |
 | AF-DB-001 | データベース設計書 | [02-design/DATABASE.md](02-design/DATABASE.md) | 運用中 |
 | AF-API-001 | API 設計書 | [02-design/API.md](02-design/API.md) | 運用中 |
@@ -47,14 +47,14 @@
 | --- | --- | --- | --- |
 | AF-SET-001 | 環境構築手順書 | [03-development/SETUP.md](03-development/SETUP.md) | 運用中 |
 | AF-DEV-001 | 開発規約 | [CONTRIBUTING.md](CONTRIBUTING.md) | 運用中 |
-| AF-TST-001 | テスト計画書 | — | 作成予定 |
+| AF-TST-001 | テスト計画書 | [03-development/TEST_PLAN.md](03-development/TEST_PLAN.md) | 運用中 |
 | AF-VER-001 | ランタイム検証仕様書 | [03-development/VERIFICATION.md](03-development/VERIFICATION.md) | 運用中 |
 
 ### 2.4 運用
 
 | 文書ID | 文書名 | ファイル | ステータス |
 | --- | --- | --- | --- |
-| AF-OPS-001 | 運用手順書 | — | 作成予定 |
+| AF-OPS-001 | 運用手順書 | [04-operations/OPERATIONS.md](04-operations/OPERATIONS.md) | 運用中 |
 
 ### 2.5 評価
 
@@ -77,7 +77,7 @@
 | AF-IDX-001 | 文書一覧（本書） | README.md | 運用中 |
 | AF-CHG-001 | 変更履歴 | [../CHANGELOG.md](../CHANGELOG.md) | 運用中 |
 | AF-SEC-002 | セキュリティポリシー | [../SECURITY.md](../SECURITY.md) | 運用中 |
-| AF-GLS-001 | 用語集 | — | 作成予定 |
+| AF-GLS-001 | 用語集 | [GLOSSARY.md](GLOSSARY.md) | 運用中 |
 | AF-ADR-nnnn | アーキテクチャ決定記録 | — | 作成予定 |
 
 ### 2.8 ステータスの定義
@@ -147,6 +147,7 @@
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.5 | 2026-07-31 | セキュリティ設計書・テスト計画書・運用手順書・用語集の新規作成と、アーキテクチャ設計書の全面改訂を反映 | hong-quyen |
 | 1.4 | 2026-07-31 | 非機能要件書・ロードマップ・画面設計書・環境構築手順書の新規作成を反映 | hong-quyen |
 | 1.3 | 2026-07-31 | 既存文書への文書管理情報と改訂履歴の付与が完了したことを反映 | hong-quyen |
 | 1.2 | 2026-07-31 | 要件定義書の改訂完了、カードテンプレート仕様書と AI プロンプト仕様書の追加を反映 | hong-quyen |
