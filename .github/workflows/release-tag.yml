@@ -20,6 +20,15 @@ jobs:
             contents: write
 
         steps:
+            - name: Guard release ref
+              env:
+                  RELEASE_REF: ${{ github.ref }}
+              run: |
+                  if [ "$RELEASE_REF" != "refs/heads/main" ]; then
+                    echo "::error::main 以外の ref ($RELEASE_REF) からリリースは作成できない。"
+                    exit 1
+                  fi
+
             - uses: actions/checkout@v4
               with:
                   fetch-depth: 0
@@ -28,33 +37,59 @@ jobs:
               id: version
               run: |
                   VERSION=$(node -p "require('./package.json').version")
-                  echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-                  if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-                    echo "exists=true" >> "$GITHUB_OUTPUT"
-                    echo "タグ v${VERSION} は既に存在するため、処理をスキップする。"
-                  else
-                    echo "exists=false" >> "$GITHUB_OUTPUT"
-                  fi
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-            - name: Create tag and GitHub Release
-              if: steps.version.outputs.exists == 'false'
+            - name: Probe GitHub Release
+              id: release
+              uses: actions/github-script@v9
               env:
-                  GH_TOKEN: ${{ github.token }}
                   VERSION: ${{ steps.version.outputs.version }}
+              with:
+                  github-token: ${{ github.token }}
+                  script: |
+                      const tag = `v${process.env.VERSION}`;
+                      const { owner, repo } = context.repo;
+
+                      try {
+                        await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+                        core.setOutput('release_exists', 'true');
+                        core.info(`GitHub Release ${tag} は既に存在する。`);
+                      } catch (error) {
+                        if (error.status === 404) {
+                          core.setOutput('release_exists', 'false');
+                          core.info(`GitHub Release ${tag} は存在しない。`);
+                          return;
+                        }
+                        throw error;
+                      }
+
+            - name: Resolve release state
+              id: state
+              env:
+                  VERSION: ${{ steps.version.outputs.version }}
+                  RELEASE_REF: ${{ github.ref }}
+                  HEAD_SHA: ${{ github.sha }}
+                  RELEASE_EXISTS: ${{ steps.release.outputs.release_exists }}
+                  RELEASE_NOTES_PATH: ${{ runner.temp }}/release-notes.md
+              run: node scripts/release-tag-state.mjs
+
+            - name: Create tag
+              if: steps.state.outputs.create_tag == 'true'
+              env:
+                  VERSION: ${{ steps.state.outputs.version }}
               run: |
-                  # CHANGELOG から当該バージョンの節だけを抜き出してリリースノートにする。
-                  NOTES=$(awk -v v="## [${VERSION}]" \
-                    'index($0, v) == 1 { found = 1; next } found && /^## / { exit } found { print }' \
-                    CHANGELOG.md)
-
-                  if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
-                    echo "::warning::CHANGELOG に v${VERSION} の記載が見つからない。リリースノートは空になる。"
-                  fi
-
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-                  git tag -a "v${VERSION}" -m "リリース v${VERSION}"
-                  git push origin "v${VERSION}"
+                  git tag -a "v$VERSION" -m "リリース v$VERSION"
+                  git push origin "v$VERSION"
+                  echo "タグ v$VERSION を作成して push した。"
 
-                  printf '%s\n' "$NOTES" \
-                    | gh release create "v${VERSION}" --title "v${VERSION}" --notes-file -
+            - name: Create GitHub Release
+              if: steps.state.outputs.create_release == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ steps.state.outputs.version }}
+                  RELEASE_NOTES_PATH: ${{ runner.temp }}/release-notes.md
+              run: |
+                  gh release create "v$VERSION" --title "v$VERSION" --notes-file "$RELEASE_NOTES_PATH"
+                  echo "GitHub Release v$VERSION を作成した。"
