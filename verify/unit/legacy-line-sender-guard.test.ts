@@ -55,6 +55,7 @@ const EXCLUDED_TOP_LEVEL_PATHS = {
   '.codex': 'Agent-only configuration and hooks, outside the application runtime.',
   '.gitignore': 'Git metadata; it cannot consume runtime environment values or invoke a sender.',
   'AGENTS.md': 'Agent guidance excluded by D4; Phase 5 owns its legacy collection wording.',
+  'CHANGELOG.md': 'Release notes only; this file cannot consume environment values or invoke a sender.',
   'CLAUDE.md': 'Agent guidance excluded by D4; Phase 5 owns its legacy collection wording.',
   'LICENSE': 'Legal text only, with no executable or configuration behavior.',
   'README.md': 'Team documentation with a known legacy env mention deferred to Phase 5.',

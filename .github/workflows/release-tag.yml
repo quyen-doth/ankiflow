@@ -1,0 +1,95 @@
+name: Release Tag
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch: {}
+
+permissions:
+    contents: read
+
+concurrency:
+    group: release-tag-main
+    cancel-in-progress: false
+
+jobs:
+    tag-and-release:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
+
+        steps:
+            - name: Guard release ref
+              env:
+                  RELEASE_REF: ${{ github.ref }}
+              run: |
+                  if [ "$RELEASE_REF" != "refs/heads/main" ]; then
+                    echo "::error::main 以外の ref ($RELEASE_REF) からリリースは作成できない。"
+                    exit 1
+                  fi
+
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Resolve version
+              id: version
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+            - name: Probe GitHub Release
+              id: release
+              uses: actions/github-script@v9
+              env:
+                  VERSION: ${{ steps.version.outputs.version }}
+              with:
+                  github-token: ${{ github.token }}
+                  script: |
+                      const tag = `v${process.env.VERSION}`;
+                      const { owner, repo } = context.repo;
+
+                      try {
+                        await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+                        core.setOutput('release_exists', 'true');
+                        core.info(`GitHub Release ${tag} は既に存在する。`);
+                      } catch (error) {
+                        if (error.status === 404) {
+                          core.setOutput('release_exists', 'false');
+                          core.info(`GitHub Release ${tag} は存在しない。`);
+                          return;
+                        }
+                        throw error;
+                      }
+
+            - name: Resolve release state
+              id: state
+              env:
+                  VERSION: ${{ steps.version.outputs.version }}
+                  RELEASE_REF: ${{ github.ref }}
+                  HEAD_SHA: ${{ github.sha }}
+                  RELEASE_EXISTS: ${{ steps.release.outputs.release_exists }}
+                  RELEASE_NOTES_PATH: ${{ runner.temp }}/release-notes.md
+              run: node scripts/release-tag-state.mjs
+
+            - name: Create tag
+              if: steps.state.outputs.create_tag == 'true'
+              env:
+                  VERSION: ${{ steps.state.outputs.version }}
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git tag -a "v$VERSION" -m "リリース v$VERSION"
+                  git push origin "v$VERSION"
+                  echo "タグ v$VERSION を作成して push した。"
+
+            - name: Create GitHub Release
+              if: steps.state.outputs.create_release == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ steps.state.outputs.version }}
+                  RELEASE_NOTES_PATH: ${{ runner.temp }}/release-notes.md
+              run: |
+                  gh release create "v$VERSION" --title "v$VERSION" --notes-file "$RELEASE_NOTES_PATH"
+                  echo "GitHub Release v$VERSION を作成した。"
