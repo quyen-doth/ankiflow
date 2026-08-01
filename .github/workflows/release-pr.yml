@@ -7,7 +7,6 @@ on:
 
 permissions:
     contents: read
-    pull-requests: write
 
 concurrency:
     group: release-pr-develop-to-main
@@ -17,15 +16,57 @@ jobs:
     create-release-pr:
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        permissions:
+            contents: write
+            pull-requests: write
 
         steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: develop
+                  fetch-depth: 0
+
+            - name: Fetch release base
+              run: git fetch --no-tags origin main:refs/remotes/origin/main
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+
+            # Derives the next version from Conventional Commits, then applies it
+            # to package.json and promotes the CHANGELOG [Unreleased] section.
+            # See docs/CONTRIBUTING.md for the bump rules.
+            - name: Prepare release
+              id: prepare
+              run: node scripts/prepare-release.mjs --base origin/main
+
+            - name: Commit version bump
+              if: steps.prepare.outputs.changed == 'true'
+              env:
+                  VERSION: ${{ steps.prepare.outputs.version }}
+              run: |
+                  if git diff --quiet; then
+                    echo "No file changes to commit."
+                    exit 0
+                  fi
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git commit -am "chore: リリース v${VERSION} の準備"
+                  # GITHUB_TOKEN によるプッシュは他のワークフローを起動しないため、
+                  # このジョブが自分自身を無限に再実行することはない。
+                  git push origin develop
+
             - name: Create or update release PR
+              if: steps.prepare.outputs.version != ''
               uses: actions/github-script@v9
+              env:
+                  VERSION: ${{ steps.prepare.outputs.version }}
               with:
                   script: |
                       const base = 'main';
                       const head = 'develop';
-                      const title = 'release: develop to main';
+                      const version = process.env.VERSION;
+                      const title = `release: v${version}`;
                       const { owner, repo } = context.repo;
 
                       const compare = await github.rest.repos.compareCommitsWithBasehead({
@@ -40,12 +81,13 @@ jobs:
                       }
 
                       const body = [
-                        `Automated release PR from \`${head}\` into \`${base}\`.`,
+                        `\`${head}\` から \`${base}\` への自動生成リリース PR である。`,
                         '',
-                        `Triggered by commit: ${context.sha}`,
-                        `Workflow run: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${context.runId}`,
+                        `- バージョン: **v${version}**`,
+                        `- 変更内容: [CHANGELOG.md](https://github.com/${owner}/${repo}/blob/${head}/CHANGELOG.md)`,
                         '',
-                        'Review CI status before merging.',
+                        'マージ前に CI の結果を確認すること。',
+                        'マージ後、`release-tag.yml` がタグと GitHub Release を自動作成する。',
                       ].join('\n');
 
                       const { data: openPrs } = await github.rest.pulls.list({
@@ -59,7 +101,8 @@ jobs:
 
                       if (openPrs.length > 0) {
                         const number = openPrs[0].number;
-                        core.info(`Release PR #${number} already exists. Skipping creation.`);
+                        await github.rest.pulls.update({ owner, repo, pull_number: number, title, body });
+                        core.info(`Updated release PR #${number} to "${title}".`);
                         return;
                       }
 
@@ -71,4 +114,4 @@ jobs:
                         title,
                         body,
                       });
-                      core.info(`Created release PR #${created.number}.`);
+                      core.info(`Created release PR #${created.number} ("${title}").`);

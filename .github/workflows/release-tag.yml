@@ -1,0 +1,60 @@
+name: Release Tag
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch: {}
+
+permissions:
+    contents: read
+
+concurrency:
+    group: release-tag-main
+    cancel-in-progress: false
+
+jobs:
+    tag-and-release:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Resolve version
+              id: version
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+                  if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                    echo "タグ v${VERSION} は既に存在するため、処理をスキップする。"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Create tag and GitHub Release
+              if: steps.version.outputs.exists == 'false'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ steps.version.outputs.version }}
+              run: |
+                  # CHANGELOG から当該バージョンの節だけを抜き出してリリースノートにする。
+                  NOTES=$(awk -v v="## [${VERSION}]" \
+                    'index($0, v) == 1 { found = 1; next } found && /^## / { exit } found { print }' \
+                    CHANGELOG.md)
+
+                  if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+                    echo "::warning::CHANGELOG に v${VERSION} の記載が見つからない。リリースノートは空になる。"
+                  fi
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git tag -a "v${VERSION}" -m "リリース v${VERSION}"
+                  git push origin "v${VERSION}"
+
+                  printf '%s\n' "$NOTES" \
+                    | gh release create "v${VERSION}" --title "v${VERSION}" --notes-file -
