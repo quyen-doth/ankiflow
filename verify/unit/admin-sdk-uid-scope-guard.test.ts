@@ -150,16 +150,17 @@ interface MasterCollectionAccess {
 const SAFE_MASTER_COLLECTION_ACCESS = {
   'app/api/integrations/term-drafts/route.ts::POST': {
     collection: 'decks',
+    evidence: 'owner-query',
     note: 'The static integration route scopes its default deck query to INTEGRATION_TARGET_UID.',
+  },
+  'lib/firestore-helpers.ts::fetchCardTypesByIds': {
+    collection: 'card_types',
+    evidence: 'point-ownership-filter',
+    note: 'The shared point-lookup helper drops documents whose user_id does not match the authenticated uid.',
   },
 } as const
 
-const DEFERRED_DEBT_ALLOWLIST = {
-  'lib/firestore-helpers.ts::fetchCardTypesByIds': {
-    collection: 'card_types',
-    reason: 'R-10 was explicitly deferred by the user on 2026-08-01; the eventual fix must validate server-side card type ownership.',
-  },
-} as const
+const DEFERRED_DEBT_ALLOWLIST = {} as const
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
@@ -253,7 +254,7 @@ describe('Admin SDK UID scope regression guards', () => {
     }
   })
 
-  it('Guard B: only the reviewed safe access and explicit R-10 debt touch master collections', () => {
+  it('Guard B: only reviewed safe accesses touch master collections', () => {
     const accesses = actualMasterCollectionAccesses()
     const expectedKeys = [
       ...Object.keys(SAFE_MASTER_COLLECTION_ACCESS),
@@ -267,21 +268,25 @@ describe('Admin SDK UID scope regression guards', () => {
     for (const [key, review] of Object.entries(SAFE_MASTER_COLLECTION_ACCESS)) {
       expect(accesses.find(access => access.key === key)?.collection).toBe(review.collection)
     }
-    for (const [key, debt] of Object.entries(DEFERRED_DEBT_ALLOWLIST)) {
-      expect(accesses.find(access => access.key === key)?.collection).toBe(debt.collection)
-    }
 
     const safeAccess = accesses.find(access => access.key === 'app/api/integrations/term-drafts/route.ts::POST')
     expect(safeAccess?.sourceAfterAccess).toMatch(
       /\.collection\('decks'\)[\s\S]*?\.where\('user_id',\s*'==',\s*targetUid\)/,
     )
+    expect(SAFE_MASTER_COLLECTION_ACCESS['app/api/integrations/term-drafts/route.ts::POST'].evidence)
+      .toBe('owner-query')
     expect(SAFE_MASTER_COLLECTION_ACCESS['app/api/integrations/term-drafts/route.ts::POST'].note.trim())
       .not.toBe('')
 
-    const debt = DEFERRED_DEBT_ALLOWLIST['lib/firestore-helpers.ts::fetchCardTypesByIds']
-    expect(debt.collection).toBe('card_types')
-    expect(debt.reason).toContain('R-10')
-    expect(debt.reason).toContain('2026-08-01')
+    const pointAccess = accesses.find(access => access.key === 'lib/firestore-helpers.ts::fetchCardTypesByIds')
+    expect(pointAccess?.sourceAfterAccess).toMatch(
+      /\.collection\('card_types'\)[\s\S]*?\.filter\([\s\S]*?\.data\(\)\?\.user_id\s*===\s*uid/,
+    )
+    expect(SAFE_MASTER_COLLECTION_ACCESS['lib/firestore-helpers.ts::fetchCardTypesByIds'].evidence)
+      .toBe('point-ownership-filter')
+    expect(SAFE_MASTER_COLLECTION_ACCESS['lib/firestore-helpers.ts::fetchCardTypesByIds'].note.trim())
+      .not.toBe('')
+    expect(Object.keys(DEFERRED_DEBT_ALLOWLIST)).toEqual([])
   })
 
   it('Guard B: client SDK collection(db, ...) calls are outside the Admin SDK scanner', () => {
