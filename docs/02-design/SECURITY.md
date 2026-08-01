@@ -4,8 +4,8 @@
 | --- | --- |
 | 文書ID | AF-SEC-001 |
 | 版数 | 1.0 |
-| 作成日 | 2026-07-31 |
-| 最終更新日 | 2026-07-31 |
+| 作成日 | 2026-08-01 |
+| 最終更新日 | 2026-08-01 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-NFR-001、AF-ARC-001、AF-API-001、AF-DB-001 |
@@ -222,4 +222,4 @@ Security Rules の反映は影響が大きい。誤ると全利用者の読み�
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
-| 1.0 | 2026-07-31 | 初版作成。`docs/02-design/ARCHITECTURE.md` の認証節を引き継ぎ、`firestore.rules`、`middleware.ts`、`lib/auth-guard.ts` の実装を正として脅威対応・多層防御・データ分離・管理者判定を記述した | hong-quyen |
+| 1.0 | 2026-08-01 | 初版作成。`docs/02-design/ARCHITECTURE.md` の認証節を引き継ぎ、`firestore.rules`、`middleware.ts`、`lib/auth-guard.ts` の実装を正として脅威対応・多層防御・データ分離・管理者判定を記述した | hong-quyen |
