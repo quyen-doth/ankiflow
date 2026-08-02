@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AnkiFlow** is a **multi-user** web app for creating and managing multilingual vocabulary flashcards, integrated with Anki via the AnkiConnect local plugin. Auth is Firebase (email/password + httpOnly session cookie); each user owns an isolated workspace (entries + master data), enforced at the DB layer by Firestore Security Rules (`firestore.rules`).
+**AnkiFlow** is a **multi-user** web app for creating and managing multilingual vocabulary flashcards, integrated with Anki via the AnkiConnect local plugin. Auth is Firebase (email/password + httpOnly session cookie); each user owns an isolated workspace (entries + master data). Client SDK access is isolated by Firestore Security Rules (`firestore.rules`), while server routes verify ownership before using the Admin SDK.
 
 Core workflow: `Sign in → Enter vocabulary → AI enriches content → Preview/edit → Export to Anki (or defer) → Study`
 
 Supported built-in content types: Language vocab (English, Chinese, Japanese), IT vocabulary, and General knowledge. Form layouts are data-driven and customizable per user; the admin maintains only the defaults copied to new accounts.
 
-The app code lives in `ankiflow/`. The `anki_flow_design/` directory contains static HTML design mockups only.
+The app code lives in the clone root `ankiflow/` (Next.js App Router: `app/`, `components/`, `hooks/`, `lib/`, `types/`, `verify/`, `e2e/`, `scripts/`). Every path below is written relative to that root.
 
 **Admin:** a single app owner. Identified two independent ways that must both be set: server-side by `ADMIN_EMAIL` env (session cookie email match, e.g. `/api/admin/*`), and in Firestore rules by the custom claim `admin:true` (rules cannot read env). `NEXT_PUBLIC_ADMIN_EMAIL` gates admin-only UI. Admin controls global feature flags (`settings/global`: TTS/Unsplash/AI availability) and editable new-user defaults (`__defaults__` master-data templates plus global `content_types`).
 
-For directory structure, data flow, env variables, and git conventions, see **`docs/REFERENCE.md`**.
+For directory structure, data flow, env variables, and git conventions, see **`docs/02-design/ARCHITECTURE.md`**.
 
 ## Language Policy
 
@@ -32,7 +32,7 @@ Agent files are English, but chat output to the user is always Vietnamese.
 
 ## Commands
 
-All commands run from `ankiflow/`:
+All commands run from the repository root:
 
 ```bash
 npm run dev           # Start dev server at localhost:3000
@@ -43,7 +43,7 @@ npm run verify        # Runtime verification matrix + unit tests (vitest + jsdom
 npm run verify:watch  # Verification in watch mode
 ```
 
-Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how to write specs.
+Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICATION.md` for how to write specs.
 
 ## Tech Stack
 
@@ -65,7 +65,15 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Folders: `kebab-case` · Components: `PascalCase.tsx` · Utilities/hooks: `camelCase.ts` · Constants: `UPPER_SNAKE_CASE`
 - Never call Firestore in a loop — use `Promise.all()` for batch fetches
 - Never hardcode string values for `form_type` or `status` — use the TypeScript enums in `types/index.ts`
-- **Per-user data**: every query on `entries` / `decks` / `categories` / `card_types` / `topics` / `notification_triggers` / `user_content_types` MUST filter `where('user_id', '==', uid)` (uid from `useAuth()` client-side, or the `withAuth` handler param server-side). Server writes set `user_id`; Firestore rules reject anything else.
+- **Per-user data**: ownership depends on both the SDK and the query shape. Apply this matrix to `entries` / `decks` / `categories` / `card_types` / `topics` / `user_content_types` / `review_events`:
+
+  | SDK | Collection query | Point lookup by document ID |
+  | --- | --- | --- |
+  | Client SDK | MUST filter `where('user_id', '==', uid)` so the query satisfies Firestore Rules | Rules are the authorization boundary; a local `user_id` comparison is optional UX or defence-in-depth |
+  | Admin SDK | MUST filter `where('user_id', '==', uid)` because Rules are bypassed | Fetch, compare `user_id` to the caller's UID, and treat a mismatch as not-found (404), never forbidden |
+
+  Client-side `uid` comes from `useAuth()` after `loading === false`; server-side `uid` comes from the `withAuth` handler parameter. Server writes set `user_id`; Client SDK writes must satisfy Rules.
+- **`notification_triggers` is legacy** — no runtime code reads or writes it. LINE scheduling now lives in `settings/global` (`line_schedule_hours`, `line_words_per_notification`) and per-user `settings/{uid}`. Do not build on it.
 - **Content Type scopes**: `content_types` is the admin-managed global source copied to future accounts; runtime Create/Resync reads only `user_content_types`. User snapshots are not automatically updated when a global default changes. A user Content Type's `code` is immutable after creation; runtime hides only routing-code conflicts and keeps non-conflicting types available. The global built-in IDs `form_language`, `form_it`, and `form_general` must never be deleted.
 - **`settings` is NOT a singleton** — three doc kinds: `settings/{uid}` (per-user prefs), `settings/global` (feature flags, admin-write via `/api/admin/global-config`), `settings/default` (LINE secrets, admin-only). Never read `settings/default` from a non-admin client (rules block it + it holds secrets).
 - All user-facing UI text (labels, toasts, descriptions, modals) must be in English — no other language. Chat with the user in Vietnamese (see Language Policy)
@@ -102,20 +110,32 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 ## Docs
 
-`ankiflow/docs/` is the source of truth — read before making changes:
+`docs/` is the source of truth — read before making changes. `docs/README.md` is the document index:
 
-| File                   | Read when                                                 |
-| ---------------------- | --------------------------------------------------------- |
-| `docs/PRD.md`          | Starting a new feature                                    |
-| `docs/API.md`          | Writing or calling any API route                          |
-| `docs/DATABASE.md`     | Writing Firestore queries or adding fields                |
-| `docs/DESIGN.md`       | Creating or modifying UI                                  |
-| `docs/VERIFICATION.md` | Writing or modifying verification specs (`verify/`)       |
-| `docs/REFERENCE.md`    | Directory structure, data flow, env vars, git conventions |
+| File | Read when |
+| --- | --- |
+| `docs/README.md` | Locating a document, or adding one (index + reading order) |
+| `docs/GLOSSARY.md` | A term in the docs or code is unfamiliar |
+| `docs/01-requirements/REQUIREMENTS.md` | Starting a new feature (functional requirements, FR-IDs) |
+| `docs/01-requirements/NFR.md` | Performance, availability, cost, or maintainability constraints |
+| `docs/01-requirements/ROADMAP.md` | What is planned, what is out of scope, `1.0.0` criteria |
+| `docs/02-design/ARCHITECTURE.md` | Directory structure, execution boundaries, data flow |
+| `docs/02-design/SECURITY.md` | Auth, authorization, Firestore rules, admin detection |
+| `docs/02-design/SCREENS.md` | Adding/removing a screen, changing navigation (SC-IDs) |
+| `docs/02-design/API.md` | Writing or calling any API route |
+| `docs/02-design/DATABASE.md` | Writing Firestore queries or adding fields |
+| `docs/02-design/DESIGN.md` | Creating or modifying UI |
+| `docs/02-design/CARD_TEMPLATES.md` | Changing what an exported Anki card contains |
+| `docs/02-design/AI_PROMPTS.md` | Changing AI generation behaviour or output profiles |
+| `docs/03-development/SETUP.md` | Env vars, local setup, AnkiConnect CORS, npm scripts |
+| `docs/03-development/TEST_PLAN.md` | Test scope, FR-ID to TC-ID traceability |
+| `docs/03-development/VERIFICATION.md` | Writing or modifying verification specs (`verify/`) |
+| `docs/04-operations/OPERATIONS.md` | Release, deploy, migrations, incident handling, rollback |
+| `docs/CONTRIBUTING.md` | Branching, commits, PRs, versioning and releases |
 
 ## Gotchas
 
-- **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/REFERENCE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
+- **AnkiConnect calls run CLIENT-SIDE** — the browser calls the user's own `localhost:8765` directly via `lib/flashcard-service/client.ts` + `client-ops.ts`. **The server NEVER calls AnkiConnect** (on Vercel, the server's localhost is not the user's machine). Server routes only read/write Firestore; pattern: server returns data → browser executes Anki commands → browser POSTs results back. Requires the user to add the app origin to `webCorsOriginList` in the AnkiConnect addon config (see `docs/02-design/ARCHITECTURE.md`). All AnkiConnect calls still need explicit error handling — "Anki closed" and "CORS not allowed" are indistinguishable in the browser (both throw `TypeError: Failed to fetch`).
 - **Language-specific fields are optional** — `pinyin`, `hiragana`, `ipa`, etc. only exist when `language` matches. Never assume these fields have values.
 - **`form_type` drives everything** — it determines which form renders, which AI-agent prompt/schema runs, and which Firestore data loads. Built-in routes must use the `FormType` enum; copied Content Type document IDs are never routing values. Resolve built-ins from `user_content_types.code`; custom Content Types use their validated code. Mismatches cause silent wrong behavior.
 - **No JOIN in Firestore** — related documents must be fetched with `Promise.all()`, never sequentially in a loop.
@@ -123,7 +143,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - **Firestore Security Rules are the client-access source of truth** (`firestore.rules`) — the client SDK can only touch the current user's docs. When adding a collection or query, update the rules and obtain explicit approval before deploying them; otherwise client reads/writes will be denied. Admin SDK (server routes) bypasses rules.
 - **Two admin mechanisms, keep both in sync** — server routes check `session.email === ADMIN_EMAIL`; Firestore rules check the `admin:true` custom claim (set via `scripts/set-admin-claim.ts` or auto on signup when email matches `ADMIN_EMAIL`; requires re-login to take effect). `NEXT_PUBLIC_ADMIN_EMAIL` only gates UI visibility, never security.
 - **Actions requiring user confirmation before execution:** writing/deleting Firestore documents, calling AnkiConnect (creates/deletes Anki notes), deleting codebase files, updating any file under `docs/`.
-    > Enforced by `PreToolUse` hooks in `.claude/settings.json` for Firestore deletes, AnkiConnect deletes, and `docs/` edits — these are blocked automatically, not just by convention.
+  Codex/Claude hooks in `.codex/hooks.json` and `.claude/settings.json` enforce part of these rules, but agents must still follow them explicitly.
 
 ## Mandatory Workflow for Code Changes
 
@@ -137,8 +157,8 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
   shared utilities, and related types
 - Read the corresponding `docs/` file(s) listed in the Docs table above
   before touching any code — not after
-- If the task involves Firestore, read `docs/DATABASE.md` first;
-  if it involves API routes, read `docs/API.md` first
+- If the task involves Firestore, read `docs/02-design/DATABASE.md` first;
+  if it involves API routes, read `docs/02-design/API.md` first
 - Trace the full execution path end-to-end (e.g. UI → API route → service →
   Firestore) to understand how data flows through the affected area
 - Do not begin planning until the current behavior is fully understood
@@ -149,7 +169,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 - Write a clear, numbered execution plan
 - Include: files to change, why, and expected outcome
 - If the task touches Firestore schema or API routes, re-read
-  `docs/DATABASE.md` or `docs/API.md`
+  `docs/02-design/DATABASE.md` or `docs/02-design/API.md`
 
 **Step 3 — Request Approval**
 
@@ -172,7 +192,7 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 **Step 5 — Write Tests**
 
 - Write Vitest unit tests for any modified logic in `verify/`
-- Follow the spec format defined in `docs/VERIFICATION.md`
+- Follow the spec format defined in `docs/03-development/VERIFICATION.md`
 - Run: `npm run verify` — all tests must pass before continuing
 
 **Step 6a — Run E2E Tests**
@@ -188,9 +208,9 @@ Verification dashboard (dev only): `/verify`. See `docs/VERIFICATION.md` for how
 
 **Step 7 — Update Docs**
 
-- Update `docs/API.md` if any API route was added, removed, or modified
-- Update `docs/DATABASE.md` if any Firestore schema or query pattern changed
-- Do NOT modify `docs/PRD.md` without explicit user instruction
+- Update `docs/02-design/API.md` if any API route was added, removed, or modified
+- Update `docs/02-design/DATABASE.md` if any Firestore schema or query pattern changed
+- Do NOT modify `docs/01-requirements/REQUIREMENTS.md` without explicit user instruction
 - Cross-reference the Docs table above if unsure which files apply
 
 **Step 8 — Report**

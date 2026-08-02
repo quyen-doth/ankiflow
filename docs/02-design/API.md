@@ -1,12 +1,22 @@
-# 📚 API リファレンス — AnkiFlow Backend
+# API 設計書 — AnkiFlow
 
-このドキュメントは AnkiFlow プロジェクトで使用されるバックエンド API ルートの詳細な仕様を提供します。システムは Next.js App Router で構築されており、Client (React UI) と外部サービス (Firestore、Claude、Google TTS、Unsplash) を接続する仲介役を果たします。
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-API-001 |
+| 版数 | 1.3 |
+| 作成日 | 2026-04-26 |
+| 最終更新日 | 2026-08-02 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 運用中 |
+| 関連文書 | AF-ARC-001、AF-DB-001、AF-PRM-001 |
 
-> **⚡ AnkiConnect アーキテクチャ (2026-07-04 以降):** すべての AnkiConnect コマンドは **クライアント側で実行** — ユーザーのブラウザが `lib/flashcard-service/client.ts` + `client-ops.ts` 経由で自分の `localhost:8765` を直接呼び出します。**サーバーは AnkiConnect を呼び出さない** (Vercel 上ではサーバーの localhost がユーザーのマシンではない)。残りの `/api/anki/*` ルートはもっぱら Firestore を読み書きし、クライアントが Anki を操作するためのデータを返します。ユーザーはアプリの origin を AnkiConnect アドオン設定内の `webCorsOriginList` に追加する必要があります (`docs/REFERENCE.md` 参照)。
+本書は、AnkiFlow のバックエンド API ルートの仕様を定義する。システムは Next.js App Router で構築されており、API ルートは Client (React UI) と外部サービス (Firestore、Claude、Google TTS、Unsplash) を接続する仲介役を担う。
+
+> **⚡ AnkiConnect アーキテクチャ (2026-07-04 以降):** すべての AnkiConnect コマンドは **クライアント側で実行** — ユーザーのブラウザが `lib/flashcard-service/client.ts` + `client-ops.ts` 経由で自分の `localhost:8765` を直接呼び出す。**サーバーは AnkiConnect を呼び出さない** (Vercel 上ではサーバーの localhost がユーザーのマシンではない)。残りの `/api/anki/*` ルートはもっぱら Firestore を読み書きし、クライアントが Anki を操作するためのデータを返す。ユーザーはアプリの origin を AnkiConnect アドオン設定内の `webCorsOriginList` に追加する必要がある (`docs/02-design/ARCHITECTURE.md` 参照)。
 
 ---
 
-## 1. 🏗️ アーキテクチャ図 (Architecture Flow)
+## 1. アーキテクチャ図 (Architecture Flow)
 
 ```mermaid
 graph TD
@@ -53,14 +63,14 @@ graph TD
 
 ---
 
-## 2. 📝 規約
+## 2. 規約
 
-すべての API ルートは以下の規約に従います:
+すべての API ルートは以下の規約に従う。
 
 - **Base URL:** `http://localhost:3000` (ローカル環境)
 - **データ形式:** Request (POST/PUT) と Response はともに `application/json` 形式を使用。
 - **レスポンス形式 (成功時):**
-  結果を含む JSON object を返します。書き込み操作では `success: true` フラグが付く場合があります。
+  結果を含む JSON object を返す。書き込み操作では `success: true` フラグが付く場合がある。
     ```json
     {
         "success": true,
@@ -68,7 +78,7 @@ graph TD
     }
     ```
 - **エラー形式 (失敗時):**
-  常に `error` キーを持つ object を返し、エラーメッセージと対応する HTTP ステータスコードが付きます。
+  常に `error` キーを持つ object を返し、エラーメッセージと対応する HTTP ステータスコードを付す。
     ```json
     {
         "error": "Missing required fields"
@@ -84,7 +94,7 @@ graph TD
 
 ---
 
-## 3. 🔐 認証 & 認可 (Firebase Auth — マルチユーザー)
+## 3. 認証 & 認可 (Firebase Auth — マルチユーザー)
 
 AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly セッションクッキー `__session`** を使用。
 ミドルウェアはクッキーの存在のみをチェック (Edge は Admin SDK を実行できない); **実際の検証** (`verifySessionCookie`)
@@ -98,7 +108,6 @@ AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly �
 | `/api/entries/*`、`/api/anki/*`、`/api/dashboard`、`/api/history/*`、`/api/generate`、`/api/content-types/suggest-instruction`、`/api/languages/detect`、`/api/audio/generate`、`/api/image` | **`withAuth`** (セッションクッキー) → 不足/不正時 401 | UID に基づいてデータをスコープ |
 | `/api/admin/global-config` (POST)、`/api/admin/content-types` (PUT/DELETE) | セッションクッキー **+ `email === ADMIN_EMAIL`** → 管理者でない場合 403 | コントロールプレーン mutation |
 | `/api/admin/content-types` (GET) | `withAuth` | 新規ユーザー用 global Content Type defaults を取得 |
-| その他の `/api/admin/*` (CRUD レガシー) | `withAuth` | クライアントコーラーなし (UI は Client SDK を使用) |
 | `/api/integrations/*` | ヘッダー `x-integration-token` **+ `INTEGRATION_TOKEN`** (constant-time 比較) → 401 | セッションクッキーなし、外部システム専用 |
 | `/api/cron/*` | ヘッダー `Authorization: Bearer` **+ `CRON_SECRET`** (constant-time 比較) → 401 | GitHub Actions の定期実行専用 |
 
@@ -113,7 +122,7 @@ AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly �
 
 ---
 
-## 4. ⚙️ 環境変数
+## 4. 環境変数
 
 API が機能するために必要な環境変数のマッピング表 (`.env` で設定):
 
@@ -132,15 +141,16 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | `LINE_CHANNEL_ACCESS_TOKEN`      | LINE Messaging API push/reply      | `/api/notifications/send`、`/api/notifications/line-webhook`、`/api/cron/srs-push` |
 | `LINE_CHANNEL_SECRET`            | LINE webhook 署名検証               | `/api/notifications/line-webhook`                                  |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL` | LINE 公式アカウント追加 URL (公開値) | Settings の LINE 連携 UI                                          |
+| `NEXT_PUBLIC_LINE_BOT_ID`        | LINE 公式アカウント ID (公開値・任意) | Settings の LINE 連携 UI                                          |
 | `INTEGRATION_TOKEN`              | 外部システム認証トークン           | `/api/integrations/term-drafts`                                   |
 | `INTEGRATION_TARGET_UID`         | term draft の作成先固定 uid        | `/api/integrations/term-drafts`                                   |
 | `CRON_SECRET`                    | GitHub Actions → cron API の共有 secret | `/api/cron/srs-push`                                          |
 
-> 現行アプリ/cron では `LINE_USER_ID` と `SRS_PUSH_TARGET_UID` を使用せず、通知先を各 `settings/{uid}.line_user_id` から解決します。`LINE_USER_ID` を参照する legacy 手動 script/workflow はクロスユーザー分離を満たさないため実行しないでください。`ANKI_CONNECT_URL` (サーバー env) と `API_SECRET`/`x-api-secret` も削除済みです。AnkiConnect URL はユーザーごと (`settings/{uid}.anki_connect_url`、フォールバック `http://localhost:8765`); 認証はセッションクッキーに移行。
+> 現行アプリ/cron では `LINE_USER_ID` と `SRS_PUSH_TARGET_UID` を使用せず、通知先は各 `settings/{uid}.line_user_id` から解決する。これらを参照していた旧スクリプトとワークフローは削除済みである。`ANKI_CONNECT_URL` (サーバー env) と `API_SECRET`/`x-api-secret` も削除済みである。AnkiConnect URL はユーザーごと (`settings/{uid}.anki_connect_url`、フォールバック `http://localhost:8765`); 認証はセッションクッキーに移行。
 
 ---
 
-## 5. 📋 エンドポイント概要
+## 5. エンドポイント概要
 
 | HTTP メソッド     | エンドポイント                 | 主な機能                                                                                        |
 | ------------------| ------------------------------ | ------------------------------------------------------------------------------------------------- |
@@ -166,10 +176,6 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | **GET**           | `/api/history/facets`          | History filter 用 Content Type / 言語 facet を取得                                                |
 | **GET、PUT、DEL** | `/api/history/[id]`            | Entry 履歴の詳細を読み込み、更新、削除                                                           |
 | **POST**          | `/api/history/bulk-delete`     | 所有する Entry を最大 100 件削除し、未処理の Anki note ID を user settings queue に保存          |
-| **CRUD**          | `/api/admin/categories`        | カード分類 Categories を管理                                                                     |
-| **CRUD**          | `/api/admin/card-types`        | Card Type Config リストを管理                                                                    |
-| **CRUD**          | `/api/admin/topics`            | IT Vocabulary カード用 Topics を管理                                                             |
-| **CRUD**          | `/api/admin/decks`             | Anki Deck & Form type デフォルト間のマッピングを管理                                             |
 | **GET、PUT、DELETE** | `/api/admin/content-types`  | 新規ユーザー用 Content Type defaults を取得・更新。Mutation は管理者のみ、built-in delete 禁止    |
 | **POST**          | `/api/integrations/term-drafts` | 外部システム (Knowledge Hub) から term draft を受け取り Entry (`status:'draft'`) を作成          |
 | **GET**           | `/api/cron/srs-push`           | GitHub Actions 用 — user ごとの timezone に従って LINE 通知を fan-out                       |
@@ -178,11 +184,11 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 
 ---
 
-## 6. 📖 API 詳細 (エンドポイントリファレンス)
+## 6. API 詳細 (エンドポイントリファレンス)
 
 ### 6.1 Entries & Anki-data ルート (サーバー = Firestore のみ)
 
-> AnkiConnect コマンドはブラウザ内で実行 (`lib/flashcard-service/client-ops.ts`)。下記のルートはデータを提供/受け取るだけです。
+> AnkiConnect コマンドはブラウザ内で実行 (`lib/flashcard-service/client-ops.ts`)。下記のルートはデータを提供および受領するのみである。
 
 #### `POST /api/entries/save`
 
@@ -272,7 +278,7 @@ entries `synced` のすべての `anki_note_ids` を返す → クライアン�
 
 #### `POST /api/generate`
 
-Claude (AI エージェント、tool ベース) を呼び出して、built-in または custom Content Type のカード情報を生成します。Model は tool `submit_card` を呼び出すことが強制され、output profile から構築した Zod schema で検証されます。Model は `settings/global.ai_model` から取得 (デフォルト `claude-haiku-4-5`)。Create は選択中の workspace snapshot ID を `content_type_id` として送り、server が `user_content_types/{id}` の owner・routing code・`ai_output_profiles` を検証してから data-driven prompt engine を使用します。ID がない旧 request、または profile 未設定 document も built-in/generic profile を materialize し、同じ engine を使用します。
+Claude (AI エージェント、tool ベース) を呼び出し、built-in または custom Content Type のカード情報を生成する。Model は tool `submit_card` の呼び出しを強制され、その出力は output profile から構築した Zod schema で検証される。使用する model は `settings/global.ai_model` から取得する (既定値は `claude-haiku-4-5`)。Create は選択中の workspace snapshot ID を `content_type_id` として送信し、server は `user_content_types/{id}` の owner・routing code・`ai_output_profiles` を検証したうえで data-driven prompt engine を使用する。ID を持たない旧 request、および profile 未設定の document についても、built-in/generic profile を materialize したうえで同じ engine を使用する。
 
 - **Body Params:**
     ```ts
@@ -297,15 +303,15 @@ Claude (AI エージェント、tool ベース) を呼び出して、built-in �
       }
     }
     ```
-- **保存済み Content Type:** `content_type_inline` がなく `content_type_id` がある場合、server は document が同じ UID に属し、保存済み `code` が `form_type` と同じ runtime route に解決されることを確認します。不一致/不正設定は 400、他 user または存在しない ID は 404。通常の Create flow では client が instruction/schema を上書きできません。
-- **Inline editor test:** `content_type_inline` は `content_type_id` より優先され、Content Type editor の未保存 `fields` / `ai_output_profiles` で試験生成するために使用します。認証は通常の generate と同じ Firebase session が必須。Payload は code/name/description/field/profile の件数・文字数・key/type を Zod で制限し、解決した routing code が `form_type` と一致しない場合は 400。Inline definition は Firestore に保存されず、この明示的な Test 経路に限り user-authored instruction/schema を provider へ渡します。
-- **Custom Content Type:** `word` に primary field の値、`form_type` に user Content Type の `code`、`dynamicFields` にフォーム context を送信します。保存済み profile がある document は宣言された field/schema を使用します。Profile 未設定 document は primary と安全な form field から generic profile を materialize します。ID がない旧 custom request も reserved metadata key を除外した `dynamicFields` から同じ generic engine profile を構築します。
-- **Output profile selection:** Study language の primary BCP 47 subtag (`en` / `zh` / `ja` など) と同名の profile を優先し、なければ `default` を使用します。選ばれた言語 profile は `default` を **継承** し、実効 field は `[...lang.fields, ...default.fields.filter(継承対象)]` になります (詳細は `docs/DATABASE.md` の継承モデル)。`inherit` / `exclude` を持たない legacy profile は読み取り時に正規化され、移行前と同じ field 集合を保ちます。`include_when: 'output_vi'` の field は output language が Vietnamese の場合だけ生成 schema と Preview / History の表示対象に含めます。General Knowledge は従来どおり local strategy で、この API を呼びません。
-- **`content_type_inline.ai_output_profiles`:** `AiOutputProfile[]` は `inherit?: true` と `exclude?: string[]` を含みます。Editor の Test 実行は runtime と同じ schema を検証するため、この 2 つを落とさずに送る必要があります (client は `cloneAiOutputProfiles` を使用)。
-- **配列 field の件数 (`max_items`):** `string_array` field の `max_items` は生成結果の配列上限を制限すると同時に、field instruction 内のテンプレートトークン `{max_items}` に解決されます。管理者が Content Type editor の「Maximum items」を変更すると、schema の上限と prompt の文言 (例: 「Up to N of the most important ...」) の両方に反映され、AI は重要な順に最大 N 件を返します。built-in の `collocations` は 5、`related_words` は 10。instruction で使えるトークンは `{output_language}` / `{study_language}` / `{max_items}`。
+- **保存済み Content Type:** `content_type_inline` がなく `content_type_id` がある場合、server は document が同じ UID に属すること、および保存済み `code` が `form_type` と同じ runtime route に解決されることを確認する。不一致または不正設定は 400、他 user または存在しない ID は 404 を返す。通常の Create flow において、client が instruction/schema を上書きすることはできない。
+- **Inline editor test:** `content_type_inline` は `content_type_id` より優先され、Content Type editor の未保存 `fields` / `ai_output_profiles` で試験生成を行うために用いる。認証は通常の generate と同じく Firebase session を必須とする。Payload は code/name/description/field/profile の件数・文字数・key/type を Zod で制限し、解決した routing code が `form_type` と一致しない場合は 400。Inline definition は Firestore に保存せず、この明示的な Test 経路に限って user-authored instruction/schema を provider へ渡す。
+- **Custom Content Type:** `word` に primary field の値、`form_type` に user Content Type の `code`、`dynamicFields` にフォーム context を送信する。保存済み profile がある document は、宣言された field/schema を使用する。Profile 未設定の document は、primary と安全な form field から generic profile を materialize する。ID を持たない旧 custom request も、reserved metadata key を除外した `dynamicFields` から同じ generic engine profile を構築する。
+- **Output profile selection:** Study language の primary BCP 47 subtag (`en` / `zh` / `ja` など) と同名の profile を優先し、存在しない場合は `default` を使用する。選ばれた言語 profile は `default` を **継承** し、実効 field は `[...lang.fields, ...default.fields.filter(継承対象)]` となる (詳細は `docs/02-design/DATABASE.md` の継承モデル)。`inherit` / `exclude` を持たない legacy profile は読み取り時に正規化され、移行前と同じ field 集合を保つ。`include_when: 'output_vi'` の field は、output language が Vietnamese の場合に限り生成 schema と Preview / History の表示対象に含める。General Knowledge は従来どおり local strategy を用いるため、この API を呼び出さない。
+- **`content_type_inline.ai_output_profiles`:** `AiOutputProfile[]` は `inherit?: true` と `exclude?: string[]` を含む。Editor の Test 実行は runtime と同じ schema を検証するため、この 2 つを欠かさずに送信する必要がある (client は `cloneAiOutputProfiles` を使用する)。
+- **配列 field の件数 (`max_items`):** `string_array` field の `max_items` は生成結果の配列上限を制限すると同時に、field instruction 内のテンプレートトークン `{max_items}` に解決される。管理者が Content Type editor の「Maximum items」を変更すると、schema の上限と prompt の文言 (例: 「Up to N of the most important ...」) の両方に反映され、AI は重要な順に最大 N 件を返す。built-in の `collocations` は 5、`related_words` は 10。instruction で使えるトークンは `{output_language}` / `{study_language}` / `{max_items}`。
 - **言語 validation:** `form_type = form_language` で `language` がない、または無効な BCP 47 code の場合は 400。code は provider 呼び出し前に canonicalize (`pt_br` → `pt-BR`)。
-- **AI 出力言語 (2026-07-15 以降):** カードの意味・訳・品詞ラベルなどのコンテンツ言語は `output_language` で決まる (ユーザー設定 `settings/{uid}.ai_output_language` からクライアントが送信)。canonicalize に失敗または未指定の場合は `'vi'` に fallback — 旧クライアントとの後方互換を維持。`output_language ≠ 'vi'` の場合、中国語/日本語 schema から `han_viet` (ハンベトナム音 — ベトナム語話者専用の概念) が除外される。フィールド名 (`meaning_vi` など) は Anki テンプレート互換のため legacy 名のまま変わらない。生成された Entry には `output_language` メタデータが保存される (`docs/DATABASE.md` 参照)。
-- **Normalization / trust boundary:** Model が返した primary field (`word` / `term` / custom primary) は request の入力値で上書きします。`word_type` がない場合は `word_type_vi`、`definition` がない場合は `definition_vi` を alias として補完します。Preview では form type、language、deck、category、card types、topics、tags などの application/session metadata を AI content より後に merge します。
+- **AI 出力言語 (2026-07-15 以降):** カードの意味・訳・品詞ラベルなどのコンテンツ言語は `output_language` で決まる (ユーザー設定 `settings/{uid}.ai_output_language` からクライアントが送信)。canonicalize に失敗または未指定の場合は `'vi'` に fallback — 旧クライアントとの後方互換を維持。`output_language ≠ 'vi'` の場合、中国語/日本語 schema から `han_viet` (ハンベトナム音 — ベトナム語話者専用の概念) が除外される。フィールド名 (`meaning_vi` など) は Anki テンプレート互換のため legacy 名のまま変わらない。生成された Entry には `output_language` メタデータが保存される (`docs/02-design/DATABASE.md` 参照)。
+- **Normalization / trust boundary:** Model が返した primary field (`word` / `term` / custom primary) は、request の入力値で上書きする。`word_type` がない場合は `word_type_vi` を、`definition` がない場合は `definition_vi` を alias として補完する。Preview では、form type、language、deck、category、card types、topics、tags などの application/session metadata を AI content より後に merge する。
 - **Response (200 OK):**
     ```json
     {
@@ -327,7 +333,7 @@ Claude (AI エージェント、tool ベース) を呼び出して、built-in �
 
 #### `POST /api/content-types/suggest-instruction`
 
-Content Type editor で、field の自然言語要件から AI output instruction の候補を 1 件生成します。通常の Firebase session が必須で、`settings/global.ai_model` と共通 AI provider factory を使用します。Claude は `submit_instruction_suggestion` tool の呼び出しを強制され、English かつ 300 文字以内の schema で検証されます。候補には「何を返すか」「形式または制約」「値を生成できない場合の empty value」を含め、必要な場合のみ `{output_language}` / `{study_language}` placeholder を使用します。
+Content Type editor において、field の自然言語要件から AI output instruction の候補を 1 件生成する。通常の Firebase session を必須とし、`settings/global.ai_model` と共通 AI provider factory を使用する。Claude は `submit_instruction_suggestion` tool の呼び出しを強制され、その出力は English かつ 300 文字以内の schema で検証される。候補には「何を返すか」「形式または制約」「値を生成できない場合の empty value」を含め、`{output_language}` / `{study_language}` placeholder は必要な場合にのみ使用する。
 
 - **Body Params (zod-validated):**
     ```ts
@@ -343,7 +349,7 @@ Content Type editor で、field の自然言語要件から AI output instructio
       "instruction": "Return a concise definition in {output_language}. Return an empty string if the meaning is unknown."
     }
     ```
-- この route は Content Type または profile を保存しません。Client は返された候補を現在の draft textarea に反映し、ユーザーが編集・確認してから通常の保存操作を行います。
+- 本 route は Content Type および profile を保存しない。Client は返された候補を現在の draft textarea に反映し、ユーザーが編集・確認したうえで通常の保存操作を行う。
 - **Response (400):** JSON/body/key/type/description が不正。**Response (401):** session がない、または不正。**Response (500):** AI 設定または provider が失敗。
 
 #### `POST /api/languages/detect`
@@ -421,10 +427,10 @@ Create flow は、文字体系だけで学習言語と一致すると確定で�
 
 TTS をレンダリング — base64 audio を返す。単語音声は `audio_url`、例文音声は
 `audio_example_url` として entry 内に data-URL 形式で保持し、export/sync 時にクライアントが
-Anki メディアに保存します。例文 TTS の自動生成はクライアント側で、非空の
+Anki メディアに保存する。例文 TTS の自動生成はクライアント側で、非空の
 `example_sentence` があり、TTS が有効で、選択中 Card Type template の少なくとも 1 つが
-`audio_example` block を使う場合だけ実行します。この gate は API contract ではなく、
-共有 TTS コストを不要に消費しないための Preview/History client policy です。
+`audio_example` block を使う場合に限り実行する。この gate は API contract ではなく、
+共有 TTS コストを不要に消費しないための Preview/History client policy である。
 
 - **Body Params:**
     ```ts
@@ -657,38 +663,47 @@ History UI の単一・一括削除で使用。対象 Entry を所有権確認�
 
 ---
 
-### 6.7 Admin CRUD (Collections Manager)
+### 6.7 Admin Content Type Defaults
 
-アプリ内のスキーマとドロップダウンリスト設定 (Category、Topic、Deck Configs) を管理するために使用される API グループ。ほとんどが標準的な RESTful CRUD アーキテクチャに従います。
+`content_types` は、新規アカウント作成時に `user_content_types` へ snapshot として
+複製する global default である。Runtime の Create / Resync はこの API や
+`content_types` を fallback として読まず、ユーザー別 `user_content_types` のみを読み取る。
 
-#### グループ `/api/admin/categories` & `/api/admin/topics` & `/api/admin/card-types` & `/api/admin/decks`
+#### `GET /api/admin/content-types`
 
-- **GET:** 対応する document の array を返す。filter params を受け取り可能 (例: `?form_type=form_language`)。常に `sort_order` または `name` フィールドでソート。
-- **POST:**
-    - Body payload は新しい document 全体。
-    - _システム動作:_ `created_at`、`updated_at` を自動付与。デフォルト `is_active = true`。
-- **PUT:**
-    - Body payload: `{ "id": "docId", "name": "New Name", ... }`
-- **DELETE:**
-    - **実行:** 2 パターンあります。
-        1. `categories` の場合: hard-delete ではなく、`?id=xyz&is_active=false` クエリを受け取って Soft-Delete (状態トグル) を実行。
-        2. その他のテーブルの場合: `?id=xyz` を呼び出して Hard-Delete。
+- **認証:** Firebase セッション必須。管理者でないログイン済み user も取得できる。
+- **Response (200 OK):** `{ "contentTypes": [{ "id": "form_language", ...documentFields }] }`。
+  `id` は document ID、残りは `content_types` document の保存フィールドである。
 
-#### グループ `/api/admin/content-types`
+#### `PUT /api/admin/content-types`
 
-新規アカウントへ snapshot としてコピーする global Content Type defaults を管理します。Runtime の
-Create / Resync はこの API または `content_types` を fallback として使用せず、ユーザー別
-`user_content_types` を読みます。
+- **認証:** Firebase セッション + server-only `ADMIN_EMAIL` との一致が必須。
+- **Body:** `{ "id": string, "fields": FormFieldConfig[] }`。`id` は空文字不可、
+  `fields` は 1 件以上で、各要素を `formFieldConfigSchema` で検証する。
+- **スキーマ検証:** 対象 document から保存済みの実 `code` / `name` を取得し、
+  完全な field schema、重複 `field_key`、built-in invariant
+  (Language: `language` + `word`、IT: `term`、General: `title`) を検証する。
+- **Response (200 OK):** `{ "success": true, "id": "<documentId>" }`。`fields` と
+  `updated_at` のみを更新し、routing key である `code` は変更しない。
 
-- **GET**: Firebase セッション必須。global config document を返す (管理者以外のログイン済み user も取得可)。
-- **PUT**: Firebase セッション + server-only `ADMIN_EMAIL` 一致が必須。Body は
-  `{ "id": string, "fields": FormFieldConfig[] }`。対象 document を読み、保存済みの実 `code` / `name` で完全な field schema、重複 key、built-in invariant
-  (Language: `language` + `word`、IT: `term`、General: `title`) を検証してから更新。違反は 400。
-- **DELETE**: Firebase セッション + `ADMIN_EMAIL` 一致が必須。Query `?id=<documentId>`。
-  Custom global default は削除可能ですが、`form_language` / `form_it` / `form_general` は 403。
-- **認証エラー**: session 不足・不正は 401、認証済み non-admin mutation または `ADMIN_EMAIL` 未設定は 403。
+#### `DELETE /api/admin/content-types`
 
-### 6.7 LINE Notifications
+- **認証:** Firebase セッション + server-only `ADMIN_EMAIL` との一致が必須。
+- **Query:** `?id=<documentId>`。Custom global default のみ削除できる。
+- **保護対象:** `form_language` / `form_it` / `form_general` は管理者でも削除できない。
+- **Response (200 OK):** `{ "success": true, "id": "<documentId>" }`。
+
+#### エラー応答
+
+| Status | 条件 | Response |
+| --- | --- | --- |
+| 400 | PUT body 不正、field schema / built-in invariant 違反、DELETE の `id` 不足 | `{ "error": "<validation message>" }` |
+| 401 | セッション不足・不正・期限切れ・revoke 済み | `{ "error": "Unauthorized" }` |
+| 403 | PUT/DELETE の non-admin、`ADMIN_EMAIL` 未設定、built-in の DELETE | `{ "error": "Forbidden — admin only" }` または built-in 保護エラー |
+| 404 | PUT の対象 document が存在しない | `{ "error": "Content type not found" }` |
+| 500 | Firestore などの予期しない失敗 | `{ "error": "<message>" }` |
+
+### 6.8 LINE Notifications
 
 #### `POST /api/notifications/line-link`
 
@@ -726,7 +741,7 @@ LINE からのイベントを `x-line-signature` と `LINE_CHANNEL_SECRET` で�
 - **postback:** `settings/{entry.user_id}.line_user_id` と送信元 LINE user が一致する場合のみ rating を適用し、`review_events` に追記。
 - **エラー:** channel secret 未設定 → 500、署名不正 → 401。
 
-### 6.8 Integrations & Cron（セッションクッキーなし）
+### 6.9 Integrations & Cron（セッションクッキーなし）
 
 `middleware.ts` の exclude matcher 対象 — セッションクッキーを持たない外部呼び出し専用。
 それぞれ独自のトークン比較 (`crypto.timingSafeEqual`、`lib/auth-guard.ts` の `verifyStaticToken`) で保護。
@@ -773,3 +788,12 @@ SRS entry を LINE Flex Message で fan-out する。`vercel.json` からは cro
 - **クエリ:** user ごとに `entries.user_id == uid` かつ `status in ['synced','reviewed']` で取得し、`pickDueForReview` で優先度付け。件数は `line_words_per_notification` (1〜10、既定 5)。最大 5 user を並列処理。
 - **Response (200 OK):** `{ "pushed": number, "skipped": number, "failed": number }`。グローバル無効/未設定時は `{ "pushed": 0, "reason": "disabled" | "no schedule" }`。
 - **エラー:** トークン不正 → 401、LINE access token 未設定 → 500。user 単位の失敗は `failed` に集計し、他 user の処理を継続する。
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.3 | 2026-08-02 | 現行の `/api/admin/content-types` GET・PUT・DELETE 契約、検証、エラー応答を復元 | hong-quyen |
+| 1.2 | 2026-08-02 | 削除済みの管理 API 4 ルートと旧 LINE 実行経路を除去し、公開 LINE 変数と節番号を現行実装へ同期 | hong-quyen |
+| 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更。章見出しの絵文字を削除 | hong-quyen |
+| 1.0 | 2026-04-26 | 初版作成 | hong-quyen |

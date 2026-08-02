@@ -1,10 +1,20 @@
-# VERIFICATION.md — ランタイム検証フレームワーク
+# ランタイム検証仕様書 — AnkiFlow
+
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-VER-001 |
+| 版数 | 1.1 |
+| 作成日 | 2026-06-12 |
+| 最終更新日 | 2026-08-01 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 運用中 |
+| 関連文書 | AF-TST-001、AF-UI-001 |
 
 > [anthropics/cwc-workshops — phase-3-verify](https://github.com/anthropics/cwc-workshops/tree/main/how-we-claude-code/phase-3-verify) を Next.js App Router + React 19 + zod 4 向けに移植・カスタマイズ。
 
 ## 設計思想
 
-Verification は **表面でのランタイム観察** — React internals を読まず、snapshot test も行いません:
+Verification は **表面でのランタイム観察** — React internals を読まず、snapshot test も行わない:
 
 1. **Mount** — 固定 props (fixture) で実際のコンポーネントをマウント
 2. **Act** — fixture が宣言していれば DOM 経由で操作 (click、type)
@@ -26,11 +36,11 @@ Verification は **表面でのランタイム観察** — React internals を�
 - **Fixture** — 再現可能な 1 つのレンダリング設定。`probe: true` は対抗的な fixture (edge case) を示す; **各 unit は ≥1 個の probe が必須** (matrix test で強制)。`act` は命令的な操作ステップ (`ctx.click/type/wait`)。
 - **Invariant** — マウントされた DOM に対して真である必要がある predicate。`true` または違反を説明する文字列を返す。`onlyFixtures` は適用される fixture を制限。
 - **Verifier** — 独立してプラグ可能な checker (`verify/verifiers/`): `schema` (props が zod と一致)、`invariants` (unit の predicate)、`dom-contract` (data-verify-* が存在 + 自己識別)、`a11y` (button に名前があるか、input に label があるか、img に alt があるか)。新しい verifier の追加 = ファイル追加 + `verifiers/index.ts` に import、コンポーネントは修正しない。
-- **EXPECTED_FAIL** — `verify/matrix.test.ts` 内で意図的に FAIL する `unit::fixture` の集合 (probe が invariant に違反) で、フレームワークが実際のバグを捕捉できることを証明。この種の probe を追加する場合、この set に追加し、fixture の description に `(EXPECTED_FAIL)` という注記を付ける必要があります。
+- **EXPECTED_FAIL** — `verify/matrix.test.ts` 内で意図的に FAIL する `unit::fixture` の集合 (probe が invariant に違反) で、フレームワークが実際のバグを捕捉できることを証明。この種の probe を追加する場合は、この set に追加し、fixture の description に `(EXPECTED_FAIL)` という注記を付ける必要がある。
 
 ## DOM contract
 
-spec を持つコンポーネントは `verifyAttrs()` をルート要素に spread する必要があります:
+spec を持つコンポーネントは `verifyAttrs()` をルート要素に spread する必要がある:
 
 ```tsx
 import { verifyAttrs } from '@/verify/core/contract'
@@ -38,8 +48,8 @@ import { verifyAttrs } from '@/verify/core/contract'
 <span {...verifyAttrs({ unit: 'Badge', variant, removable: !!onRemove })}>
 ```
 
-- Key `unit` は必須で、VerifiableUnit の `id` と一致する必要があります。
-- `verifyAttrs()` は **`NODE_ENV=production` の場合 `{}` を返す** — 実際の HTML ビルドには contract attrs が含まれません。トレードオフ: production ビルドでは verify できない (確定した方針)。
+- Key `unit` は必須であり、VerifiableUnit の `id` と一致していなければならない。
+- `verifyAttrs()` は **`NODE_ENV=production` の場合 `{}` を返す** — 実際の HTML ビルドには contract attrs が含まれない。トレードオフとして production ビルドでは verify できないが、これは確定した方針である。
 
 ## 新しい spec を書く
 
@@ -68,15 +78,15 @@ registerUnit<ComponentProps<typeof MyComponent>>({
 
 2. `verify/specs/index.ts` に side-effect import を追加。
 3. コンポーネントのルート要素に `verifyAttrs({ unit: 'MyComponent', ...state })` を spread。
-4. `npm run verify` を実行 — 新しい unit が自動的に matrix に表示されます。
+4. `npm run verify` を実行する。新しい unit は自動的に matrix に表示される。
 
 注記:
-- コンポーネントが条件付きで `null` をレンダリング (Modal が閉じている…) する場合 → `allowsEmptyRender: true` を宣言して、dom-contract verifier が FAIL ではなく **ok** (空の DOM は有効) と判定するようにします。SKIP は現在の環境で実行できない fixture 専用 (例 ブラウザ上の firestore)。
+- コンポーネントが条件付きで `null` をレンダリング (Modal が閉じている…) する場合 → `allowsEmptyRender: true` を宣言し、dom-contract verifier が FAIL ではなく **ok** (空の DOM は有効) と判定するようにする。SKIP は現在の環境で実行できない fixture に限って用いる (例: ブラウザ上の firestore)。
 - callback のスパイ: module-scope の counter を使用し、**`act` 内でリセット** (fixtures は複数回実行される — dashboard、vitest)。
 
 ## Mocks 拡張 (オリジナル版との違い)
 
-Fixture は `mocks` を宣言できます — runner がマウント前にインストールし、verify 後に復元:
+Fixture は `mocks` を宣言できる。runner がマウント前にインストールし、verify 後に復元する:
 
 ```ts
 mocks: {
@@ -94,7 +104,7 @@ mocks: {
 | `localStorage` | ✅ | ✅ |
 | `pathname` | ✅ `verify/test-setup.ts` 内で `next/navigation` を mock | ❌ (実際の App Router) — pathname に依存する invariant は `onlyFixtures` で vitest 専用にする必要がある |
 
-Firestore stub がサポートするのは: `where` equality/`in`、`orderBy` 1 フィールド、`getDocs/getDoc/addDoc/updateDoc/deleteDoc/serverTimestamp` のみ。他の API を使うコンポーネントは stub を追加する必要があります。
+Firestore stub がサポートするのは: `where` equality/`in`、`orderBy` 1 フィールド、`getDocs/getDoc/addDoc/updateDoc/deleteDoc/serverTimestamp` のみ。他の API を使うコンポーネントには stub を追加する必要がある。
 
 ## コマンド
 
@@ -128,3 +138,10 @@ vitest.config.ts
 - **Phase C (完了)** — create/ + preview/ + history/ (18 units): selectors は `mocks.firestore` を使用; LanguageForm/ITForm/GeneralForm はフル mocks を使用 (firestore + fetch /api/generate + router + localStorage); CardPreview/WordDetailCard には "optional language fields" gotcha 用の probe あり。`next/image` は `verify/test-setup.ts` 内で `<img>` に mock。
 - **Phase D (完了)** — admin/ managers (5 units、mocks.firestore CRUD: loaded/empty/create/toggle-active/probe) + feature spec `create-language-flow` (kind `feature`、end-to-end create→preview handoff)。`Card` は rest props を forward し、各 manager が自身の contract を識別。共有ヘルパー: `verify/specs/manager-helpers.ts`。
 - **今後の作業** — hooks (useSession、usePreviewEntry、useAnkiExport) には renderHook tooling が必要; production ビルドでの verify (verifyAttrs の production-gate を外す必要あり)。
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/03-development/` へ変更 | hong-quyen |
+| 1.0 | 2026-06-12 | 初版作成 | hong-quyen |

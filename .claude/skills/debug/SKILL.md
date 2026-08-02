@@ -34,13 +34,13 @@ Apply this skill at Step 6b of the mandatory workflow when Vitest or Playwright 
 
 - Read the full stack trace — do not guess from the error message alone
 - Check if the failure is in: application code, test code, or test setup
-- If Firestore-related: re-read `docs/DATABASE.md` before changing anything
+- If Firestore-related: re-read `docs/02-design/DATABASE.md` before changing anything
 
 ### 4. Fix
 
 - Fix only the root cause — do not refactor unrelated code
-- If the fix requires changing an API contract, re-read `docs/API.md`
-- If the fix changes a Firestore schema field, update `docs/DATABASE.md`
+- If the fix requires changing an API contract, re-read `docs/02-design/API.md`
+- If the fix changes a Firestore schema field, update `docs/02-design/DATABASE.md`
 
 ### 5. Verify fix
 

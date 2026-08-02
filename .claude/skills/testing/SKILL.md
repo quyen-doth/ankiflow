@@ -15,7 +15,7 @@ Apply this skill at Step 5 and Step 6a of the mandatory workflow.
 
 ### Location
 
-`ankiflow/verify/` — follow the spec format in `docs/VERIFICATION.md`
+`verify/` — follow the spec format in `docs/03-development/VERIFICATION.md`
 
 ### Run commands
 

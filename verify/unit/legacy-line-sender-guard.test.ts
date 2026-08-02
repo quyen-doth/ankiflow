@@ -59,6 +59,7 @@ const EXCLUDED_TOP_LEVEL_PATHS = {
   'CLAUDE.md': 'Agent guidance excluded by D4; Phase 5 owns its legacy collection wording.',
   'LICENSE': 'Legal text only, with no executable or configuration behavior.',
   'README.md': 'Team documentation with a known legacy env mention deferred to Phase 5.',
+  'SECURITY.md': 'Security policy documentation; it cannot consume runtime environment values or invoke a sender.',
   'docs': 'Team documentation excluded by D3 and assigned to Phase 5.',
   'public': 'Static public assets only; no server-side environment or workflow execution.',
   'package-lock.json': 'Generated dependency lock data, not executable application configuration.',

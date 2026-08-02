@@ -22,13 +22,13 @@ state of the codebase — nothing extra, nothing missing, nothing stale.
 
 | Change type                                        | File to update         |
 |----------------------------------------------------|------------------------|
-| Add / modify / remove API endpoint                 | `docs/API.md`          |
-| Firestore schema, query pattern, enum change       | `docs/DATABASE.md`     |
-| Design tokens, component patterns, layout, theme   | `docs/DESIGN.md`       |
-| Directory structure, data flow, env vars           | `docs/REFERENCE.md`    |
-| Verification spec format / harness change          | `docs/VERIFICATION.md` |
+| Add / modify / remove API endpoint                 | `docs/02-design/API.md`          |
+| Firestore schema, query pattern, enum change       | `docs/02-design/DATABASE.md`     |
+| Design tokens, component patterns, layout, theme   | `docs/02-design/DESIGN.md`       |
+| Directory structure, data flow, env vars           | `docs/02-design/ARCHITECTURE.md`    |
+| Verification spec format / harness change          | `docs/03-development/VERIFICATION.md` |
 | Git workflow / conventions change                  | `docs/CONTRIBUTING.md` |
-| Change business logic / major scope                | `docs/PRD.md`          |
+| Change business logic / major scope                | `docs/01-requirements/REQUIREMENTS.md`          |
 
 > **Principle:** update only the relevant file. Do not touch the others.
 
@@ -47,7 +47,7 @@ Produce a **diff proposal** in this form:
 ```
 📋 DOCS UPDATE PROPOSAL
 ========================
-File: docs/API.md
+File: docs/02-design/API.md
 
 [ADD]
 ### POST /api/cards
@@ -63,7 +63,7 @@ New: GET /api/decks → returns { data: Deck[], total: number }
 
 ### Step 3 — Wait for confirmation
 **STOP** and ask the user:
-> "Do you want me to apply these changes to `docs/API.md`?"
+> "Do you want me to apply these changes to `docs/02-design/API.md`?"
 
 Continue only after the user confirms with **"ok"** or **"apply"**.
 
@@ -71,7 +71,7 @@ Continue only after the user confirms with **"ok"** or **"apply"**.
 1. Write the changes into the correct docs file (in Japanese)
 2. Report briefly:
    ```
-   ✅ Updated: docs/API.md
+   ✅ Updated: docs/02-design/API.md
    - Added: POST /api/cards
    - Modified: response type of GET /api/decks
    - Removed: DELETE /api/legacy-sync
@@ -81,7 +81,7 @@ Continue only after the user confirms with **"ok"** or **"apply"**.
 
 ## Hard rules
 
-- Do **NOT** update `docs/PRD.md` unless the user explicitly asks — it holds product decisions, not technical specs
+- Do **NOT** update `docs/01-requirements/REQUIREMENTS.md` unless the user explicitly asks — it holds product decisions, not technical specs
 - Do **NOT** delete docs content without quoting it to the user first
 - Do **NOT** rewrite whole files — make surgical edits to the relevant section only
 - **MUST** preserve each file's existing format and heading structure
@@ -91,7 +91,7 @@ Continue only after the user confirms with **"ok"** or **"apply"**.
 
 ## Natural trigger examples
 
-- *"just finished the create-card endpoint"* → update `docs/API.md`
-- *"added a field to entries"* → update `docs/DATABASE.md`
+- *"just finished the create-card endpoint"* → update `docs/02-design/API.md`
+- *"added a field to entries"* → update `docs/02-design/DATABASE.md`
 - *"@update-docs"* → ask: what change just happened?
-- *"the Button component styling changed"* → update `docs/DESIGN.md`
+- *"the Button component styling changed"* → update `docs/02-design/DESIGN.md`

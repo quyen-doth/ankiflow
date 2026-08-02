@@ -10,14 +10,14 @@ description: >
 # Skill: API Development
 
 ## Goal
-Every endpoint created or modified must be consistent with `docs/API.md`
+Every endpoint created or modified must be consistent with `docs/02-design/API.md`
 — correct format, correct error handling, correct auth layer, reusing existing helpers.
 
 ---
 
 ## Step 1 — Required context
 
-1. `docs/API.md` — full list of existing endpoints, standard response format, error codes
+1. `docs/02-design/API.md` — full list of existing endpoints, standard response format, error codes
 2. `lib/auth-guard.ts` — `withAuth`, `withAdmin`, `verifySessionUser`, `verifyStaticToken`
 3. `lib/api-response.ts` — standard response helpers (`apiSuccess`, `apiError`, `catchError`)
 4. `lib/validation.ts` — zod schemas + `parseBody` helper
@@ -64,7 +64,7 @@ PUT    /api/[resource]          ← update (id in body, no [id] segment)
 DELETE /api/[resource]?id=...   ← delete/deactivate (id via query param)
 ```
 
-### Standard response format (per `lib/api-response.ts` and `docs/API.md`):
+### Standard response format (per `lib/api-response.ts` and `docs/02-design/API.md`):
 ```typescript
 // Success — apiSuccess(data, status?)
 { ...data }              // e.g. { categories: [...] }, { success: true, id: '...' }
@@ -146,14 +146,14 @@ export const POST = withAuth(POST_handler)
 ```
 ✅ Created: POST /api/[resource]
 
-💡 Do you want me to update docs/API.md to register this endpoint?
+💡 Do you want me to update docs/02-design/API.md to register this endpoint?
 ```
 
 ---
 
 ## Hard rules
 
-- Do **NOT** create an endpoint before reading `docs/API.md`
+- Do **NOT** create an endpoint before reading `docs/02-design/API.md`
 - Do **NOT** reinvent the response/error format — use `apiSuccess`/`apiError`/`catchError`
 - Do **NOT** call AnkiConnect from the server — it is client-side only (see the `anki-connect` skill)
 - **MUST** have error handling — never let an endpoint throw an uncaught error
