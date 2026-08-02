@@ -7,9 +7,8 @@
  * Chạy: npx tsx scripts/migrate-form-type.ts
  */
 
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
-dotenv.config({ path: '.env' });
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
+loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES });
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';

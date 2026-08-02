@@ -19,8 +19,8 @@
  * Data default per-user nằm ở lib/seed-defaults.ts (dùng chung với signup route).
  */
 
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
+loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES });
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';

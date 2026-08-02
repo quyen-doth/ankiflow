@@ -6,8 +6,7 @@
  *   npm run migrate:ai-output-profiles -- --apply  # explicit Firestore writes
  */
 
-import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env', quiet: true })
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
 
 import { cert, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -56,6 +55,7 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     return
   }
 
+  loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES })
   const projectId = requiredEnv('FIREBASE_ADMIN_PROJECT_ID')
   const clientEmail = requiredEnv('FIREBASE_ADMIN_CLIENT_EMAIL')
   const privateKey = requiredEnv('FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n')
