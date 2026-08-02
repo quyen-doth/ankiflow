@@ -77,12 +77,6 @@ service cloud.firestore {
       allow read: if owns(resource);
     }
 
-    // ─── Notification triggers — ユーザーごと (現状 admin のみ使用するが、owner でスコープ) ───
-    match /notification_triggers/{id} {
-      allow read, update, delete: if owns(resource);
-      allow create: if creatingOwn();
-    }
-
     // ─── Review events — SRS revlog (SRS Phase 0)、append-only ───
     // サーバーのみが書き込む (Admin SDK は rules をバイパス): line-webhook + sync-srs。
     // クライアントは自分の履歴のみ読み取り可能 (将来の consumer: 統計/FSRS)。

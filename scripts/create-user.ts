@@ -5,27 +5,15 @@
  *   npm run user:create -- user@example.com
  */
 
-import * as dotenv from 'dotenv'
 import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
 import { provisionUserAccount } from '../lib/account-provisioning'
 import { emailSchema, passwordSchema } from '../lib/auth-validation'
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
 
 function printUsage(): void {
   console.log('Usage: npm run user:create -- <email>')
   console.log('The password is requested securely and is never accepted as a command argument.')
-}
-
-function assertFirebaseAdminConfig(): void {
-  const requiredNames = [
-    'FIREBASE_ADMIN_PROJECT_ID',
-    'FIREBASE_ADMIN_CLIENT_EMAIL',
-    'FIREBASE_ADMIN_PRIVATE_KEY',
-  ] as const
-  const missingNames = requiredNames.filter((name) => !process.env[name]?.trim())
-  if (missingNames.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingNames.join(', ')}`)
-  }
 }
 
 export function parseCreateUserEmail(args: string[]): string | null {
@@ -98,8 +86,7 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     printUsage()
     throw new Error('Provide exactly one valid email address.')
   }
-  dotenv.config({ path: '.env', quiet: true })
-  assertFirebaseAdminConfig()
+  loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES })
 
   const password = await promptHidden('Password: ')
   const passwordCheck = passwordSchema.safeParse(password)

@@ -10,6 +10,21 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-02
+
+### 削除
+
+- 管理者向けのカテゴリ・デッキ・カードタイプ・トピック CRUD エンドポイントを廃止
+- レガシー LINE 通知ワークフローと関連スクリプトを廃止し、トリガー単位のデッキ・言語フィルターを意図的に削除
+
+### 修正
+
+- 環境変数サンプルを実装に合わせ、CLI の読み込み優先順位と必須設定エラーを統一
+
+### セキュリティ
+
+- カードタイプの一括取得を所有ユーザーのデータに限定
+
 ## [0.13.1] - 2026-07-31
 
 ### 修正
@@ -259,7 +274,8 @@
 - LINE 通知による受動的復習機能の追加
 - Vercel へのデプロイ
 
-[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.13.1...develop
+[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.0...develop
+[0.14.0]: https://github.com/quyen-doth/ankiflow/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/quyen-doth/ankiflow/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/quyen-doth/ankiflow/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/quyen-doth/ankiflow/compare/v0.11.0...v0.12.0
