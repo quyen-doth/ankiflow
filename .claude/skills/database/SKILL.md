@@ -48,20 +48,27 @@ synced    → Exported to Anki successfully
 
 ## Step 3 — Per-user isolation (THE most important rule)
 
-Every query on **`entries` / `decks` / `categories` / `card_types` / `topics` /
-`notification_triggers`** MUST filter `where('user_id', '==', uid)`:
+Every collection query on **`entries` / `decks` / `categories` / `card_types` /
+`topics` / `user_content_types` / `review_events`** MUST filter
+`where('user_id', '==', uid)`:
 
 - Client-side: `uid` from `useAuth()` — and wait for `useAuth().loading === false` first
 - Server-side: `uid` from the `withAuth` handler's 3rd argument; server writes set `user_id: uid`
+- Point lookup by document ID: fetch first, compare `user_id` to the caller's UID, and treat a
+  mismatch as not-found rather than forbidden (see `app/api/history/[id]/route.ts`)
+
+**`notification_triggers` is retired.** No runtime code reads or writes it; LINE scheduling belongs
+in `settings/global` and per-user `settings/{uid}`. Do not build new queries against it.
 
 Exception: **`content_types` is SHARED** (doc id = `form_type`) — read by all, written by admin only.
 
 `settings` is NOT a singleton — three doc kinds: `settings/{uid}` (per-user prefs),
 `settings/global` (feature flags), `settings/default` (admin secrets — never read from a non-admin client).
 
-Firestore Security Rules (`firestore.rules`) are live: a client query missing the
-`user_id` filter is **denied by rules**, not just wrong. When adding a new collection
-or query shape, update `firestore.rules` (+ indexes) and deploy:
+Firestore Security Rules (`firestore.rules`) apply only to the Client SDK: a client query missing
+the `user_id` filter is **denied by rules**, not just wrong. Server routes use the Admin SDK and
+bypass Rules, so they must enforce the same collection or point-lookup ownership check themselves.
+When adding a new collection or query shape, update `firestore.rules` (+ indexes) and deploy:
 `firebase deploy --only firestore:rules,firestore:indexes`.
 
 ---
