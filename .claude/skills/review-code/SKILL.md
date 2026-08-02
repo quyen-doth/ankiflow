@@ -12,7 +12,7 @@ description: >
 Shared by Claude Code and Codex (Codex: this file is referenced from `AGENTS.md`).
 The built-in generic reviewers don't know this project's rules — this checklist is
 the ankiflow-specific layer. Read the relevant `docs/` file before judging an area
-(`docs/API.md`, `docs/DATABASE.md`, `docs/DESIGN.md`, `docs/CONTRIBUTING.md`).
+(`docs/02-design/API.md`, `docs/02-design/DATABASE.md`, `docs/02-design/DESIGN.md`, `docs/CONTRIBUTING.md`).
 
 ---
 
@@ -39,7 +39,8 @@ diff hunk alone.
 
 ### Layer 1: ankiflow conventions (highest value — generic reviewers miss these)
 
-- [ ] **Per-user isolation**: any query on `entries`/`decks`/`categories`/`card_types`/`topics`/`notification_triggers` without `where('user_id', '==', uid)`? Server writes missing `user_id: uid`? (`content_types` is the shared exception)
+- [ ] **Per-user isolation**: any Client or Admin SDK collection query on `entries`/`decks`/`categories`/`card_types`/`topics`/`user_content_types`/`review_events` without `where('user_id', '==', uid)`? For Admin SDK point lookups, is `user_id` compared after fetching and a mismatch masked as not-found? Do not require that local comparison for Client SDK point lookups: Firestore Rules are their authorization boundary. Any server write missing `user_id: uid`? (`content_types` is the global new-user-source exception)
+- [ ] **Retired notification storage**: any new runtime read/write of `notification_triggers` instead of `settings/global` plus per-user `settings/{uid}`?
 - [ ] **Enums**: hardcoded `'form_language'`/`'draft'`... instead of `FormType` / the status union from `types/index.ts`?
 - [ ] **AnkiConnect in server code**: any AnkiConnect call inside `app/api/**` or server components — absolutely forbidden (client-side only, see `anki-connect` skill)
 - [ ] **Firestore in a loop** instead of `Promise.all()`
@@ -47,7 +48,7 @@ diff hunk alone.
 - [ ] **API conventions**: hand-rolled `NextResponse.json` instead of `apiSuccess`/`apiError`/`catchError`; missing `parseBody` + zod schema; wrong auth layer (`withAuth` vs `ADMIN_EMAIL` check vs `verifyStaticToken`) — see the `api` skill
 - [ ] **SDK mixing**: Firebase Admin SDK and client SDK in the same module
 - [ ] **UI conventions**: default exports; hardcoded colors/px instead of `@theme` tokens; new font-size token not registered in `lib/utils.ts` classGroups; UI text not in English; `'use client'` added without need
-- [ ] **Docs sync**: API/schema/design change without a proposal to update `docs/API.md` / `docs/DATABASE.md` / `docs/DESIGN.md`
+- [ ] **Docs sync**: API/schema/design change without a proposal to update `docs/02-design/API.md` / `docs/02-design/DATABASE.md` / `docs/02-design/DESIGN.md`
 - [ ] **Git hygiene** (Mode B): commit messages violate `docs/CONTRIBUTING.md` format; AI co-author/footer present
 
 ### Layer 2: correctness

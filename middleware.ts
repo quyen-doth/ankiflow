@@ -20,7 +20,7 @@ import type { NextRequest } from 'next/server'
  *   (クッキーを持たない、LINE signature verification で自己防御)
  * - `/api/integrations/*` — 外部システム (Knowledge Hub) が呼び出す。クッキーを持たない、
  *   `x-integration-token` ヘッダーで自己防御
- * - `/api/cron/*` — Vercel Cron が呼び出す。クッキーを持たない、
+ * - `/api/cron/*` — GitHub Actions が呼び出す。クッキーを持たない、
  *   `Authorization: Bearer CRON_SECRET` で自己防御
  * - `/verify` — dev-only ダッシュボード (production では自動的に 404)
  */

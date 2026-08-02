@@ -1,4 +1,14 @@
-# AnkiFlow — Design System v2.0
+# デザインシステム — AnkiFlow
+
+| 項目 | 内容 |
+| --- | --- |
+| 文書ID | AF-UI-001 |
+| 版数 | 1.1 |
+| 作成日 | 2026-06-22 |
+| 最終更新日 | 2026-08-01 |
+| 作成者 | [hong-quyen](https://github.com/quyen-doth) |
+| ステータス | 運用中 |
+| 関連文書 | AF-SCR-001、AF-CRD-001 |
 
 > **Knowledge in Flow** — 1 つの単語を Anki カード一式に変える、静かで速いツールのためのビジュアル言語。
 > リデザインの方向性: *ニュートラル & ミニマルな基盤、自信に満ちたブランドグリーン 1 色、温かみのあるアンバーのスパーク。*
@@ -172,3 +182,10 @@ AnkiFlow Settings.dc.html
 ---
 
 *AnkiFlow Design System v2.0 · Knowledge in Flow · 2026*
+
+## 改訂履歴
+
+| 版数 | 日付 | 変更内容 | 変更者 |
+| --- | --- | --- | --- |
+| 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更 | hong-quyen |
+| 1.0 | 2026-06-22 | 初版作成 | hong-quyen |

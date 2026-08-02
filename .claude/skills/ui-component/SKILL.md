@@ -4,20 +4,20 @@ description: >
   Create or modify UI components and styling in ankiflow (Tailwind CSS v4 +
   design tokens). Use when: user mentions @ui-component, creates/edits a React
   component, changes styling/design tokens, or debugs missing/incorrect styles.
-  Read docs/DESIGN.md before any UI work.
+  Read docs/02-design/DESIGN.md before any UI work.
 ---
 
 # Skill: UI Component
 
 ## Goal
-Every component matches the design system in `docs/DESIGN.md` and the real token
+Every component matches the design system in `docs/02-design/DESIGN.md` and the real token
 definitions in `app/globals.css` — no ad-hoc colors, sizes, or shadows.
 
 ---
 
 ## Step 1 — Required context
 
-1. `docs/DESIGN.md` — design system (Japanese)
+1. `docs/02-design/DESIGN.md` — design system (Japanese)
 2. `app/globals.css` — the actual `@theme` tokens (single source for colors, font sizes, radius, shadows)
 3. `components/ui/` — existing primitives (Button, Badge, Card, Modal, DataTable, Tabs, FormField...) — reuse before creating new ones
 
@@ -85,5 +85,5 @@ Do not claim styling is done from code alone — verify in the browser (dev serv
 `localhost:3000`, Playwright/browser tools). Note: after `@theme` changes, Turbopack
 sometimes needs a dev-server restart to pick them up.
 
-If the design system materially changed → suggest updating `docs/DESIGN.md`
+If the design system materially changed → suggest updating `docs/02-design/DESIGN.md`
 (requires user confirmation).

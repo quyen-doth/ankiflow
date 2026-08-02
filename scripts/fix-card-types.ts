@@ -6,8 +6,8 @@
  * Chạy: npx tsx scripts/fix-card-types.ts
  */
 
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
+import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
+loadEnv({ required: FIREBASE_ADMIN_ENV_NAMES });
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';

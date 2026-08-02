@@ -51,7 +51,7 @@ export const POST = withAuth(async (request, _ctx, uid) => {
     }
 
     // 必要な card type を template 込みで一括 fetch。
-    const cardTypes = await fetchCardTypesByIds(db, entries.flatMap((e) => e.card_type_ids || []))
+    const cardTypes = await fetchCardTypesByIds(db, uid, entries.flatMap((e) => e.card_type_ids || []))
 
     return NextResponse.json({ entries, cardTypes })
   } catch (error) {
