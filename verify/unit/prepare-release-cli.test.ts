@@ -137,10 +137,11 @@ function createFixtureRepo(unreleasedBody: string): { repo: string; baseSha: str
   return { repo, baseSha }
 }
 
-function commitFile(repo: string, name: string, subject: string): void {
+function commitFile(repo: string, name: string, subject: string, body?: string): void {
   writeFileSync(join(repo, name), `${name}\n`)
   git(repo, 'add', name)
-  git(repo, 'commit', '-m', subject)
+  if (body === undefined) git(repo, 'commit', '-m', subject)
+  else git(repo, 'commit', '-m', subject, '-m', body)
 }
 
 /** Runs the CLI expecting a non-zero exit, and returns the combined output. */
@@ -191,12 +192,36 @@ describe('prepare-release: changes that must not produce a release', () => {
     expect(readFileSync(join(repo, 'CHANGELOG.md'), 'utf8')).toContain('- 新しい画面')
   })
 
-  it('keeps a breaking documentation change releasable', () => {
+  // docs/CONTRIBUTING.md 「繰り上げの判定」 requires every BREAKING CHANGE to bump
+  // MINOR/MAJOR. The non-releasable filter must therefore never swallow one —
+  // including the footer form, whose marker lives in the body rather than the
+  // subject the filter inspects.
+  it.each([
+    ['subject marker, unscoped', 'docs!: 移行手順を変更', undefined],
+    ['subject marker, scoped', 'ci(release)!: 公開手順を変更', undefined],
+    ['footer marker, unscoped', 'docs: 移行手順を更新', 'BREAKING CHANGE: 公開手順を変更した'],
+    ['footer marker, scoped', 'test(verify): 検証手順を更新', 'BREAKING CHANGE: 検証契約を変更した'],
+  ])('keeps a breaking change releasable — %s', (_label, subject, body) => {
     const { repo, baseSha } = createFixtureRepo('\n### 破壊的変更\n\n- 手順を変更\n\n')
 
-    commitFile(repo, 'note.txt', 'docs!: 移行手順を変更')
+    commitFile(repo, 'note.txt', subject, body)
 
+    // MINOR while 0.x, never PATCH: the breaking marker must reach decideBump().
     expect(runPrepare(repo, baseSha)).toEqual({ version: '0.14.0', changed: 'true' })
+  })
+
+  // The marker is a footer, not a phrase. A message that merely discusses it —
+  // such as a commit describing this very rule — must not bump MINOR.
+  it.each([
+    ['prose mention', 'この変更は BREAKING CHANGE の判定には該当しない。'],
+    ['quoted marker', '`BREAKING CHANGE:` フッターの扱いを説明した文章である。'],
+  ])('does not treat a body that only mentions the marker as breaking — %s', (_label, body) => {
+    const { repo, baseSha } = createFixtureRepo('\n### 修正\n\n- 不具合を修正\n\n')
+
+    commitFile(repo, 'patch.txt', 'fix: 不具合を修正', body)
+
+    // PATCH, not MINOR: 0.13.1 -> 0.13.2.
+    expect(runPrepare(repo, baseSha)).toEqual({ version: '0.13.2', changed: 'true' })
   })
 })
 

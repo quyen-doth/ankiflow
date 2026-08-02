@@ -4,9 +4,15 @@
  * release base (`origin/main`) and the current branch, then applies it to
  * `package.json`, `package-lock.json` and `CHANGELOG.md`.
  *
- * Bump rules (documented in docs/CONTRIBUTING.md):
- *   - `feat:` / `feat!:` / `BREAKING CHANGE:`  -> MINOR while 0.x, MAJOR from 1.0.0
- *   - any other Conventional Commit type       -> PATCH
+ * Bump rules (documented in docs/CONTRIBUTING.md 「繰り上げの判定」):
+ *   - `feat:` / any `type!:` / `BREAKING CHANGE:` footer -> MINOR while 0.x, MAJOR from 1.0.0
+ *   - `docs:` / `test:` / `ci:`                          -> not releasable; these never reach
+ *                                                          the changelog, so releasing them
+ *                                                          would produce an empty section
+ *   - any other Conventional Commit type                 -> PATCH
+ *
+ * A breaking change overrides the non-releasable rule: `docs!:`, and `docs:` with a
+ * `BREAKING CHANGE` footer, still produce a release.
  *
  * The script is re-entrant, not merely idempotent. A release PR may stay open
  * while further commits land on `develop`, so every run first UNDOES the
@@ -35,9 +41,19 @@ const PREPARATION_SUBJECT = /^chore: リリース v\d+\.\d+\.\d+ の準備$/;
  * 「文書・テスト・CI 設定のみの変更は CHANGELOG.md に記載しない」.
  * Releasing them would produce a version whose section is empty, which
  * `release-tag-state.mjs` rejects only after the merge into main.
- * A breaking marker (`docs!:`) does not match, so it stays releasable.
+ * A breaking change of any type overrides this — see `isBreaking()`.
  */
 const NON_RELEASABLE_SUBJECT = /^(docs|test|ci)(\([a-z0-9-]+\))?:/;
+/** Subject-level breaking marker: `type!:` or `type(scope)!:`. */
+const BREAKING_SUBJECT = /^[a-z]+(\([a-z0-9-]+\))?!:/;
+/**
+ * Footer-level breaking marker, per the Conventional Commits specification:
+ * `BREAKING CHANGE:` (or the `BREAKING-CHANGE:` synonym) at the start of a
+ * footer line. Anchoring to the line start and requiring the colon keeps prose
+ * that merely mentions the phrase — a commit message discussing this very rule,
+ * for instance — from being misread as a breaking change.
+ */
+const BREAKING_FOOTER = /^BREAKING[ -]CHANGE:/m;
 /** Canonical order of Keep a Changelog categories. */
 const CATEGORY_ORDER = [
     '### 破壊的変更',
@@ -79,10 +95,22 @@ function compareVersions(a, b) {
 }
 
 /**
+ * A commit is breaking when it carries either marker defined by Conventional
+ * Commits: `!` in the subject, or a `BREAKING CHANGE` footer in the body.
+ * Both the releasable filter and the bump decision consult this single
+ * definition, so a commit can never be dropped by one and required by the other.
+ */
+function isBreaking(commit) {
+    return BREAKING_SUBJECT.test(commit.subject) || BREAKING_FOOTER.test(commit.body);
+}
+
+/**
  * Reads the releasable non-merge commits in `base..HEAD`: everything except
  * this script's own preparation commits and the types that never reach the
- * changelog. A range containing only those yields an empty array, which the
- * caller treats as "nothing to release".
+ * changelog. A breaking change is always releasable regardless of its type,
+ * because docs/CONTRIBUTING.md 「繰り上げの判定」 requires every BREAKING CHANGE
+ * to produce a MINOR/MAJOR bump. A range containing only non-releasable commits
+ * yields an empty array, which the caller treats as "nothing to release".
  */
 function readCommits() {
     const raw = git('log', '--no-merges', '--format=%s%x00%b%x1e', `${baseRef}..HEAD`);
@@ -97,14 +125,12 @@ function readCommits() {
         .filter(
             (commit) =>
                 !PREPARATION_SUBJECT.test(commit.subject) &&
-                !NON_RELEASABLE_SUBJECT.test(commit.subject),
+                (!NON_RELEASABLE_SUBJECT.test(commit.subject) || isBreaking(commit)),
         );
 }
 
 function decideBump(commits, current) {
-    const breaking = commits.some(
-        (c) => /^[a-z]+(\([a-z0-9-]+\))?!:/.test(c.subject) || /BREAKING CHANGE/.test(c.body),
-    );
+    const breaking = commits.some(isBreaking);
     const feature = commits.some((c) => /^feat(\([a-z0-9-]+\))?!?:/.test(c.subject));
 
     if (breaking) {
