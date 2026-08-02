@@ -157,13 +157,45 @@ function validateLink(source: string, link: MarkdownLink): LinkProblem | null {
 
 describe('documentation link integrity', () => {
   it('keeps repository-relative Markdown targets and anchors valid', () => {
-    const problems = allMarkdownFiles().flatMap((source) => {
-      const content = readFileSync(source, 'utf8')
-      return markdownLinks(content)
-        .map((link) => validateLink(source, link))
-        .filter((problem): problem is LinkProblem => problem !== null)
-    })
+    const files = allMarkdownFiles()
+    const discoveredLinks = files.flatMap((source) =>
+      markdownLinks(readFileSync(source, 'utf8')).map((link) => ({ source, link })),
+    )
+    const internalLinks = discoveredLinks.filter(({ link }) => !isExternalTarget(link.target))
+    const problems = internalLinks
+      .map(({ source, link }) => validateLink(source, link))
+      .filter((problem): problem is LinkProblem => problem !== null)
 
+    expect(files.length).toBeGreaterThan(0)
+    expect(internalLinks.length).toBeGreaterThan(0)
     expect(problems).toEqual([])
+  })
+
+  it('accepts a valid link and ignores fenced code and HTML comments', () => {
+    const source = resolve(REPO_ROOT, 'README.md')
+
+    expect(markdownLinks('[Docs](docs/README.md)')).toEqual([
+      { line: 1, target: 'docs/README.md' },
+    ])
+    expect(validateLink(source, { line: 1, target: 'docs/README.md' })).toBeNull()
+    expect(markdownLinks([
+      '```md',
+      '[Missing](docs/__missing-in-fence__.md)',
+      '```',
+      '<!-- [Missing](docs/__missing-in-comment__.md) -->',
+    ].join('\n'))).toEqual([])
+  })
+
+  it('rejects missing files and missing anchors', () => {
+    const source = resolve(REPO_ROOT, 'README.md')
+
+    expect(validateLink(source, {
+      line: 1,
+      target: 'docs/__missing-link-fixture__.md',
+    })?.reason).toBe('参照先が存在しない')
+    expect(validateLink(source, {
+      line: 1,
+      target: 'docs/README.md#__missing-anchor-fixture__',
+    })?.reason).toBe('見出しアンカーが存在しない')
   })
 })

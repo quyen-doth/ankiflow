@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-DB-001 |
-| 版数 | 1.3 |
+| 版数 | 1.4 |
 | 作成日 | 2026-04-29 |
 | 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -17,8 +17,17 @@
 ## マルチユーザーモデル (v2.0)
 
 - **ユーザーごとの現行コレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`user_content_types`、`review_events`): 各ドキュメントは Firebase Auth UID を値とする **`user_id`** フィールドを持つ。
-  コレクションに対する検索は、クライアント・サーバーとも `where('user_id', '==', uid)` でフィルタする。ドキュメント ID を指定した単一取得では絞り込みを書けないため、取得後に `user_id` を照合する (`app/api/history/[id]/route.ts`、`app/history/[id]/page.tsx`)。
-  Client SDK の直接アクセスは Firestore Security Rules (`firestore.rules`) が遮断する。Admin SDK を使うサーバールートは Rules をバイパスするため、API 自身が同じ所有者スコープを強制する。
+
+所有者分離は、SDK と問い合わせの形の 2 軸で判断する。
+
+| SDK | コレクションに対する検索 | ドキュメント ID による単一取得 |
+| --- | --- | --- |
+| Client SDK | `where('user_id', '==', uid)` で絞り込み、query 全体が Firestore Security Rules を満たすようにする | Rules の `owns(resource)` が所有者分離の境界である。取得後の local `user_id` 照合は UX または多層防御であり、認可の必須条件ではない |
+| Admin SDK | Rules をバイパスするため、`where('user_id', '==', uid)` による絞り込みが必須 | 取得後に `user_id` と呼び出し元 UID を照合し、不一致は存在を明かさない **404** として扱う |
+
+Client SDK の単一取得の例は `app/preview/page.tsx`、Admin SDK の単一取得の例は
+`app/api/history/[id]/route.ts` の `getOwnedEntryRef()` である。
+
 - **`content_types` はグローバルな新規ユーザー用 source**: `user_id` を持たず、管理者のみが編集できる。新規アカウント作成時に `user_content_types` へ snapshot としてコピーされるが、既存ユーザーへ自動同期されることはない。
 - **`user_content_types` は runtime source**: Create / Resync はこの collection のみを UID で query する。ルーティングには document ID ではなく `code` を用い、built-in code は `FormType` enum (`form_language` / `form_it` / `form_general`) に解決される。
 - **マスターデータ ID スキーム**: 新しいユーザーに seed を行うとき、ID = `{defaultId}__{uid}` (例 `cat_daily__abc123`) — デッキ内の FK は同じ規則による文字列連結で再マップ。`lib/seed-defaults.ts` を参照。
@@ -53,7 +62,7 @@
 | Field | Type | 説明 |
 |---|---|---|
 | `id` | string (PK) | Document ID |
-| `user_id` | string | Firebase Auth UID — entry の所有者 (すべてのクエリで filter 必須) |
+| `user_id` | string | Firebase Auth UID — entry の所有者。コレクション検索では filter 必須。Admin SDK の ID 単一取得では取得後に照合する |
 | `category_id` | string (FK) | `categories` への参照 (nullable) |
 | `form_type` | string | 使用された routing code。Built-in は `form_language` / `form_it` / `form_general`、custom は `user_content_types.code` |
 | `language` | string | canonical BCP 47 言語 code (例 `en`、`fr`、`pt-BR`; nullable、主に form_type = form_language) |
@@ -529,7 +538,7 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 | `review_events` | 所有者 | **deny** — サーバーのみ書き込み (Admin SDK) |
 | `line_link_codes` | **deny** | **deny** — サーバーのみアクセス (Admin SDK) |
 | `decks`/`categories`/`card_types`/`topics` | 所有者 **+ `__defaults__` は管理者も** | read と同じ |
-| `user_content_types` | 所有者 (`user_id` filter 必須) | 所有者。create は自分の `user_id`、update で owner / `code` 変更不可 |
+| `user_content_types` | 所有者。コレクション検索は `user_id` filter 必須、ID 単一取得は Rules の `owns(resource)` で認可 | 所有者。create は自分の `user_id`、update で owner / `code` 変更不可 |
 | `content_types` | ログイン済みの全ユーザー | **管理者のみ**。3 built-in ID は delete 不可 |
 | `settings/global` | ログイン済みの全ユーザー | **管理者のみ** |
 | `settings/default` | **管理者のみ** | **管理者のみ** |
@@ -567,6 +576,7 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.4 | 2026-08-02 | Client/Admin SDK とコレクション検索/ID 単一取得の 2 軸で所有者分離責務を整理 | hong-quyen |
 | 1.3 | 2026-08-02 | Admin SDK と Client SDK の所有者分離責務を区別し、削除済み管理 API と廃止済み `notification_triggers` の経路・権限を現行実装へ同期 | hong-quyen |
 | 1.2 | 2026-08-01 | `notification_triggers` をレガシーとして明示し、通知設定の現行スキーマが `settings` であることを追記。コレクション検索とドキュメント ID による単一取得で所有者の確認方法が異なることを明記 | hong-quyen |
 | 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更 | hong-quyen |

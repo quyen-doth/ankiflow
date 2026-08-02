@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-API-001 |
-| 版数 | 1.2 |
+| 版数 | 1.3 |
 | 作成日 | 2026-04-26 |
 | 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -663,7 +663,47 @@ History UI の単一・一括削除で使用。対象 Entry を所有権確認�
 
 ---
 
-### 6.7 LINE Notifications
+### 6.7 Admin Content Type Defaults
+
+`content_types` は、新規アカウント作成時に `user_content_types` へ snapshot として
+複製する global default である。Runtime の Create / Resync はこの API や
+`content_types` を fallback として読まず、ユーザー別 `user_content_types` のみを読み取る。
+
+#### `GET /api/admin/content-types`
+
+- **認証:** Firebase セッション必須。管理者でないログイン済み user も取得できる。
+- **Response (200 OK):** `{ "contentTypes": [{ "id": "form_language", ...documentFields }] }`。
+  `id` は document ID、残りは `content_types` document の保存フィールドである。
+
+#### `PUT /api/admin/content-types`
+
+- **認証:** Firebase セッション + server-only `ADMIN_EMAIL` との一致が必須。
+- **Body:** `{ "id": string, "fields": FormFieldConfig[] }`。`id` は空文字不可、
+  `fields` は 1 件以上で、各要素を `formFieldConfigSchema` で検証する。
+- **スキーマ検証:** 対象 document から保存済みの実 `code` / `name` を取得し、
+  完全な field schema、重複 `field_key`、built-in invariant
+  (Language: `language` + `word`、IT: `term`、General: `title`) を検証する。
+- **Response (200 OK):** `{ "success": true, "id": "<documentId>" }`。`fields` と
+  `updated_at` のみを更新し、routing key である `code` は変更しない。
+
+#### `DELETE /api/admin/content-types`
+
+- **認証:** Firebase セッション + server-only `ADMIN_EMAIL` との一致が必須。
+- **Query:** `?id=<documentId>`。Custom global default のみ削除できる。
+- **保護対象:** `form_language` / `form_it` / `form_general` は管理者でも削除できない。
+- **Response (200 OK):** `{ "success": true, "id": "<documentId>" }`。
+
+#### エラー応答
+
+| Status | 条件 | Response |
+| --- | --- | --- |
+| 400 | PUT body 不正、field schema / built-in invariant 違反、DELETE の `id` 不足 | `{ "error": "<validation message>" }` |
+| 401 | セッション不足・不正・期限切れ・revoke 済み | `{ "error": "Unauthorized" }` |
+| 403 | PUT/DELETE の non-admin、`ADMIN_EMAIL` 未設定、built-in の DELETE | `{ "error": "Forbidden — admin only" }` または built-in 保護エラー |
+| 404 | PUT の対象 document が存在しない | `{ "error": "Content type not found" }` |
+| 500 | Firestore などの予期しない失敗 | `{ "error": "<message>" }` |
+
+### 6.8 LINE Notifications
 
 #### `POST /api/notifications/line-link`
 
@@ -701,7 +741,7 @@ LINE からのイベントを `x-line-signature` と `LINE_CHANNEL_SECRET` で�
 - **postback:** `settings/{entry.user_id}.line_user_id` と送信元 LINE user が一致する場合のみ rating を適用し、`review_events` に追記。
 - **エラー:** channel secret 未設定 → 500、署名不正 → 401。
 
-### 6.8 Integrations & Cron（セッションクッキーなし）
+### 6.9 Integrations & Cron（セッションクッキーなし）
 
 `middleware.ts` の exclude matcher 対象 — セッションクッキーを持たない外部呼び出し専用。
 それぞれ独自のトークン比較 (`crypto.timingSafeEqual`、`lib/auth-guard.ts` の `verifyStaticToken`) で保護。
@@ -753,6 +793,7 @@ SRS entry を LINE Flex Message で fan-out する。`vercel.json` からは cro
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.3 | 2026-08-02 | 現行の `/api/admin/content-types` GET・PUT・DELETE 契約、検証、エラー応答を復元 | hong-quyen |
 | 1.2 | 2026-08-02 | 削除済みの管理 API 4 ルートと旧 LINE 実行経路を除去し、公開 LINE 変数と節番号を現行実装へ同期 | hong-quyen |
 | 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更。章見出しの絵文字を削除 | hong-quyen |
 | 1.0 | 2026-04-26 | 初版作成 | hong-quyen |

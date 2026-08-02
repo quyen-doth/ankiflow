@@ -48,26 +48,30 @@ synced    → Exported to Anki successfully
 
 ## Step 3 — Per-user isolation (THE most important rule)
 
-Every collection query on **`entries` / `decks` / `categories` / `card_types` /
-`topics` / `user_content_types` / `review_events`** MUST filter
-`where('user_id', '==', uid)`:
+Ownership for **`entries` / `decks` / `categories` / `card_types` / `topics` /
+`user_content_types` / `review_events`** depends on both the SDK and the query shape:
 
-- Client-side: `uid` from `useAuth()` — and wait for `useAuth().loading === false` first
-- Server-side: `uid` from the `withAuth` handler's 3rd argument; server writes set `user_id: uid`
-- Point lookup by document ID: fetch first, compare `user_id` to the caller's UID, and treat a
-  mismatch as not-found rather than forbidden (see `app/api/history/[id]/route.ts`)
+| SDK | Collection query | Point lookup by document ID |
+| --- | --- | --- |
+| Client SDK | MUST filter `where('user_id', '==', uid)` so the query satisfies Firestore Rules | Rules are the authorization boundary; a local `user_id` comparison is optional UX or defence-in-depth |
+| Admin SDK | MUST filter `where('user_id', '==', uid)` because Rules are bypassed | Fetch, compare `user_id` to the caller's UID, and treat a mismatch as not-found (404), never forbidden |
+
+- Client-side: get `uid` from `useAuth()` and wait for `useAuth().loading === false` first.
+- Server-side: get `uid` from the `withAuth` handler's 3rd argument; server writes set `user_id: uid`.
 
 **`notification_triggers` is retired.** No runtime code reads or writes it; LINE scheduling belongs
 in `settings/global` and per-user `settings/{uid}`. Do not build new queries against it.
 
-Exception: **`content_types` is SHARED** (doc id = `form_type`) — read by all, written by admin only.
+Exception: **`content_types` is the global new-user source** without `user_id` — read by signed-in
+users and written by admin only. Built-in document IDs are protected; custom defaults may use auto-IDs.
 
 `settings` is NOT a singleton — three doc kinds: `settings/{uid}` (per-user prefs),
 `settings/global` (feature flags), `settings/default` (admin secrets — never read from a non-admin client).
 
-Firestore Security Rules (`firestore.rules`) apply only to the Client SDK: a client query missing
-the `user_id` filter is **denied by rules**, not just wrong. Server routes use the Admin SDK and
-bypass Rules, so they must enforce the same collection or point-lookup ownership check themselves.
+Firestore Security Rules (`firestore.rules`) apply only to the Client SDK: a client collection query
+missing the `user_id` filter is **denied by rules**, not just wrong; a point lookup is evaluated
+against `owns(resource)`. Server routes use the Admin SDK and bypass Rules, so they must enforce the
+collection filter or post-fetch point-lookup ownership check themselves.
 When adding a new collection or query shape, update `firestore.rules` (+ indexes) and deploy:
 `firebase deploy --only firestore:rules,firestore:indexes`.
 
@@ -134,7 +138,9 @@ Impact:
 ## Hard rules
 
 - Do **NOT** hardcode strings for `form_type` and `status` — use the enums/types in `types/index.ts`
-- Do **NOT** write any per-user query without the `user_id` filter
+- Do **NOT** write a per-user collection query without the `user_id` filter. For point lookups,
+  follow the SDK-specific rule above: Client SDK authorization comes from Rules; Admin SDK code
+  must compare `user_id` after fetching and mask a mismatch as not-found.
 - Do **NOT** add a field to a Firestore document without updating `docs/02-design/DATABASE.md`
 - Do **NOT** delete a field before confirming it is no longer used
 - **MUST** use `Promise.all()` for batch fetches — never call Firestore in a loop

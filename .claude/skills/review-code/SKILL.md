@@ -39,7 +39,7 @@ diff hunk alone.
 
 ### Layer 1: ankiflow conventions (highest value — generic reviewers miss these)
 
-- [ ] **Per-user isolation**: any collection query on `entries`/`decks`/`categories`/`card_types`/`topics`/`user_content_types`/`review_events` without `where('user_id', '==', uid)`? Any point lookup that fails to compare `user_id` after fetching and mask a mismatch as not-found? Any server write missing `user_id: uid`? Remember that Admin SDK routes bypass Rules and must enforce ownership themselves. (`content_types` is the shared exception)
+- [ ] **Per-user isolation**: any Client or Admin SDK collection query on `entries`/`decks`/`categories`/`card_types`/`topics`/`user_content_types`/`review_events` without `where('user_id', '==', uid)`? For Admin SDK point lookups, is `user_id` compared after fetching and a mismatch masked as not-found? Do not require that local comparison for Client SDK point lookups: Firestore Rules are their authorization boundary. Any server write missing `user_id: uid`? (`content_types` is the global new-user-source exception)
 - [ ] **Retired notification storage**: any new runtime read/write of `notification_triggers` instead of `settings/global` plus per-user `settings/{uid}`?
 - [ ] **Enums**: hardcoded `'form_language'`/`'draft'`... instead of `FormType` / the status union from `types/index.ts`?
 - [ ] **AnkiConnect in server code**: any AnkiConnect call inside `app/api/**` or server components — absolutely forbidden (client-side only, see `anki-connect` skill)

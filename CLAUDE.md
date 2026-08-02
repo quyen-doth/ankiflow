@@ -65,7 +65,14 @@ Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICAT
 - Folders: `kebab-case` · Components: `PascalCase.tsx` · Utilities/hooks: `camelCase.ts` · Constants: `UPPER_SNAKE_CASE`
 - Never call Firestore in a loop — use `Promise.all()` for batch fetches
 - Never hardcode string values for `form_type` or `status` — use the TypeScript enums in `types/index.ts`
-- **Per-user data**: ownership is enforced two different ways depending on the query shape. **Collection queries** on `entries` / `decks` / `categories` / `card_types` / `topics` / `user_content_types` / `review_events` MUST filter `where('user_id', '==', uid)` (uid from `useAuth()` client-side, or the `withAuth` handler param server-side). **Point lookups by document ID** cannot express that filter — fetch, then compare `user_id` to the caller's uid and treat a mismatch as not-found, never as forbidden (see `app/api/history/[id]/route.ts`). Server routes set `user_id` and enforce ownership themselves because the Admin SDK bypasses Firestore Rules; Client SDK writes must satisfy the Rules.
+- **Per-user data**: ownership depends on both the SDK and the query shape. Apply this matrix to `entries` / `decks` / `categories` / `card_types` / `topics` / `user_content_types` / `review_events`:
+
+  | SDK | Collection query | Point lookup by document ID |
+  | --- | --- | --- |
+  | Client SDK | MUST filter `where('user_id', '==', uid)` so the query satisfies Firestore Rules | Rules are the authorization boundary; a local `user_id` comparison is optional UX or defence-in-depth |
+  | Admin SDK | MUST filter `where('user_id', '==', uid)` because Rules are bypassed | Fetch, compare `user_id` to the caller's UID, and treat a mismatch as not-found (404), never forbidden |
+
+  Client-side `uid` comes from `useAuth()` after `loading === false`; server-side `uid` comes from the `withAuth` handler parameter. Server writes set `user_id`; Client SDK writes must satisfy Rules.
 - **`notification_triggers` is legacy** — no runtime code reads or writes it. LINE scheduling now lives in `settings/global` (`line_schedule_hours`, `line_words_per_notification`) and per-user `settings/{uid}`. Do not build on it.
 - **Content Type scopes**: `content_types` is the admin-managed global source copied to future accounts; runtime Create/Resync reads only `user_content_types`. User snapshots are not automatically updated when a global default changes. A user Content Type's `code` is immutable after creation; runtime hides only routing-code conflicts and keeps non-conflicting types available. The global built-in IDs `form_language`, `form_it`, and `form_general` must never be deleted.
 - **`settings` is NOT a singleton** — three doc kinds: `settings/{uid}` (per-user prefs), `settings/global` (feature flags, admin-write via `/api/admin/global-config`), `settings/default` (LINE secrets, admin-only). Never read `settings/default` from a non-admin client (rules block it + it holds secrets).
@@ -136,7 +143,7 @@ Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICAT
 - **Firestore Security Rules are the client-access source of truth** (`firestore.rules`) — the client SDK can only touch the current user's docs. When adding a collection or query, update the rules and obtain explicit approval before deploying them; otherwise client reads/writes will be denied. Admin SDK (server routes) bypasses rules.
 - **Two admin mechanisms, keep both in sync** — server routes check `session.email === ADMIN_EMAIL`; Firestore rules check the `admin:true` custom claim (set via `scripts/set-admin-claim.ts` or auto on signup when email matches `ADMIN_EMAIL`; requires re-login to take effect). `NEXT_PUBLIC_ADMIN_EMAIL` only gates UI visibility, never security.
 - **Actions requiring user confirmation before execution:** writing/deleting Firestore documents, calling AnkiConnect (creates/deletes Anki notes), deleting codebase files, updating any file under `docs/`.
-    > Enforced by `PreToolUse` hooks in `.claude/settings.json` for Firestore deletes, AnkiConnect deletes, and `docs/` edits — these are blocked automatically, not just by convention.
+  Codex/Claude hooks in `.codex/hooks.json` and `.claude/settings.json` enforce part of these rules, but agents must still follow them explicitly.
 
 ## Mandatory Workflow for Code Changes
 

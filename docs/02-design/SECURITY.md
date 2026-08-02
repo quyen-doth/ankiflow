@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-SEC-001 |
-| 版数 | 1.2 |
+| 版数 | 1.3 |
 | 作成日 | 2026-08-01 |
 | 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
@@ -112,14 +112,16 @@ Admin SDK (サーバー側の API ルート) はルールをすべてバイパ�
 
 利用者ごとの現行コレクション (`entries`、`categories`、`card_types`、`topics`、`decks`、`user_content_types`、`review_events`) は、各ドキュメントが Firebase Auth UID を値とする `user_id` を持つ。旧 `notification_triggers` は廃止済みであり、現行の所有者付きコレクションには含めない。
 
-所有者の確認方法は、問い合わせの形によって 2 通りに分かれる。**両者を混同してはならない。**
+所有者の確認方法は、SDK と問い合わせの形の 2 軸で分かれる。
+**Rules が適用される Client SDK と、Rules をバイパスする Admin SDK を混同してはならない。**
 
-| 問い合わせの形 | 確認方法 |
-| --- | --- |
-| コレクションに対する検索 | `where('user_id', '==', uid)` で絞り込む。クライアント・サーバーを問わず必須である |
-| ドキュメント ID による単一取得 | 取得後に `user_id` と呼び出し元の UID が一致することを確認する |
+| SDK | コレクションに対する検索 | ドキュメント ID による単一取得 |
+| --- | --- | --- |
+| Client SDK | `where('user_id', '==', uid)` で絞り込み、query 全体が Rules を満たすようにする | Rules の `owns(resource)` が認可の境界である。取得後の local `user_id` 照合は UX または多層防御であり、セキュリティ境界の必須条件ではない |
+| Admin SDK | Rules をバイパスするため、`where('user_id', '==', uid)` による絞り込みが必須 | 取得後に `user_id` と呼び出し元 UID を照合し、不一致は存在を明かさない **404** として扱う |
 
-単一取得では絞り込みの条件を書けないため、取得してから照合する。一致しない場合は 403 ではなく **404 相当**として扱い、ドキュメントの存在自体を明かさない。実装例は `app/api/history/[id]/route.ts` の `getOwnedEntryRef()` と `app/history/[id]/page.tsx` の読み込み処理である。
+Client SDK の単一取得の例は `app/preview/page.tsx`、Admin SDK の単一取得の例は
+`app/api/history/[id]/route.ts` の `getOwnedEntryRef()` である。
 
 サーバー側の書き込みは `user_id` を設定し、API 自身が所有者を検証する。Admin SDK は Rules をバイパスするため、Rules をサーバー側の防御として数えてはならない。
 
@@ -226,7 +228,7 @@ LINE のアクセストークンは `settings/default` にも保持する。当�
 | --- | --- |
 | コレクションを追加する | `firestore.rules` に規則を追加し、明示的な承認を得てから反映する。既定は拒否であるため、追加しなければクライアントから読み書きできない |
 | 問い合わせの条件を変える | ルールが許可する形と一致しているかを確認する |
-| サーバールートを追加する | `withAuth` または `withAdmin` で包む。コレクション検索は `user_id` で絞り、ID 単一取得は取得後に所有者を照合する |
+| サーバールートを追加する | `withAuth` または `withAdmin` で包む。Admin SDK のコレクション検索は `user_id` で絞り、ID 単一取得は取得後に所有者を照合する |
 | 管理者の判定箇所を変える | 2 系統の双方を同時に更新する |
 
 Security Rules の反映は影響が大きい。誤ると全利用者の読み書きが停止する。反映前に内容を確認し、明示的な承認を得ること。
@@ -235,6 +237,7 @@ Security Rules の反映は影響が大きい。誤ると全利用者の読み�
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.3 | 2026-08-02 | Client/Admin SDK とコレクション検索/ID 単一取得の 2 軸で認可境界と所有者照合責務を明確化 | hong-quyen |
 | 1.2 | 2026-08-02 | Admin SDK が Rules をバイパスする境界を所有者分離の記述へ反映し、ID 単一取得の照合方法と廃止済み `notification_triggers` の拒否状態を明確化 | hong-quyen |
 | 1.1 | 2026-08-01 | コレクション検索とドキュメント ID による単一取得で所有者の確認方法が異なることを明記。`notification_triggers` に現行の読み書きがないこと、および `line_link_codes` の扱いを追記 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/02-design/ARCHITECTURE.md` の認証節を引き継ぎ、`firestore.rules`、`middleware.ts`、`lib/auth-guard.ts` の実装を正として脅威対応・多層防御・データ分離・管理者判定を記述した | hong-quyen |

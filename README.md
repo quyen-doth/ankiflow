@@ -12,7 +12,7 @@
 ![Firebase](https://img.shields.io/badge/Auth_+_Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/Vitest-1392_passing-success)
+![Tests](https://img.shields.io/badge/Vitest-1395_passing-success)
 ![CI](https://github.com/quyen-doth/ankiflow/actions/workflows/ci.yml/badge.svg)
 
 </div>
@@ -115,7 +115,7 @@ AnkiFlow は**カードを作る手間をなくすこと**に集中していま�
 | コンポーネント | 82 |
 | API ルート | 30 |
 | ページ | 16 |
-| Vitest | 1,392 件 (115 ファイル) |
+| Vitest | 1,395 件 (116 ファイル) |
 | Playwright E2E | 77 件 (25 ファイル) |
 
 ## 品質保証
