@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-SET-001 |
-| 版数 | 1.0 |
+| 版数 | 1.1 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-ARC-001、AF-API-001、AF-DEV-001、AF-OPS-001 |
@@ -29,8 +29,6 @@
 | AnkiConnect アドオン | Anki Desktop に導入すること |
 | ブラウザ | Chrome、Edge、または Firefox。Safari は Anki 連携に使用できない |
 
-<!-- TODO(user): CI は Node.js 20、`.github/workflows/notify.yml` のみ Node.js 24 を指定しており、両者が食い違っている。統一したうえで `.nvmrc` または `engines` フィールドで固定するかを判断すること。 -->
-
 ## 3. 外部サービスの準備
 
 いずれも事前にアカウントと資格情報を用意する必要がある。
@@ -47,9 +45,9 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 
 ## 4. 環境変数
 
-リポジトリ直下の `.env.example` を雛形として `.env` を作成し、値を設定する。`.env` および実際の値はリポジトリへコミットしてはならない。
+リポジトリ直下の `.env.example` を雛形として `.env.local` を作成し、値を設定する。`.env.local`、`.env` および実際の値はリポジトリへコミットしてはならない。
 
-**ファイル名は `.env` とすること。** Next.js は `.env.local` も読み取るが、`scripts/` 以下の CLI スクリプト (`npm run seed`、`npm run user:create`、`scripts/set-admin-claim.ts` など) は `.env` のみを読み込む。`.env.local` に置いた場合、アプリケーションは動作するがスクリプトが資格情報を見つけられない。
+Next.js と `scripts/` 以下の CLI スクリプト (`npm run seed`、`npm run user:create`、`scripts/set-admin-claim.ts` など) は、どちらも `.env.local` と `.env` を読み込む。優先順位はシェルで設定済みの値、`.env.local`、`.env` の順である。個人環境の値は `.env.local` に置き、既存の `.env` はフォールバックとして利用できる。
 
 以下の各表は、実装が実際に参照している変数を網羅したものである。`.env.example` との差異を認めた場合は実装を正とし、`.env.example` と本書の双方を更新すること。
 
@@ -114,16 +112,14 @@ LINE 連携を利用しない場合、関連する環境変数は未設定でよ
 
 ### 4.7 廃止済みの変数
 
-次の変数は過去に使用していたが、現在は参照していない。旧文書や旧スクリプトに記載が残っている場合があるため、設定してはならない。
+次の変数は過去に使用していたが、現在は参照していない。`.env.example` にも含まれていないため、追加してはならない。
 
 | 変数 | 廃止の理由 |
 | --- | --- |
 | `ANKI_CONNECT_URL` | AnkiConnect の呼び出しがクライアント側へ移行した。接続先は利用者ごとに `settings/{uid}.anki_connect_url` で保持する (既定値は `http://localhost:8765`) |
 | `API_SECRET` (`x-api-secret` ヘッダー) | 認証がセッションクッキーへ移行した |
 | `GOOGLE_TTS_API_KEY` | サービスアカウント方式へ移行した |
-| `LINE_USER_ID`、`SRS_PUSH_TARGET_UID` | 通知先を `settings/{uid}.line_user_id` から解決する方式へ移行した。これらを参照する旧スクリプトは利用者分離を満たさないため実行してはならない |
-
-> 2026-08-01 時点で、リポジトリの `.env.example` には `ANKI_CONNECT_URL` と `API_SECRET` の記載が残っている。実装はいずれも参照していないため、複製後に削除してよい。`.env.example` 側の整理は別途行う。
+| `LINE_USER_ID`、`SRS_PUSH_TARGET_UID` | 通知先を `settings/{uid}.line_user_id` から解決する方式へ移行した。参照していた旧スクリプトとワークフローは削除済みである |
 
 ## 5. 構築手順
 
@@ -139,7 +135,7 @@ npm install
 
 ### 5.2 環境変数の設定
 
-`.env.example` を `.env` へ複製し、第 4 章に従って値を設定する。
+`.env.example` を `.env.local` へ複製し、第 4 章に従って値を設定する。
 
 ### 5.3 Firestore の準備
 
@@ -230,4 +226,5 @@ npm run dev
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.1 | 2026-08-02 | `.env.local` と `.env` の読み込み順、管理者・LINE の公開変数、および削除済みの旧変数・実行経路を現行実装へ同期 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/PRD.md` 第 13 章を引き継ぎ、実装を正として環境変数一覧を作り直したうえ、構築手順と動作確認手順を追加した | hong-quyen |

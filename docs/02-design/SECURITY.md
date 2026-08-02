@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-SEC-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-NFR-001、AF-ARC-001、AF-API-001、AF-DB-001 |
@@ -23,7 +23,7 @@
 | # | 脅威 | 対策 | 実現箇所 |
 | --- | --- | --- | --- |
 | T-1 | 未認証の利用者が業務データへ到達する | セッションクッキーによる保護を多層で実施する | `middleware.ts`、`lib/auth-guard.ts`、`firestore.rules` |
-| T-2 | 認証済みの利用者が他人のデータを参照・変更する | すべての問い合わせを所有者で絞り込み、データベース層でも強制する | 各 API ルート、`firestore.rules` |
+| T-2 | 認証済みの利用者が他人のデータを参照・変更する | API は所有者スコープを自ら強制し、Client SDK の直接アクセスは Rules で遮断する | 各 API ルート、`firestore.rules` |
 | T-3 | クッキーを窃取して成り済ます | httpOnly クッキーを用い、JavaScript から読めなくする | `POST /api/auth/session` |
 | T-4 | ログアウト後の古いクッキーを再利用する | 検証時に失効を確認する | `verifySessionCookie(cookie, true)` |
 | T-5 | 一般利用者が管理者機能を実行する | サーバー側とルールの双方で独立に判定する | `withAdmin`、`firestore.rules` の `isAdmin()` |
@@ -110,7 +110,7 @@ Admin SDK (サーバー側の API ルート) はルールをすべてバイパ�
 
 ### 5.1 原則
 
-利用者ごとのコレクション (`entries`、`categories`、`card_types`、`topics`、`decks`、`notification_triggers`、`user_content_types`、`review_events`) は、各ドキュメントが Firebase Auth UID を値とする `user_id` を持つ。
+利用者ごとの現行コレクション (`entries`、`categories`、`card_types`、`topics`、`decks`、`user_content_types`、`review_events`) は、各ドキュメントが Firebase Auth UID を値とする `user_id` を持つ。旧 `notification_triggers` は廃止済みであり、現行の所有者付きコレクションには含めない。
 
 所有者の確認方法は、問い合わせの形によって 2 通りに分かれる。**両者を混同してはならない。**
 
@@ -121,7 +121,7 @@ Admin SDK (サーバー側の API ルート) はルールをすべてバイパ�
 
 単一取得では絞り込みの条件を書けないため、取得してから照合する。一致しない場合は 403 ではなく **404 相当**として扱い、ドキュメントの存在自体を明かさない。実装例は `app/api/history/[id]/route.ts` の `getOwnedEntryRef()` と `app/history/[id]/page.tsx` の読み込み処理である。
 
-サーバー側の書き込みは `user_id` を設定する。ルールはこれ以外を拒否する。
+サーバー側の書き込みは `user_id` を設定し、API 自身が所有者を検証する。Admin SDK は Rules をバイパスするため、Rules をサーバー側の防御として数えてはならない。
 
 作成時は、作成しようとするドキュメントの `user_id` が呼び出し元の UID と一致することを確認する。他人の代わりに作成することを許さないためである。
 
@@ -132,7 +132,7 @@ Admin SDK (サーバー側の API ルート) はルールをすべてバイパ�
 | `entries` | 所有者のみ | 不可 | 不可 | 変更はサーバー経由に限る。問い合わせ用の派生フィールドと元フィールドの整合を保つためである |
 | `review_events` | 所有者のみ | 不可 | 不可 | 追記のみの復習記録。サーバーのみが書き込む |
 | `decks`、`categories`、`card_types`、`topics` | 所有者、または管理者による既定データ | 同左 | 同左 | `user_id == '__defaults__'` のテンプレートは管理者が編集できる |
-| `notification_triggers` | 所有者のみ | 所有者のみ | 所有者のみ | **現行の実装に読み書きする箇所はない** (下記参照) |
+| `notification_triggers` | 不可 | 不可 | 不可 | 廃止済み。明示的な規則を持たず、既定の拒否が適用される |
 | `user_content_types` | 所有者のみ | 所有者のみ | 所有者のみ | 更新時に `user_id` と `code` の変更を拒否する |
 | `content_types` | 認証済みの全利用者 | 管理者のみ | 管理者のみ | 3 つの組み込み ID は管理者でも削除できない |
 | `settings/global` | 認証済みの全利用者 | — | 管理者のみ | 機能フラグ。秘密情報ではない |
@@ -142,7 +142,7 @@ Admin SDK (サーバー側の API ルート) はルールをすべてバイパ�
 
 `settings` が単一のドキュメントではなく 3 種類の用途を同じコレクションに持つ点に注意を要する。Firebase の UID は 28 文字であり、`global` および `default` と衝突しない。
 
-`notification_triggers` は旧方式の通知設定であり、現行の配信処理は参照していない。規則は残しているが、読み書きする実装が存在しない。詳細はデータベース設計書 (AF-DB-001) を参照すること。
+`notification_triggers` は旧方式の通知設定であり、現行の配信処理は参照していない。専用の規則も削除済みであり、クライアントからは既定の拒否が適用される。詳細はデータベース設計書 (AF-DB-001) を参照すること。
 
 `line_link_codes` は表に含めていない。サーバーのみが読み書きするため規則を宣言しておらず、既定の拒否が適用される。クライアントから到達できない。
 
@@ -226,7 +226,7 @@ LINE のアクセストークンは `settings/default` にも保持する。当�
 | --- | --- |
 | コレクションを追加する | `firestore.rules` に規則を追加し、明示的な承認を得てから反映する。既定は拒否であるため、追加しなければクライアントから読み書きできない |
 | 問い合わせの条件を変える | ルールが許可する形と一致しているかを確認する |
-| サーバールートを追加する | `withAuth` または `withAdmin` で包み、`user_id` で絞り込む |
+| サーバールートを追加する | `withAuth` または `withAdmin` で包む。コレクション検索は `user_id` で絞り、ID 単一取得は取得後に所有者を照合する |
 | 管理者の判定箇所を変える | 2 系統の双方を同時に更新する |
 
 Security Rules の反映は影響が大きい。誤ると全利用者の読み書きが停止する。反映前に内容を確認し、明示的な承認を得ること。
@@ -235,5 +235,6 @@ Security Rules の反映は影響が大きい。誤ると全利用者の読み�
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-02 | Admin SDK が Rules をバイパスする境界を所有者分離の記述へ反映し、ID 単一取得の照合方法と廃止済み `notification_triggers` の拒否状態を明確化 | hong-quyen |
 | 1.1 | 2026-08-01 | コレクション検索とドキュメント ID による単一取得で所有者の確認方法が異なることを明記。`notification_triggers` に現行の読み書きがないこと、および `line_link_codes` の扱いを追記 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/02-design/ARCHITECTURE.md` の認証節を引き継ぎ、`firestore.rules`、`middleware.ts`、`lib/auth-guard.ts` の実装を正として脅威対応・多層防御・データ分離・管理者判定を記述した | hong-quyen |

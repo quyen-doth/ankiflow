@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-DB-001 |
-| 版数 | 1.2 |
+| 版数 | 1.3 |
 | 作成日 | 2026-04-29 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-ARC-001、AF-API-001、AF-CRD-001 |
@@ -16,9 +16,9 @@
 
 ## マルチユーザーモデル (v2.0)
 
-- **ユーザーごとのコレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`notification_triggers`、`user_content_types`、`review_events`): 各ドキュメントは Firebase Auth UID を値とする **`user_id`** フィールドを持つ。
+- **ユーザーごとの現行コレクション** (`entries`、`categories`、`card_types`、`topics`、`decks`、`user_content_types`、`review_events`): 各ドキュメントは Firebase Auth UID を値とする **`user_id`** フィールドを持つ。
   コレクションに対する検索は、クライアント・サーバーとも `where('user_id', '==', uid)` でフィルタする。ドキュメント ID を指定した単一取得では絞り込みを書けないため、取得後に `user_id` を照合する (`app/api/history/[id]/route.ts`、`app/history/[id]/page.tsx`)。
-  いずれの場合も Firestore Security Rules (`firestore.rules`) が DB レイヤーでクロスアクセスを遮断する。
+  Client SDK の直接アクセスは Firestore Security Rules (`firestore.rules`) が遮断する。Admin SDK を使うサーバールートは Rules をバイパスするため、API 自身が同じ所有者スコープを強制する。
 - **`content_types` はグローバルな新規ユーザー用 source**: `user_id` を持たず、管理者のみが編集できる。新規アカウント作成時に `user_content_types` へ snapshot としてコピーされるが、既存ユーザーへ自動同期されることはない。
 - **`user_content_types` は runtime source**: Create / Resync はこの collection のみを UID で query する。ルーティングには document ID ではなく `code` を用い、built-in code は `FormType` enum (`form_language` / `form_it` / `form_general`) に解決される。
 - **マスターデータ ID スキーム**: 新しいユーザーに seed を行うとき、ID = `{defaultId}__{uid}` (例 `cat_daily__abc123`) — デッキ内の FK は同じ規則による文字列連結で再マップ。`lib/seed-defaults.ts` を参照。
@@ -35,7 +35,7 @@
 | `card_types` | Anki フラッシュカードの種類 | ユーザーごと (+ テンプレート) |
 | `topics` | IT トピック | ユーザーごと (+ テンプレート) |
 | `decks` | Anki Deck config + Form マッピング | ユーザーごと (+ テンプレート) |
-| `notification_triggers` | LINE リマインダースケジュール | ユーザーごと・**レガシー (現行の実装に読み書きなし)** |
+| `notification_triggers` | 旧 LINE リマインダースケジュール | **廃止済み・クライアントアクセス不可** |
 | `line_link_codes` | LINE アカウント連携用の短期コード | **サーバーのみ** — 一時データ |
 | `review_events` | SRS Revlog — `review_state` へのすべての変更履歴 (append-only) | ユーザーごと — **サーバーのみ書き込み** |
 | `content_types` | 新規アカウントへコピーする入力フォームの global defaults | **SHARED source** — 管理者のみ書き込み |
@@ -170,7 +170,7 @@ IT ボキャブラリー専用。Entries は複数のトピックに属するこ
 | `created_at` | timestamp | — |
 | `updated_at` | timestamp | — |
 
-**作成経路:** seed・管理者テンプレート (`/api/admin/topics`) に加え、**Create ページ**からユーザー自身がクライアント SDK で IT トピックを作成・再有効化できる (`lib/create/createTopic.ts`)。重複は名前の正規化 (`normalizeTopicName`) で判定し、同名の無効トピックがある場合は新規作成せず再有効化を促す。
+**作成経路:** seed・管理画面の新規ユーザー向けテンプレートに加え、**Create ページ**からユーザー自身がクライアント SDK で IT トピックを作成・再有効化できる (`lib/create/createTopic.ts`)。重複は名前の正規化 (`normalizeTopicName`) で判定し、同名の無効トピックがある場合は新規作成せず再有効化を促す。
 
 ---
 
@@ -350,16 +350,13 @@ field 未設定の document のみを transaction で update し、既存 custom
 
 ### `notification_triggers` — LINE リマインダースケジュール (レガシー)
 
-> **本コレクションは現行の実装から参照されていない。** 新規の実装で使用してはならない。
+> **本コレクションは廃止済みであり、現行の実装から参照されていない。** 新規の実装で使用してはならない。
 >
 > 現行の配信処理 (`app/api/cron/srs-push/route.ts`) は、配信時刻と 1 回あたりの語数を
 > `settings/global` の `line_schedule_hours` および `line_words_per_notification` から読み、
 > 配信対象と宛先を各 `settings/{uid}` から解決する。**通知設定の現行のスキーマは `settings` である。**
 >
-> 本コレクションを参照するのは `scripts/send-notifications.ts` (実行禁止。運用手順書 AF-OPS-001
-> 第 5.2 節を参照) と `scripts/migrate-user-data.ts` (移行用) のみである。
->
-> Firestore Security Rules には規則が残っており、既存データは保持される。廃止の判断は未了である。
+> 旧送信スクリプト、旧ワークフロー、および専用の Security Rules は削除済みである。既存ドキュメントが残っていても、クライアントアクセスには catch-all deny が適用される。
 
 LINE push スケジュール設定。ユーザーごと (`user_id`) だが、当時は管理者のみ使用可能であった (LINE token はアプリ所有者のもの)。
 
@@ -528,7 +525,7 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 | Collection / doc | read | write |
 |---|---|---|
 | `entries` | 所有者 | **deny** — query metadata と source field の整合性を保つためサーバー API のみ書き込み |
-| `notification_triggers` | 所有者 | 所有者 (作成時は正しい `user_id` を付与必須) |
+| `notification_triggers` | **deny** | **deny** — 廃止済みであり catch-all deny が適用される |
 | `review_events` | 所有者 | **deny** — サーバーのみ書き込み (Admin SDK) |
 | `line_link_codes` | **deny** | **deny** — サーバーのみアクセス (Admin SDK) |
 | `decks`/`categories`/`card_types`/`topics` | 所有者 **+ `__defaults__` は管理者も** | read と同じ |
@@ -570,6 +567,7 @@ Client SDK は Firestore を直接読み書き (ミドルウェア + API 認証�
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.3 | 2026-08-02 | Admin SDK と Client SDK の所有者分離責務を区別し、削除済み管理 API と廃止済み `notification_triggers` の経路・権限を現行実装へ同期 | hong-quyen |
 | 1.2 | 2026-08-01 | `notification_triggers` をレガシーとして明示し、通知設定の現行スキーマが `settings` であることを追記。コレクション検索とドキュメント ID による単一取得で所有者の確認方法が異なることを明記 | hong-quyen |
 | 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更 | hong-quyen |
 | 1.0 | 2026-04-29 | 初版作成 | hong-quyen |

@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-OPS-001 |
-| 版数 | 1.0 |
+| 版数 | 1.1 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-SET-001、AF-DEV-001、AF-SEC-001、AF-NFR-001 |
@@ -64,6 +64,8 @@ develop へ push
 
 - `package.json` および `package-lock.json` の `version` を手で編集してはならない。ワークフローが管理する。
 - Release PR を開いたまま `develop` が進んだ場合、バージョンは自動的に再算出される。`fix` のみの状態で準備されたあとに `feat` がマージされれば、バージョンは繰り上がる。
+- `release-tag.yml` を再実行した場合は、タグと GitHub Release のうち不足している成果物だけを作成する。両方が存在すれば何もしない。
+- `main` 以外からの手動実行、対象バージョンのリリースノート欠落、または同名タグが現在の `main` 以外を指す場合は、誤ったリリースを作成せず明示的に失敗する。
 - 自動生成される Release PR は Pull Request の検査対象外である。個々の Pull Request で検査済みであるためである。
 - `release-pr.yml` は `develop` へ直接 push する。`develop` のブランチ保護は `github-actions[bot]` の push を許可する設定でなければならない。
 
@@ -112,14 +114,6 @@ Security Rules はクライアントアクセスの唯一の拠り所である�
 実行が欠落した場合、API 側が直前の時間帯を補完する。同一利用者の同一時刻に対する再送は抑止される。したがって、1 回程度の欠落は運用上の対処を要しない。
 
 手動実行は GitHub Actions の画面から行える。
-
-### 5.2 実行してはならないもの
-
-`.github/workflows/notify.yml` は定期実行を停止済みであり、手動実行のみが残っている。**このワークフローを実行してはならない。**
-
-`scripts/send-notifications.ts` は `user_id` による絞り込みを行わず、全利用者のデータを集約して単一の宛先へ送信する。利用者間の情報漏洩に直結する。
-
-<!-- TODO(user): `.github/workflows/notify.yml` と `scripts/send-notifications.ts` の削除を検討すること。手動実行の導線が残っている限り、誤って実行される余地がある。あわせて、当該ファイル内のコメントがベトナム語で記述されており、かつ「Vercel Cron、vercel.json を参照」という現状と異なる記述を含む点も是正の対象である。 -->
 
 ## 6. デプロイ後の確認
 
@@ -300,4 +294,5 @@ firebase deploy --only firestore:rules
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.1 | 2026-08-02 | リリース再実行時の不足成果物のみを補う挙動と fail-closed 条件を追記し、削除済みの旧 LINE 実行経路を除去 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。リリース、デプロイ、定期実行、運用作業、障害対応、切り戻しの各手順を定義した | hong-quyen |

@@ -12,7 +12,7 @@
 ![Firebase](https://img.shields.io/badge/Auth_+_Firestore-Firebase-FFCA28?logo=firebase&logoColor=black)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude_API-Anthropic-cc785c?logo=anthropic&logoColor=white)
-![Tests](https://img.shields.io/badge/Vitest-1346_passing-success)
+![Tests](https://img.shields.io/badge/Vitest-1392_passing-success)
 ![CI](https://github.com/quyen-doth/ankiflow/actions/workflows/ci.yml/badge.svg)
 
 </div>
@@ -36,7 +36,7 @@ AnkiFlow は**カードを作る手間をなくすこと**に集中していま�
 | **一括作成** | 複数語をまとめて生成し、個別に確認・破棄 |
 | **遅延同期** | Anki 未起動でも保存でき、あとからまとめて登録 |
 | **カスタマイズ** | 入力フォーム・カードテンプレート・AI への指示を、コードを触らずに画面から編集 |
-| **マルチユーザー** | 利用者ごとに独立したワークスペース。Firestore セキュリティルールで DB 層から分離 |
+| **マルチユーザー** | 利用者ごとに独立したワークスペース。API の所有者検証と Firestore セキュリティルールで分離 |
 | **受動的復習** | FSRS に基づき復習期の語を選び、LINE へ配信 |
 | **管理者制御** | 費用のかかる機能を全体で有効・無効化 (再デプロイ不要) |
 
@@ -107,7 +107,7 @@ AnkiFlow は**カードを作る手間をなくすこと**に集中していま�
 
 ## 規模
 
-2026-08-01 時点。
+2026-08-02 時点。
 
 | 項目 | 数 |
 | --- | --- |
@@ -115,8 +115,8 @@ AnkiFlow は**カードを作る手間をなくすこと**に集中していま�
 | コンポーネント | 82 |
 | API ルート | 30 |
 | ページ | 16 |
-| Vitest | 1,346 件 (105 ファイル) |
-| Playwright E2E | 60 件 (24 ファイル) |
+| Vitest | 1,392 件 (115 ファイル) |
+| Playwright E2E | 77 件 (25 ファイル) |
 
 ## 品質保証
 
@@ -137,7 +137,7 @@ GitHub Actions がすべての PR と `main` / `develop` への push で ESLint�
 
 ```bash
 npm install
-cp .env.example .env           # 各種 API キーを設定
+cp .env.example .env.local     # 各種 API キーを設定
 npm run seed                   # 初期データを投入
 firebase deploy --only firestore:rules,firestore:indexes
 npm run user:create -- <email> # 利用者を作成

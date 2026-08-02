@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-TST-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-REQ-001、AF-VER-001、AF-SET-001、AF-DEV-001 |
@@ -16,7 +16,7 @@
 
 検証仕様 (`verify/`) の記述方法そのものはランタイム検証仕様書 (AF-VER-001) に定める。本書は**何をどこまで担保しているか**を扱い、書き方は扱わない。
 
-本書に記載する件数は 2026-08-01 時点 (v0.13.1) の実測値である。
+本書に記載する件数は 2026-08-02 時点 (v0.14.0) の実測値である。
 
 件数を数える際は、**ファイル数と検証ユニット数を区別する。** 1 つの検証仕様ファイルが複数のユニットを登録する場合があるためである。
 
@@ -51,14 +51,14 @@
 
 | 種別 | 手段 | 対象 | 件数 |
 | --- | --- | --- | --- |
-| 単体試験 | Vitest (jsdom) | ロジック、API ルート、データ変換、移行スクリプト | 104 ファイル |
+| 単体試験 | Vitest (jsdom) | ロジック、API ルート、データ変換、移行スクリプト | 114 ファイル |
 | 検証仕様 | 独自フレームワーク + Vitest | コンポーネントの実行時のふるまい | 72 ファイル・76 ユニット (component 62、feature 14) |
-| E2E 試験 | Playwright | 画面をまたぐ操作の流れ | 24 ファイル |
+| E2E 試験 | Playwright | 画面をまたぐ操作の流れ | 25 ファイル・77 件 |
 | 静的検査 | ESLint、TypeScript | 記述規約、型 | — |
 
-単体試験と検証仕様は同一の実行系で動作する。`npm run verify` が実行するのは `verify/unit/` の 104 ファイルと、検証仕様をまとめて評価する `verify/matrix.test.ts` の 1 ファイルであり、実測は **105 ファイル / 1,346 件、全件成功**である。
+単体試験と検証仕様は同一の実行系で動作する。`npm run verify` が実行するのは `verify/unit/` の 114 ファイルと、検証仕様をまとめて評価する `verify/matrix.test.ts` の 1 ファイルであり、実測は **115 ファイル / 1,392 件、全件成功**である。
 
-検証仕様のファイル (`verify/specs/*.verify.tsx`) は、それ自体が試験ファイルとして実行されるのではなく、`matrix.test.ts` から登録・評価される。したがって 104 と 72 を足し合わせることはできない。
+検証仕様のファイル (`verify/specs/*.verify.tsx`) は、それ自体が試験ファイルとして実行されるのではなく、`matrix.test.ts` から登録・評価される。したがって 114 と 72 を足し合わせることはできない。
 
 ### 3.1 検証仕様の位置づけ
 
@@ -147,7 +147,7 @@
 | TC-ID | 対象要件 | 確認内容 | 実装箇所 |
 | --- | --- | --- | --- |
 | TC-060 | FR-060 | カテゴリを管理できること | `verify/specs/category-manager`、`category-selector` |
-| TC-061 | FR-061 | カードタイプとテンプレートを管理できること | `verify/specs/card-type-manager`、`card-template-editor`、`verify/unit/card-type-validation`、`card-template-fields` |
+| TC-061 | FR-061 | カードタイプとテンプレートを管理できること | `verify/specs/card-type-manager`、`card-template-editor`、`verify/unit/card-type-name`、`card-template-fields` |
 | TC-062 | FR-062 | コンテンツタイプと AI 出力プロファイルを管理できること | `verify/specs/content-type-manager`、`content-type-editor-page`、`ai-output-profiles-editor`、`e2e/content-type-ai-output-profiles` |
 | TC-063 | FR-063 | デッキを管理できること | `verify/specs/deck-manager`、`deck-selector`、`verify/unit/suggest-anki-deck-name` |
 | TC-064 | FR-064 | トピックを管理できること | `e2e/create-it-topic` |
@@ -180,6 +180,7 @@
 | 外部連携 | 共有シークレットによる保護と所有者の固定 | `verify/unit/integration-term-drafts` |
 | 共通 UI | ボタン、モーダル、表などの基本的なふるまい | `verify/specs/` の各コンポーネント仕様 |
 | 未保存の変更 | 離脱時に確認が働くこと | `verify/unit/unsaved-changes-guard`、`e2e/settings-unsaved-changes` |
+| 文書リンク | ルートおよび `docs/` 配下の Markdown にあるリポジトリ内リンクと見出しアンカーが有効であること | `verify/unit/docs-link-integrity` |
 
 ## 6. 網羅状況
 
@@ -260,5 +261,6 @@ npm run build         # 本番ビルド
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-02 | Vitest と E2E の件数を再計測し、存在しないカードタイプ試験パスを訂正するとともに文書リンクの回帰試験を追記 | hong-quyen |
 | 1.1 | 2026-08-01 | 件数を実測に基づき訂正 (単体試験 98→104 ファイル)。ファイル数と検証ユニット数の区別を明記。存在しない試験パス 2 件を実在するパスへ訂正し、未実装の FR-052 を試験なしとして明示 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。試験の方針と種別を定義し、機能要件と試験ケースのトレーサビリティマトリクスを作成した | hong-quyen |

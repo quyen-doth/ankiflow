@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-API-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-04-26 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-02 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-ARC-001、AF-DB-001、AF-PRM-001 |
@@ -108,7 +108,6 @@ AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly �
 | `/api/entries/*`、`/api/anki/*`、`/api/dashboard`、`/api/history/*`、`/api/generate`、`/api/content-types/suggest-instruction`、`/api/languages/detect`、`/api/audio/generate`、`/api/image` | **`withAuth`** (セッションクッキー) → 不足/不正時 401 | UID に基づいてデータをスコープ |
 | `/api/admin/global-config` (POST)、`/api/admin/content-types` (PUT/DELETE) | セッションクッキー **+ `email === ADMIN_EMAIL`** → 管理者でない場合 403 | コントロールプレーン mutation |
 | `/api/admin/content-types` (GET) | `withAuth` | 新規ユーザー用 global Content Type defaults を取得 |
-| その他の `/api/admin/*` (CRUD レガシー) | `withAuth` | クライアントコーラーなし (UI は Client SDK を使用) |
 | `/api/integrations/*` | ヘッダー `x-integration-token` **+ `INTEGRATION_TOKEN`** (constant-time 比較) → 401 | セッションクッキーなし、外部システム専用 |
 | `/api/cron/*` | ヘッダー `Authorization: Bearer` **+ `CRON_SECRET`** (constant-time 比較) → 401 | GitHub Actions の定期実行専用 |
 
@@ -142,11 +141,12 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | `LINE_CHANNEL_ACCESS_TOKEN`      | LINE Messaging API push/reply      | `/api/notifications/send`、`/api/notifications/line-webhook`、`/api/cron/srs-push` |
 | `LINE_CHANNEL_SECRET`            | LINE webhook 署名検証               | `/api/notifications/line-webhook`                                  |
 | `NEXT_PUBLIC_LINE_ADD_FRIEND_URL` | LINE 公式アカウント追加 URL (公開値) | Settings の LINE 連携 UI                                          |
+| `NEXT_PUBLIC_LINE_BOT_ID`        | LINE 公式アカウント ID (公開値・任意) | Settings の LINE 連携 UI                                          |
 | `INTEGRATION_TOKEN`              | 外部システム認証トークン           | `/api/integrations/term-drafts`                                   |
 | `INTEGRATION_TARGET_UID`         | term draft の作成先固定 uid        | `/api/integrations/term-drafts`                                   |
 | `CRON_SECRET`                    | GitHub Actions → cron API の共有 secret | `/api/cron/srs-push`                                          |
 
-> 現行アプリ/cron では `LINE_USER_ID` と `SRS_PUSH_TARGET_UID` を使用せず、通知先は各 `settings/{uid}.line_user_id` から解決する。`LINE_USER_ID` を参照する legacy 手動 script/workflow はクロスユーザー分離を満たさないため実行してはならない。`ANKI_CONNECT_URL` (サーバー env) と `API_SECRET`/`x-api-secret` も削除済みである。AnkiConnect URL はユーザーごと (`settings/{uid}.anki_connect_url`、フォールバック `http://localhost:8765`); 認証はセッションクッキーに移行。
+> 現行アプリ/cron では `LINE_USER_ID` と `SRS_PUSH_TARGET_UID` を使用せず、通知先は各 `settings/{uid}.line_user_id` から解決する。これらを参照していた旧スクリプトとワークフローは削除済みである。`ANKI_CONNECT_URL` (サーバー env) と `API_SECRET`/`x-api-secret` も削除済みである。AnkiConnect URL はユーザーごと (`settings/{uid}.anki_connect_url`、フォールバック `http://localhost:8765`); 認証はセッションクッキーに移行。
 
 ---
 
@@ -176,10 +176,6 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | **GET**           | `/api/history/facets`          | History filter 用 Content Type / 言語 facet を取得                                                |
 | **GET、PUT、DEL** | `/api/history/[id]`            | Entry 履歴の詳細を読み込み、更新、削除                                                           |
 | **POST**          | `/api/history/bulk-delete`     | 所有する Entry を最大 100 件削除し、未処理の Anki note ID を user settings queue に保存          |
-| **CRUD**          | `/api/admin/categories`        | カード分類 Categories を管理                                                                     |
-| **CRUD**          | `/api/admin/card-types`        | Card Type Config リストを管理                                                                    |
-| **CRUD**          | `/api/admin/topics`            | IT Vocabulary カード用 Topics を管理                                                             |
-| **CRUD**          | `/api/admin/decks`             | Anki Deck & Form type デフォルト間のマッピングを管理                                             |
 | **GET、PUT、DELETE** | `/api/admin/content-types`  | 新規ユーザー用 Content Type defaults を取得・更新。Mutation は管理者のみ、built-in delete 禁止    |
 | **POST**          | `/api/integrations/term-drafts` | 外部システム (Knowledge Hub) から term draft を受け取り Entry (`status:'draft'`) を作成          |
 | **GET**           | `/api/cron/srs-push`           | GitHub Actions 用 — user ごとの timezone に従って LINE 通知を fan-out                       |
@@ -667,37 +663,6 @@ History UI の単一・一括削除で使用。対象 Entry を所有権確認�
 
 ---
 
-### 6.7 Admin CRUD (Collections Manager)
-
-アプリ内のスキーマとドロップダウンリスト設定 (Category、Topic、Deck Configs) を管理するために使用される API グループ。ほとんどが標準的な RESTful CRUD アーキテクチャに従う。
-
-#### グループ `/api/admin/categories` & `/api/admin/topics` & `/api/admin/card-types` & `/api/admin/decks`
-
-- **GET:** 対応する document の array を返す。filter params を受け取り可能 (例: `?form_type=form_language`)。常に `sort_order` または `name` フィールドでソート。
-- **POST:**
-    - Body payload は新しい document 全体。
-    - _システム動作:_ `created_at`、`updated_at` を自動付与。デフォルト `is_active = true`。
-- **PUT:**
-    - Body payload: `{ "id": "docId", "name": "New Name", ... }`
-- **DELETE:**
-    - **実行:** 2 パターンが存在する。
-        1. `categories` の場合: hard-delete ではなく、`?id=xyz&is_active=false` クエリを受け取って Soft-Delete (状態トグル) を実行。
-        2. その他のテーブルの場合: `?id=xyz` を呼び出して Hard-Delete。
-
-#### グループ `/api/admin/content-types`
-
-新規アカウントへ snapshot としてコピーする global Content Type defaults を管理する。Runtime の
-Create / Resync はこの API または `content_types` を fallback として使用せず、ユーザー別
-`user_content_types` を読み取る。
-
-- **GET**: Firebase セッション必須。global config document を返す (管理者以外のログイン済み user も取得可)。
-- **PUT**: Firebase セッション + server-only `ADMIN_EMAIL` 一致が必須。Body は
-  `{ "id": string, "fields": FormFieldConfig[] }`。対象 document を読み、保存済みの実 `code` / `name` で完全な field schema、重複 key、built-in invariant
-  (Language: `language` + `word`、IT: `term`、General: `title`) を検証してから更新。違反は 400。
-- **DELETE**: Firebase セッション + `ADMIN_EMAIL` 一致が必須。Query `?id=<documentId>`。
-  Custom global default は削除可能であるが、`form_language` / `form_it` / `form_general` は 403 を返す。
-- **認証エラー**: session 不足・不正は 401、認証済み non-admin mutation または `ADMIN_EMAIL` 未設定は 403。
-
 ### 6.7 LINE Notifications
 
 #### `POST /api/notifications/line-link`
@@ -788,5 +753,6 @@ SRS entry を LINE Flex Message で fan-out する。`vercel.json` からは cro
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-02 | 削除済みの管理 API 4 ルートと旧 LINE 実行経路を除去し、公開 LINE 変数と節番号を現行実装へ同期 | hong-quyen |
 | 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更。章見出しの絵文字を削除 | hong-quyen |
 | 1.0 | 2026-04-26 | 初版作成 | hong-quyen |
