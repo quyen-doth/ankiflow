@@ -30,6 +30,14 @@ const LOCKFILE_PATH = 'package-lock.json';
 const UNRELEASED_HEADING = '## [Unreleased]';
 /** Commits produced by this script itself must not influence the next bump. */
 const PREPARATION_SUBJECT = /^chore: リリース v\d+\.\d+\.\d+ の準備$/;
+/**
+ * Commit types that never reach the changelog, per docs/CONTRIBUTING.md
+ * 「文書・テスト・CI 設定のみの変更は CHANGELOG.md に記載しない」.
+ * Releasing them would produce a version whose section is empty, which
+ * `release-tag-state.mjs` rejects only after the merge into main.
+ * A breaking marker (`docs!:`) does not match, so it stays releasable.
+ */
+const NON_RELEASABLE_SUBJECT = /^(docs|test|ci)(\([a-z0-9-]+\))?:/;
 /** Canonical order of Keep a Changelog categories. */
 const CATEGORY_ORDER = [
     '### 破壊的変更',
@@ -70,7 +78,12 @@ function compareVersions(a, b) {
     return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
 }
 
-/** Reads every non-merge commit in `base..HEAD`, excluding this script's own. */
+/**
+ * Reads the releasable non-merge commits in `base..HEAD`: everything except
+ * this script's own preparation commits and the types that never reach the
+ * changelog. A range containing only those yields an empty array, which the
+ * caller treats as "nothing to release".
+ */
 function readCommits() {
     const raw = git('log', '--no-merges', '--format=%s%x00%b%x1e', `${baseRef}..HEAD`);
     return raw
@@ -81,7 +94,11 @@ function readCommits() {
             const [subject, body = ''] = entry.split('\x00');
             return { subject: subject.trim(), body: body.trim() };
         })
-        .filter((commit) => !PREPARATION_SUBJECT.test(commit.subject));
+        .filter(
+            (commit) =>
+                !PREPARATION_SUBJECT.test(commit.subject) &&
+                !NON_RELEASABLE_SUBJECT.test(commit.subject),
+        );
 }
 
 function decideBump(commits, current) {
@@ -297,6 +314,17 @@ function main() {
 
     // Step 3 — prepare again from the clean state.
     const entries = renderEntries(parseEntries(unreleased));
+    // Refuse to prepare a release whose section would be empty. `release-tag-state.mjs`
+    // rejects that state too, but only after the merge into main — failing here keeps
+    // the problem on the branch, where the missing entry can still be written.
+    if (!entries.trim()) {
+        console.log(
+            `::error::CHANGELOG の [Unreleased] が空のため v${nextVersion} を準備できない。` +
+                `利用者に影響のある変更であれば [Unreleased] に追記すること。` +
+                `文書・テスト・CI のみの変更であればリリースは不要である (docs/CONTRIBUTING.md 参照)。`,
+        );
+        throw new Error(`Refusing to prepare v${nextVersion}: the [Unreleased] section is empty.`);
+    }
     sections = [{ title: `## [${nextVersion}] - ${date}`, body: entries }, ...sections];
     links = [
         `[Unreleased]: ${REPO_URL}/compare/v${nextVersion}...develop`,
@@ -308,9 +336,6 @@ function main() {
     console.log(`${formatVersion(baseVersion)} -> ${nextVersion} (${date})`);
     if (preparedVersion && preparedVersion !== nextVersion) {
         console.log(`Version recomputed: v${preparedVersion} -> v${nextVersion}`);
-    }
-    if (!entries.trim()) {
-        console.log('::warning::CHANGELOG の [Unreleased] が空である。リリース内容を手動で追記すること。');
     }
 
     if (dryRun) {
