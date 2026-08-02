@@ -98,15 +98,17 @@ Claude API、Google Cloud TTS、Unsplash は管理者が費用を負担する。
 | サービス | 無料枠 | 想定使用量 | 費用 |
 | --- | --- | --- | --- |
 | Firebase Firestore | 1 GB、読み取り 5 万件/日、書き込み 2 万件/日 | 前提のデータ量の範囲内 | 無料 |
-| Firebase Authentication | 登録アカウント数の上限なし (Identity Platform へ移行した場合は月間アクティブ利用者数に応じた課金が生じる) | 招待制、10 名未満 | 無料 |
+| Firebase Authentication | 登録アカウント数そのものに上限はない。ただし Spark 区分では Tier 1 (メール/パスワードなど) の 1 日あたりアクティブ利用者数が **3,000/日** に制限される。Blaze へ移行した場合は Identity Platform の課金体系となり、月間アクティブ利用者数 **50,000 MAU まで無料**、超過分は 0.0055 USD/MAU から | 招待制、10 名未満 | 無料 |
 | Claude API (`claude-haiku-4-5`) | なし (従量課金) | カード 1 枚あたり 1 リクエスト | **従量課金** |
-| Google Cloud TTS | 100 万文字/月 (WaveNet) | カード 1 枚あたり数百文字 | 無料 |
+| Google Cloud TTS | WaveNet 音声は **400 万文字/月** まで無料、超過分は 100 万文字あたり 4 USD。なお WaveNet は現在「Legacy TTS models」に分類されている (本アプリは `lib/tts.ts` で WaveNet 音声を選択する) | カード 1 枚あたり数百文字 | 無料 |
 | Unsplash API | 50 リクエスト/時 (Demo 区分) | カード 1 枚あたり 1 リクエスト | 無料 |
 | AnkiConnect | — | 利用者端末で動作する | 無料 |
 | AnkiWeb 同期 | — | — | 無料 |
 | ホスティング (Vercel) | Hobby 区分 | 個人利用 | 無料 |
 
 実費が発生するのは Claude API のトークン課金のみである。
+
+上記の無料枠は 2026-08-02 に公式資料で確認した値である。無料枠は予告なく変更されうるため、費用に関わる判断を行う前に再確認すること。出典は [Firebase Authentication の制限](https://firebase.google.com/docs/auth/limits)、[Identity Platform の料金](https://cloud.google.com/identity-platform/pricing)、[Google Cloud Text-to-Speech の料金](https://cloud.google.com/text-to-speech/pricing) である。
 
 ### 5.2 費用に関する要件
 
@@ -156,6 +158,7 @@ Claude API、Google Cloud TTS、Unsplash は管理者が費用を負担する。
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.3 | 2026-08-02 | Firebase Authentication の Spark 区分 DAU 上限と Blaze の MAU 無料枠、および WaveNet の無料文字数を公式資料に基づき訂正し、確認日と出典を追記 | hong-quyen |
 | 1.2 | 2026-08-01 | Firebase Authentication の無料枠の記述を、登録アカウント数の上限と課金条件を区別する形へ訂正 | hong-quyen |
 | 1.1 | 2026-08-01 | 性能および運用コストの実測について、効果測定計画書・報告書への参照を追加 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/PRD.md` 第 14 章および第 15 章を引き継ぎ、性能・可用性・セキュリティ・保守性の各要件を追加した | hong-quyen |

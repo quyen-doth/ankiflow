@@ -48,8 +48,18 @@ There is **no `x-api-secret` header and no `withAuthGuard`** — those belonged 
 `ADMIN_EMAIL` check). Never protect them with `withAuth` alone.** Admin SDK calls bypass
 Firestore Security Rules, so authentication without the admin authorization check is insufficient.
 
-**Per-user data:** server writes MUST set `user_id: uid`; queries on per-user collections
-MUST filter by `user_id` (see the `database` skill).
+**Per-user data:** server writes MUST set `user_id: uid`. How ownership is enforced on reads
+depends on the shape of the query — API routes use the Admin SDK, which **bypasses Firestore
+Security Rules**, so there is no safety net behind either form:
+
+| Query shape | Required enforcement |
+| --- | --- |
+| Collection query | MUST filter `where('user_id', '==', uid)` |
+| Point lookup by document ID | Cannot express that filter. Fetch, then compare the document's `user_id` to the caller's uid, and treat a mismatch as **not-found (404)**, never as forbidden — this applies to reads as well as mutations |
+
+Reference implementation for the point-lookup form: `getOwnedEntryRef()` in
+`app/api/history/[id]/route.ts`. See the `database` skill and `docs/02-design/SECURITY.md`
+for the full Client SDK / Admin SDK matrix.
 
 ---
 
@@ -136,7 +146,7 @@ export const POST = withAuth(POST_handler)
 - [ ] Response shape matches `apiSuccess`/`apiError` (no `code` field)?
 - [ ] Correct auth layer chosen (`withAuth` / `withAdmin` / explicit `verifySessionUser` + `ADMIN_EMAIL` / `verifyStaticToken`)?
 - [ ] Admin control-plane mutations use `withAdmin` (or an equivalent explicit `ADMIN_EMAIL` check), never `withAuth` alone?
-- [ ] Server writes set `user_id: uid`; per-user queries filter by `user_id`?
+- [ ] Server writes set `user_id: uid`; per-user **collection queries** filter by `user_id`; per-user **point lookups** compare `user_id` after fetching and mask a mismatch as 404?
 - [ ] Does the new endpoint conflict with an existing one?
 
 ---
