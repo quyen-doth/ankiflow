@@ -48,8 +48,11 @@ There is **no `x-api-secret` header and no `withAuthGuard`** — those belonged 
 `ADMIN_EMAIL` check). Never protect them with `withAuth` alone.** Admin SDK calls bypass
 Firestore Security Rules, so authentication without the admin authorization check is insufficient.
 
-**Per-user data:** server writes MUST set `user_id: uid`. How ownership is enforced on reads
-depends on the shape of the query — API routes use the Admin SDK, which **bypasses Firestore
+**Per-user data:** there are two different ownership models — pick the one the collection uses.
+
+**(a) Collections carrying a `user_id` field** — `entries`, `decks`, `categories`, `card_types`,
+`topics`, `user_content_types`, `review_events`. Server writes MUST set `user_id: uid`. Enforcement
+on reads depends on the shape of the query; API routes use the Admin SDK, which **bypasses Firestore
 Security Rules**, so there is no safety net behind either form:
 
 | Query shape | Required enforcement |
@@ -58,8 +61,17 @@ Security Rules**, so there is no safety net behind either form:
 | Point lookup by document ID | Cannot express that filter. Fetch, then compare the document's `user_id` to the caller's uid, and treat a mismatch as **not-found (404)**, never as forbidden — this applies to reads as well as mutations |
 
 Reference implementation for the point-lookup form: `getOwnedEntryRef()` in
-`app/api/history/[id]/route.ts`. See the `database` skill and `docs/02-design/SECURITY.md`
-for the full Client SDK / Admin SDK matrix.
+`app/api/history/[id]/route.ts`.
+
+**(b) Documents keyed BY the uid** — `settings/{uid}`. Ownership is structural: the document ID
+*is* the owner, so there is no `user_id` field and nothing to compare. The rule here is different —
+**derive the document ID from the authenticated uid, never from request input**
+(`db.collection('settings').doc(sessionUser.uid)`, see `app/api/notifications/send/route.ts`).
+Accepting a caller-supplied id for these documents is the bug to look for.
+Note `settings/global` and `settings/default` live in the same collection but are *not* per-user:
+`global` is admin-write, `default` is admin-only.
+
+See the `database` skill and `docs/02-design/SECURITY.md` for the full Client SDK / Admin SDK matrix.
 
 ---
 
@@ -146,7 +158,8 @@ export const POST = withAuth(POST_handler)
 - [ ] Response shape matches `apiSuccess`/`apiError` (no `code` field)?
 - [ ] Correct auth layer chosen (`withAuth` / `withAdmin` / explicit `verifySessionUser` + `ADMIN_EMAIL` / `verifyStaticToken`)?
 - [ ] Admin control-plane mutations use `withAdmin` (or an equivalent explicit `ADMIN_EMAIL` check), never `withAuth` alone?
-- [ ] Server writes set `user_id: uid`; per-user **collection queries** filter by `user_id`; per-user **point lookups** compare `user_id` after fetching and mask a mismatch as 404?
+- [ ] For `user_id`-carrying collections: server writes set `user_id: uid`; **collection queries** filter by `user_id`; **point lookups** compare `user_id` after fetching and mask a mismatch as 404?
+- [ ] For uid-keyed documents (`settings/{uid}`): is the document ID taken from the authenticated uid rather than from request input?
 - [ ] Does the new endpoint conflict with an existing one?
 
 ---
