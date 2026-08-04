@@ -83,8 +83,15 @@ gh pr create --base develop --title "feat: エクスポート履歴画面を追�
 
 | リリース対象に含まれるコミット | 繰り上げ |
 | --- | --- |
-| `feat:` / `feat!:` / 本文に `BREAKING CHANGE` | MINOR (0.x の間) / MAJOR (1.0.0 以降) |
-| 上記以外の type (`fix` `refactor` `perf` `chore` `docs` `test` `style` `ci` `build` `revert`) | PATCH |
+| `feat:` / 任意の type の `!:` / 本文に `BREAKING CHANGE` フッター | MINOR (0.x の間) / MAJOR (1.0.0 以降) |
+| `docs:` `test:` `ci:` のみ | 繰り上げない (リリース PR を作成しない) |
+| 上記以外の type (`fix` `refactor` `perf` `chore` `style` `build` `revert`) | PATCH |
+
+`docs:` `test:` `ci:` は本ガイド「開発者が行うこと」により `CHANGELOG.md` に記載しない種類である。したがってこれらだけを含む範囲では版を繰り上げず、リリース PR も作成しない。本文の空いた版を作ると、`main` へ merge した後に `release-tag.yml` が必ず失敗するためである。
+
+ただし**破壊的変更は type を問わず繰り上げの対象**である。`docs!:` も、本文に `BREAKING CHANGE` フッターを持つ `docs:` も、通常どおりリリースされる。
+
+なお `[Unreleased]` が空のままリリースを準備しようとした場合、`prepare-release.mjs` はファイルを書き換えずに中断する。利用者に影響のある変更であれば `[Unreleased]` へ追記し、そうでなければリリース自体が不要である。
 
 現在は `0.x` であり、SemVer 第 4 項のとおり公開 API の安定性を約束していない。したがって破壊的変更も MINOR として扱うが、その場合は `CHANGELOG.md` に「破壊的変更」の見出しを設けて明記すること。
 
@@ -164,6 +171,7 @@ npm install   # prepare スクリプトが git config core.hooksPath .githooks �
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.4 | 2026-08-02 | 文書・テスト・CI のみの変更は繰り上げずリリース PR も作成しないこと、破壊的変更は type を問わず繰り上げの対象であること、`[Unreleased]` が空の場合は準備を中断することを追記 | hong-quyen |
 | 1.3 | 2026-08-02 | タグと GitHub Release の再実行時に不足分だけを補い、不正な ref・タグ・リリースノートを fail-closed で拒否する挙動を追記 | hong-quyen |
 | 1.2 | 2026-08-01 | 文書管理情報と改訂履歴を追加 | hong-quyen |
 | 1.1 | 2026-07-31 | バージョニング規則の章を追加 | hong-quyen |

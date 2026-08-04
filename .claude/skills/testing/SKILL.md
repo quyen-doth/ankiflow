@@ -57,7 +57,7 @@ AnkiConnect is NOT assumed to be available — mock or skip AnkiConnect-dependen
 
 - Full Create → Preview flow per FormType
 - History page: list, detail view
-- Admin CRUD flows (sign in as the account whose email matches `ADMIN_EMAIL` — auth is a session cookie, there is no `x-api-secret`)
+- Admin screen (`/admin`): the five owner-scoped tabs — Categories, Card Types, Topics, Decks, Content Types — including the `__defaults__` owner-scope switch. Global feature flags live on `/settings/admin`. (Sign in as the account whose email matches `ADMIN_EMAIL` — auth is a session cookie, there is no `x-api-secret`.)
 - Settings page: toggle states persist after reload
 
 ### What NOT to test

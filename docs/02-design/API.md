@@ -111,7 +111,13 @@ AnkiFlow は **Firebase Authentication (メール/パスワード) + httpOnly �
 | `/api/integrations/*` | ヘッダー `x-integration-token` **+ `INTEGRATION_TOKEN`** (constant-time 比較) → 401 | セッションクッキーなし、外部システム専用 |
 | `/api/cron/*` | ヘッダー `Authorization: Bearer` **+ `CRON_SECRET`** (constant-time 比較) → 401 | GitHub Actions の定期実行専用 |
 
-**データの分離:** すべての `entries` + マスターデータクエリが `user_id == uid` でフィルタリング; ミューテーション時の所有権チェック (別のユーザーのエントリを更新/削除 → 404)。最後のレイヤーは **Firestore Security Rules** (Client SDK)。
+**データの分離:** API ルートは Admin SDK を用いるため Rules をバイパスする。所有権の担保方法はコレクションによって 2 通りある。
+
+**(a) `user_id` フィールドを持つコレクション** (`entries`、`decks`、`categories`、`card_types`、`topics`、`user_content_types`、`review_events`) — 強制方法が問い合わせの形で分かれる。**コレクションに対する検索**は `user_id == uid` で絞り込む。**ドキュメント ID による単一取得**はその絞り込みを表現できないため、取得後に `user_id` と呼び出し元 UID を照合し、不一致は存在を明かさない **404** として扱う (403 ではない)。この照合は変更操作だけでなく**読み取りにも適用する** — 例は `app/api/history/[id]/route.ts` の `getOwnedEntryRef()`。
+
+**(b) UID をドキュメント ID とする文書** (`settings/{uid}`) — 所有権は構造的に決まる。`user_id` フィールドは存在せず、照合すべき対象もない。守るべき規則は、**ドキュメント ID を認証済み UID から導出し、リクエスト入力から受け取らない**ことである (`app/api/notifications/send/route.ts` を参照)。なお同じコレクションの `settings/global` と `settings/default` は利用者ごとの文書ではなく、それぞれ管理者書き込み・管理者専用である。
+
+Client SDK の直接アクセスに対する最後のレイヤーは **Firestore Security Rules**。2 軸の詳細な表は `docs/02-design/SECURITY.md` を参照。
 
 **管理者 (2 つの独立したメカニズム):** サーバーは env `ADMIN_EMAIL` を使用; Firestore ルールはカスタムクレーム
 `admin:true` を使用。`NEXT_PUBLIC_ADMIN_EMAIL` は UI ゲートのみ。
