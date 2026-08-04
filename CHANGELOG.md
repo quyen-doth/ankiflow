@@ -10,6 +10,8 @@
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-04
+
 ### セキュリティ
 
 - Next.js を 16.2.11 へ更新し、上流のセキュリティ修正を取り込んだ。3 件の勧告 (Server Actions の DoS、Turbopack 利用時の Middleware 迂回、rewrites の SSRF) はいずれも本アプリの現行構成には該当せず、予防的な更新である
@@ -278,7 +280,8 @@
 - LINE 通知による受動的復習機能の追加
 - Vercel へのデプロイ
 
-[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.0...develop
+[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.1...develop
+[0.14.1]: https://github.com/quyen-doth/ankiflow/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/quyen-doth/ankiflow/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/quyen-doth/ankiflow/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/quyen-doth/ankiflow/compare/v0.12.0...v0.13.0
