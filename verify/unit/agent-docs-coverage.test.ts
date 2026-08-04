@@ -23,13 +23,26 @@ function trackedDocsMarkdown(): string[] {
     .filter(line => line.endsWith('.md'))
 }
 
-/** Extract coverage tokens from an agent file: exact `docs/…/x.md` paths and explicit `docs/<dir>/` entries. */
+const DOCS_TABLE_HEADER = '| File | Read when |'
+
+/** Slice out only the Docs table so incidental `docs/…` mentions elsewhere (prose, Gotchas) do not count as coverage. */
+function docsTableRegion(content: string): string {
+  const lines = content.replace(/\r\n/g, '\n').split('\n')
+  const start = lines.findIndex(line => line.trimStart().startsWith(DOCS_TABLE_HEADER))
+  if (start === -1) throw new Error(`${DOCS_TABLE_HEADER} header not found — the Docs table may have moved`)
+  let end = start + 1
+  while (end < lines.length && lines[end].trimStart().startsWith('|')) end += 1
+  return lines.slice(start, end).join('\n')
+}
+
+/** Extract coverage tokens from the agent file's Docs table: exact `docs/…/x.md` paths and explicit `docs/<dir>/` entries. */
 function coverage(agentFile: string): { files: Set<string>; directories: Set<string> } {
   const content = readFileSync(resolve(REPO_ROOT, agentFile), 'utf8')
+  const region = docsTableRegion(content)
   const files = new Set<string>()
   const directories = new Set<string>()
 
-  for (const match of content.matchAll(/docs\/[A-Za-z0-9_./-]+/g)) {
+  for (const match of region.matchAll(/docs\/[A-Za-z0-9_./-]+/g)) {
     const token = match[0]
     if (token.endsWith('.md')) {
       files.add(token)
