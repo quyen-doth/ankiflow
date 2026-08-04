@@ -12,6 +12,13 @@ description: >
 Make every deploy **intentional** — all conditions checked,
 no obvious errors, and the user has confirmed.
 
+> **Deploying the app ≠ releasing a version.** This skill covers deploying the current
+> app state. A version **release** (tagging, `main`) is a separate, automated flow: merging
+> to `develop` opens a Release PR via `.github/workflows/release-pr.yml`, and merging that PR
+> to `main` cuts the tagged release via `.github/workflows/release-tag.yml`. Do not restate the
+> release procedure here — the single source of truth is `docs/04-operations/OPERATIONS.md`
+> §3 (リリース) and §4 (デプロイ).
+
 ---
 
 ## Step 1 — Required context
@@ -63,7 +70,7 @@ PRE-DEPLOY CHECKLIST
 ===========================
 ✅ Build: OK
 ✅ TypeScript: OK
-⚠️  Console.log: 2 leftovers (app/cards/page.tsx:14, components/Deck/index.tsx:8)
+⚠️  Console.log: 2 leftovers (app/cards/page.tsx:14, components/preview/DeckList.tsx:8)
 ✅ ENV: OK
 ❌ Blocking TODO: 1 (app/api/sync/route.ts:32 - "TODO: add rate limiting")
 

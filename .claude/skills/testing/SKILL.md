@@ -57,7 +57,7 @@ AnkiConnect is NOT assumed to be available — mock or skip AnkiConnect-dependen
 
 - Full Create → Preview flow per FormType
 - History page: list, detail view
-- Admin CRUD flows (sign in as the account whose email matches `ADMIN_EMAIL` — auth is a session cookie, there is no `x-api-secret`)
+- Admin flows: Content Types and global config (sign in as the account whose email matches `ADMIN_EMAIL` — auth is a session cookie, there is no `x-api-secret`)
 - Settings page: toggle states persist after reload
 
 ### What NOT to test

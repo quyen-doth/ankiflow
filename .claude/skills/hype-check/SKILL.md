@@ -1,4 +1,5 @@
 ---
+name: hype-check
 description: "Adversarially review trending AI tools, OSS, papers, products, articles, X posts, and slide decks to judge whether they are worth adopting in real work (aka the 'AI hype-merchant check'). Always use for requests like 'is this actually usable?', 'what do you think of the trending X?', 'evaluate this tool' — any request questioning the authenticity or adoption-worthiness of a hyped AI topic."
 argument-hint: "URL or tool/paper name  e.g. /hype-check https://github.com/xxx/yyy"
 allowed-tools: [WebSearch, WebFetch, Read, Write]

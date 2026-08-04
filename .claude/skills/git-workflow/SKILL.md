@@ -69,7 +69,7 @@ PRBODY
 ```
 
 - PR title: same format as commits (Japanese)
-- PR body: follow `.github/PULL_REQUEST_TEMPLATE.md` (概要 / 変更内容 / テスト・確認方法 / チェックリスト)
+- PR body: follow `.github/PULL_REQUEST_TEMPLATE.md` (概要 / 変更内容 / テスト・確認方法)
 - Base is always `develop`
 
 ---
