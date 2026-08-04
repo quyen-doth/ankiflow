@@ -132,6 +132,11 @@ Verification dashboard (dev only): `/verify`. See `docs/03-development/VERIFICAT
 | `docs/03-development/TEST_PLAN.md` | Test scope, FR-ID to TC-ID traceability |
 | `docs/03-development/VERIFICATION.md` | Writing or modifying verification specs (`verify/`) |
 | `docs/04-operations/OPERATIONS.md` | Release, deploy, migrations, incident handling, rollback |
+| `docs/05-evaluation/EFFECT_MEASUREMENT_PLAN.md` | Designing or running an effectiveness measurement / A-B experiment |
+| `docs/05-evaluation/EFFECT_MEASUREMENT_REPORT.md` | Recording or reading effectiveness-measurement results |
+| `docs/06-user/USER_GUIDE.md` | End-user usage/onboarding wording and flows |
+| `docs/06-user/FAQ.md` | User-facing FAQ answers |
+| `docs/adr/` | Why a past architecture/design decision was made (Architecture Decision Records; index in `docs/README.md`) |
 | `docs/CONTRIBUTING.md` | Branching, commits, PRs, versioning and releases |
 
 ## Gotchas
