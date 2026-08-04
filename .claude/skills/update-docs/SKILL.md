@@ -27,6 +27,14 @@ state of the codebase — nothing extra, nothing missing, nothing stale.
 | Design tokens, component patterns, layout, theme   | `docs/02-design/DESIGN.md`       |
 | Directory structure, data flow, env vars           | `docs/02-design/ARCHITECTURE.md`    |
 | Verification spec format / harness change          | `docs/03-development/VERIFICATION.md` |
+| Auth, authorization, Firestore rules, admin detection | `docs/02-design/SECURITY.md` |
+| Add / remove a screen, navigation change (SC-IDs)  | `docs/02-design/SCREENS.md` |
+| Exported Anki card contents (fields on a card)     | `docs/02-design/CARD_TEMPLATES.md` |
+| AI generation behaviour / prompts / output profiles | `docs/02-design/AI_PROMPTS.md` |
+| Performance / availability / cost / maintainability constraint | `docs/01-requirements/NFR.md` |
+| Env vars, local setup, AnkiConnect CORS, npm scripts | `docs/03-development/SETUP.md` |
+| Test scope, FR-ID ↔ TC-ID traceability             | `docs/03-development/TEST_PLAN.md` |
+| Release / deploy / migration / incident procedure  | `docs/04-operations/OPERATIONS.md` |
 | Git workflow / conventions change                  | `docs/CONTRIBUTING.md` |
 | Change business logic / major scope                | `docs/01-requirements/REQUIREMENTS.md`          |
 
