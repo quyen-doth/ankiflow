@@ -10,6 +10,10 @@
 
 ## [Unreleased]
 
+### セキュリティ
+
+- Next.js を 16.2.11 へ更新し、上流のセキュリティ修正を取り込んだ。3 件の勧告 (Server Actions の DoS、Turbopack 利用時の Middleware 迂回、rewrites の SSRF) はいずれも本アプリの現行構成には該当せず、予防的な更新である
+
 ## [0.14.0] - 2026-08-02
 
 ### 削除
