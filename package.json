@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed-firestore.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
     "verify": "vitest run",
     "verify:watch": "vitest",
     "test:e2e": "playwright test",

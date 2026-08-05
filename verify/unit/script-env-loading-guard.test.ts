@@ -17,6 +17,7 @@ const PROJECT_CONFIG_CLI_PATHS = [
   'scripts/migrate-form-type.ts',
   'scripts/migrate-user-content-types.ts',
   'scripts/migrate-user-data.ts',
+  'scripts/seed-demo.ts',
   'scripts/seed-firestore.ts',
   'scripts/set-admin-claim.ts',
   'scripts/sync-admin-defaults.ts',
