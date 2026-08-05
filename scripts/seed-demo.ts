@@ -9,8 +9,10 @@
  *   DEMO_EMAIL   — the demo account email (its Auth user must already exist)
  *
  * Usage:
- *   npm run seed:demo            → seed master defaults (idempotent) + demo entries
- *   npm run seed:demo -- --clean → delete ONLY the demo entries created by this script
+ *   npm run seed:demo             → seed master defaults (idempotent) + demo entries
+ *   npm run seed:demo -- --reset  → FIRST delete every entry this script did NOT create
+ *                                   (so captures show only the curated demo set), then seed
+ *   npm run seed:demo -- --clean  → delete ONLY the demo entries created by this script
  *
  * Idempotent: every entry uses a deterministic document ID (`demo__<uid>__<slug>`),
  * so re-running overwrites in place instead of creating duplicates. Timestamps are
@@ -334,6 +336,21 @@ async function cleanEntries(uid: string): Promise<void> {
     console.log(`  ✅ ${DEMO_ENTRIES.length} demo entries + script-created General deck removed. (Other master data untouched.)`);
 }
 
+/**
+ * Delete every entry in the demo account that this script did NOT create, so captures
+ * show only the curated demo dataset (deterministic, and the README's "neutral sample
+ * data" caption stays true). Destructive — gated behind the explicit `--reset` flag and
+ * the user's confirmation.
+ */
+async function purgeForeignEntries(uid: string): Promise<void> {
+    console.log('\n🧨 --reset: removing entries NOT created by this script...');
+    const snap = await db.collection('entries').where('user_id', '==', uid).get();
+    const prefix = `demo__${uid}__`;
+    const foreign = snap.docs.filter(d => !d.id.startsWith(prefix));
+    await Promise.all(foreign.map(d => d.ref.delete()));
+    console.log(`  ✅ Removed ${foreign.length} non-demo entr${foreign.length === 1 ? 'y' : 'ies'} (kept ${snap.size - foreign.length} demo).`);
+}
+
 async function main(): Promise<void> {
     const email = process.env.DEMO_EMAIL!.trim();
     console.log('🚀 Demo seed');
@@ -350,6 +367,10 @@ async function main(): Promise<void> {
         await cleanEntries(uid);
         console.log('\n✨ Clean complete!');
         process.exit(0);
+    }
+
+    if (process.argv.includes('--reset')) {
+        await purgeForeignEntries(uid);
     }
 
     console.log('\n📦 Ensuring master defaults (idempotent)...');
