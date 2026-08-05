@@ -31,6 +31,7 @@ const INJECTED_ONLY_CLI_REASONS = {
 const ENV_INDEPENDENT_ENTRY_POINT_REASONS = {
   'scripts/agent-hooks/block-env.mjs': 'The hook validates tool input and does not use project env.',
   'scripts/agent-hooks/block-env.test.mjs': 'The hook test does not use project env.',
+  'scripts/optimize-screenshots.ts': 'Image optimization only reads/writes files and uses no project env.',
   'scripts/setup-anki.js': 'The local AnkiConnect setup uses constants instead of project env.',
 } as const satisfies Record<string, string>
 
