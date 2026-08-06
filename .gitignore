@@ -16,6 +16,10 @@
 /playwright-report/
 /blob-report/
 
+# Portfolio capture videos — never commit (git cannot delta-compress binaries)
+*.webm
+*.mp4
+
 # next.js
 /.next/
 /out/

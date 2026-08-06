@@ -17,8 +17,13 @@
 
 </div>
 
-<!-- TODO(user): 撮影後、次の行のコメントを外してください。ファイルは docs/screenshots/ に置きます。
-![カード作成画面](docs/screenshots/create.png)
+![AnkiFlow ダッシュボード](docs/screenshots/sc-003-dashboard.png)
+
+<!-- TODO(user): コアループのデモ動画。`npm run screenshots:video` で生成した
+     docs/screenshots/core-loop.webm を GitHub の Issue にドラッグ&ドロップし、
+     生成された user-attachments の URL を次の形式で貼り付けてください:
+
+     https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 -->
 
 ## 解こうとした課題
@@ -42,9 +47,11 @@ AnkiFlow は**カードを作る手間をなくすこと**に集中していま�
 
 対応するのは語学 (英語・中国語・日本語)、IT 用語、一般知識です。コンテンツタイプは利用者が追加できます。
 
-<!-- TODO(user): 撮影後、次の行のコメントを外してください。
-![プレビュー画面](docs/screenshots/preview.png)
--->
+語を入力すると、AI が意味・IPA・例文・コロケーションを補完し、Unsplash 画像と Google TTS 音声を添えます。下は生成されたカードの詳細画面です。
+
+![AI が補完したカードの詳細](docs/screenshots/sc-008-history-detail.png)
+
+_画面キャプチャはデモ環境のもので、中立的なサンプル語彙を表示しています。カード内の画像は Unsplash 提供です。_
 
 ## システム構成
 
