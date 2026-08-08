@@ -10,6 +10,10 @@
 
 ## [Unreleased]
 
+### セキュリティ
+
+- 間接依存の fast-xml-parser、nanoid、js-yaml を更新し、DOCTYPE エンティティ展開制限の回避、無限ループ、および YAML の `!!omap` 処理における過大な CPU 消費の脆弱性を修正
+
 ## [0.14.2] - 2026-08-08
 
 ### 変更
