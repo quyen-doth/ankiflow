@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 検証用コメント。
+// auth判定とmerge writeをroute単体で観測するため、Admin SDKをin-memory化する。
 const { verifyMock, docStore } = vi.hoisted(() => ({
   verifyMock: vi.fn(),
   docStore: new Map<string, Record<string, unknown>>(),
@@ -125,7 +125,7 @@ describe('POST /api/admin/global-config — 有効な admin', () => {
 
     const saved = docStore.get('settings/global')
     expect(saved?.tts_available).toBe(false)
-    expect(saved?.ai_model).toBe('claude-haiku-4-5') // 検証用コメント。
+    expect(saved?.ai_model).toBe('claude-haiku-4-5')
     expect(saved?.unsplash_available).toBe(true)
   })
 

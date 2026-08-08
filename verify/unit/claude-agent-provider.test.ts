@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 検証用コメント。
+// tool強制・retry・schema検証を観測するため、SDK responseを完全制御する。
 const { createMock } = vi.hoisted(() => ({ createMock: vi.fn() }))
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class {

@@ -5,18 +5,17 @@ import { verifyGlobals } from '@/verify/core/globals'
 import { registerUnit } from '@/verify/core/registry'
 
 const NAV_HREFS = ['/dashboard', '/create', '/history', '/admin', '/settings']
-// 検証用コメント。
+// 共通fixtureはadmin扱いなので、admin専用linkも存在を検証する。
 const ADMIN_NAV_HREF = '/settings/admin'
 
-// 検証用コメント。
+// 内包するConnectedBadgeのpollを外部networkへ出さないためのmock。
 const ankiConnectMock = {
   fetch: [
     { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
   ],
 }
 
-// 検証用コメント。
-// 検証用コメント。
+// Browserでは実pathnameが/verifyになるため、active判定はnavigation mock時だけ検証する。
 function checkActiveLink(root: HTMLElement, expectedHref: string | null): true | string {
   if (!verifyGlobals().__verifyNav) return true
   const links = Array.from(root.querySelectorAll<HTMLAnchorElement>('aside nav a'))

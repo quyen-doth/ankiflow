@@ -23,7 +23,6 @@ const sampleColumns = [
   { key: 'status', header: 'Status' },
 ]
 
-// 検証用コメント。
 const clickSpy = { rows: [] as SampleRow[] }
 
 registerUnit<SampleTableProps>({

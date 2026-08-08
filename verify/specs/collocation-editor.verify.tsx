@@ -20,7 +20,6 @@ function pressEnter(root: HTMLElement): void {
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 }
 
-// 検証用コメント。
 function clickAdd(root: HTMLElement): void {
   const btn = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Add')
   if (!btn) throw new Error('要素が見つかりません')

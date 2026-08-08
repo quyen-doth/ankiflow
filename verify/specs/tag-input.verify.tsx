@@ -6,7 +6,6 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type TagInputProps = ComponentProps<typeof TagInput>
 
-// 検証用コメント。
 const changeSpy = { count: 0, lastTags: null as string[] | null }
 const recordChange = (tags: string[]) => {
   changeSpy.count++

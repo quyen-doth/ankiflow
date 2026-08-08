@@ -34,12 +34,10 @@ function flush(ms = 0): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// 検証用コメント。
-// 検証用コメント。
+// 既存importとの互換性を保つため、分離したfixtureユーザーを再公開する。
 export { TEST_AUTH_USER }
 
-// 検証用コメント。
-// 検証用コメント。
+// Strict Modeでeffectが再実行されてもcreateRootを重複させない。
 const visibleRoots = new WeakMap<HTMLElement, Root>()
 
 function computeVerdict(checks: Check[], blockedReason?: string): Verdict {
@@ -63,7 +61,7 @@ function buildActContext(root: HTMLElement): ActContext {
     type: async (selector, text) => {
       const el = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(selector)
       if (!el) throw new Error(`act.type: "${selector}" が見つかりません`)
-      // 検証用コメント。
+      // Reactのcontrolled inputへ変更を認識させるため、native setter経由で更新する。
       const proto = el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
         : HTMLInputElement.prototype
@@ -78,10 +76,7 @@ function buildActContext(root: HTMLElement): ActContext {
   }
 }
 
-/**
- * 検証用コメント。
- * install mocks → mount → act → run verifiers → verdict → cleanup.
- */
+/** consumer間で判定差を生まないよう、mountからcleanupまでを単一経路へ集約する。 */
 export async function runFixture<P>(
   unit: VerifiableUnit<P>,
   fixture: Fixture<P>,
@@ -95,8 +90,7 @@ export async function runFixture<P>(
 
   const globals = verifyGlobals()
 
-  // 検証用コメント。
-  // 検証用コメント。
+  // BrowserではFirestore stubを注入できないため、該当fixtureはvitestへ委ねる。
   if (fixture.mocks?.firestore && !globals.__verifyFirestoreSeed) {
     return {
       unitId: unit.id,
@@ -244,11 +238,11 @@ export async function runFixture<P>(
           reactRoot?.unmount()
         })
       } catch {
-        // 検証用コメント。
+        // cleanup失敗で検証結果を覆い隠さない。
       }
       if (createdContainer) container.remove()
     }
-    // 検証用コメント。
+    // fixture間の状態漏れを防ぐため、keepMountedでもmockは必ず元へ戻す。
     for (const restore of restoreFns.reverse()) restore()
   }
 

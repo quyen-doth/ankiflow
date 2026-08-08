@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-// 検証用コメント。
+// 登録漏れを検知できるよう、matrix構築前に全定義を読み込む。
 import '@/verify/verifiers'
 import '@/verify/specs'
 
 import { allUnits } from '@/verify/core/registry'
 import { runFixture } from '@/verify/core/runner'
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- */
+/** probeが実際の違反を検出できることを示すため、意図的なFAILだけを列挙する。 */
 const EXPECTED_FAIL = new Set([
   // Phase A
   'Badge::probe-empty-label',

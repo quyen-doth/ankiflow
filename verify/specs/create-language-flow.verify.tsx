@@ -7,11 +7,7 @@ import { FormType, LanguageType } from '@/types'
 
 const LANGUAGE_BLUEPRINT = BUILTIN_BLUEPRINTS[FormType.LANGUAGE]!
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- * 検証用コメント。
- */
+/** component単体ではなく、入力からPreview handoffまでの境界を一連で検証する。 */
 
 const GENERATED = {
   word: '猫',

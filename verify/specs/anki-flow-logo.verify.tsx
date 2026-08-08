@@ -62,7 +62,7 @@ registerUnit<AnkiFlowLogoProps>({
       description: '検証ケース。',
       check: ({ root, props }) => {
         const link = root.querySelector('a')
-        // 検証用コメント。
+        // 未指定時だけdashboardへ補完し、空文字はlink無効として扱う。
         const expectedHref = props.href === undefined ? '/dashboard' : props.href
         const expected = Boolean(expectedHref)
         if (!!link !== expected) return `link=${!!link}, expected=${expected}`

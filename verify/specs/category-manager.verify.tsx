@@ -10,7 +10,7 @@ import {
   tableRows,
 } from './manager-helpers'
 
-// 検証用コメント。
+// sort_orderとactive切替を同じfixtureで検証するseed。
 const SEED = {
   categories: [
     { id: 'c-life', name: 'Daily Life', form_type: FormType.LANGUAGE, sort_order: 1, is_active: true },

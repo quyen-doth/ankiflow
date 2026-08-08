@@ -80,7 +80,6 @@ async function seedGlobalContentTypes(db: FirebaseFirestore.Firestore): Promise<
 }
 
 beforeEach(() => {
-  // 検証用コメント。
 })
 
 describe('userScopedId', () => {
@@ -118,18 +117,18 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
 
     await seedUserDefaults(db, 'user1')
 
-    // 検証用コメント。
+    // hardcodeをtemplateとして先に公開する契約を検証する。
     const catTemplates = db._dump('categories')
     expect(catTemplates.has('cat_daily')).toBe(true)
     expect(catTemplates.get('cat_daily')?.user_id).toBe(DEFAULTS_OWNER_ID)
 
-    // 検証用コメント。
+    // user copyには所有者scope付きIDが使われることを検証する。
     const userCat = catTemplates.get(userScopedId('cat_daily', 'user1'))
     expect(userCat).toBeDefined()
     expect(userCat?.user_id).toBe('user1')
     expect(userCat?.name).toBe(DEFAULT_CATEGORIES[0].name)
 
-    // 検証用コメント。
+    // templateとuser copy以外の重複docがないことを検証する。
     expect(catTemplates.size).toBe(DEFAULT_CATEGORIES.length * 2)
 
     const cardTypes = db._dump('card_types')
@@ -150,7 +149,7 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
     expect(userDeck?.default_card_type_ids).toEqual(expectedCardTypeIds)
     expect(userDeck?.default_category_id).toBe(userScopedId(firstDefault.default_category_id as string, 'user1'))
 
-    // 検証用コメント。
+    // remap後の参照先も同じuser所有であることを検証する。
     const cardTypes = db._dump('card_types')
     for (const ctId of expectedCardTypeIds) {
       expect(cardTypes.has(ctId)).toBe(true)
@@ -177,7 +176,7 @@ describe('seedUserDefaults — テンプレートがない場合 (hardcode か�
     await seedUserDefaults(db, 'user1')
     const sizeAfterFirst = db._dump('categories').size
 
-    // 検証用コメント。
+    // 再seedがuserの編集内容を上書きしないことを検証する。
     const scopedId = userScopedId('cat_daily', 'user1')
     db._dump('categories').get(scopedId)!.name = 'Customized by user'
 
@@ -275,7 +274,7 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
 
-    // 検証用コメント。
+    // clone元がhardcodeではなくadmin編集済みtemplateであることを検証する。
     const templateCatId = DEFAULT_CATEGORIES[0].id
     db._dump('categories').get(templateCatId)!.name = 'Renamed by admin'
 
@@ -289,7 +288,7 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
     const db = makeFakeAdminDb()
     await publishTemplateDefaults(db)
 
-    // 検証用コメント。
+    // code変更なしでadmin追加templateが新規userへ反映されることを検証する。
     await db.collection('categories').doc('cat_custom_admin').set({
       user_id: DEFAULTS_OWNER_ID,
       name: 'Custom Admin Category',
@@ -374,7 +373,7 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
 
   it('少なくとも 1 種類のテンプレートが既にある場合は lazy-publish しない (admin の変更を上書きしないため)', async () => {
     const db = makeFakeAdminDb()
-    // 検証用コメント。
+    // 一部だけ公開済みでもlazy-publishが再開しないことを検証する。
     await db.collection('categories').doc(DEFAULT_CATEGORIES[0].id).set({
       user_id: DEFAULTS_OWNER_ID,
       name: 'Only this one published',
@@ -384,10 +383,10 @@ describe('seedUserDefaults — テンプレートが既にある場合 (admin �
 
     await seedUserDefaults(db, 'user4')
 
-    // 検証用コメント。
+    // 未公開のdefault categoryを追加してadmin変更を薄めないことを検証する。
     const catTemplates = [...db._dump('categories').values()].filter((d) => d.user_id === DEFAULTS_OWNER_ID)
     expect(catTemplates).toHaveLength(1)
-    // 検証用コメント。
+    // 他collectionはtemplate未公開でもuser seedを欠落させない。
     const userCardTypes = [...db._dump('card_types').values()].filter((d) => d.user_id === 'user4')
     expect(userCardTypes.length).toBe(DEFAULT_CARD_TYPES.length)
   })

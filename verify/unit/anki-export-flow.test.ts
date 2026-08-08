@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
-// 検証用コメント。
+// serverがlocalhostを呼ばない境界を守るため、AnkiConnect処理をclient側mockで隔離する。
 const mockClient = {
   storeMediaFile: vi.fn(async (f: string) => f),
   createDeck: vi.fn(async () => 1),
