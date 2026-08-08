@@ -5,7 +5,7 @@ import { registerUnit } from '@/verify/core/registry'
 
 type CardPreviewProps = ComponentProps<typeof CardPreview>
 
-// 検証用コメント。
+// 言語固有のoptional fieldが欠落せずrenderされることを検証する。
 const JA_ENTRY: CardPreviewProps['entry'] = {
   word: '食べる',
   hiragana: 'たべる',
@@ -16,7 +16,7 @@ const JA_ENTRY: CardPreviewProps['entry'] = {
   example_translation: '毎朝パンを食べます。',
 }
 
-// 検証用コメント。
+// 選択したcard typeごとにtemplateが切り替わることを検証する。
 const CARD_TYPES: CardPreviewProps['cardTypes'] = [
   { id: 'ct_wm', name: 'Word → Meaning', template: { front: ['word', 'reading', 'han_viet'], back: ['meaning', 'audio'] } },
   { id: 'ct_mw', name: 'Meaning → Word', template: { front: ['meaning'], back: ['word', 'reading'] } },

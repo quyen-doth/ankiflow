@@ -106,7 +106,7 @@ registerUnit<ITFormProps>({
         await ctx.wait(50)
         await ctx.type(TERM_INPUT, 'Event Loop')
         submitForm(ctx.root)
-        // 検証用コメント。
+        // API応答後のprogressとhandoffまで検証するため、全step分待機する。
         await ctx.wait(1000)
       },
     },

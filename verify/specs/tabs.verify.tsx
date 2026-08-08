@@ -6,7 +6,6 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type TabsProps = ComponentProps<typeof Tabs>
 
-// 検証用コメント。
 const changeSpy = { count: 0, lastId: '' }
 const recordChange = (id: string) => {
   changeSpy.count++

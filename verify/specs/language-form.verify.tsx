@@ -17,7 +17,7 @@ const GENERATED = {
   word_type: 'noun',
 }
 
-// 検証用コメント。
+// 保存済み設定がpending entryへ引き継がれることを検証する。
 const SESSION = JSON.stringify({
   language: 'en',
   deckId: 'd-en',
@@ -168,7 +168,7 @@ registerUnit<LanguageFormProps>({
         await ctx.wait(50)
         await ctx.type('input[aria-label="Vocabulary item"]', 'serendipity')
         submitForm(ctx.root)
-        // 検証用コメント。
+        // API応答後のprogressとhandoffまで検証するため、全step分待機する。
         await ctx.wait(1100)
       },
     },

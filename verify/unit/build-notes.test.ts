@@ -166,8 +166,7 @@ describe('buildNotes — audio in all card types', () => {
   })
 
   it('渡された template (admin 設定) を使用し、DEFAULT_TEMPLATES にフォールバックしない', () => {
-    // 検証用コメント。
-    // 検証用コメント。
+    // admin templateがdefaultより優先されることをfield差で検証する。
     const customType = {
       id: 'ct_custom',
       code: 'fill_in_blank',
@@ -182,7 +181,7 @@ describe('buildNotes — audio in all card types', () => {
     })
     expect(notes[0].fields.Back).toContain('class="reading"')
     expect(notes[0].fields.Back).toContain('<img src="ankiflow_img_hello.png"')
-    // 検証用コメント。
+    // default側のfield混入も確認し、fallbackの誤適用を検出する。
     expect(notes[0].fields.Back).not.toContain('class="example"')
     expect(notes[0].fields.Back).not.toContain('class="translation"')
   })

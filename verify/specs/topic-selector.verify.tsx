@@ -11,7 +11,7 @@ import type { ActContext } from '@/verify/core/types'
 
 type TopicSelectorProps = ComponentProps<typeof TopicSelector>
 
-// 検証用コメント。
+// form_type・active状態・sort_orderの複合filterを検証するseed。
 const TOPIC_SEED = {
   topics: [
     { id: 't-fe', name: 'Frontend', form_type: FormType.IT, is_active: true, sort_order: 2 },

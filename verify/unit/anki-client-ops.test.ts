@@ -101,8 +101,7 @@ describe('renameDeck', () => {
 
 describe('deleteDeckWithCleanup', () => {
   it('deck を削除 + `::` 階層に沿って最も深い空の親 deck を整理', async () => {
-    // 検証用コメント。
-    // 検証用コメント。
+    // 親一覧は削除前snapshotのままなので、直近の空親だけがcleanup対象になる。
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A']) })
 
     const cleaned = await deleteDeckWithCleanup(client, 'A::B::C')
@@ -112,7 +111,7 @@ describe('deleteDeckWithCleanup', () => {
   })
 
   it('他の子がある場合は親 deck を保持', async () => {
-    // 検証用コメント。
+    // siblingが残る親を誤削除しないことを検証する。
     const client = makeClient({ getDecks: vi.fn(async () => ['A::B', 'A::B::Sibling', 'A']) })
 
     const cleaned = await deleteDeckWithCleanup(client, 'A::B::C')
@@ -203,7 +202,7 @@ describe('createNotesForEntry', () => {
 
     expect(noteIds).toEqual([11, 22])
     expect(client.storeMediaFile).toHaveBeenCalledWith(expect.stringContaining('ankiflow_resilient'), 'QUJD')
-    // 検証用コメント。
+    // 複数noteが同じdeckを共有してもcreateDeckを重複させない。
     expect(client.createDeck).toHaveBeenCalledTimes(1)
     expect(client.createDeck).toHaveBeenCalledWith('MyDeck')
     expect(client.addNotes).toHaveBeenCalledOnce()
@@ -364,7 +363,7 @@ describe('regenerateNotesForEntry', () => {
 
   it('card type が削除済み (map にない) → skipped', async () => {
     const client = makeClient({ notesInfo: vi.fn(async () => [noteInfo(11), noteInfo(22)]) })
-    // 検証用コメント。
+    // 対応するcard typeを失ったnoteだけをskipし、残りは更新する。
     const r = await regenerateNotesForEntry(client, entry, [cardTypes[0]])
     expect(r.updated).toBe(1)
     expect(r.skipped).toBe(1)

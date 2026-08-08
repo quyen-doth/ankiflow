@@ -58,7 +58,7 @@ describe('middleware — session cookie がある場合', () => {
 })
 
 describe('middleware — matcher exclusions (config 内の regex)', () => {
-  // 検証用コメント。
+  // middleware configを直接実行できないため、同じmatcher境界を正規表現で固定する。
   const pattern = new RegExp(
     '^/(?!_next/static|_next/image|favicon.ico|api/auth|api/notifications/line-webhook|verify|.*\\..*).*$',
   )

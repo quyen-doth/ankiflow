@@ -122,7 +122,7 @@ describe('generateBatch — キャンセル (abort)', () => {
     )
 
     expect(fetchMock).not.toHaveBeenCalled()
-    // 検証用コメント。
+    // 開始前cancelでは部分結果も残さない。
     expect(results.filter(Boolean)).toHaveLength(0)
   })
 
@@ -133,7 +133,7 @@ describe('generateBatch — キャンセル (abort)', () => {
       'fetch',
       vi.fn(async (_url: string, init: RequestInit) => {
         calls += 1
-        // 検証用コメント。
+        // 最初のrequest中にcancelし、次batchが開始されない境界を作る。
         if (calls === 1) controller.abort()
         const body = JSON.parse(init.body as string) as { word: string }
         return {
@@ -150,7 +150,7 @@ describe('generateBatch — キャンセル (abort)', () => {
       { signal: controller.signal },
     )
 
-    // 検証用コメント。
+    // 進行中の最大3件は許容し、cancel後に次itemを開始しないことを検証する。
     expect(calls).toBeLessThanOrEqual(3)
   })
 })

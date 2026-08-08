@@ -1,10 +1,6 @@
 import type { FetchRule } from '@/verify/core/types'
 
-/**
- * globalThis.fetch を FetchRule[] に基づく matcher へ置き換える。
- * 検証用コメント。
- * 検証用コメント。
- */
+/** 未定義requestを実networkへ漏らさず、fixture終了後に元のfetchへ戻せるよう差し替える。 */
 export function installMockFetch(rules: FetchRule[]): () => void {
   const original = globalThis.fetch
 

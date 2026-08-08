@@ -3,17 +3,13 @@ import { beforeEach, vi } from 'vitest'
 import { MotionGlobalConfig } from 'framer-motion'
 import { TEST_AUTH_USER } from '@/verify/core/test-auth-user'
 
-// 検証用コメント。
-// 検証用コメント。
+// DOMの出入りを待ち時間に依存させないため、animationを即時完了させる。
 MotionGlobalConfig.skipAnimations = true
 
-// 検証用コメント。
-// 検証用コメント。
-// 検証用コメント。
+// admin-gated componentも共通fixtureで検証できるよう、既定userをadmin扱いにする。
 process.env.NEXT_PUBLIC_ADMIN_EMAIL = TEST_AUTH_USER.email
 
-// 検証用コメント。
-// 検証用コメント。
+// route依存specを決定的にするため、navigation状態をglobalで観測可能にする。
 const nav = {
   pathname: '/',
   calls: [] as Array<{ method: string; args: unknown[] }>,
@@ -37,7 +33,7 @@ vi.mock('next/navigation', () => ({
   },
 }))
 
-// 検証用コメント。
+// jsdomでoptimizerを起動せずalt/srcだけを検証できるよう、素のimgへ置き換える。
 vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => {
     const { src, alt, className } = props
@@ -49,7 +45,7 @@ vi.mock('next/image', () => ({
   },
 }))
 
-// 検証用コメント。
+// jsdomにmedia再生実装がないため、生成srcだけ観測できるstubを使う。
 class AudioStub {
   src: string
   constructor(src = '') {

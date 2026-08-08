@@ -1,11 +1,6 @@
 import type { DocSeed, VerifyHandle } from './types'
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- * 検証用コメント。
- * - window.__verify handle (browser)
- */
+/** runnerと環境を疎結合に保つため、環境別hookをtyped global経由で受け渡す。 */
 interface VerifyGlobals {
   __verifyFirestoreSeed?: (data: Record<string, DocSeed[]>) => void
   __verifyFirestoreReset?: () => void

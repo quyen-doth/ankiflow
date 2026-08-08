@@ -64,7 +64,7 @@ describe('lib/srs/webhook-handler', () => {
       }
       const result = applyRating(state, 'again', now)
       expect(result.interval_days).toBe(0)
-      expect(result.fsrs?.difficulty).toBeGreaterThan(2.5) // 検証用コメント。
+      expect(result.fsrs?.difficulty).toBeGreaterThan(2.5) // Againで忘却方向へdifficultyが上がることも確認する。
     })
   })
 })

@@ -6,7 +6,7 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type ConnectedBadgeProps = ComponentProps<typeof ConnectedBadge>
 
-// 検証用コメント。
+// prop・poll・network errorの各経路で期待する接続状態を固定する。
 const EXPECTED_CONNECTED: Record<string, boolean> = {
   'prop-connected': true,
   'prop-disconnected': false,

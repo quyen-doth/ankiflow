@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 検証用コメント。
+// Firebase SDKを実通信させず、session APIとの境界だけを検証する。
 const { signInMock, signOutMock } = vi.hoisted(() => ({
   signInMock: vi.fn(),
   signOutMock: vi.fn(async () => {}),
@@ -37,7 +37,7 @@ afterEach(() => {
 describe('password/email schemas', () => {
   it('password: ≥8 文字、大文字 1 つ、数字 1 つが必要', () => {
     expect(passwordSchema.safeParse('Abcdef12').success).toBe(true)
-    expect(passwordSchema.safeParse('short1A').success).toBe(false) // 検証用コメント。
+    expect(passwordSchema.safeParse('short1A').success).toBe(false) // 7文字
     expect(passwordSchema.safeParse('abcdefg1').success).toBe(false) // 大文字不足
     expect(passwordSchema.safeParse('Abcdefgh').success).toBe(false) // 数字不足
   })

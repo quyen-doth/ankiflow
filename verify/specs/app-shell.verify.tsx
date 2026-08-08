@@ -4,14 +4,14 @@ import { verifyGlobals } from '@/verify/core/globals'
 import { registerUnit } from '@/verify/core/registry'
 import { reactNode } from '@/verify/core/schema-helpers'
 
-// 検証用コメント。
+// 内包するConnectedBadgeのpollを外部networkへ出さないためのmock。
 const ankiConnectMock = {
   fetch: [
     { match: 'localhost:8765', response: { status: 200, json: { result: 6, error: null } } },
   ],
 }
 
-// 検証用コメント。
+// auth routeでshell要素が隠れる境界をfixtureごとに検証する。
 const EXPECTED_AUTH: Record<string, boolean> = {
   'app-route-dashboard': false,
   'auth-route-login': true,
@@ -65,8 +65,7 @@ registerUnit<{ children?: React.ReactNode }>({
         if (!verifyGlobals().__verifyNav) return true
         const expected = EXPECTED_AUTH[fixture.id]
         if (expected === undefined) return true
-        // 検証用コメント。
-        // 検証用コメント。
+        // 子sidebarのcontractを誤読しないよう、AppShell自身を指定して取得する。
         const el = root.querySelector('[data-verify-unit="AppShell"]')
         const actual = el?.getAttribute('data-verify-authroute')
         return (

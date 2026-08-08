@@ -8,13 +8,13 @@ import {
 } from '@/lib/flashcard-service/client'
 import { auth } from '@/lib/firebase'
 
-// 検証用コメント。
+// Firestore aliasを直接importせず、runnerと同じglobal hookでstoreを制御する。
 const g = globalThis as unknown as {
   __verifyFirestoreSeed?: (data: Record<string, Record<string, unknown>[]>) => void
   __verifyFirestoreReset?: () => void
 }
 
-// 検証用コメント。
+// settings/{uid}の所有者scopeを検証するため、ログインuserを差し替える。
 const mutableAuth = auth as unknown as { currentUser: { uid: string } | null }
 const TEST_UID = 'test-user'
 
@@ -34,7 +34,6 @@ beforeEach(() => {
   resetAnkiClientCache()
   g.__verifyFirestoreReset?.()
   mutableAuth.currentUser = { uid: TEST_UID }
-  // 検証用コメント。
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -99,7 +98,7 @@ describe('resolveAnkiConnectUrl — settings/{uid} を読み込み、cache、fal
   })
 
   it('settings/default はもう読まない (ユーザーごとのみ) → settings/default に url があってもデフォルト', async () => {
-    // 検証用コメント。
+    // clientからowner secretsへfallbackしないことをrules外でも保証する。
     g.__verifyFirestoreSeed?.({
       settings: [{ id: 'default', anki_connect_url: 'http://127.0.0.1:9999' }],
     })
@@ -122,11 +121,11 @@ describe('resolveAnkiConnectUrl — settings/{uid} を読み込み、cache、fal
     })
     await resolveAnkiConnectUrl()
 
-    // 検証用コメント。
+    // backing storeが変わっても解決済みURLを再読込しないことを検証する。
     g.__verifyFirestoreReset?.()
     await expect(resolveAnkiConnectUrl()).resolves.toBe('http://127.0.0.1:9999')
 
-    // 検証用コメント。
+    // 明示reset後だけsettingsを再読込することを検証する。
     resetAnkiClientCache()
     await expect(resolveAnkiConnectUrl()).resolves.toBe(DEFAULT_ANKI_CONNECT_URL)
   })

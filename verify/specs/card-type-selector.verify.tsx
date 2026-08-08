@@ -11,7 +11,7 @@ import type { LanguageCode, StudyLanguage } from '@/types'
 
 type CardTypeSelectorProps = ComponentProps<typeof CardTypeSelector>
 
-// 検証用コメント。
+// card type名のplaceholder解決とlanguage scopeを同じ言語集合で検証する。
 const STUDY_LANGUAGES: StudyLanguage[] = [
   { code: 'en', display_name: 'English', enabled: true, sort_order: 0 },
   { code: 'ja', display_name: 'Japanese', enabled: true, sort_order: 1 },

@@ -6,7 +6,6 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type ModalProps = ComponentProps<typeof Modal>
 
-// 検証用コメント。
 const closeSpy = { count: 0 }
 const recordClose = () => {
   closeSpy.count++
@@ -71,8 +70,7 @@ registerUnit<ModalProps>({
       props: { open: true, onClose: recordClose, title: 'Confirm', children: 'Body' },
       act: async ctx => {
         closeSpy.count = 0
-        // 検証用コメント。
-        // 検証用コメント。
+        // effectでkeydown listenerが付く前にdispatchしてflakyになるのを防ぐ。
         await ctx.wait(16)
         document.dispatchEvent(
           new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })

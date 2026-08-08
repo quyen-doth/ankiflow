@@ -6,7 +6,6 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type BadgeProps = ComponentProps<typeof Badge>
 
-// 検証用コメント。
 const removeSpy = { count: 0 }
 
 registerUnit<BadgeProps>({
