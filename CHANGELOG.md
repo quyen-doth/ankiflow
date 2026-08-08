@@ -10,6 +10,8 @@
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-08-08
+
 ### セキュリティ
 
 - 間接依存の fast-xml-parser、nanoid、js-yaml を更新し、DOCTYPE エンティティ展開制限の回避、無限ループ、および YAML の `!!omap` 処理における過大な CPU 消費の脆弱性を修正
@@ -290,7 +292,8 @@
 - LINE 通知による受動的復習機能の追加
 - Vercel へのデプロイ
 
-[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.2...develop
+[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.3...develop
+[0.14.3]: https://github.com/quyen-doth/ankiflow/compare/v0.14.2...v0.14.3
 [0.14.2]: https://github.com/quyen-doth/ankiflow/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/quyen-doth/ankiflow/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/quyen-doth/ankiflow/compare/v0.13.1...v0.14.0
