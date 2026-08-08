@@ -1,16 +1,16 @@
 /**
- * scripts/set-admin-claim.ts — đặt custom claim `admin:true` cho tài khoản admin.
+ * Grants or revokes the `admin:true` custom claim for an AnkiFlow administrator.
  *
- * Vì Firestore Security Rules KHÔNG đọc được env (ADMIN_EMAIL), quyền admin trong
- * rules dựa vào custom claim `admin:true` trong ID token. Signup route tự đặt claim
- * cho account có email == ADMIN_EMAIL; script này dùng cho account admin ĐÃ TẠO
- * TRƯỚC khi có tính năng (chạy 1 lần).
+ * Firestore Security Rules cannot read `ADMIN_EMAIL`, so administrator access in
+ * rules depends on the `admin:true` custom claim in the ID token. The signup route
+ * grants the claim when the account email matches `ADMIN_EMAIL`; this script repairs
+ * administrator accounts created before that behavior was introduced.
  *
- * Cách chạy:
- *   npx tsx scripts/set-admin-claim.ts <email>          # đặt admin
- *   npx tsx scripts/set-admin-claim.ts <email> --revoke  # gỡ admin
+ * Usage:
+ *   npx tsx scripts/set-admin-claim.ts <email>           # grant administrator access
+ *   npx tsx scripts/set-admin-claim.ts <email> --revoke  # revoke administrator access
  *
- * ⚠️ SAU KHI CHẠY: admin phải ĐĂNG XUẤT + ĐĂNG NHẬP LẠI để ID token mới mang claim.
+ * The administrator must sign out and sign back in before the refreshed token carries the claim.
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
@@ -32,7 +32,7 @@ async function main() {
   const revoke = process.argv.includes('--revoke')
 
   if (!email || email.startsWith('--')) {
-    console.error('❌ Thiếu email. Cách chạy: npx tsx scripts/set-admin-claim.ts <email> [--revoke]')
+    console.error('❌ メールアドレスが必要です。使用方法: npx tsx scripts/set-admin-claim.ts <email> [--revoke]')
     process.exit(1)
   }
 
@@ -40,12 +40,12 @@ async function main() {
   const user = await auth.getUserByEmail(email)
   await auth.setCustomUserClaims(user.uid, revoke ? { admin: null } : { admin: true })
 
-  console.log(`✅ ${revoke ? 'Đã gỡ' : 'Đã đặt'} admin:${revoke ? 'null' : 'true'} cho ${email} (uid: ${user.uid})`)
-  console.log('   ⚠️  Admin PHẢI đăng xuất + đăng nhập lại để token mới có hiệu lực.')
+  console.log(`✅ ${email} (uid: ${user.uid}) の管理者権限を${revoke ? '取り消しました' : '付与しました'}。`)
+  console.log('   ⚠️  新しいカスタムクレームを反映するには、管理者がログアウトして再ログインする必要があります。')
   process.exit(0)
 }
 
 main().catch((err) => {
-  console.error('❌ Lỗi:', err.message)
+  console.error('❌ エラー:', err.message)
   process.exit(1)
 })

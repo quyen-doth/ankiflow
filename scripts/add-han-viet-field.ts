@@ -1,13 +1,12 @@
 /**
- * scripts/add-han-viet-field.ts
- * Idempotent migration: chèn field 'han_viet' vào template của các card_types LANGUAGE
- * (form_type === 'form_language') đang có trong Firestore, ngay sau 'reading' (hoặc 'word'
- * nếu side không có 'reading'). Chỉ đụng những side đã chứa 'word'/'reading'.
+ * Idempotently adds `han_viet` to existing LANGUAGE card-type templates.
  *
- * KHÔNG đụng entries, settings, decks, categories hay collection khác.
- * KHÔNG sinh nội dung han_viet cho entries — chỉ thêm chỗ hiển thị trên mặt thẻ.
+ * The field is inserted after `reading`, or after `word` when `reading` is absent.
+ * Only template sides containing either anchor are changed. The migration does not
+ * modify entries, settings, decks, categories, or other collections. It does not
+ * generate Han-Viet content for entries; it only adds a display slot.
  *
- * Chạy: npx tsx scripts/add-han-viet-field.ts
+ * Usage: npx tsx scripts/add-han-viet-field.ts
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
@@ -26,13 +25,13 @@ const app = initializeApp({
 
 const db = getFirestore(app);
 
-/** Chèn 'han_viet' sau 'reading' (ưu tiên) hoặc 'word'. Trả về mảng mới + có thay đổi hay không. */
+/** `han_viet`を`reading`優先、なければ`word`の直後に挿入し、変更有無を返す。 */
 function withHanViet(side: string[]): { next: string[]; changed: boolean } {
     if (!Array.isArray(side)) return { next: side, changed: false };
     if (side.includes('han_viet')) return { next: side, changed: false };
 
     const anchor = side.lastIndexOf('reading') !== -1 ? side.lastIndexOf('reading') : side.lastIndexOf('word');
-    if (anchor === -1) return { next: side, changed: false }; // side không có word/reading → bỏ qua
+    if (anchor === -1) return { next: side, changed: false }; // word/readingがないsideは変更しない。
 
     const next = [...side];
     next.splice(anchor + 1, 0, 'han_viet');
@@ -40,12 +39,12 @@ function withHanViet(side: string[]): { next: string[]; changed: boolean } {
 }
 
 async function run() {
-    console.log('🔧 Adding han_viet field to language card_types...\n');
+    console.log('🔧 language用card_typesにhan_vietフィールドを追加します...\n');
 
     const snap = await db.collection('card_types').where('form_type', '==', 'form_language').get();
 
     if (snap.empty) {
-        console.log('  ⚠️  No language card_types found.');
+        console.log('  ⚠️  language用card_typesが見つかりません。');
         process.exit(0);
     }
 
@@ -54,7 +53,7 @@ async function run() {
         const data = doc.data() as { template?: { front?: string[]; back?: string[] }; name?: string };
         const template = data.template;
         if (!template) {
-            console.log(`  ⏭️  ${doc.id} — no template, skipping`);
+            console.log(`  ⏭️  ${doc.id} — テンプレートがないためスキップ`);
             continue;
         }
 
@@ -62,7 +61,7 @@ async function run() {
         const back = withHanViet(template.back ?? []);
 
         if (!front.changed && !back.changed) {
-            console.log(`  ✓  ${doc.id} — already has han_viet (or no word/reading), skipping`);
+            console.log(`  ✓  ${doc.id} — han_vietが既に存在するかword/readingがないためスキップ`);
             continue;
         }
 
@@ -73,11 +72,11 @@ async function run() {
         );
     }
 
-    console.log(`\nDone. ${updated} card_type(s) updated.`);
+    console.log(`\n完了しました。card_typeを${updated}件更新しました。`);
     process.exit(0);
 }
 
 run().catch((err) => {
-    console.error('Error:', err);
+    console.error('エラー:', err);
     process.exit(1);
 });
