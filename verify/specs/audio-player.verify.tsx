@@ -8,7 +8,7 @@ type AudioPlayerProps = ComponentProps<typeof AudioPlayer>
 
 const AUDIO_URL = 'https://storage.googleapis.com/ankiflow/audio/word.mp3'
 
-// 検証用コメント。
+// browserには観測hookがないため、Audio生成のassertionはvitestだけで行う。
 function audioInstances(): Array<{ src: string }> | null {
   const g = globalThis as unknown as { __verifyAudioInstances?: Array<{ src: string }> }
   return g.__verifyAudioInstances ?? null
@@ -150,7 +150,7 @@ registerUnit<AudioPlayerProps>({
         if (contract.playing !== 'true') return `contract.playing="${contract.playing}"`
         if (!(root.textContent ?? '').includes('Stop')) return 'button が Stop に変わりません'
         const instances = audioInstances()
-        if (instances === null) return true // 検証用コメント。
+        if (instances === null) return true // browserではDOM contractだけを判定する。
         const last = instances[instances.length - 1]
         return last?.src === AUDIO_URL || `Audio src="${last?.src}"`
       },

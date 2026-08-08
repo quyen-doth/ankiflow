@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDefaultReviewState, applyRating, calculateNextIntervals, isDue, masteryLevel } from '@/lib/srs/fsrs'
 
-// 検証用コメント。
+// ts-fsrs 5.4.1の実測値を固定し、parameter変更による退行を検出する。
 const NOW = new Date('2026-06-27T10:00:00Z')
 
 describe('lib/srs/fsrs', () => {
@@ -90,7 +90,7 @@ describe('lib/srs/fsrs', () => {
       t = new Date(state.due_date)
       state = applyRating(state, 'good', t)
       expect(state.fsrs?.stability).toBeCloseTo(0.2842, 3)
-      // 検証用コメント。
+      // 良いratingを重ねるとdifficultyが下がる方向性も保証する。
       expect(state.fsrs!.difficulty).toBeLessThan(6.4133)
 
       t = new Date(state.due_date)

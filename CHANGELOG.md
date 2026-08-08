@@ -10,6 +10,12 @@
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-08-08
+
+### 変更
+
+- ポートフォリオ用のデモデータを中立化し、スクリーンショットと動画を再現可能に撮影する基盤を整備
+
 ## [0.14.1] - 2026-08-04
 
 ### セキュリティ
@@ -280,7 +286,8 @@
 - LINE 通知による受動的復習機能の追加
 - Vercel へのデプロイ
 
-[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.1...develop
+[Unreleased]: https://github.com/quyen-doth/ankiflow/compare/v0.14.2...develop
+[0.14.2]: https://github.com/quyen-doth/ankiflow/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/quyen-doth/ankiflow/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/quyen-doth/ankiflow/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/quyen-doth/ankiflow/compare/v0.13.0...v0.13.1

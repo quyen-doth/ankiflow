@@ -26,7 +26,7 @@ describe('lib/session', () => {
       topicNames: ['Backend'],
       difficulty: 'medium',
     })
-    // 検証用コメント。
+    // form_type間でlocalStorage keyが衝突しないことも確認する。
     expect(loadSession(FormType.GENERAL)).toBeNull()
   })
 

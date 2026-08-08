@@ -7,7 +7,7 @@ import { FormType } from '@/types'
 
 type CategorySelectorProps = ComponentProps<typeof CategorySelector>
 
-// 検証用コメント。
+// form_type・active状態・sort_orderの複合filterを検証するseed。
 const CATEGORY_SEED = {
   categories: [
     { id: 'c-life', name: '生活', form_type: FormType.LANGUAGE, is_active: true, sort_order: 2 },

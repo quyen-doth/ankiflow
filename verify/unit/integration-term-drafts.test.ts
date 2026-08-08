@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- */
+/** 固定token認証でもtarget userのscopeとdefault deckを崩さないことを検証する。 */
 
 interface EntryDoc {
   id: string
@@ -201,7 +198,7 @@ describe('POST /api/integrations/term-drafts — duplicate', () => {
     )
     const body = await res.json()
     expect(body.created).toEqual([])
-    // 検証用コメント。
+    // duplicate判定だけでなく、responseにも正規化済みtermを返すことを検証する。
     expect(body.skipped).toEqual([{ term: 'Kubernetes', reason: 'duplicate' }])
     expect(setDocs).toHaveLength(0)
   })

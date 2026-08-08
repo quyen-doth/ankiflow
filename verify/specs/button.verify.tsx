@@ -6,7 +6,6 @@ import { fn, reactNode } from '@/verify/core/schema-helpers'
 
 type ButtonProps = ComponentProps<typeof Button>
 
-// 検証用コメント。
 const clickSpy = { count: 0 }
 
 registerUnit<ButtonProps>({

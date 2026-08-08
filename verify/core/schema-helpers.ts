@@ -1,10 +1,6 @@
 import { z } from 'zod'
 
-/**
- * callback props (onChange、onRemove...) 用 schema。
- * 検証用コメント。
- * 検証用コメント。
- */
+/** zod 4のz.function()をobject schemaで使えないため、callback判定を共通化する。 */
 export const fn = <T extends (...args: never[]) => unknown>() =>
   z.custom<T>(v => typeof v === 'function')
 

@@ -6,7 +6,6 @@ import { fn } from '@/verify/core/schema-helpers'
 
 type ToggleProps = ComponentProps<typeof Toggle>
 
-// 検証用コメント。
 const changeSpy = { count: 0, lastValue: null as boolean | null }
 const recordChange = (checked: boolean) => {
   changeSpy.count++

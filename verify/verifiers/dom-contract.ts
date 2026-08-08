@@ -6,9 +6,7 @@ export const domContractVerifier = registerVerifier({
   description: '検証ケース。',
   run({ unit, root, contract }): Check[] {
     if (Object.keys(contract).length === 0) {
-      // 検証用コメント。
-      // 検証用コメント。
-      // 検証用コメント。
+      // null renderを有効結果として扱い、実行不能を示すSKIPとは区別する。
       if (unit.allowsEmptyRender && root.children.length === 0) {
         return [{
           verifier: 'dom-contract',

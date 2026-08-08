@@ -1,6 +1,6 @@
 import type { ManifestEntry, VerifiableUnit, Verifier } from './types'
 
-// 検証用コメント。
+// HMRでspecが再評価されても重複せず最新版へ置き換わるようMapを使う。
 const units = new Map<string, VerifiableUnit>()
 const verifiers = new Map<string, Verifier>()
 

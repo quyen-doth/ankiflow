@@ -17,7 +17,7 @@ function makeDataUrl(sizeBytes: number): string {
 
 function validEntry(overrides: Partial<Entry> = {}): Partial<Entry> {
   return {
-    form_type: FormType.GENERAL, // 検証用コメント。
+    form_type: FormType.GENERAL, // 画像size以外の必須fieldエラーを混ぜない。
     title: 'hello',
     content: 'こんにちは',
     anki_deck: 'Test',

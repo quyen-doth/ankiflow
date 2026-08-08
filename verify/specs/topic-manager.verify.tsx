@@ -10,7 +10,7 @@ import {
   tableRows,
 } from './manager-helpers'
 
-// 検証用コメント。
+// IT固定queryと新規docのform_typeを同じfixture群で検証するseed。
 const SEED = {
   topics: [
     { id: 't-be', name: 'Backend', form_type: FormType.IT, sort_order: 1, is_active: true },

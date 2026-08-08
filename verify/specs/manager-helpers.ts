@@ -1,7 +1,4 @@
-/**
- * 検証用コメント。
- * 検証用コメント。
- */
+/** manager spec間でFirestore操作の観測方法を揃えるための共通helper。 */
 import type { DocSeed } from '@/verify/core/types'
 
 /** firestore stub の in-memory store へアクセスする (vitest 内のみ存在) */

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 検証用コメント。
+// cookie検証の成功・失敗をrouteから切り離すため、Admin Authだけをmockする。
 const { verifyMock } = vi.hoisted(() => ({ verifyMock: vi.fn() }))
 vi.mock('@/lib/firebase-admin', () => ({
   getAdminAuthInstance: () => ({ verifySessionCookie: verifyMock }),

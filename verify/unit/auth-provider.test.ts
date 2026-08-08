@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// 検証用コメント。
+// auth callbackとunsubscribeを任意の順序で検証するため、listenerを捕捉する。
 const { authState } = vi.hoisted(() => ({
   authState: {
     callback: null as ((user: unknown) => void) | null,
@@ -17,7 +17,7 @@ vi.mock('firebase/auth', () => ({
   },
 }))
 
-// 検証用コメント。
+// vitestのinclude対象を.test.tsのまま保つため、JSXを使わずcreateElementでmountする。
 import { createElement, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { AuthProvider, useAuth } from '@/components/providers/AuthProvider'

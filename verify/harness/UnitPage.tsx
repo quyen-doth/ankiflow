@@ -8,10 +8,7 @@ import { runFixture } from '@/verify/core/runner'
 import type { VerifyResult } from '@/verify/core/types'
 import { setCurrentResult } from './handle'
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- */
+/** screenshot時に結果UIを外せるよう、単一fixtureを独立mountする。 */
 export function UnitPage() {
   const params = useParams<{ unitId: string; fixtureId: string }>()
   const searchParams = useSearchParams()
@@ -23,8 +20,7 @@ export function UnitPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [result, setResult] = useState<VerifyResult | null>(null)
 
-  // 検証用コメント。
-  // 検証用コメント。
+  // page側のside-effect import完了後なので、paramsから同期的に解決できる。
   const unit = getUnit(unitId)
   const fixture = unit?.fixtures.find(f => f.id === fixtureId)
   const found = Boolean(unit && fixture)

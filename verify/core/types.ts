@@ -40,12 +40,7 @@ export interface DocSeed {
   [field: string]: unknown
 }
 
-/**
- * 検証用コメント。
- * 検証用コメント。
- * 検証用コメント。
- * 検証用コメント。
- */
+/** 同じfixtureを環境間で再現できるよう、外部依存を宣言的に差し替える。 */
 export interface FixtureMocks {
   fetch?: FetchRule[]
   firestore?: Record<string, DocSeed[]>
@@ -101,10 +96,7 @@ export interface VerifiableUnit<P = unknown> {
   invariants: Invariant<P>[]
   /** この unit で実行する verifier を制限する (default: すべて) */
   verifiers?: string[]
-  /**
-   * 検証用コメント。
-   * 検証用コメント。
-   */
+  /** 条件付きnull renderを失敗扱いしないunitだけが明示する。 */
   allowsEmptyRender?: boolean
 }
 

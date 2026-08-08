@@ -90,7 +90,7 @@ registerUnit<GeneralFormProps>({
         await ctx.type(TITLE_INPUT, 'Mitochondria')
         await ctx.type('textarea', '細胞のエネルギー工場。')
         submitForm(ctx.root)
-        // 検証用コメント。
+        // 非同期progress完了後のhandoffまで検証するため、全step分待機する。
         await ctx.wait(900)
       },
     },

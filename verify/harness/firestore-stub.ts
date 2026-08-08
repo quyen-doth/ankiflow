@@ -1,12 +1,4 @@
-/**
- * 検証用コメント。
- * 検証用コメント。
- * 検証用コメント。
- *
- * 検証用コメント。
- * collection / query / where (equality) / orderBy / getDocs / doc /
- * addDoc / updateDoc / deleteDoc / serverTimestamp / arrayRemove.
- */
+/** 本番との差を明示するため、vitest aliasで必要最小限のFirestore APIだけを再現する。 */
 import type { DocSeed } from '@/verify/core/types'
 
 interface CollectionRef {
@@ -61,9 +53,7 @@ function maybeThrow(operation: 'getDocs' | 'addDoc' | 'updateDoc', collectionNam
 }
 
 function seed(data: Record<string, DocSeed[]>): void {
-  // seed 時に user_id='test-user' を自動注入する (runner の TEST_AUTH_USER と一致)
-  // 検証用コメント。
-  // 検証用コメント。
+  // 所有者filterを通すため既定user_idを補い、明示値は上書きしない。
   store = new Map(
     Object.entries(data).map(([name, docs]) => [
       name,
@@ -78,7 +68,7 @@ function reset(): void {
   autoId = 0
 }
 
-// 検証用コメント。
+// runnerからalias moduleを直接importできないため、seed/resetをglobal hookで橋渡しする。
 const g = globalThis as unknown as {
   __verifyFirestoreSeed?: typeof seed
   __verifyFirestoreReset?: typeof reset
@@ -124,7 +114,7 @@ function applyConstraints(docs: DocSeed[], constraints: QueryConstraint[]): DocS
   let result = [...docs]
   for (const c of constraints) {
     if (c.__kind === 'where') {
-      // 検証用コメント。
+      // stubが本番との差を隠さないよう、現行componentが使う演算子だけ許可する。
       if (c.op === '==') {
         result = result.filter(d => d[c.field] === c.value)
       } else if (c.op === 'in' && Array.isArray(c.value)) {
@@ -233,7 +223,7 @@ export function onSnapshot(
 }
 
 export function limit(n: number): OrderByConstraint {
-  // 検証用コメント。
+  // 現行specは件数制限を検証しないため、query互換性だけを提供する。
   void n
   return { __kind: 'orderBy', field: '__noop', direction: 'asc' }
 }

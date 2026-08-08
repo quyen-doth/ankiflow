@@ -7,7 +7,7 @@ import { FormType } from '@/types'
 
 type DeckSelectorProps = ComponentProps<typeof DeckSelector>
 
-// 検証用コメント。
+// form_type・active状態・sort_orderの複合filterを検証するseed。
 const DECK_SEED = {
   decks: [
     { id: 'd-en', display_name: 'English Vocab', form_type: FormType.LANGUAGE, is_active: true, sort_order: 2 },

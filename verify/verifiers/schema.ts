@@ -16,7 +16,7 @@ export const schemaVerifier = registerVerifier({
     if (result.success) {
       return [{ verifier: 'schema', status: 'ok', label: 'Props 一致 schema' }]
     }
-    // 検証用コメント。
+    // zod 4では検証エラーの内訳がissuesへ格納される。
     return result.error.issues.map(issue => ({
       verifier: 'schema',
       status: 'fail' as const,

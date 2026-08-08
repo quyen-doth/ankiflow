@@ -30,6 +30,7 @@ const SCANNED_DIRECTORIES = [
   'types',
   'verify',
   'e2e',
+  'capture',
   '.githooks',
   '.github',
 ] as const

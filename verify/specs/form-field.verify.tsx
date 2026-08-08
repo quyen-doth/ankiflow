@@ -7,7 +7,6 @@ type InputProps = ComponentProps<typeof Input>
 type TextareaProps = ComponentProps<typeof Textarea>
 type SelectProps = ComponentProps<typeof Select>
 
-// 検証用コメント。
 const valueSpy = { lastValue: null as string | null }
 const recordInput = (e: ChangeEvent<HTMLInputElement>) => {
   valueSpy.lastValue = e.target.value

@@ -1,4 +1,4 @@
-// 検証用コメント。
+// import時の副作用でregistryへ登録するため、全specをここで読み込む。
 
 // Phase A — pilots
 import './badge.verify'
@@ -7,7 +7,6 @@ import './progress-bar.verify'
 import './step-indicator.verify'
 import './tabs.verify'
 
-// 検証用コメント。
 import './anki-flow-logo.verify'
 import './card.verify'
 import './empty-state.verify'
