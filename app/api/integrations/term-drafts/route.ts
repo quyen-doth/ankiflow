@@ -1,3 +1,14 @@
+/**
+ * Smart Knowledge Hub（現在設計段階）向けの事前構築済み連携エンドポイント。
+ * 用語ドラフトを受け取り、AnkiFlow 内でレビュー待ちとしてキューイングする。
+ *
+ * 送信側システム（Knowledge Hub）は別リポジトリで設計中:
+ * https://github.com/quyen-doth/knowledge-hub
+ *
+ * API コントラクトとテストは整備済み ― Knowledge Hub の稼働開始時に
+ * コード変更なしで接続可能。
+ */
+
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminDb } from '@/lib/firebase-admin'
