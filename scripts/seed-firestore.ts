@@ -1,22 +1,18 @@
 /**
- * scripts/seed-firestore.ts
- * Seed dữ liệu vào Firestore (multi-user era).
+ * Seeds shared and optional per-user Firestore data for multi-user AnkiFlow.
  *
- * Cách chạy:
- *   npm run seed                    → seed phần DÙNG CHUNG: content_types (3 form
- *                                     blueprint — doc id = form_type routing),
- *                                     settings/default (LINE secrets, admin điền tay),
- *                                     settings/global (feature flags toàn cục)
- *   npm run seed -- --defaults      → publish template defaults (categories/card_types/
- *                                     topics/decks) admin sửa được qua /admin
- *                                     ("New-user defaults") — KHÔNG bắt buộc: user đầu
- *                                     tiên đăng ký sẽ tự lazy-publish nếu chưa có.
- *   npm run seed -- --user <UID>    → seed thêm bộ master data default PER-USER
- *                                     (categories/card_types/topics/decks + settings/{uid})
- *                                     — thường không cần: signup route tự seed.
+ * Usage:
+ *   npm run seed
+ *     Seeds shared content_types (three routing form blueprints), settings/default
+ *     (owner-managed LINE secrets), and settings/global (global feature flags).
+ *   npm run seed -- --defaults
+ *     Publishes editable new-user templates for categories, card_types, topics, and
+ *     decks. This is optional because the first signup lazily publishes them.
+ *   npm run seed -- --user <UID>
+ *     Seeds one user's master data and settings. The signup route normally does this.
  *
- * Idempotent: chạy nhiều lần không bị lỗi, bỏ qua document đã tồn tại.
- * Data default per-user nằm ở lib/seed-defaults.ts (dùng chung với signup route).
+ * Existing documents are skipped, so the script is safe to run repeatedly. Per-user
+ * defaults are defined in lib/seed-defaults.ts and shared with the signup route.
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
@@ -29,7 +25,7 @@ import { DEFAULT_CONTENT_TYPES } from '../lib/contentTypes';
 import { cloneAiOutputProfiles } from '../lib/ai-agent/outputProfiles';
 import { GLOBAL_CONTENT_TYPES_COLLECTION, GLOBAL_SETTINGS_DOC_ID } from '../lib/constants';
 
-// Khởi tạo Firebase Admin
+// Firebase Adminを初期化する。
 const app = initializeApp({
     credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
@@ -41,21 +37,21 @@ const app = initializeApp({
 const db = getFirestore(app);
 const now = Timestamp.now();
 
-// ─── Helper: tạo document nếu chưa tồn tại ──────────────
+// ─── 存在しないドキュメントだけを作成するヘルパー ──────────────
 async function seedDoc(collection: string, id: string, data: Record<string, unknown>) {
     const ref = db.collection(collection).doc(id);
     const snap = await ref.get();
     if (snap.exists) {
-        console.log(`  ⏭️  ${collection}/${id} — đã tồn tại, bỏ qua`);
+        console.log(`  ⏭️  ${collection}/${id} — 既に存在するためスキップ`);
         return;
     }
     await ref.set(data);
-    console.log(`  ✅ ${collection}/${id} — đã tạo`);
+    console.log(`  ✅ ${collection}/${id} — 作成しました`);
 }
 
-// ─── CONTENT TYPES (SHARED — doc id = form_type routing) ──────────
+// ─── CONTENT TYPES（共有 — ドキュメントIDをform_typeのroutingに使用）──────────
 async function seedContentTypes() {
-    console.log('\n📋 Seeding content_types (shared)...');
+    console.log('\n📋 content_types（共有）をシードしています...');
 
     for (const ct of DEFAULT_CONTENT_TYPES) {
         await seedDoc(GLOBAL_CONTENT_TYPES_COLLECTION, ct.id, {
@@ -76,9 +72,9 @@ async function seedContentTypes() {
     }
 }
 
-// ─── SETTINGS/DEFAULT (secrets của chủ app — LINE credentials) ────
+// ─── SETTINGS/DEFAULT（アプリ所有者のLINE認証情報）────
 async function seedSecretSettings() {
-    console.log('\n🔒 Seeding settings/default (LINE secrets — điền tay qua /settings)...');
+    console.log('\n🔒 settings/default（LINEシークレット）をシードしています...');
 
     await seedDoc('settings', 'default', {
         notifications_enabled: false,
@@ -86,9 +82,9 @@ async function seedSecretSettings() {
     });
 }
 
-// ─── SETTINGS/GLOBAL (feature flags toàn cục — control plane) ─────
+// ─── SETTINGS/GLOBAL（グローバル機能フラグ — control plane）─────
 async function seedGlobalConfig() {
-    console.log('\n🌐 Seeding settings/global (feature flags toàn cục)...');
+    console.log('\n🌐 settings/global（グローバル機能フラグ）をシードしています...');
 
     await seedDoc('settings', GLOBAL_SETTINGS_DOC_ID, {
         ai_model: 'claude-haiku-4-5',
@@ -101,34 +97,34 @@ async function seedGlobalConfig() {
 
 // ─── MAIN ─────────────────────────────────────────────────
 async function main() {
-    console.log('🚀 Bắt đầu seed dữ liệu vào Firestore...');
-    console.log(`   Project: ${process.env.FIREBASE_ADMIN_PROJECT_ID}`);
+    console.log('🚀 Firestoreへのシードを開始します...');
+    console.log(`   プロジェクト: ${process.env.FIREBASE_ADMIN_PROJECT_ID}`);
 
     await seedContentTypes();
     await seedSecretSettings();
     await seedGlobalConfig();
 
-    // Optional: publish template defaults (admin sửa qua /admin → "New-user defaults")
+    // 任意: 管理画面の「New-user defaults」で編集するテンプレート既定値を公開する。
     if (process.argv.includes('--defaults')) {
-        console.log('\n📐 Publishing template defaults (categories/card_types/topics/decks)...');
+        console.log('\n📐 テンプレート既定値（categories/card_types/topics/decks）を公開しています...');
         await publishTemplateDefaults(db);
-        console.log('  ✅ Template defaults đã publish (idempotent).');
+        console.log('  ✅ テンプレート既定値を公開しました（冪等）。');
     }
 
-    // Optional: seed bộ default per-user (thường signup route tự làm)
+    // 任意: 通常はsignup routeが作成するユーザー別の既定値をシードする。
     const userFlagIdx = process.argv.indexOf('--user');
     const uid = userFlagIdx !== -1 ? process.argv[userFlagIdx + 1] : null;
     if (uid) {
-        console.log(`\n👤 Seeding per-user defaults cho uid: ${uid}...`);
+        console.log(`\n👤 UID: ${uid}のユーザー別既定値をシードしています...`);
         await seedUserDefaults(db, uid);
-        console.log('  ✅ Per-user defaults đã seed (idempotent).');
+        console.log('  ✅ ユーザー別既定値をシードしました（冪等）。');
     }
 
-    console.log('\n✨ Seed hoàn tất!');
+    console.log('\n✨ シードが完了しました。');
     process.exit(0);
 }
 
 main().catch((err) => {
-    console.error('❌ Lỗi:', err.message);
+    console.error('❌ エラー:', err.message);
     process.exit(1);
 });

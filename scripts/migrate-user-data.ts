@@ -1,21 +1,19 @@
 /**
- * scripts/migrate-user-data.ts — M2 của firebase-auth-plan.
- * Gán toàn bộ dữ liệu cũ (single-user era) cho một tài khoản Firebase Auth.
+ * Assigns legacy single-user data to a Firebase Auth account.
  *
- * Cách chạy:
+ * Usage:
  *   npx tsx scripts/migrate-user-data.ts <UID>
- *   npx tsx scripts/migrate-user-data.ts <UID> --dry-run   (chỉ đếm, không ghi)
+ *   npx tsx scripts/migrate-user-data.ts <UID> --dry-run  # count without writing
  *
- * Việc thực hiện:
- * 1. 5 collections (entries, categories, card_types, topics, decks):
- *    mọi doc có user_id == 'local-user' HOẶC THIẾU
- *    user_id → set user_id = <UID>. (Doc ID giữ nguyên — entries đang tham
- *    chiếu card_type_ids theo ID cũ nên KHÔNG được đổi ID.)
- * 2. settings/{UID}: nếu chưa có → tạo từ settings/default, STRIP system
- *    fields (ai_model, web_search_enabled) + LINE credentials + user_name.
- * 3. content_types: KHÔNG đụng (shared — doc id = form_type routing).
+ * Behavior:
+ * 1. In entries, categories, card_types, topics, and decks, documents whose
+ *    `user_id` is missing or equals `local-user` are assigned to the supplied UID.
+ *    Document IDs remain unchanged because entries retain card-type ID references.
+ * 2. If settings/{UID} is missing, it is created from settings/default after
+ *    system fields, LINE credentials, and user_name are removed.
+ * 3. Shared content_types documents are not modified.
  *
- * One-time, idempotent (chạy lại chỉ update những doc còn sót).
+ * This one-time migration is idempotent and only updates remaining legacy documents.
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env'
@@ -53,7 +51,7 @@ async function migrateCollection(name: string, uid: string, dryRun: boolean): Pr
 
   if (targets.length === 0 || dryRun) return targets.length
 
-  // Firestore batch giới hạn 500 writes
+  // Firestoreのバッチ書き込み上限に合わせて500件ずつ処理する。
   for (let i = 0; i < targets.length; i += 500) {
     const batch = db.batch()
     for (const d of targets.slice(i, i + 500)) {
@@ -67,17 +65,17 @@ async function migrateCollection(name: string, uid: string, dryRun: boolean): Pr
 async function migrateSettings(uid: string, dryRun: boolean): Promise<string> {
   const userRef = db.collection('settings').doc(uid)
   const userSnap = await userRef.get()
-  if (userSnap.exists) return 'đã tồn tại — bỏ qua'
+  if (userSnap.exists) return '既に存在するためスキップ'
 
   const defSnap = await db.collection('settings').doc('default').get()
-  if (!defSnap.exists) return 'settings/default không tồn tại — bỏ qua'
+  if (!defSnap.exists) return 'settings/defaultが存在しないためスキップ'
 
   const prefs: Record<string, unknown> = { ...defSnap.data() }
   for (const key of STRIP_FROM_USER_SETTINGS) delete prefs[key]
   prefs.updated_at = new Date()
 
   if (!dryRun) await userRef.set(prefs)
-  return 'đã tạo từ settings/default (strip system + LINE fields)'
+  return 'settings/defaultから作成（システム・LINEフィールドを除外）'
 }
 
 async function main() {
@@ -85,28 +83,28 @@ async function main() {
   const dryRun = process.argv.includes('--dry-run')
 
   if (!uid || uid.startsWith('--')) {
-    console.error('❌ Thiếu UID. Cách chạy: npx tsx scripts/migrate-user-data.ts <UID> [--dry-run]')
-    console.error('   Lấy UID: Firebase Console → Authentication → Users (cột User UID)')
+    console.error('❌ UIDが必要です。使用方法: npx tsx scripts/migrate-user-data.ts <UID> [--dry-run]')
+    console.error('   Firebase Console → Authentication → Users の User UID を確認してください。')
     process.exit(1)
   }
 
-  console.log(`🚀 Migration dữ liệu single-user → uid: ${uid}${dryRun ? ' (DRY RUN)' : ''}`)
-  console.log(`   Project: ${process.env.FIREBASE_ADMIN_PROJECT_ID}\n`)
+  console.log(`🚀 single-userデータをUID: ${uid}へ移行します${dryRun ? ' (DRY RUN)' : ''}`)
+  console.log(`   プロジェクト: ${process.env.FIREBASE_ADMIN_PROJECT_ID}\n`)
 
   for (const name of COLLECTIONS) {
     const count = await migrateCollection(name, uid, dryRun)
-    console.log(`  ${dryRun ? '🔍' : '✅'} ${name}: ${count} docs ${dryRun ? 'sẽ được gán' : 'đã gán'} user_id`)
+    console.log(`  ${dryRun ? '🔍' : '✅'} ${name}: ${count}件のドキュメントにuser_idを${dryRun ? '割り当てる予定' : '割り当てました'}`)
   }
 
   const settingsResult = await migrateSettings(uid, dryRun)
   console.log(`  ${dryRun ? '🔍' : '✅'} settings/${uid}: ${settingsResult}`)
 
-  console.log('\n✨ Migration hoàn tất!')
-  if (dryRun) console.log('   (dry-run — chưa ghi gì; chạy lại không có --dry-run để áp dụng)')
+  console.log('\n✨ 移行が完了しました。')
+  if (dryRun) console.log('   (dry-runのため書き込みなし。適用するには--dry-runを外して再実行してください。)')
   process.exit(0)
 }
 
 main().catch((err) => {
-  console.error('❌ Lỗi:', err.message)
+  console.error('❌ エラー:', err.message)
   process.exit(1)
 })
