@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-RDM-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-01 |
+| 最終更新日 | 2026-08-08 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-REQ-001、AF-NFR-001、AF-DEV-001 |
@@ -74,6 +74,9 @@ MVP の範囲を超えて実現した事項として、Firebase 認証による�
 | AnkiWeb を介さない直接同期 | 端末間の同期を自身で担う |
 | 学習すべき語の提案 | 作成履歴と復習状況から次に学ぶ語を提示する |
 | 外部ツールとの連携 | Obsidian、Notion などからの語彙取り込み |
+| Smart Knowledge Hub との連携 | 個人向けナレッジ収集パイプライン（別リポジトリで設計中）から技術用語を AnkiFlow へドラフトとして自動連携する。AnkiFlow 側の受け口（`/api/integrations/term-drafts`）は API コントラクトとテストを含めて実装済み。設計ドキュメント: [github.com/quyen-doth/knowledge-hub](https://github.com/quyen-doth/knowledge-hub) |
+
+> Smart Knowledge Hub については、AnkiFlow 側の連携エンドポイント (`/api/integrations/term-drafts`) を事前に構築しており、Knowledge Hub の実装完了後にコード変更なしで接続可能である。
 
 Phase 3 の各項目は、要件定義書 (AF-REQ-001) 第 13 章においてスコープ外としているものと重複する。スコープ外は現時点の判断であり、Phase 3 として着手する場合は要件定義書を改訂する必要がある。
 
@@ -118,5 +121,6 @@ Phase 3 の各項目は、要件定義書 (AF-REQ-001) 第 13 章においてス
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-08 | Smart Knowledge Hub との事前構築済み連携方針を Phase 3 に追記 | hong-quyen |
 | 1.1 | 2026-08-01 | Phase 2 の未着手 4 項目を、現時点の対象範囲外かつ実施時期未定として明記 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。`docs/PRD.md` 第 16 章および第 17 章を引き継ぎ、実装状況を正として記載を改めた | hong-quyen |

@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-API-001 |
-| 版数 | 1.3 |
+| 版数 | 1.4 |
 | 作成日 | 2026-04-26 |
-| 最終更新日 | 2026-08-02 |
+| 最終更新日 | 2026-08-08 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-ARC-001、AF-DB-001、AF-PRM-001 |
@@ -185,6 +185,8 @@ API が機能するために必要な環境変数のマッピング表 (`.env` �
 | **GET、PUT、DELETE** | `/api/admin/content-types`  | 新規ユーザー用 Content Type defaults を取得・更新。Mutation は管理者のみ、built-in delete 禁止    |
 | **POST**          | `/api/integrations/term-drafts` | 外部システム (Knowledge Hub) から term draft を受け取り Entry (`status:'draft'`) を作成          |
 | **GET**           | `/api/cron/srs-push`           | GitHub Actions 用 — user ごとの timezone に従って LINE 通知を fan-out                       |
+
+※ Knowledge Hub は現在設計段階です（github.com/quyen-doth/knowledge-hub）。本エンドポイントは事前構築済みの連携口であり、Knowledge Hub の実装完了後にコード変更なしで接続可能です。
 
 **削除済み (2026-07-04、`lib/flashcard-service/client-ops.ts` 経由でクライアント側に移行):** `GET /api/anki/connect` (→ クライアント `ping()`)、`GET+POST /api/anki/decks` (→ `ensureDeck`/`renameDeck`/`deleteDeckWithCleanup`/`setDeckSuspended`/`syncAllDecks`)、`POST /api/anki/create` (→ `createNotesForEntry` + `/api/entries/save`)、`POST /api/anki/ensure-model` (→ `ensureModel`)、`POST /api/audio`、`POST /api/audio/store`、`POST /api/image/store` (→ クライアント `storeMediaFile`)。
 
@@ -799,6 +801,7 @@ SRS entry を LINE Flex Message で fan-out する。`vercel.json` からは cro
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.4 | 2026-08-08 | Smart Knowledge Hub 向けendpointが事前構築済みであることを明記 | hong-quyen |
 | 1.3 | 2026-08-02 | 現行の `/api/admin/content-types` GET・PUT・DELETE 契約、検証、エラー応答を復元 | hong-quyen |
 | 1.2 | 2026-08-02 | 削除済みの管理 API 4 ルートと旧 LINE 実行経路を除去し、公開 LINE 変数と節番号を現行実装へ同期 | hong-quyen |
 | 1.1 | 2026-08-01 | 文書体系の再編に伴い、文書管理情報と改訂履歴を追加し、格納先を `docs/02-design/` へ変更。章見出しの絵文字を削除 | hong-quyen |
