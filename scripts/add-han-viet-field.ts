@@ -1,12 +1,12 @@
 /**
- * Idempotently adds `han_viet` to existing LANGUAGE card-type templates.
+ * 既存の LANGUAGE カードタイプテンプレートへ`han_viet`を冪等に追加する。
  *
- * The field is inserted after `reading`, or after `word` when `reading` is absent.
- * Only template sides containing either anchor are changed. The migration does not
- * modify entries, settings, decks, categories, or other collections. It does not
- * generate Han-Viet content for entries; it only adds a display slot.
+ * `reading`の直後に挿入し、`reading`がない場合は`word`の直後に挿入する。
+ * いずれかの基準フィールドを含む面だけを変更し、entries、settings、decks、
+ * categories、およびその他のコレクションは変更しない。entries 用の漢越音
+ * コンテンツは生成せず、表示スロットだけを追加する。
  *
- * Usage: npx tsx scripts/add-han-viet-field.ts
+ * 実行: npx tsx scripts/add-han-viet-field.ts
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
