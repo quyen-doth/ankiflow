@@ -1,9 +1,9 @@
 /**
  * scripts/fix-card-types.ts
- * Targeted migration: cập nhật tên + template cho card_types trong Firestore live.
- * KHÔNG đụng entries, settings, decks, categories hay bất kỳ collection nào khác.
+ * 稼働中の Firestore にある`card_types`の名前とテンプレートだけを対象に更新する。
+ * entries、settings、decks、categories、およびその他のコレクションは変更しない。
  *
- * Chạy: npx tsx scripts/fix-card-types.ts
+ * 実行: npx tsx scripts/fix-card-types.ts
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
@@ -35,7 +35,7 @@ const T = {
     front_to_back: { front: ['word'], back: ['meaning', 'example', 'translation', 'audio'] },
 } as const;
 
-// Chỉ update name + form_type (nếu sai) + template — giữ nguyên id/code/language/is_default/is_active/sort_order
+// 名前、誤っている場合の`form_type`、テンプレートだけを更新し、id/code/language/is_default/is_active/sort_orderは維持する。
 const UPDATES: Record<string, { name: string; form_type?: string; template: (typeof T)[keyof typeof T] }> = {
     ct_word_meaning: { name: 'Word → Meaning', template: T.word_to_meaning },
     ct_meaning_word: { name: 'Meaning → Word', template: T.meaning_to_word },

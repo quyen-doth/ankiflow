@@ -1,10 +1,10 @@
 /**
  * scripts/migrate-form-type.ts
  *
- * Migration: cập nhật form_type từ giá trị cũ ('language', 'it', 'general')
- * sang giá trị enum mới ('form_language', 'form_it', 'form_general')
+ * `form_type`を旧値 (`language`、`it`、`general`) から
+ * 新しい enum 値 (`form_language`、`form_it`、`form_general`) へ移行する。
  *
- * Chạy: npx tsx scripts/migrate-form-type.ts
+ * 実行: npx tsx scripts/migrate-form-type.ts
  */
 
 import { FIREBASE_ADMIN_ENV_NAMES, loadEnv } from './lib/load-env';
