@@ -22,6 +22,7 @@ export function decideReleaseActions({
     ref,
     tagExists,
     tagCommitSha,
+    tagIsAncestor,
     headSha,
     releaseExists,
     releaseNotesPresent,
@@ -32,7 +33,7 @@ export function decideReleaseActions({
     if (!releaseNotesPresent) {
         return fail(`CHANGELOG に v${version} のリリースノートが存在しない。`);
     }
-    if (tagExists && tagCommitSha !== headSha) {
+    if (tagExists && tagCommitSha !== headSha && !tagIsAncestor) {
         return fail(`タグ v${version} は別のコミット ${tagCommitSha} を指している。`);
     }
 
@@ -78,13 +79,13 @@ function parseBoolean(value, name) {
     throw new Error(`${name} は true または false でなければならない。`);
 }
 
-function exactTagState(version) {
+function exactTagState(version, headSha) {
     const tagRef = `refs/tags/v${version}`;
     try {
         execFileSync('git', ['show-ref', '--verify', '--quiet', tagRef], { stdio: 'ignore' });
     } catch (error) {
         if (error && typeof error === 'object' && error.status === 1) {
-            return { tagExists: false, tagCommitSha: null };
+            return { tagExists: false, tagCommitSha: null, tagIsAncestor: false };
         }
         throw error;
     }
@@ -92,7 +93,14 @@ function exactTagState(version) {
     const tagCommitSha = execFileSync('git', ['rev-parse', `${tagRef}^{commit}`], {
         encoding: 'utf8',
     }).trim();
-    return { tagExists: true, tagCommitSha };
+    let tagIsAncestor = false;
+    try {
+        execFileSync('git', ['merge-base', '--is-ancestor', tagRef, headSha], { stdio: 'ignore' });
+        tagIsAncestor = true;
+    } catch (error) {
+        if (!(error && typeof error === 'object' && error.status === 1)) throw error;
+    }
+    return { tagExists: true, tagCommitSha, tagIsAncestor };
 }
 
 function emitOutput(key, value) {
@@ -106,12 +114,13 @@ function main() {
     const releaseExists = parseBoolean(requiredEnv('RELEASE_EXISTS'), 'RELEASE_EXISTS');
     const changelog = readFileSync(CHANGELOG_PATH, 'utf8');
     const releaseNotes = extractReleaseNotes(changelog, version);
-    const { tagExists, tagCommitSha } = exactTagState(version);
+    const { tagExists, tagCommitSha, tagIsAncestor } = exactTagState(version, headSha);
     const decision = decideReleaseActions({
         version,
         ref,
         tagExists,
         tagCommitSha,
+        tagIsAncestor,
         headSha,
         releaseExists,
         releaseNotesPresent: releaseNotes.length > 0,
@@ -120,6 +129,7 @@ function main() {
     emitOutput('version', version);
     emitOutput('tag_exists', String(tagExists));
     emitOutput('tag_commit_sha', tagCommitSha ?? '');
+    emitOutput('tag_is_ancestor', String(tagIsAncestor));
     emitOutput('release_exists', String(releaseExists));
     emitOutput('create_tag', String(decision.createTag));
     emitOutput('create_release', String(decision.createRelease));
