@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-OPS-001 |
-| 版数 | 1.1 |
+| 版数 | 1.2 |
 | 作成日 | 2026-08-01 |
-| 最終更新日 | 2026-08-02 |
+| 最終更新日 | 2026-08-09 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-SET-001、AF-DEV-001、AF-SEC-001、AF-NFR-001 |
@@ -39,13 +39,15 @@ develop へ push
          ├─ scripts/prepare-release.mjs
          │    ├─ 前回の準備を取り消す
          │    ├─ main...develop の全コミットからバージョンを再算出する
-         │    └─ package.json / package-lock.json / CHANGELOG.md を書き換える
-         ├─ 差分があれば develop へコミットする
-         └─ Release PR を作成または更新する (タイトル: release: vX.Y.Z)
-                └─▶ Release PR をマージ
+         │    └─ 版を繰り上げる場合のみ package.json / package-lock.json / CHANGELOG.md を書き換える
+         ├─ リリース準備の差分があれば develop へコミットする
+         └─ 自動生成 PR を作成または更新する
+                ├─ Release PR: release: vX.Y.Z
+                ├─ 同期 PR: release: developをmainへ同期 (版は変更しない)
+                └─▶ 自動生成 PR をマージ
                       └─▶ release-tag.yml
-                            ├─ タグ vX.Y.Z を作成して push する
-                            └─ GitHub Release を作成する
+                            ├─ 版を繰り上げた場合: タグと GitHub Release を作成する
+                            └─ 版を変更していない場合: 既存の成果物を保持する
 ```
 
 ### 3.2 手順
@@ -53,10 +55,10 @@ develop へ push
 | # | 実施すること |
 | --- | --- |
 | 1 | `develop` の継続的インテグレーションが成功していることを確認する |
-| 2 | 自動生成された Release PR の内容を確認する。とりわけ算出されたバージョンと `CHANGELOG.md` の記載を見る |
+| 2 | 自動生成された PR の内容を確認する。Release PR では算出されたバージョンと `CHANGELOG.md`、同期 PR では「バージョン: 変更なし」の表示を見る |
 | 3 | 第 9 章の事前確認を実施する |
-| 4 | Release PR をマージする |
-| 5 | タグと GitHub Release が生成されたことを確認する |
+| 4 | 自動生成 PR をマージする |
+| 5 | Release PR の場合はタグと GitHub Release が生成されたこと、同期 PR の場合は新しい成果物が生成されていないことを確認する |
 | 6 | Vercel のデプロイが成功したことを確認する |
 | 7 | 本番環境で第 6 章の確認を行う |
 
@@ -64,9 +66,10 @@ develop へ push
 
 - `package.json` および `package-lock.json` の `version` を手で編集してはならない。ワークフローが管理する。
 - Release PR を開いたまま `develop` が進んだ場合、バージョンは自動的に再算出される。`fix` のみの状態で準備されたあとに `feat` がマージされれば、バージョンは繰り上がる。
-- `release-tag.yml` を再実行した場合は、タグと GitHub Release のうち不足している成果物だけを作成する。両方が存在すれば何もしない。
-- `main` 以外からの手動実行、対象バージョンのリリースノート欠落、または同名タグが現在の `main` 以外を指す場合は、誤ったリリースを作成せず明示的に失敗する。
-- 自動生成される Release PR は Pull Request の検査対象外である。個々の Pull Request で検査済みであるためである。
+- 文書・テスト・CI 設定のみの差分では、版を変更しない同期 PR を作成する。同期 PR が開いたあとに `fix` または `feat` が加わった場合は、同じ PR を Release PR へ更新する。
+- `release-tag.yml` を再実行した場合は、タグと GitHub Release のうち不足している成果物だけを作成する。同期 PR のマージ後は、現在の版のタグが `main` の祖先を指していれば既存成果物として扱う。両方が存在すれば何もしない。
+- `main` 以外からの手動実行、対象バージョンのリリースノート欠落、または同名タグが現在の `main` の祖先ではない場合は、誤ったリリースを作成せず明示的に失敗する。
+- 自動生成される Release PR / 同期 PR は Pull Request の検査対象外である。個々の Pull Request で検査済みであるためである。
 - `release-pr.yml` は `develop` へ直接 push する。`develop` のブランチ保護は `github-actions[bot]` の push を許可する設定でなければならない。
 
 ## 4. デプロイ
@@ -294,5 +297,6 @@ firebase deploy --only firestore:rules
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.2 | 2026-08-09 | 版を変更しない同期 PR の作成・確認手順と、既存タグを保持する条件を追記 | hong-quyen |
 | 1.1 | 2026-08-02 | リリース再実行時の不足成果物のみを補う挙動と fail-closed 条件を追記し、削除済みの旧 LINE 実行経路を除去 | hong-quyen |
 | 1.0 | 2026-08-01 | 初版作成。リリース、デプロイ、定期実行、運用作業、障害対応、切り戻しの各手順を定義した | hong-quyen |

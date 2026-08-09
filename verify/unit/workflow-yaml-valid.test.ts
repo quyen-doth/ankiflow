@@ -60,4 +60,28 @@ describe('GitHub workflow YAML', () => {
       "steps.state.outputs.create_release == 'true'",
     )
   })
+
+  it('release-pr.yml creates a sync PR even when no version bump is required', () => {
+    const workflow = readWorkflow('release-pr.yml')
+    const jobs = workflow.jobs
+    expect(isRecord(jobs)).toBe(true)
+    if (!isRecord(jobs)) return
+    const job = jobs['create-release-pr']
+    expect(isRecord(job)).toBe(true)
+    if (!isRecord(job) || !Array.isArray(job.steps)) return
+
+    const steps = job.steps.filter(isRecord)
+    const createPr = steps.find((step) => step.name === 'Create or update release PR')
+    expect(createPr).toBeDefined()
+    expect(createPr?.if).toBeUndefined()
+    expect(createPr?.uses).toBe('actions/github-script@v9')
+    expect(isRecord(createPr?.with)).toBe(true)
+    if (!isRecord(createPr?.with)) return
+
+    expect(createPr.with.script).toContain("version !== ''")
+    expect(createPr.with.script).toContain('release: v${version}')
+    expect(createPr.with.script).toContain('release: developをmainへ同期')
+    expect(createPr.with.script).toContain('- バージョン: **変更なし**')
+    expect(createPr.with.script).toContain('compare.data.files.length === 0')
+  })
 })

@@ -57,7 +57,6 @@ jobs:
                   git push origin develop
 
             - name: Create or update release PR
-              if: steps.prepare.outputs.version != ''
               uses: actions/github-script@v9
               env:
                   VERSION: ${{ steps.prepare.outputs.version }}
@@ -66,7 +65,10 @@ jobs:
                       const base = 'main';
                       const head = 'develop';
                       const version = process.env.VERSION;
-                      const title = `release: v${version}`;
+                      const releaseRequired = version !== '';
+                      const title = releaseRequired
+                        ? `release: v${version}`
+                        : 'release: developをmainへ同期';
                       const { owner, repo } = context.repo;
 
                       const compare = await github.rest.repos.compareCommitsWithBasehead({
@@ -80,15 +82,25 @@ jobs:
                         return;
                       }
 
-                      const body = [
-                        `\`${head}\` から \`${base}\` への自動生成リリース PR である。`,
-                        '',
-                        `- バージョン: **v${version}**`,
-                        `- 変更内容: [CHANGELOG.md](https://github.com/${owner}/${repo}/blob/${head}/CHANGELOG.md)`,
-                        '',
-                        'マージ前に CI の結果を確認すること。',
-                        'マージ後、`release-tag.yml` がタグと GitHub Release を自動作成する。',
-                      ].join('\n');
+                      const body = releaseRequired
+                        ? [
+                            `\`${head}\` から \`${base}\` への自動生成リリース PR である。`,
+                            '',
+                            `- バージョン: **v${version}**`,
+                            `- 変更内容: [CHANGELOG.md](https://github.com/${owner}/${repo}/blob/${head}/CHANGELOG.md)`,
+                            '',
+                            'マージ前に CI の結果を確認すること。',
+                            'マージ後、`release-tag.yml` がタグと GitHub Release を自動作成する。',
+                          ].join('\n')
+                        : [
+                            `\`${head}\` から \`${base}\` への自動生成同期 PR である。`,
+                            '',
+                            '- バージョン: **変更なし**',
+                            '- 対象: 文書・テスト・CI 設定のみ',
+                            '',
+                            'マージ前に CI の結果を確認すること。',
+                            'マージ後、既存のタグと GitHub Release は変更しない。',
+                          ].join('\n');
 
                       const { data: openPrs } = await github.rest.pulls.list({
                         owner,
