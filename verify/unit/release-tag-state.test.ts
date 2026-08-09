@@ -87,6 +87,7 @@ describe('release tag state decisions', () => {
     ref: 'refs/heads/main',
     tagExists: false,
     tagCommitSha: null,
+    tagIsAncestor: false,
     headSha: 'head-sha',
     releaseExists: false,
     releaseNotesPresent: true,
@@ -102,7 +103,12 @@ describe('release tag state decisions', () => {
 
   it('creates only the release when the tag already points at HEAD', () => {
     expect(
-      decideReleaseActions({ ...base, tagExists: true, tagCommitSha: 'head-sha' }),
+      decideReleaseActions({
+        ...base,
+        tagExists: true,
+        tagCommitSha: 'head-sha',
+        tagIsAncestor: true,
+      }),
     ).toMatchObject({ outcome: 'ready', createTag: false, createRelease: true })
   })
 
@@ -112,14 +118,43 @@ describe('release tag state decisions', () => {
         ...base,
         tagExists: true,
         tagCommitSha: 'head-sha',
+        tagIsAncestor: true,
         releaseExists: true,
       }),
     ).toMatchObject({ outcome: 'noop', createTag: false, createRelease: false })
   })
 
-  it('fails when the existing tag points at another commit', () => {
+  it('keeps existing artifacts when the tag points at an ancestor of HEAD', () => {
     expect(
-      decideReleaseActions({ ...base, tagExists: true, tagCommitSha: 'other-sha' }),
+      decideReleaseActions({
+        ...base,
+        tagExists: true,
+        tagCommitSha: 'ancestor-sha',
+        tagIsAncestor: true,
+        releaseExists: true,
+      }),
+    ).toMatchObject({ outcome: 'noop', createTag: false, createRelease: false })
+  })
+
+  it('creates only a missing release when the tag points at an ancestor of HEAD', () => {
+    expect(
+      decideReleaseActions({
+        ...base,
+        tagExists: true,
+        tagCommitSha: 'ancestor-sha',
+        tagIsAncestor: true,
+      }),
+    ).toMatchObject({ outcome: 'ready', createTag: false, createRelease: true })
+  })
+
+  it('fails when the existing tag points at a non-ancestor commit', () => {
+    expect(
+      decideReleaseActions({
+        ...base,
+        tagExists: true,
+        tagCommitSha: 'other-sha',
+        tagIsAncestor: false,
+      }),
     ).toMatchObject({ outcome: 'fail', createTag: false, createRelease: false })
   })
 
@@ -151,13 +186,14 @@ describe('release tag state production CLI', () => {
     expect(result.outputs).toMatchObject({
       tag_exists: 'true',
       tag_commit_sha: headSha,
+      tag_is_ancestor: 'true',
       create_tag: 'false',
       create_release: 'true',
     })
     expect(git(repo, 'rev-parse', 'refs/tags/v1.2.3')).not.toBe(headSha)
   })
 
-  it('fails when an annotated tag points at a different commit', () => {
+  it('accepts an annotated tag that points at an ancestor commit', () => {
     const { repo } = createRepo()
     git(repo, 'tag', '-a', 'v1.2.3', '-m', 'release fixture')
     writeFileSync(join(repo, 'fixture.txt'), 'second\n')
@@ -166,9 +202,36 @@ describe('release tag state production CLI', () => {
 
     const result = runCli(repo)
 
+    expect(result.status).toBe(0)
+    expect(result.outputs).toMatchObject({
+      outcome: 'ready',
+      tag_is_ancestor: 'true',
+      create_tag: 'false',
+      create_release: 'true',
+    })
+  })
+
+  it('fails when an annotated tag points at a non-ancestor commit', () => {
+    const { repo } = createRepo()
+    git(repo, 'checkout', '-b', 'tagged-release')
+    writeFileSync(join(repo, 'fixture.txt'), 'tagged release\n')
+    git(repo, 'add', 'fixture.txt')
+    git(repo, 'commit', '-m', 'fix: タグ側のコミット')
+    git(repo, 'tag', '-a', 'v1.2.3', '-m', 'release fixture')
+    git(repo, 'checkout', '-')
+    writeFileSync(join(repo, 'fixture.txt'), 'main line\n')
+    git(repo, 'add', 'fixture.txt')
+    git(repo, 'commit', '-m', 'fix: main側のコミット')
+
+    const result = runCli(repo)
+
     expect(result.status).toBe(1)
     expect(result.stderr).toContain('::error::')
-    expect(result.outputs).toMatchObject({ outcome: 'fail', create_tag: 'false' })
+    expect(result.outputs).toMatchObject({
+      outcome: 'fail',
+      tag_is_ancestor: 'false',
+      create_tag: 'false',
+    })
   })
 
   it('does not mistake a same-named branch for an exact tag ref', () => {
@@ -181,6 +244,7 @@ describe('release tag state production CLI', () => {
     expect(result.outputs).toMatchObject({
       tag_exists: 'false',
       tag_commit_sha: '',
+      tag_is_ancestor: 'false',
       create_tag: 'true',
       create_release: 'true',
     })

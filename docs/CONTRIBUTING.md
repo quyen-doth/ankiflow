@@ -3,9 +3,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | 文書ID | AF-DEV-001 |
-| 版数 | 1.3 |
+| 版数 | 1.5 |
 | 作成日 | 2026-07-10 |
-| 最終更新日 | 2026-08-02 |
+| 最終更新日 | 2026-08-09 |
 | 作成者 | [hong-quyen](https://github.com/quyen-doth) |
 | ステータス | 運用中 |
 | 関連文書 | AF-IDX-001、AF-OPS-001 |
@@ -15,7 +15,7 @@
 ## 基本方針
 
 - `develop` = 日常の作業のベースブランチ(デフォルトブランチ)
-- `main` = リリース専用。`release-pr.yml` が生成する Release PR のマージでのみ更新する
+- `main` = 本番専用。`release-pr.yml` が生成する Release PR または同期 PR のマージでのみ更新する
 - `develop` / `main` への直接コミット・直接プッシュは禁止(git hooks でブロック)
 
 ## ブランチ運用
@@ -64,7 +64,7 @@
 ## PR 規約
 
 - タイトル: コミットと同じ形式(`type: 日本語の要約`)
-- base ブランチ: `develop`(リリース PR のみ `main`)
+- base ブランチ: `develop`(自動生成される Release PR / 同期 PR のみ `main`)
 - 本文: `.github/PULL_REQUEST_TEMPLATE.md` に従う
 - マージ方法: merge commit(現行運用を踏襲)
 
@@ -84,14 +84,14 @@ gh pr create --base develop --title "feat: エクスポート履歴画面を追�
 | リリース対象に含まれるコミット | 繰り上げ |
 | --- | --- |
 | `feat:` / 任意の type の `!:` / 本文に `BREAKING CHANGE` フッター | MINOR (0.x の間) / MAJOR (1.0.0 以降) |
-| `docs:` `test:` `ci:` のみ | 繰り上げない (リリース PR を作成しない) |
+| `docs:` `test:` `ci:` のみ | 繰り上げない (同期 PR を作成する) |
 | 上記以外の type (`fix` `refactor` `perf` `chore` `style` `build` `revert`) | PATCH |
 
-`docs:` `test:` `ci:` は本ガイド「開発者が行うこと」により `CHANGELOG.md` に記載しない種類である。したがってこれらだけを含む範囲では版を繰り上げず、リリース PR も作成しない。本文の空いた版を作ると、`main` へ merge した後に `release-tag.yml` が必ず失敗するためである。
+`docs:` `test:` `ci:` は本ガイド「開発者が行うこと」により `CHANGELOG.md` に記載しない種類である。したがってこれらだけを含む範囲では版を繰り上げず、`release: developをmainへ同期` という同期 PR を作成する。同期 PR は差分を `main` へ反映するが、本文の空いた版、タグ、および GitHub Release は作成しない。
 
 ただし**破壊的変更は type を問わず繰り上げの対象**である。`docs!:` も、本文に `BREAKING CHANGE` フッターを持つ `docs:` も、通常どおりリリースされる。
 
-なお `[Unreleased]` が空のままリリースを準備しようとした場合、`prepare-release.mjs` はファイルを書き換えずに中断する。利用者に影響のある変更であれば `[Unreleased]` へ追記し、そうでなければリリース自体が不要である。
+なお、版を繰り上げるコミットが存在する一方で `[Unreleased]` が空の場合、`prepare-release.mjs` はファイルを書き換えずに中断する。利用者に影響のある変更であれば `[Unreleased]` へ追記すること。文書・テスト・CI 設定のみで版を繰り上げない場合は、空の `[Unreleased]` を許容して同期 PR を作成する。
 
 現在は `0.x` であり、SemVer 第 4 項のとおり公開 API の安定性を約束していない。したがって破壊的変更も MINOR として扱うが、その場合は `CHANGELOG.md` に「破壊的変更」の見出しを設けて明記すること。
 
@@ -107,16 +107,18 @@ develop へ push
          ├─ scripts/prepare-release.mjs
          │    ├─ 前回の準備を取り消す (準備済み節を [Unreleased] へ戻す)
          │    ├─ main...develop の全コミットからバージョンを再算出
-         │    └─ package.json / package-lock.json / CHANGELOG を書き換える
-         ├─ 差分があれば develop へコミット (chore: リリース vX.Y.Z の準備)
-         └─ Release PR を作成 / 更新 (タイトル: release: vX.Y.Z)
-                └─▶ Release PR をマージ
+         │    └─ 版を繰り上げる場合のみ package.json / package-lock.json / CHANGELOG を書き換える
+         ├─ リリース準備の差分があれば develop へコミット (chore: リリース vX.Y.Z の準備)
+         └─ 自動生成 PR を作成 / 更新
+                ├─ Release PR: release: vX.Y.Z
+                ├─ 同期 PR: release: developをmainへ同期 (版は変更しない)
+                └─▶ 自動生成 PR をマージ
                       └─▶ release-tag.yml
-                            ├─ タグ vX.Y.Z を作成して push
-                            └─ CHANGELOG の該当節を本文に GitHub Release を作成
+                            ├─ 版を繰り上げた場合: タグと GitHub Release を作成
+                            └─ 版を変更していない場合: 既存の成果物を保持
 ```
 
-### Release PR が未マージのまま develop が進んだ場合
+### 自動生成 PR が未マージのまま develop が進んだ場合
 
 `prepare-release.mjs` は冪等であるだけでなく、再入可能である。Release PR を開いたまま `develop` に新しいコミットがマージされた場合、次の実行で以下が起こる。
 
@@ -130,15 +132,17 @@ develop へ push
 
 自身が生成したコミット (`chore: リリース vX.Y.Z の準備`) は、バージョン判定の対象から除外される。
 
+文書・テスト・CI 設定のみの状態で同期 PR が開かれたあとに `fix:` や `feat:` が追加された場合、同じ PR を Release PR へ更新し、算出した版と本文を差し替える。別の `develop` → `main` PR は作成しない。
+
 ### タグと GitHub Release の再実行
 
-`release-tag.yml` は `main` の同じバージョンに対して再実行できる。タグと GitHub Release の状態を個別に確認し、不足している成果物だけを作成する。両方が存在する場合は何も変更しない。
+`release-tag.yml` は `main` の同じバージョンに対して再実行できる。タグと GitHub Release の状態を個別に確認し、不足している成果物だけを作成する。同期 PR のマージ後は、同名タグが現在の `main` の祖先を指していれば既存のリリース成果物として扱う。両方が存在する場合は何も変更しない。
 
 次の場合は誤った成果物を作成せず、理由を表示して失敗する。
 
 - `main` 以外の ref から手動実行した場合
 - `CHANGELOG.md` に対象バージョンのリリースノートがない場合
-- 同名タグが現在の `main` とは異なるコミットを指す場合
+- 同名タグが現在の `main` と無関係なコミット (祖先ではないコミット) を指す場合
 
 ### 開発者が行うこと
 
@@ -156,7 +160,7 @@ develop へ push
 | レイヤー | 仕組み | 内容 |
 | --- | --- | --- |
 | ローカル | `.githooks/`(`npm install` 時に `prepare` スクリプトが `core.hooksPath` を設定) | commit-msg 形式検証・AI co-author ブロック・保護ブランチへの commit/push ブロック |
-| CI | `.github/workflows/pr-lint.yml` | PR タイトル・全コミットメッセージ・PR 本文を検証。`release-pr.yml` が自動生成する Release PR(`develop` → `main`)は対象外(中身は各 feature PR で検証済みのため) |
+| CI | `.github/workflows/pr-lint.yml` | PR タイトル・全コミットメッセージ・PR 本文を検証。`release-pr.yml` が自動生成する Release PR / 同期 PR (`develop` → `main`) は対象外(中身は各 feature PR で検証済みのため) |
 | ガイド | 本ファイル + `CLAUDE.md` / `AGENTS.md` + `.claude/skills/git-workflow/` | エージェントへの指示 |
 
 緊急時のバイパス(原則使用禁止): `SKIP_GIT_STANDARDS=1 git commit ...`
@@ -171,6 +175,7 @@ npm install   # prepare スクリプトが git config core.hooksPath .githooks �
 
 | 版数 | 日付 | 変更内容 | 変更者 |
 | --- | --- | --- | --- |
+| 1.5 | 2026-08-09 | 文書・テスト・CI のみの差分でも同期 PR を作成し、版・タグ・GitHub Releaseを変更せず `main` へ反映する運用を追記 | hong-quyen |
 | 1.4 | 2026-08-02 | 文書・テスト・CI のみの変更は繰り上げずリリース PR も作成しないこと、破壊的変更は type を問わず繰り上げの対象であること、`[Unreleased]` が空の場合は準備を中断することを追記 | hong-quyen |
 | 1.3 | 2026-08-02 | タグと GitHub Release の再実行時に不足分だけを補い、不正な ref・タグ・リリースノートを fail-closed で拒否する挙動を追記 | hong-quyen |
 | 1.2 | 2026-08-01 | 文書管理情報と改訂履歴を追加 | hong-quyen |
